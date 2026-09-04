@@ -3,7 +3,7 @@
 **Writer:** SURFACE builder only  
 **Branch:** `feat/rni-surface-demo`  
 **Depends on:** merged RNI contract-freeze SHA; fixture-backed `RniReadService`  
-**Status:** `BLOCKED` — S08 needs an additive frozen read boundary for active-member search and staged-universe preview
+**Status:** `IN_PROGRESS` — S08 S&P 500 search and staged-universe preview in progress
 
 ## Owned paths
 
@@ -20,7 +20,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | S05 | Raw data/lineage explorer                                        | `READY_FOR_MERGE` | Coordinator accepted `d4c1a09`             |
 | S06 | Per-platform freshness, run progress and partial/failure states  | `READY_FOR_MERGE` | Coordinator accepted `ffd5119`             |
 | S07 | Manual ticker/full refresh controls and double-submit prevention | `READY_FOR_REVIEW` | SR-08 guarded fixture/browser acceptance passed |
-| S08 | S&P 500 search, NVDA default and universe Settings components    | `BLOCKED`     | Blocked on CR-SURFACE-05 |
+| S08 | S&P 500 search, NVDA default and universe Settings components    | `READY_FOR_REVIEW` | D-RNI-18 fixture/browser acceptance passed |
 | S09 | Route/model display and Direct/Gateway future-run setting        | `NOT_STARTED`     | Setting/history immutability test          |
 | S10 | Accessibility, responsive and full SURFACE handoff               | `NOT_STARTED`     | Required audits and lane report            |
 
@@ -45,7 +45,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | CR-SURFACE-02 | `ACCEPTED` | D-RNI-13 / `84dca87` adds frozen `getRadarPage` query/page schemas and `referenceRadarPage`. The page has canonical ticker/company/exchange identity plus separate Reddit, X and combined cells; no pooled source count exists.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | S02 may use only this frozen response shape and fixture.                          |
 | CR-SURFACE-03 | `ACCEPTED` | D-RNI-14 / `ce80424` adds frozen `getSecurityDetail(runId, securityId)` with canonical identity, fixed Reddit/X detail records, exactly four cited platform-bound dimensions, and independent state/freshness/coverage/confidence.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | S03 consumes only the additive read shape; Radar remains unchanged.               |
 | CR-SURFACE-04 | `ACCEPTED` | D-RNI-17 / `fec8c46` adds frozen `RniCommandService.requestManualRefresh` with a required idempotency key, ticker/full scope, accepted/duplicate disposition, durable run ID, and resolved scope preview. Exact same-key replay returns the original run/preview; crossed-key scope fails closed. | S07 uses the fixture command boundary; I09 owns live auth, CSRF, audit and queue composition. |
-| CR-SURFACE-05 | `OPEN` | **Current behaviour:** frozen RNI contracts define universe candidate value shapes, but `RniReadService` exposes no active-universe member list/search or staged-preview read. **Requested change:** add an additive frozen universe read interface returning canonical ticker, company, exchange and active/staged version metadata, with a bounded any-member search query and an immutable staged-preview response. **Justification:** S08 must default to NVDA, search every active S&P 500 member, and show a staged preview without touching FMP, repositories, sync, activation, or a non-frozen API. **Affected lanes:** SURFACE, DATA, INTEGRATION. **Compatibility:** additive read-only boundary; no activation/mutation shape. **Recommended acceptance:** fixture service returns NVDA by default, finds a non-Radar member via case-insensitive ticker/company query, and renders a staged version preview distinct from the active version. | Blocks S08 fixture-backed UI and browser acceptance. |
+| CR-SURFACE-05 | `ACCEPTED` | D-RNI-18 corrected at `098f010` / integration `573d7be` adds frozen read-only active-member search and immutable staged preview. | S08 consumes only `RniUniverseReadService`; no FMP or activation access. |
 
 ## Test evidence
 

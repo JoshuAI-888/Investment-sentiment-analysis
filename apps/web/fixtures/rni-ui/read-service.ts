@@ -9,6 +9,11 @@ import type {
   RniReadService,
   RniManualRefreshRequest,
   RniManualRefreshResult,
+  RniActiveUniverse,
+  RniStagedUniversePreview,
+  RniUniverseReadService,
+  RniUniverseSearchQuery,
+  RniUniverseSearchResult,
   RniRun,
   RniRunStatus,
   RniSecurityDetail,
@@ -22,6 +27,9 @@ import {
   referenceRadarPage,
   referenceSecurityDetail,
   rniFixtureIds,
+  referenceActiveUniverse,
+  referenceStagedUniversePreview,
+  referenceUniverseSearchResult,
 } from '@/rni/testing/reference-fixtures';
 
 const FIXTURE_TIME = '2026-09-05T00:08:00.000Z';
@@ -454,6 +462,43 @@ export class FixtureRniReadService implements RniReadService {
 
 export function createFixtureRniReadService(state: RniUiFixtureState = 'complete'): RniReadService {
   return new FixtureRniReadService(rniUiFixtureCatalogue[state]);
+}
+
+export class FixtureRniUniverseReadService implements RniUniverseReadService {
+  async getActiveUniverse(): Promise<RniActiveUniverse> {
+    return copy(referenceActiveUniverse);
+  }
+  async searchActiveUniverse(query: RniUniverseSearchQuery): Promise<RniUniverseSearchResult> {
+    const requestedQuery = query.query?.trim() ?? '';
+    const normalized = requestedQuery.toLowerCase();
+    if (normalized === 'micro' || normalized === 'msft' || normalized === 'microsoft') {
+      return copy({ ...referenceUniverseSearchResult, query: requestedQuery });
+    }
+    if (!normalized || 'nvda nvidia corporation'.includes(normalized)) {
+      return copy({
+        version: referenceActiveUniverse.version,
+        query: requestedQuery,
+        members: [referenceActiveUniverse.defaultSecurity],
+        hasMore: false,
+      });
+    }
+    return copy({
+      version: referenceActiveUniverse.version,
+      query: requestedQuery,
+      members: [],
+      hasMore: false,
+    });
+  }
+  async getStagedUniversePreview(versionId: string): Promise<RniStagedUniversePreview> {
+    if (versionId !== referenceStagedUniversePreview.stagedVersion.id) {
+      throw new RniFixtureNotFoundError('run', versionId);
+    }
+    return copy(referenceStagedUniversePreview);
+  }
+}
+
+export function createFixtureRniUniverseReadService(): RniUniverseReadService {
+  return new FixtureRniUniverseReadService();
 }
 
 export class FixtureRniCommandService implements RniCommandService {
