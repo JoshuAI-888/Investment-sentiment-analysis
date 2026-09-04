@@ -70,9 +70,37 @@ function normalize(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
+/**
+ * A trailing corporate suffix, requiring a real separator (a comma, or at least one space)
+ * immediately before it — never a bare `\s*`, which would also match inside an ordinary word
+ * ending in "co" (e.g. "Sysco", "Geico") with no separator at all. Applied iteratively (lane-
+ * review finding 3): social text overwhelmingly says "Tesla", not "Tesla, Inc." — `security.name`
+ * carries the one legal name, with no `aliases` populated for a short form, so without this a
+ * real, on-topic mention is misread as "no mention of the security" and never even reaches
+ * `relevance.filter`.
+ */
+const CORPORATE_SUFFIX_PATTERN =
+  /(?:,\s*|\s+)(?:incorporated|corporation|holdings|company|limited|inc|corp|ltd|llc|plc|co)\.?\s*$/i;
+
+function stripCorporateSuffix(name: string): string {
+  let stripped = name.trim();
+  let previous: string;
+  do {
+    previous = stripped;
+    stripped = stripped.replace(CORPORATE_SUFFIX_PATTERN, '').trim();
+  } while (stripped !== previous && stripped.length > 0);
+  return stripped;
+}
+
 function containsCompanyName(text: string, name: string): boolean {
-  if (name.trim().length === 0) return false;
-  return normalize(text).includes(normalize(name));
+  const trimmedName = name.trim();
+  if (trimmedName.length === 0) return false;
+  const normalizedText = normalize(text);
+  if (normalizedText.includes(normalize(trimmedName))) return true;
+
+  const shortForm = stripCorporateSuffix(trimmedName);
+  if (shortForm.length === 0 || shortForm === trimmedName) return false;
+  return normalizedText.includes(normalize(shortForm));
 }
 
 /**

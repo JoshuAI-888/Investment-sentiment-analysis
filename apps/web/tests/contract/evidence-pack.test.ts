@@ -15,21 +15,46 @@ import { evidencePack } from '@/contracts/evidence-pack';
 import { scoreResultSchema, scoreDistributionIssues } from '@/adapters/scorer';
 import { FixtureModelBackend } from '@/services/evidence/model-client';
 import { buildEvidencePack } from '@/services/evidence/pack-builder';
+import { DETERMINISTIC_CANDIDACY_VERSION_TAG } from '@/services/evidence/method-registry';
 import { fakeEvidenceDb, loadEvidencePackFixture } from '../unit/services/evidence/helpers';
 
 const ASOF = new Date('2026-09-04T00:00:00Z');
 const WINDOW = { from: new Date('2026-08-28T00:00:00Z'), to: ASOF };
+const ALWAYS_ALLOWED = () => Promise.resolve({ allowed: true });
 
 const SCENARIOS = ['clear_bullish', 'sarcasm', 'ticker_collision', 'conflicting_sources', 'thin_evidence'] as const;
 
+/**
+ * A response body admissible to **both** `relevanceRowSchema` and `collisionGuardRowSchema` at
+ * once (neither is `.strict()`, so each simply ignores the other's field) — deliberately, so
+ * this single script answers correctly regardless of whether the collision guard or the
+ * relevance filter is dispatched first, or how many times either is called. An earlier version
+ * of this test hardcoded the two calls in the wrong order (collision guard actually dispatches
+ * first when there are ambiguous-and-corroborated candidates) and passed anyway, because it only
+ * asserted schema validity rather than that classification had actually happened — the exact gap
+ * lane-review finding 7 found.
+ */
+function combinedShapeResponse(itemIds: readonly string[]) {
+  return {
+    kind: 'json' as const,
+    body: itemIds.map((itemId) => ({
+      itemId,
+      relevant: true,
+      aboutSecurity: true,
+      rationale: 'about the security',
+    })),
+  };
+}
+
 describe('EvidencePack contract — fixture-driven, per scenario', () => {
-  it.each(SCENARIOS)('%s builds a pack that validates against the frozen contract', async (scenario) => {
+  it.each(SCENARIOS)('%s builds a pack that validates against the frozen contract, with real classification', async (scenario) => {
     const fixture = loadEvidencePackFixture(scenario);
     const db = fakeEvidenceDb(fixture.items);
-    const backend = new FixtureModelBackend([
-      { kind: 'json', body: fixture.items.map((i) => ({ itemId: i.id, relevant: true, rationale: 'about the security' })) },
-      { kind: 'json', body: fixture.items.map((i) => ({ itemId: i.id, aboutSecurity: true, rationale: 'confirmed' })) },
-    ]);
+    // A single-entry script suffices regardless of how many calls this scenario actually
+    // dispatches (collision guard, relevance filter, both, or neither) — `FixtureModelBackend`
+    // repeats its last scripted entry once exhausted, and the body is admissible to either
+    // method's row schema (see `combinedShapeResponse`'s own docstring).
+    const backend = new FixtureModelBackend([combinedShapeResponse(fixture.items.map((i) => i.id))]);
 
     const pack = await buildEvidencePack(
       {
@@ -39,11 +64,19 @@ describe('EvidencePack contract — fixture-driven, per scenario', () => {
         retrievalQuery: `security:${fixture.security.id}`,
         security: fixture.security,
       },
-      { db, modelBackend: backend, model: 'test-model' },
+      { db, modelBackend: backend, model: 'test-model', checkBudget: ALWAYS_ALLOWED },
     );
 
     const result = evidencePack.safeParse(pack);
     expect(result.success).toBe(true);
+
+    // Finding 7: schema validity alone would stay green even if classification were deleted
+    // entirely (an all-excluded pack is still schema-valid). Assert real classification
+    // happened: at least one item was actually confirmed relevant, and at least one item's
+    // `relevanceMethodVersion` names a real registered method (not just the "never attempted"
+    // deterministic sentinel), proving an LLM method was genuinely dispatched and admitted.
+    expect(pack.items.some((item) => item.relevant)).toBe(true);
+    expect(pack.items.some((item) => item.relevanceMethodVersion !== DETERMINISTIC_CANDIDACY_VERSION_TAG)).toBe(true);
   });
 
   it('tags every classified item with the axis matching its provider', async () => {
@@ -61,7 +94,7 @@ describe('EvidencePack contract — fixture-driven, per scenario', () => {
         retrievalQuery: 'q',
         security: fixture.security,
       },
-      { db, modelBackend: backend, model: 'test-model' },
+      { db, modelBackend: backend, model: 'test-model', checkBudget: ALWAYS_ALLOWED },
     );
 
     for (const classified of pack.items) {
@@ -85,7 +118,7 @@ describe('EvidencePack contract — fixture-driven, per scenario', () => {
         retrievalQuery: 'q',
         security: fixture.security,
       },
-      { db, modelBackend: backend, model: 'test-model' },
+      { db, modelBackend: backend, model: 'test-model', checkBudget: ALWAYS_ALLOWED },
     );
 
     expect(pack.items.length).toBeGreaterThan(0);

@@ -21,8 +21,17 @@ export const SOCIAL_AXES: readonly SocialAxis[] = ['reddit', 'x', 'substack'];
 
 export type AxisBundle = {
   readonly axis: SocialAxis;
+  /** Already deduped *within this axis* by `evidenceForSecurity` itself — never across axes. */
   readonly items: readonly EvidenceItemWithDedupeKey[];
-  /** F09 §4.3's "retrieved" — distinct items within this axis's scan window, pre-pack-cap. */
+  /**
+   * F10 §4.2's "retrieved count" — the raw, **pre-dedup** scan count for this axis
+   * (`evidenceForSecurity`'s `scannedCount`), not the post-dedup `distinctCount`.
+   * `repositories/evidence.ts`'s own docstring is explicit that calling the post-dedup number
+   * "retrieved" is exactly the conflation a previous review there already caught and fixed —
+   * this module had reintroduced the same bug one layer up (lane-review finding 2b). Using
+   * `distinctCount` here would silently hide the duplicate copies this axis's own dedup pass
+   * already filtered out, understating how much raw content was actually scanned.
+   */
   readonly retrievedCount: number;
   readonly truncatedScan: boolean;
 };
@@ -49,7 +58,7 @@ export async function fetchAxisBundles(
     bundles.push({
       axis,
       items: result.items,
-      retrievedCount: result.distinctCount,
+      retrievedCount: result.scannedCount,
       truncatedScan: result.truncated,
     });
   }
@@ -84,6 +93,14 @@ export type SubstackBasis = {
  * rather than fabricating one — an honest "unknown" (the schema field stays optional/undefined)
  * beats a guessed value. **Flagged under this lane's `RISKS`**: once F16a lands, its actual
  * metadata key names should be reconciled against this reader.
+ *
+ * **`AxisBundle.truncatedScan` is computed (from `evidenceForSecurity`'s own `truncated` flag)
+ * but is not surfaced here at all** (lane-review finding 6). `repositories/evidence.ts` is
+ * explicit that this flag must never be silently undisclosed once a real corpus exceeds the scan
+ * window — but the frozen `FrameDisclosure` contract (`contracts/evidence-pack.ts`) has no field
+ * for it. This is a real gap in the frozen contract, reported under this lane's `CONTRACTS` line
+ * rather than added here (this lane cannot edit `src/contracts/`); once a `truncated` field
+ * exists on `frameDisclosure`, wiring it through is `bundle.truncatedScan` away.
  */
 export function buildFrameDisclosure(
   bundle: AxisBundle,

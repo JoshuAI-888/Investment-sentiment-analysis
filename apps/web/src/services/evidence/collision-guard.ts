@@ -10,6 +10,7 @@ import { z } from 'zod';
 import type { AmbiguousToken } from './candidates';
 import {
   classifyBatch,
+  type BudgetGate,
   type ClassifyBatchOutcome,
   type ModelBackend,
 } from './model-client';
@@ -59,7 +60,11 @@ function buildPrompt(
 export async function runCollisionGuard(
   candidates: readonly CollisionCandidate[],
   context: { readonly symbol: string; readonly companyName: string },
-  deps: { readonly backend: ModelBackend; readonly model: string },
+  deps: {
+    readonly backend: ModelBackend;
+    readonly model: string;
+    readonly checkBudget: () => Promise<BudgetGate>;
+  },
 ): Promise<ClassifyBatchOutcome<CollisionGuardRow>> {
   if (candidates.length === 0) {
     return { admitted: new Map(), rejected: new Map(), records: [] };
@@ -71,6 +76,7 @@ export async function runCollisionGuard(
     promptVersion: COLLISION_GUARD_METHOD.promptVersion,
     model: deps.model,
     backend: deps.backend,
+    checkBudget: deps.checkBudget,
     buildPrompt: (repair) => buildPrompt(candidates, context, repair),
     rowSchema: collisionGuardRowSchema,
     rowKey: (row) => row.itemId,

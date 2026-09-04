@@ -1,6 +1,9 @@
 /**
  * The two D-21 LLM methods, registered — F10 §4.4: *"each a registered `MethodRegistry` entry
- * with its own version, so the Inspector shows which method produced which field."*
+ * with its own version, so the Inspector shows which method produced which field."* Also
+ * registers `DETERMINISTIC_CANDIDACY_METHOD`, the sentinel stamped on an item that was excluded
+ * before any LLM call was even attempted, so that version resolves in the registry too rather
+ * than throwing (lane-review finding 5c).
  *
  * ## Why this is not `calc/registry.ts`'s `MethodRegistry`
  *
@@ -25,16 +28,17 @@ export type ClassificationMethodEntry = {
   readonly methodId: string;
   readonly version: string;
   readonly title: string;
-  /** Bumped whenever the prompt text changes in a way that could change the model's answer. */
-  readonly promptVersion: string;
-  /** D-34's task route for both of v1's LLM methods. */
-  readonly route: 'AI_MODEL_FAST';
-  readonly temperature: 0;
+  /** Bumped whenever the prompt text changes in a way that could change the model's answer.
+   *  `null` for a purely deterministic method that never calls a model at all. */
+  readonly promptVersion: string | null;
+  /** D-34's task route for both of v1's LLM methods; `null` when no LLM call is involved. */
+  readonly route: 'AI_MODEL_FAST' | null;
+  readonly temperature: 0 | null;
   /** F-03: shown wherever this method's output is disclosed. */
   readonly limitations: readonly string[];
 };
 
-export const RELEVANCE_FILTER_METHOD: ClassificationMethodEntry = {
+export const RELEVANCE_FILTER_METHOD = {
   methodId: 'relevance.filter',
   version: '1.0.0',
   title: 'Relevance filter (aboutness)',
@@ -46,9 +50,9 @@ export const RELEVANCE_FILTER_METHOD: ClassificationMethodEntry = {
     'Does not detect sarcasm or irony (deferred by D-21, named trigger: measured error attributable to it).',
     'A schema-invalid response is retried once, then the item is dropped rather than guessed.',
   ],
-};
+} as const satisfies ClassificationMethodEntry;
 
-export const COLLISION_GUARD_METHOD: ClassificationMethodEntry = {
+export const COLLISION_GUARD_METHOD = {
   methodId: 'entity.collision_guard',
   version: '1.0.0',
   title: 'Ticker-collision guard',
@@ -59,7 +63,30 @@ export const COLLISION_GUARD_METHOD: ClassificationMethodEntry = {
     'Runs only on the four named ambiguous tokens (AI, ON, IT, ALL) that also passed a deterministic corroboration check (F10 §4.2) — it never runs on an unmatched token.',
     'A schema-invalid response, or a backend outage, excludes the item rather than admitting an unresolved ambiguous mention.',
   ],
-};
+} as const satisfies ClassificationMethodEntry;
+
+/**
+ * Registered so a `relevanceMethodVersion` stamped with this sentinel (an item excluded before
+ * any LLM call was ever attempted — no mention at all, or an ambiguous token with no
+ * corroborating reference) resolves in the registry instead of throwing
+ * `ClassificationMethodNotRegistered` (lane-review finding 5c).
+ */
+export const DETERMINISTIC_CANDIDACY_METHOD = {
+  methodId: 'candidacy.deterministic',
+  version: '1.0.0',
+  title: 'Deterministic mention candidacy (no LLM)',
+  promptVersion: null,
+  route: null,
+  temperature: null,
+  limitations: [
+    'Purely lexical: exact-symbol/cashtag/company-name matching plus the ticker-collision candidacy gate (F10 §4.2). Never judges aboutness or semantic context — that is relevance.filter and entity.collision_guard\'s job.',
+  ],
+} as const satisfies ClassificationMethodEntry;
+
+/** `methodId@version`, the sentinel actually stamped on `ClassifiedItem.relevanceMethodVersion`. */
+export const DETERMINISTIC_CANDIDACY_VERSION_TAG = `${DETERMINISTIC_CANDIDACY_METHOD.methodId}@${DETERMINISTIC_CANDIDACY_METHOD.version}`;
+export const RELEVANCE_FILTER_VERSION_TAG = `${RELEVANCE_FILTER_METHOD.methodId}@${RELEVANCE_FILTER_METHOD.version}`;
+export const COLLISION_GUARD_VERSION_TAG = `${COLLISION_GUARD_METHOD.methodId}@${COLLISION_GUARD_METHOD.version}`;
 
 export class DuplicateClassificationMethod extends Error {
   constructor(key: string) {
@@ -124,4 +151,5 @@ function compareSemver(a: string, b: string): number {
 export const EVIDENCE_METHOD_REGISTRY = new ClassificationMethodRegistry([
   RELEVANCE_FILTER_METHOD,
   COLLISION_GUARD_METHOD,
+  DETERMINISTIC_CANDIDACY_METHOD,
 ]);

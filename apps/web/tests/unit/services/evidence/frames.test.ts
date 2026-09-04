@@ -27,6 +27,19 @@ describe('fetchAxisBundles — F10 §4.1 three sampling frames', () => {
     expect(substack?.retrievedCount).toBe(1);
   });
 
+  it('reports the pre-dedup scanned count as retrieved, not the post-dedup distinct count (lane-review finding 2b)', async () => {
+    // Two rows, same normalized url -- one distinct item after evidenceForSecurity's own
+    // within-axis dedup, but two rows were genuinely scanned.
+    const db = fakeEvidenceDb([
+      fakeEvidenceItem({ provider: 'reddit', sourceUrl: 'https://reddit.com/r/x/comments/dup', title: 'Same story' }),
+      fakeEvidenceItem({ provider: 'reddit', sourceUrl: 'https://reddit.com/r/x/comments/dup', title: 'Same story' }),
+    ]);
+    const bundles = await fetchAxisBundles({ securityId: SECURITY_ID, asOfInstant: ASOF }, db);
+    const reddit = bundles.find((b) => b.axis === 'reddit');
+    expect(reddit?.retrievedCount).toBe(2);
+    expect(reddit?.items).toHaveLength(1);
+  });
+
   it('is legitimately empty for an axis with no coverage, not an error (D-15)', async () => {
     const db = fakeEvidenceDb([fakeEvidenceItem({ provider: 'reddit' })]);
     const bundles = await fetchAxisBundles({ securityId: SECURITY_ID, asOfInstant: ASOF }, db);

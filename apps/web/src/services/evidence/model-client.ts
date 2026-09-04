@@ -237,6 +237,14 @@ export function createModelBackend(
 
 // ── The retry-once-then-drop batch harness ────────────────────────────────────────────────────
 
+/**
+ * The pre-dispatch budget gate — `02-ARCHITECTURE-CONTRACTS.md` §4.6: "subject to the
+ * pre-dispatch budget check." Required (not optional) on `ClassifyBatchOptions` deliberately
+ * (lane-review finding 4): a caller that forgets to wire the real check must fail to compile,
+ * not silently get an unbudgeted LLM path.
+ */
+export type BudgetGate = { readonly allowed: boolean; readonly message?: string };
+
 /** One HTTP attempt's provenance — recorded regardless of whether it was ultimately admitted. */
 export type ModelCallAttemptRecord = {
   readonly methodId: string;
@@ -247,7 +255,7 @@ export type ModelCallAttemptRecord = {
   readonly attempt: 1 | 2;
   readonly requestedAt: string;
   readonly usage: ModelUsage;
-  readonly outcome: 'admitted_some' | 'schema_invalid' | 'backend_unavailable';
+  readonly outcome: 'admitted_some' | 'schema_invalid' | 'backend_unavailable' | 'budget_denied';
 };
 
 export type ClassifyBatchOutcome<TRow> = {
@@ -266,6 +274,12 @@ export type ClassifyBatchOptions<TRow> = {
   readonly promptVersion: string;
   readonly model: string;
   readonly backend: ModelBackend;
+  /**
+   * Checked before **every** dispatch, including the repair retry (lane-review finding 4: a
+   * schema-invalid response used to trigger a second, billable call with no budget check between
+   * the decision and the dispatch). Required, not optional — see `BudgetGate`'s docstring.
+   */
+  readonly checkBudget: () => Promise<BudgetGate>;
   /** `repair` is `true` on the one retry, after a whole-response schema failure. */
   readonly buildPrompt: (repair: boolean) => { readonly system: string; readonly user: string };
   readonly rowSchema: z.ZodType<TRow>;
@@ -298,7 +312,17 @@ export async function classifyBatch<TRow>(
 
   const attemptOnce = async (
     attempt: 1 | 2,
-  ): Promise<{ outcome: 'admitted' | 'schema_invalid'; rows: readonly unknown[] } | 'unavailable'> => {
+  ): Promise<
+    { outcome: 'admitted' | 'schema_invalid'; rows: readonly unknown[] } | 'unavailable' | { outcome: 'budget_denied'; message: string }
+  > => {
+    const gate = await options.checkBudget();
+    if (!gate.allowed) {
+      records.push(
+        attemptRecord(options, attempt, now(), { promptTokens: null, completionTokens: null, costUsd: null }, 'budget_denied'),
+      );
+      return { outcome: 'budget_denied', message: gate.message ?? 'global ceiling reached' };
+    }
+
     let result: ModelGenerateResult;
     try {
       const prompt = options.buildPrompt(attempt === 2);
@@ -334,12 +358,22 @@ export async function classifyBatch<TRow>(
   if (first === 'unavailable') {
     return allRejected(options.requestedIds, 'the model backend was unavailable', records);
   }
+  if (first.outcome === 'budget_denied') {
+    return allRejected(options.requestedIds, `budget denied before dispatch: ${first.message}`, records);
+  }
   if (first.outcome === 'admitted') {
     rows = first.rows;
   } else {
     const second = await attemptOnce(2);
     if (second === 'unavailable') {
       return allRejected(options.requestedIds, 'the model backend was unavailable on retry', records);
+    }
+    if (second.outcome === 'budget_denied') {
+      return allRejected(
+        options.requestedIds,
+        `budget denied before the repair-retry dispatch: ${second.message}`,
+        records,
+      );
     }
     if (second.outcome === 'schema_invalid') {
       return allRejected(

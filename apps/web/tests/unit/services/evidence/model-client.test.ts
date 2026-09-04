@@ -11,6 +11,8 @@ import {
 const rowSchema = z.object({ itemId: z.string(), verdict: z.boolean() });
 type Row = z.infer<typeof rowSchema>;
 
+const ALWAYS_ALLOWED = () => Promise.resolve({ allowed: true });
+
 function baseOptions(
   overrides: Partial<ClassifyBatchOptions<Row>> & { readonly backend: ModelBackend },
 ): ClassifyBatchOptions<Row> {
@@ -19,6 +21,7 @@ function baseOptions(
     methodVersion: '1.0.0',
     promptVersion: 'test.method@1',
     model: 'test-model',
+    checkBudget: ALWAYS_ALLOWED,
     rowSchema,
     rowKey: (row: Row) => row.itemId,
     requestedIds: ['a', 'b'],
@@ -154,5 +157,39 @@ describe('classifyBatch — F10 §4.4 retry-once-then-drop discipline', () => {
     const backend = new FixtureModelBackend([{ kind: 'json', body: [{ itemId: 'a', verdict: true }, { itemId: 'b', verdict: true }] }]);
     const outcome = await classifyBatch(baseOptions({ backend }));
     expect(outcome.records[0]?.usage.costUsd).toBeNull();
+  });
+
+  describe('pre-dispatch budget gate (lane-review finding 4)', () => {
+    it('never calls the backend at all when the budget is denied before the first attempt', async () => {
+      const backend = new FixtureModelBackend([{ kind: 'throw', message: 'must not be called' }]);
+      const outcome = await classifyBatch(
+        baseOptions({ backend, checkBudget: () => Promise.resolve({ allowed: false, message: 'ceiling reached' }) }),
+      );
+      expect(outcome.admitted.size).toBe(0);
+      expect(outcome.rejected.get('a')).toMatch(/budget denied.*ceiling reached/);
+      expect(outcome.records).toHaveLength(1);
+      expect(outcome.records[0]?.outcome).toBe('budget_denied');
+    });
+
+    it('re-checks budget before the repair-retry dispatch, not just the first attempt', async () => {
+      let calls = 0;
+      const backend = new FixtureModelBackend([
+        { kind: 'invalid_json' },
+        { kind: 'json', body: [{ itemId: 'a', verdict: true }, { itemId: 'b', verdict: true }] },
+      ]);
+      const checkBudget = () => {
+        calls += 1;
+        // Allowed on the first dispatch, denied by the time the repair retry would fire.
+        return Promise.resolve({ allowed: calls === 1, message: 'ceiling reached mid-batch' });
+      };
+      const outcome = await classifyBatch(baseOptions({ backend, checkBudget }));
+      expect(calls).toBe(2);
+      expect(outcome.admitted.size).toBe(0);
+      expect(outcome.rejected.get('a')).toMatch(/repair-retry dispatch/);
+      // Only one HTTP attempt reached the backend — the schema failure — the retry never
+      // dispatched because the budget gate stopped it first.
+      expect(outcome.records).toHaveLength(2);
+      expect(outcome.records[1]?.outcome).toBe('budget_denied');
+    });
   });
 });

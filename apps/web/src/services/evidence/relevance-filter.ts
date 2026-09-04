@@ -8,6 +8,7 @@ import { z } from 'zod';
 import type { SocialAxis } from '@/contracts/primitives';
 import {
   classifyBatch,
+  type BudgetGate,
   type ClassifyBatchOutcome,
   type ModelBackend,
 } from './model-client';
@@ -63,7 +64,11 @@ function buildPrompt(
 export async function runRelevanceFilter(
   candidates: readonly RelevanceCandidate[],
   context: { readonly symbol: string; readonly companyName: string },
-  deps: { readonly backend: ModelBackend; readonly model: string },
+  deps: {
+    readonly backend: ModelBackend;
+    readonly model: string;
+    readonly checkBudget: () => Promise<BudgetGate>;
+  },
 ): Promise<ClassifyBatchOutcome<RelevanceRow>> {
   if (candidates.length === 0) {
     return { admitted: new Map(), rejected: new Map(), records: [] };
@@ -75,6 +80,7 @@ export async function runRelevanceFilter(
     promptVersion: RELEVANCE_FILTER_METHOD.promptVersion,
     model: deps.model,
     backend: deps.backend,
+    checkBudget: deps.checkBudget,
     buildPrompt: (repair) => buildPrompt(candidates, context, repair),
     rowSchema: relevanceRowSchema,
     rowKey: (row) => row.itemId,

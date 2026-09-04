@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { AMBIGUOUS_TOKENS, detectMention } from '@/services/evidence/candidates';
 
-const NVDA = { symbol: 'NVDA', companyName: 'NVIDIA Corporation', aliases: ['Nvidia'] };
+const NVDA = { symbol: 'NVDA', companyName: 'NVIDIA Corporation', aliases: ['Team Green'] };
+const TSLA = { symbol: 'TSLA', companyName: 'Tesla, Inc.' };
+const GME = { symbol: 'GME', companyName: 'GameStop Corp.' };
 const C3AI = { symbol: 'AI', companyName: 'C3.ai, Inc.', aliases: ['C3 AI'] };
 const ON_SEMI = { symbol: 'ON', companyName: 'ON Semiconductor Corporation' };
 const GTLB = { symbol: 'IT', companyName: 'Gartner, Inc.' }; // arbitrary stand-in for an 'IT' ticker
@@ -28,8 +30,34 @@ describe('detectMention — F10 §4.2 deterministic candidacy', () => {
     });
   });
 
-  it('matches a configured alias', () => {
-    expect(detectMention('Nvidia just crushed it', NVDA)).toEqual({ kind: 'company_name', matched: 'Nvidia' });
+  it('matches a configured alias that is not merely the company name with its suffix stripped', () => {
+    expect(detectMention('Team Green just crushed it', NVDA)).toEqual({ kind: 'company_name', matched: 'Team Green' });
+  });
+
+  describe('short-form company-name matching (lane-review finding 3)', () => {
+    it('matches the short form of a name with a comma-separated corporate suffix ("Tesla, Inc." -> "Tesla")', () => {
+      expect(detectMention('Tesla deliveries miss, margins compress further', TSLA)).toEqual({
+        kind: 'company_name',
+        matched: 'Tesla, Inc.',
+      });
+    });
+
+    it('matches the short form of a name with a space-separated corporate suffix ("GameStop Corp." -> "GameStop")', () => {
+      expect(detectMention('GameStop rallies on retail interest', GME)).toEqual({
+        kind: 'company_name',
+        matched: 'GameStop Corp.',
+      });
+    });
+
+    it('does not strip a suffix-like substring with no real word boundary ("Sysco" is not "Sys" + "co")', () => {
+      const sysco = { symbol: 'SYY', companyName: 'Sysco Corporation' };
+      expect(detectMention('Sysco delivered strong results', sysco)).toEqual({
+        kind: 'company_name',
+        matched: 'Sysco Corporation',
+      });
+      // The stripped short form ("Sysco") should not itself have been mangled into "Sys".
+      expect(detectMention('Sys is a common abbreviation', sysco)).toEqual({ kind: 'none' });
+    });
   });
 
   it('finds nothing when the text names neither the symbol nor the company', () => {

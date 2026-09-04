@@ -4,6 +4,7 @@ import { runRelevanceFilter, type RelevanceCandidate } from '@/services/evidence
 import { RELEVANCE_FILTER_METHOD } from '@/services/evidence/method-registry';
 
 const CONTEXT = { symbol: 'GME', companyName: 'GameStop Corp.' };
+const ALWAYS_ALLOWED = () => Promise.resolve({ allowed: true });
 
 const candidates: RelevanceCandidate[] = [
   { itemId: 'i1', text: 'GME to the moon, diamond hands', axis: 'reddit' },
@@ -13,7 +14,7 @@ const candidates: RelevanceCandidate[] = [
 describe('runRelevanceFilter — F10 §4.4 relevance.filter', () => {
   it('never calls the backend for an empty candidate list', async () => {
     const backend = new FixtureModelBackend([{ kind: 'throw' }]);
-    const outcome = await runRelevanceFilter([], CONTEXT, { backend, model: 'test-model' });
+    const outcome = await runRelevanceFilter([], CONTEXT, { backend, model: 'test-model', checkBudget: ALWAYS_ALLOWED });
     expect(outcome.admitted.size).toBe(0);
     expect(outcome.records).toHaveLength(0);
   });
@@ -28,7 +29,7 @@ describe('runRelevanceFilter — F10 §4.4 relevance.filter', () => {
         ],
       },
     ]);
-    const outcome = await runRelevanceFilter(candidates, CONTEXT, { backend, model: 'test-model' });
+    const outcome = await runRelevanceFilter(candidates, CONTEXT, { backend, model: 'test-model', checkBudget: ALWAYS_ALLOWED });
     expect(outcome.admitted.get('i1')).toMatchObject({ relevant: true });
     expect(outcome.admitted.get('i2')).toMatchObject({ relevant: false, flag: 'promotional' });
   });
@@ -37,7 +38,7 @@ describe('runRelevanceFilter — F10 §4.4 relevance.filter', () => {
     const backend = new FixtureModelBackend([
       { kind: 'json', body: [{ itemId: 'i1', relevant: true, rationale: 'x' }, { itemId: 'i2', relevant: true, rationale: 'y' }] },
     ]);
-    const outcome = await runRelevanceFilter(candidates, CONTEXT, { backend, model: 'test-model' });
+    const outcome = await runRelevanceFilter(candidates, CONTEXT, { backend, model: 'test-model', checkBudget: ALWAYS_ALLOWED });
     expect(outcome.records[0]).toMatchObject({
       methodId: RELEVANCE_FILTER_METHOD.methodId,
       methodVersion: RELEVANCE_FILTER_METHOD.version,
@@ -55,8 +56,19 @@ describe('runRelevanceFilter — F10 §4.4 relevance.filter', () => {
         ],
       },
     ]);
-    const outcome = await runRelevanceFilter(candidates, CONTEXT, { backend, model: 'test-model' });
+    const outcome = await runRelevanceFilter(candidates, CONTEXT, { backend, model: 'test-model', checkBudget: ALWAYS_ALLOWED });
     expect(outcome.rejected.has('i1')).toBe(true);
     expect(outcome.admitted.get('i2')).toMatchObject({ relevant: true });
+  });
+
+  it('never calls the backend when the budget is denied (lane-review finding 4)', async () => {
+    const backend = new FixtureModelBackend([{ kind: 'throw', message: 'must not be called' }]);
+    const outcome = await runRelevanceFilter(candidates, CONTEXT, {
+      backend,
+      model: 'test-model',
+      checkBudget: () => Promise.resolve({ allowed: false, message: 'ceiling reached' }),
+    });
+    expect(outcome.admitted.size).toBe(0);
+    expect(outcome.rejected.get('i1')).toMatch(/budget denied/);
   });
 });
