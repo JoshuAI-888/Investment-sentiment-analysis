@@ -221,7 +221,7 @@
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
-| ENGINE | `E09_CHANGES_REQUESTED_R3` | yes at `00e0d23`; corrected handoff `80a5d2b` | coordinator typecheck/lint and affected 97/97; independent re-review returned ER-17/19 | no | ER-15/16/18 closed; E09 must sanitize persisted failure errors and move the shared serializer into an ENGINE-owned subtree; E10 not started |
+| ENGINE | `E09_ACCEPTED` | yes at `25023b9`; accepted handoff `9a8a8f8` | coordinator typecheck/lint and affected 97/97; independent final re-review PASS | yes | ER-14–19 closed; E01–E09 accepted; E10 may start |
 | SURFACE | `ACCEPTED_WAITING_ORDER` | yes at `87742d0`; code `c68980b`, tracker head `5d9cd3d` | coordinator typecheck/lint, RNI contract 17/17, production build and complete Chromium 22/22; independent review PASS | yes | S01–S10 accepted; merge waits behind ENGINE per DATA→ENGINE→SURFACE order |
 
 ## Live/deployment gates
@@ -284,9 +284,9 @@
 | ER-14 | P1 | `RESOLVED` | E09 routes only verifier/challenger while active relationship and classifier inference ports remain outside the governed model route/prompt boundary | `c4668b3` registers and adapts all five active tasks through the selected immutable route and recorder; focused Direct/Gateway tests pass |
 | ER-15 | P1 | `RESOLVED` | Corrected task parsers were strict, but literal dynamic-input closing sentinels remained spoofable inside model-visible content | `80a5d2b` uses one byte-length/base64url envelope and adversarial generic/discovery tests prove embedded tags remain inert |
 | ER-16 | P1 | `RESOLVED` | Reconstructed discovery/verification v1 definitions did not replay the originally accepted prompt bytes | `80a5d2b` preserves version-owned prompt/schema/serializer snapshots and compares exact accepted discovery-v1 and verification-v1 requests after successors exist |
-| ER-17 | P1 | `OPEN` | `80a5d2b` retains billed response/token/cost/latency telemetry, but persists provider/Zod `error.message` verbatim; attacker-controlled output keys and secrets can enter the durable failure record | Persist only allowlisted stable failure codes and bounded redacted messages while rethrowing the original transient error; test generic and discovery failures containing hostile keys/values and fake bearer/API secrets |
+| ER-17 | P1 | `RESOLVED` | `80a5d2b` retained billed telemetry but persisted attacker-controlled/provider failure text | `9a8a8f8` records one of six allowlisted codes with fixed bounded messages, rethrows original errors transiently, and proves hostile keys/values and fake secrets never enter durable generic/discovery failures |
 | ER-18 | P1 | `RESOLVED` | E05 observation and E09 dispatch hashes previously used different JSON serialization | `80a5d2b` shares canonical serialization/hashing and proves each two-security observation hash equals its recorded exact dispatched-input hash and distinct call ID |
-| ER-19 | P1 | `OPEN` | `apps/web/src/rni/model-input.ts` sits directly under `src/rni`, outside the ENGINE-owned subtrees in RNI_BUILD_LOOP §3.3 | Move the isolated serializer into an ENGINE-owned subtree such as `src/rni/agents/model-input.ts` and update imports, or raise an ownership request before retaining the shared-root file |
+| ER-19 | P1 | `RESOLVED` | `apps/web/src/rni/model-input.ts` sat outside the ENGINE-owned subtrees in RNI_BUILD_LOOP §3.3 | `9a8a8f8` moves the serializer to `src/rni/agents/model-input.ts`; all imports resolve there and no ownership expansion remains |
 | ICR-01 | P1 | `RESOLVED` | D-RNI-18 cannot represent the preserved 100-member legacy active parent of the first staged FMP candidate, while undersized FMP versions pass | Active is an explicit legacy/FMP union; FMP active/staged variants require 501–600 and a 100→501 fixture passes |
 | ICR-02 | P1 | `RESOLVED` | Balanced arithmetic permits complete impact arrays that remove more members than active or add more members than staged | Frozen schema rejects both bounds; I08 retains repository-backed membership-set acceptance |
 | SR-04 | P2 | `RESOLVED` | S02's first commit left its task/evidence/handoff record stale and did not identify the actual browser gate | `c4899b8` amends the task commit with exact type, lint, contract, build and Chromium evidence plus complete files/risks/handoff |
@@ -363,6 +363,8 @@
 | `CURRENT` | Accept final SURFACE S10 accessibility/responsive audit | `c68980b` descends `87742d0`; ownership/diff, typecheck, focused lint, RNI contract 17/17, production build and Chromium 22/22 pass; independent adversarial review PASS |
 | `CURRENT` | Record SURFACE accepted-state handoff | tracker-only `5d9cd3d` marks S01–S10 ready for merge; clean branch remains unmerged behind ENGINE |
 | `CURRENT` | Re-review ENGINE E09 ER-15–18 correction | `80a5d2b` descends `00e0d23`; coordinator typecheck/scoped lint and affected 97/97 pass; ER-15/16/18 close, independent adversarial review CHANGES REQUESTED on persisted error sanitization and out-of-lane serializer placement |
+
+| `CURRENT` | Accept final ENGINE E09 routing correction | `9a8a8f8` descends `25023b9`; coordinator typecheck/scoped lint, affected 97/97, diff/ownership/frozen-contract checks and independent adversarial review PASS; ER-14–19 closed |
 
 ## Coordinator notes
 

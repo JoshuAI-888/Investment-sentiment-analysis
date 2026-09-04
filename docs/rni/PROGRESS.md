@@ -26,7 +26,7 @@
 | G1 model-route branch merged | `PASSED` | coordinator | PR #2, main commit `09ad439` |
 | G2 RNI contract frozen | `PASSED` | coordinator | PR #5 merged at `dd28ea2`; typed source contract at `9908eda` |
 | G3 DATA accepted | `PASSED` | DATA + reviewer | merged sequentially at `254fe45`; coordinator type/contract plus fresh PostgreSQL DATA 41/41 pass |
-| G4 ENGINE accepted | `IN_PROGRESS` | ENGINE + reviewer | E01–E08 accepted through `b96162a`; E09–E10 remain |
+| G4 ENGINE accepted | `IN_PROGRESS` | ENGINE + reviewer | E01–E09 accepted through `9a8a8f8`; E10 remains |
 | G5 SURFACE accepted | `ACCEPTED_WAITING_ORDER` | SURFACE + reviewer | S01–S10 accepted; code `c68980b`, final tracker `5d9cd3d`; merge waits behind ENGINE |
 | G6 integrated preview | `NOT_STARTED` | coordinator | Depends G3–G5 |
 | G7 live Reddit/X/FMP gates | `NOT_STARTED` | coordinator + joshuai | Depends G6 and configured credentials |
@@ -37,7 +37,7 @@
 | Workstream | Branch | Status | Progress file | Latest accepted commit |
 |---|---|---|---|---|
 | DATA | `feat/rni-data-source-first` | `MERGED_TO_INTEGRATION` | `DATA.md` | lane `5926601`; merge `254fe45` |
-| ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01–E08 accepted | `ENGINE.md` | `b96162a` |
+| ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01–E09 accepted | `ENGINE.md` | `9a8a8f8` |
 | SURFACE | `feat/rni-surface-demo` | `READY_FOR_MERGE`; waits behind ENGINE | `SURFACE.md` | code `c68980b`; lane head `5d9cd3d` |
 | INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I06 passed at `5950b53`; current coordinator record follows |
 
@@ -133,3 +133,4 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — accepted SURFACE S09 `8d1d943` after coordinator typecheck/lint, frozen contracts 17/17, production build and Chromium 3/3 plus independent adversarial PASS. Future route changes create successor configuration only, historical lineage remains immutable and the UI stays compatible with D-RNI-21 server-resolved task mappings. S10 remains before lane merge; the builder must clean an unrelated uncommitted package-policy mutation and rebase current integration.
 - 2026-09-05 — accepted final SURFACE S10 code at `c68980b`, with accepted-state tracker head `5d9cd3d`: ownership/diff checks, typecheck, focused lint, frozen contracts 17/17, production build and complete RNI Chromium 22/22 pass; independent adversarial review returned PASS. All seven surfaces have one H1, no scoped axe violations and no 375px overflow; unavailable Gateway is disabled with its labelled reason. G5 is accepted but the branch waits behind ENGINE in the required merge order.
 - 2026-09-05 — re-reviewed ENGINE E09 correction `80a5d2b`: exact historical prompt replay, base64url input containment and classifier hash parity now pass, and failed calls retain billed telemetry; coordinator typecheck/lint plus affected 97/97 are green. E09 remains held on ER-17/19 because durable errors still include attacker-controlled/provider exception text and the new serializer sits outside an ENGINE-owned subtree. E10 remains not started.
+- 2026-09-05 — accepted ENGINE E09 at `9a8a8f8` after ER-17/19 correction: durable failures now use six stable redacted codes/messages while retaining field-allowlisted billed telemetry, and the shared serializer moved into the ENGINE-owned agents subtree. Coordinator and independent review passed typecheck, scoped lint, diff/ownership/frozen-contract checks and affected 97/97. ER-14–19 are closed; ENGINE advances to E10.
