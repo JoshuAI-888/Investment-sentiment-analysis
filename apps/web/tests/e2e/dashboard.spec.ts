@@ -32,38 +32,48 @@ import type { APIRequestContext, Page } from '@playwright/test';
  * it needs no fixture change, just a real `cost_event` row.
  */
 
-/**
- * Mirrors `auth.spec.ts`'s helper — duplicated rather than imported, since neither file exports
- * it. `exclude` matters for the same reason it does there: Playwright gives every test a fresh,
- * cookie-isolated browser context (`test.describe.configure({mode:'serial'})` orders execution;
- * it does not share a session across tests), so a suite that signs the same address in more
- * than once must not read back the *previous* sign-in's already-used code.
- */
-async function readFixtureOtp(request: APIRequestContext, email: string, exclude?: string): Promise<string> {
+/** ≥ 12 chars — `emailAndPassword.minPasswordLength` (`src/services/auth/instance.ts`). */
+const PASSWORD = 'correct horse battery staple';
+
+/** Mirrors `auth.spec.ts`'s helper — duplicated rather than imported, since neither file exports it. */
+async function readFixtureLink(request: APIRequestContext, email: string): Promise<string> {
   const deadline = Date.now() + 2000;
-  let lastOtp: string | null = null;
+  let lastUrl: string | null = null;
   while (Date.now() < deadline) {
-    const response = await request.get(`/api/auth/fixture-otp?email=${encodeURIComponent(email)}`);
-    const body = (await response.json()) as { otp: string | null };
-    lastOtp = body.otp;
-    if (lastOtp !== null && lastOtp !== exclude) return lastOtp;
+    const response = await request.get(`/api/auth/fixture-link?email=${encodeURIComponent(email)}`);
+    const body = (await response.json()) as { url: string | null };
+    lastUrl = body.url;
+    if (lastUrl !== null) return lastUrl;
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
-  expect(lastOtp, `no fresh OTP was ever recorded for ${email}`).not.toBeNull();
-  return lastOtp as string;
+  expect(lastUrl, `no fresh verification link was ever recorded for ${email}`).not.toBeNull();
+  return lastUrl as string;
 }
 
-/** Returns the OTP it used, so a caller signing the same address in repeatedly can exclude it next time. */
-async function signIn(page: Page, request: APIRequestContext, email: string, exclude?: string): Promise<string> {
+/**
+ * Signs up, verifies (auto-signs in), and lands on `/dashboard`. Unlike the old OTP helper,
+ * repeat calls for the *same* address are not needed here — a password sign-in does not
+ * invalidate anything on reuse — so this suite always sign-up-once, sign-in-with-password on
+ * every later visit, mirroring `auth.spec.ts`'s own pattern.
+ */
+async function signUpAndVerify(page: Page, request: APIRequestContext, email: string): Promise<void> {
+  await page.goto('/sign-up');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
+  await page.getByLabel('Confirm password').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.getByText(/Check your email/)).toBeVisible();
+  const verifyUrl = await readFixtureLink(request, email);
+  await page.goto(verifyUrl);
+  await page.goto('/dashboard');
+}
+
+async function signIn(page: Page, email: string): Promise<void> {
   await page.goto('/sign-in');
   await page.getByLabel('Email').fill(email);
-  await page.getByRole('button', { name: 'Send code' }).click();
-  await expect(page.getByLabel('Enter the six-digit code')).toBeVisible();
-  const otp = await readFixtureOtp(request, email, exclude);
-  await page.getByLabel('Enter the six-digit code').fill(otp);
-  await page.getByRole('button', { name: 'Verify' }).click();
+  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL('**/dashboard');
-  return otp;
 }
 
 async function seed(request: APIRequestContext, state: 'fresh' | 'stale' | 'insufficient' | 'degraded' | 'empty'): Promise<void> {
@@ -87,12 +97,18 @@ test.describe('F07 — dashboard states', () => {
   test.skip(process.env['DATABASE_URL'] === undefined, 'needs DATABASE_URL — see this feature CONTRACTS report');
   test.describe.configure({ mode: 'serial' });
   const email = 'e2e-dashboard@example.com';
-  // Every test gets a fresh, cookie-isolated context — so every test signs in for real,
-  // excluding whichever code the previous sign-in already used.
-  let previousOtp: string | undefined;
 
-  test.beforeEach(async ({ page, request }) => {
-    previousOtp = await signIn(page, request, email, previousOtp);
+  test.beforeAll(async ({ browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await signUpAndVerify(page, context.request, email);
+    await context.close();
+  });
+
+  // Every test gets a fresh, cookie-isolated context — so every test signs in for real, with
+  // the password set up once in `beforeAll`.
+  test.beforeEach(async ({ page }) => {
+    await signIn(page, email);
   });
 
   test('fresh: renders the market composite, its component breakdown, and every sector tile — each number opens an Inspector', async ({
@@ -220,7 +236,7 @@ test.describe('F07 — refresh refused by the global budget check', () => {
   test.skip(process.env['DATABASE_URL'] === undefined, 'needs DATABASE_URL — see this feature CONTRACTS report');
 
   test('renders its explanation and disables the control', async ({ page, request }) => {
-    await signIn(page, request, 'e2e-dashboard-budget@example.com');
+    await signUpAndVerify(page, request, 'e2e-dashboard-budget@example.com');
 
     // Reset the process-global cooldown/lock first — `dashboard:refresh:cooldown` is shared
     // across every test that has ever called the real refresh route, so without this a prior

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireUser, UnauthenticatedError } from '@/services/auth';
+import { requireUser, UnauthenticatedError, PasswordChangeRequiredError } from '@/services/auth';
 import { assembleDashboard } from '@/services/dashboard/assemble';
 import { resolveRedisClient } from '@/services/dashboard/redis';
 
@@ -11,7 +11,7 @@ export async function GET() {
   try {
     await requireUser();
   } catch (error) {
-    if (error instanceof UnauthenticatedError) {
+    if (error instanceof UnauthenticatedError || error instanceof PasswordChangeRequiredError) {
       return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     }
     throw error;

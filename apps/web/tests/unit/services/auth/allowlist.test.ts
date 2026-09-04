@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isAllowlisted, normalizeEmail } from '@/services/auth/allowlist';
+import { isAccountCreationAllowed, isAllowlisted, normalizeEmail } from '@/services/auth/allowlist';
 
 describe('normalizeEmail', () => {
   it('lowercases and trims', () => {
@@ -52,5 +52,22 @@ describe('isAllowlisted', () => {
 
   it('rejects everything against an empty allowlist', () => {
     expect(isAllowlisted('joshuaifang@gmail.com', [])).toBe(false);
+  });
+});
+
+describe('isAccountCreationAllowed', () => {
+  const allowlist = ['joshuaifang@gmail.com'];
+
+  it('live mode: allows the allowlisted address', () => {
+    expect(isAccountCreationAllowed('live', 'joshuaifang@gmail.com', allowlist)).toBe(true);
+  });
+
+  it('live mode: refuses an address not on the allowlist', () => {
+    expect(isAccountCreationAllowed('live', 'attacker@example.com', allowlist)).toBe(false);
+  });
+
+  it('fixture mode: allows any address, allowlisted or not — the e2e test seam requireAdmin() needs', () => {
+    expect(isAccountCreationAllowed('fixture', 'attacker@example.com', allowlist)).toBe(true);
+    expect(isAccountCreationAllowed('fixture', 'attacker@example.com', [])).toBe(true);
   });
 });

@@ -1,7 +1,7 @@
 /**
  * Test-only dashboard state seeding. **Never reachable outside `PROVIDER_MODE=fixture`** —
  * the route that calls this (`app/api/dashboard/e2e-seed/route.ts`) 404s in every other
- * mode, the identical guard `api/auth/fixture-otp/route.ts` (F02) already established.
+ * mode, the identical guard `api/auth/fixture-link/route.ts` (F02) already established.
  *
  * **Why this exists at all.** F07's e2e suite needs to drive all five §4.5 states (fresh,
  * stale, degraded, insufficient, empty) deterministically. Doing that through the real

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { env } from '@/env';
-import { requireUser, UnauthenticatedError } from '@/services/auth';
+import { requireUser, UnauthenticatedError, PasswordChangeRequiredError } from '@/services/auth';
 import { AccountPanel } from './AccountPanel';
 
 /** F02 §4.4. `requireUser()` is called in this page's own body — see F02 §4.4's non-negotiable. */
@@ -10,6 +10,7 @@ export default async function Page() {
     session = await requireUser();
   } catch (error) {
     if (error instanceof UnauthenticatedError) redirect('/sign-in');
+    if (error instanceof PasswordChangeRequiredError) redirect('/change-password');
     throw error;
   }
 

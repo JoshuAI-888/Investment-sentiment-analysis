@@ -52,6 +52,15 @@ ADMIN_EMAIL_ALLOWLIST="joshuaifang@gmail.com"
 boot assertion logs it at startup — that assertion exists so a later regression appears in the
 deployment log rather than at the first admin click.
 
+**Now that this is multi-address-capable (D-38): every address in `ADMIN_EMAIL_ALLOWLIST` gets
+its account the moment someone signs in there with `welcome1`** — no separate provisioning step.
+Add an address here and it exists as soon as someone uses it; there is no "invite" to send beyond
+telling them the address and that starting password. **Change it to a real password immediately**
+— `/change-password` forces this on first sign-in, but the account is live and signed-in with the
+shared credential from the moment `welcome1` is entered until that happens. Do not leave a newly
+added address unused for long with nobody told about it: anyone else who already knows both the
+address and `welcome1` can claim it first (`../MEMORY.md` D-38's accepted trade-off).
+
 <details><summary>Original task, retained for the record</summary>
 
 ### MT-00 (resolved) — Confirm the administrator email
@@ -103,12 +112,23 @@ be done until the check exists.
 
 **Needed by:** F02. **Status per D-06:** provisioned — this is verification, not setup.
 
+> **D-37 changed what Resend sends.** F02 moved from OTP sign-in to email+password with
+> self-service, allowlist-gated sign-up (`../MEMORY.md` D-37). Resend now carries **verification
+> and password-reset links**, not six-digit codes — the domain/DKIM/DMARC setup and the send-cap
+> reasoning below are unchanged, only what lands in the inbox is different.
+
 1. Confirm `accounts.joshuai.nz` shows SPF, DKIM and DMARC verified in Resend.
 2. Send a live test to **three** mailboxes: Gmail, Outlook, and one corporate address.
-3. Confirm each lands in the inbox, not spam. OTP in spam is indistinguishable from broken
-   auth for a first-time user.
+3. Confirm each lands in the inbox, not spam. A verification or reset link in spam is
+   indistinguishable from broken auth for a first-time user.
 4. Note the free-tier limits (100/day, 3,000/month) — F02's send cap must sit below the daily
-   figure, so a burst of code requests cannot exhaust the allowance and lock you out.
+   figure, so a burst of sign-up/reset requests cannot exhaust the allowance and lock you out.
+5. **Set `BETTER_AUTH_URL` to the real deployed URL in Vercel, exactly.** Unlike the old OTP
+   flow, the mailed links are absolute URLs built from this value
+   (`src/services/auth/instance.ts`'s `baseURL`), and a session cookie is host-scoped — a wrong
+   or missing `BETTER_AUTH_URL` (falling back to `APP_BASE_URL`'s `http://localhost:3000`
+   default) means a real user's verification/reset link points at the wrong host and the
+   resulting session cookie will not apply to the real site.
 
 **`OTP_DAILY_GLOBAL_LIMIT` is void under D-11** (F01 §4.2). Nothing to configure here: with one
 allowlisted address the cap is a constant in F02 §4.2, derived from the figure above. Recorded
@@ -136,7 +156,7 @@ rather than deleted because this blank previously asked you for a value.
    curl -X POST 'https://api.resend.com/emails' \
      -H "Authorization: Bearer $RESEND_API_KEY" \
      -H 'Content-Type: application/json' \
-     -d '{"from":"otp@accounts.joshuai.nz","to":"your-gmail@gmail.com","subject":"test","text":"test"}'
+     -d '{"from":"welcome@accounts.joshuai.nz","to":"your-gmail@gmail.com","subject":"test","text":"test"}'
    ```
    Repeat for the Outlook and corporate addresses. Check each inbox (and its spam folder) —
    record here whether all three landed clean: ______________

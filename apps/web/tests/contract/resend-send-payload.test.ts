@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { sendOtpEmail } from '@/services/auth/mailer';
+import { sendAuthEmail } from '@/services/auth/mailer';
 
 // Kept alongside this test rather than under `apps/web/fixtures/` — that directory is COLLECT's
 // (provider adapter payloads); Resend is this feature's own mail transport, not a domain
@@ -12,7 +12,7 @@ async function loadFixture(name: string): Promise<unknown> {
   return JSON.parse(await readFile(path.join(FIXTURES_ROOT, name), 'utf8'));
 }
 
-describe('sendOtpEmail — Resend contract', () => {
+describe('sendAuthEmail — Resend contract', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -24,25 +24,25 @@ describe('sendOtpEmail — Resend contract', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await sendOtpEmail(
-      { to: 'joshuaifang@gmail.com', otp: '482913', type: 'sign-in' },
+    const url = 'https://accounts.joshuai.nz/api/auth/reset-password/tok_482913';
+    const result = await sendAuthEmail(
+      { to: 'joshuaifang@gmail.com', url, kind: 'reset-password' },
       { apiKey: 'test-key', from: 'welcome@accounts.joshuai.nz' },
     );
 
     expect(result).toEqual({ ok: true });
 
-    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe('https://api.resend.com/emails');
+    const [fetchedUrl, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(fetchedUrl).toBe('https://api.resend.com/emails');
     const body = JSON.parse(init.body as string) as Record<string, unknown>;
     expect(body).toMatchObject({
       from: 'welcome@accounts.joshuai.nz',
       to: 'joshuaifang@gmail.com',
       subject: expect.any(String),
-      text: expect.stringContaining('482913'),
+      text: expect.stringContaining(url),
     });
-    // Never a plaintext label, never logged elsewhere — the code appears exactly once, in the
-    // body Resend transmits, and nowhere in `result`.
-    expect(JSON.stringify(result)).not.toContain('482913');
+    // Never logged elsewhere — the link appears exactly once, in the body Resend transmits.
+    expect(JSON.stringify(result)).not.toContain(url);
   });
 
   it('a 429 from Resend surfaces as a typed rate_limit error, never a thrown stack trace', async () => {
@@ -52,8 +52,8 @@ describe('sendOtpEmail — Resend contract', () => {
       vi.fn(async () => new Response(JSON.stringify(fixture), { status: 429 })),
     );
 
-    const result = await sendOtpEmail(
-      { to: 'joshuaifang@gmail.com', otp: '111111', type: 'sign-in' },
+    const result = await sendAuthEmail(
+      { to: 'joshuaifang@gmail.com', url: 'https://accounts.joshuai.nz/x', kind: 'verify-email' },
       { apiKey: 'test-key', from: 'welcome@accounts.joshuai.nz' },
     );
 
@@ -69,8 +69,8 @@ describe('sendOtpEmail — Resend contract', () => {
     );
 
     await expect(
-      sendOtpEmail(
-        { to: 'joshuaifang@gmail.com', otp: '222222', type: 'sign-in' },
+      sendAuthEmail(
+        { to: 'joshuaifang@gmail.com', url: 'https://accounts.joshuai.nz/y', kind: 'verify-email' },
         { apiKey: 'test-key', from: 'welcome@accounts.joshuai.nz' },
       ),
     ).resolves.toEqual({ ok: false, error: { kind: 'upstream', status: 500 } });

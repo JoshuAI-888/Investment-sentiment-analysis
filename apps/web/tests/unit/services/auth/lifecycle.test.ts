@@ -14,32 +14,35 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/services/auth/instance';
-import { clearFixtureOtpStore, readFixtureOtp } from '@/services/auth/fixture-otp-store';
+import { readFixtureLink } from '@/services/auth/fixture-link-store';
 import {
   deleteMyAccount,
   exportMyData,
   UNIMPLEMENTED_DATA_CLASSES,
 } from '@/services/auth/lifecycle';
 
+const PASSWORD = 'correct horse battery staple';
 let currentCookie = '';
 
 vi.mock('next/headers', () => ({
   headers: async () => new Headers(currentCookie === '' ? {} : { cookie: currentCookie }),
 }));
 
+/** Signs up and verifies — `autoSignInAfterVerification` means verifying already sets the session cookie. */
 async function signIn(email: string): Promise<void> {
-  await auth.api.sendVerificationOTP({ body: { email, type: 'sign-in' } });
-  const otp = readFixtureOtp(email);
-  if (otp === null) throw new Error('test setup: no fixture OTP was recorded');
-  const response = await auth.api.signInEmailOTP({ body: { email, otp }, asResponse: true });
+  await auth.api.signUpEmail({ body: { email, password: PASSWORD, name: email } });
+  const verifyUrl = readFixtureLink(email);
+  if (verifyUrl === null) throw new Error('test setup: no fixture verification link was recorded');
+  const token = new URL(verifyUrl).searchParams.get('token');
+  if (token === null) throw new Error('test setup: verification link carried no token');
+  const response = await auth.api.verifyEmail({ query: { token }, asResponse: true });
   const setCookie = response.headers.get('set-cookie');
-  if (setCookie === null) throw new Error('test setup: sign-in did not set a session cookie');
+  if (setCookie === null) throw new Error('test setup: verification did not set a session cookie');
   currentCookie = setCookie.split(';')[0] ?? '';
 }
 
 describe('deleteMyAccount', () => {
   beforeEach(() => {
-    clearFixtureOtpStore();
     currentCookie = '';
   });
 
@@ -113,7 +116,6 @@ describe('deleteMyAccount', () => {
 
 describe('exportMyData', () => {
   beforeEach(() => {
-    clearFixtureOtpStore();
     currentCookie = '';
   });
 

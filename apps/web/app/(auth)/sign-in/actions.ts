@@ -1,34 +1,20 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { requestSignInCode, verifySignInCode } from '@/services/auth';
+import { signInWithPassword } from '@/services/auth';
 
-export type RequestCodeState = { readonly ok: true };
+export type SignInState = { readonly ok: false; readonly message: string } | { readonly ok: true };
 
-/**
- * Always `{ ok: true }` — §4.2's generic-response rule. Whether the address is allowlisted,
- * capped, or entirely unknown is decided server-side and never distinguished here.
- */
-export async function requestCodeAction(_prev: unknown, formData: FormData): Promise<RequestCodeState> {
+export async function signInAction(_prev: unknown, formData: FormData): Promise<SignInState> {
   const email = String(formData.get('email') ?? '');
-  await requestSignInCode(email);
-  return { ok: true };
-}
+  const password = String(formData.get('password') ?? '');
 
-export type VerifyCodeState =
-  | { readonly ok: false; readonly message: string }
-  | { readonly ok: true };
-
-export async function verifyCodeAction(_prev: unknown, formData: FormData): Promise<VerifyCodeState> {
-  const email = String(formData.get('email') ?? '');
-  const otp = String(formData.get('otp') ?? '');
-
-  const result = await verifySignInCode(email, otp);
+  const result = await signInWithPassword(email, password);
   if (!result.ok) {
     const message =
-      result.reason === 'too_many_attempts'
-        ? 'Too many wrong codes. Request a new one.'
-        : 'That code is wrong or has expired.';
+      result.reason === 'email_not_verified'
+        ? 'Check your email and click the verification link before signing in.'
+        : 'That email or password is wrong.';
     return { ok: false, message };
   }
 

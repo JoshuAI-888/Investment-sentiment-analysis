@@ -1,72 +1,87 @@
 /**
  * F02 §4.1 — the Better Auth server instance.
  *
- * **Storage.** `PROVIDER_MODE=live` points Better Auth at the real Postgres pool; anything
- * else uses Better Auth's own in-process `memoryAdapter`, never `getPool()`
+ * **Storage.** `PROVIDER_MODE=live` points Better Auth at the real Postgres pool; anything else
+ * uses Better Auth's own in-process `memoryAdapter`, never `getPool()`
  * (`src/repositories/client.ts`: "in fixture mode the services above [repositories] should not
  * be reaching one at all"). This is also what makes F02 buildable and fully testable **today**:
  * Better Auth's canonical `user` / `session` / `account` / `verification` tables do not yet
  * exist in `apps/web/migrations/` (see this feature's `CONTRACTS` note to SPINE) — fixture mode
- * never needs them, and every unit, contract, integration and e2e test in this feature's test
- * plan runs in fixture mode. Live mode is wired correctly and will start working the moment
- * that migration lands; nothing here needs to change for it to.
+ * never needs them. Live mode is wired correctly and will start working the moment that
+ * migration lands; nothing here needs to change for it to. The password itself lives in
+ * Better Auth's own `account` table (the `credential` provider row), not a column this codebase
+ * defines — no migration shape changes as a result of this feature moving from OTP to password.
  *
- * **Stated precisely, because "wired correctly" undersells the gap until that migration lands:**
- * with `PROVIDER_MODE=live` and no `user`/`session`/`account`/`verification` tables, the process
- * boots cleanly — `boot.ts`'s allowlist log prints normally — and the *first* sign-in attempt
- * throws out of `requestSignInCode` uncaught, surfacing as a 500 error boundary rather than the
- * generic `{ok:true}` §4.2 requires for every other failure mode. This branch does not silently
- * degrade in live mode without that migration; it is not deployable to live mode without it
- * either. No code change closes this — the migration is SPINE's to write, not this lane's — so
- * it is recorded here rather than left implicit in "wired correctly." Found by lane-review.
+ * **Anchored on `globalThis`, not a plain module-level `const`.** Next.js's App Router compiles
+ * route handlers, server actions and server components into separate server bundles, and a
+ * module-scope singleton is *not* guaranteed to be the same object across those bundles even
+ * within one `next start` process. `globalThis` is the one object every one of those bundles
+ * actually shares. Without this, fixture mode's whole storage strategy would only ever work
+ * within a single request.
  *
- * **The OTP flow.** `emailOTP` from `better-auth/plugins`, configured to F02 §4.1's non-
- * negotiables: `otpLength: 6`, `expiresIn: 300` (5 minutes), `allowedAttempts: 3`,
- * `storeOTP: 'hashed'` (Better Auth's own default is `'plain'` — this line is the whole reason
- * §6's "hashed at rest" box gets checked), `resendStrategy: 'rotate'`.
+ * **The auth model: email + password, self-service sign-up, allowlist-gated.** D-37 supersedes
+ * D-11/D-28's "OTP sign-in is kept" clause: this app is single-operator and OTP's structural
+ * cost (no client can be built or tested without a mailbox in the loop) was judged not worth it
+ * against the simpler, more familiar email+password model. What D-11/D-28 got right — one
+ * account, no open population, a send cap on the one mail path that exists — is preserved
+ * exactly; only the credential mechanism changed.
  *
- * **Allowlist-before-send (§4.2) is decided by `decideAndSend`** (`send-decision.ts`), not
- * inline here — pulled out specifically so it is unit- and integration-testable with
- * `providerMode: 'live'` and no live database, Redis, or Resend key. Better Auth always creates
- * the verification record and always returns `{ success: true }` from
- * `/email-otp/send-verification-otp` regardless of what `decideAndSend` decides, which is what
- * makes the generic-response property (§4.2) structural rather than conventional.
- * `disableSignUp` is left `false` deliberately: the allowlist check is the *only* gate, so the
- * one account D-11 describes comes into existence at the first successful sign-in from the
- * allowlisted address, with no separate seed step required.
+ * **`databaseHooks.user.create.before` is the allowlist gate**, not an application-layer check
+ * in `flow.ts`. This runs inside Better Auth's own user-creation path regardless of entry point
+ * — `auth.api.signUpEmail` and the raw `POST /api/auth/sign-up/email` endpoint both go through
+ * it — so there is no route that can create a user Better Auth itself did not refuse first. This
+ * is the same structural guarantee the old `emailOTP` plugin's `sendVerificationOTP` closure gave
+ * the OTP flow: the gate lives where every caller is forced through it, not in a wrapper a caller
+ * could bypass by hitting the HTTP endpoint directly.
+ *
+ * **The gate itself is `live`-mode only**, mirroring `decideAndSend`'s own fixture short-circuit
+ * exactly. This is deliberate, not an oversight: the old OTP flow let *any* address sign in
+ * under `PROVIDER_MODE=fixture` (`decideAndSend` never reached its allowlist check there
+ * either), which is what let `tests/e2e/auth.spec.ts` build a genuinely signed-in,
+ * non-allowlisted session to prove `requireAdmin()` actually refuses one — the property
+ * `requireAdmin()`'s own doc calls out as needing proof beyond "there is one account in
+ * practice". Gating account creation unconditionally would close off that test seam entirely:
+ * fixture mode has no live mailbox and no real security boundary to defend in the first place,
+ * so the only thing worth protecting there is the ability to test `requireAdmin()`'s two
+ * outcomes independently of whether an account could ever exist for real.
+ *
+ * **`requireEmailVerification: true` is why self-service sign-up is safe.** Anyone can *submit*
+ * the allowlisted address at `/sign-up` with a password of their choosing — the allowlist only
+ * checks the address, not who is typing it — but the account cannot sign in until the link
+ * mailed to that address is clicked. An attacker who does not control the real mailbox can create
+ * an unverified row and nothing else; the real owner still owns the only path to a usable
+ * account. `emailVerification.sendOnSignUp` fires that mail automatically.
+ *
+ * **The send cap (D-28) still applies**, now to two mail paths instead of one:
+ * `sendVerificationEmail` (on sign-up) and `sendResetPassword` (forgotten password). Both are
+ * routed through `decideAndSend` (`send-decision.ts`), exactly like the old OTP send was — pulled
+ * out of the config closures specifically so each is unit- and integration-testable with
+ * `providerMode: 'live'` and no live database, Redis, or Resend key anywhere in the process.
+ * Both hooks always resolve with no return value, which is what makes the generic-response
+ * property structural: neither a mail failure nor a cap refusal changes what the HTTP caller
+ * sees.
  */
-import { betterAuth } from 'better-auth';
-import { emailOTP } from 'better-auth/plugins';
+import { betterAuth, APIError } from 'better-auth';
 import { nextCookies } from 'better-auth/next-js';
 import { memoryAdapter } from 'better-auth/adapters/memory';
 import type { MemoryDB } from 'better-auth/adapters/memory';
 import { Pool } from 'pg';
 import { env } from '@/env';
 import { defaultRedisClient, type RedisRestClient } from './send-cap';
-import { rememberFixtureOtp } from './fixture-otp-store';
+import { rememberFixtureLink } from './fixture-link-store';
 import { decideAndSend } from './send-decision';
+import { isAccountCreationAllowed, normalizeEmail } from './allowlist';
 
 /**
  * Better Auth's `memoryAdapter` looks up `activeDb[model]` directly and throws "Model X not
  * found" if the key is merely absent — an empty `{}` is not the same as an empty *table*. Every
- * model Better Auth's core and the `email-otp` plugin touch must be pre-declared, even with no
- * rows, or the very first call fails before any of this feature's own logic runs.
+ * model Better Auth's core touches must be pre-declared, even with no rows, or the very first
+ * call fails before any of this feature's own logic runs.
  */
 export function createEmptyMemoryDb(): MemoryDB {
   return { user: [], session: [], account: [], verification: [] };
 }
 
-/**
- * **Anchored on `globalThis`, not a plain module-level `const`.** Next.js's App Router compiles
- * route handlers, server actions and server components into separate server bundles, and a
- * module-scope singleton is *not* guaranteed to be the same object across those bundles even
- * within one `next start` process — this was found the hard way (F02's own e2e suite: a session
- * created by the `/sign-in` server action was invisible to `/settings/account`'s server
- * component, and to `/api/auth/get-session`). `globalThis` is the one object every one of those
- * bundles actually shares. Without this, fixture mode's whole storage strategy — the reason
- * this feature is buildable and testable before SPINE's `user`/`session`/`verification`/
- * `account` migration exists — would only ever work within a single request.
- */
 const globalForAuth = globalThis as unknown as { __f02FixtureMemoryDb__?: MemoryDB };
 
 function defaultFixtureMemoryDb(): MemoryDB {
@@ -85,11 +100,24 @@ export type AuthInstanceDeps = {
 };
 
 /**
- * Exported as a factory (rather than only a singleton) so a test can inject a fake Redis
- * client or a fresh in-memory store without touching the module the app actually uses. `auth`
- * below is the one the app uses.
+ * Exported as a factory (rather than only a singleton) so a test can inject a fake Redis client
+ * or a fresh in-memory store without touching the module the app actually uses. `auth` below is
+ * the one the app uses.
  */
 export function createAuthInstance(deps: AuthInstanceDeps = {}) {
+  function mailerDeps() {
+    return {
+      providerMode: env.PROVIDER_MODE,
+      allowlist: env.ADMIN_EMAIL_ALLOWLIST,
+      redisClient: deps.redisClient ?? defaultRedisClient(),
+      mailerConfig: {
+        apiKey: env.RESEND_API_KEY ?? '',
+        from: env.RESEND_FROM ?? 'welcome@accounts.joshuai.nz',
+      },
+      rememberFixtureLink,
+    };
+  }
+
   return betterAuth({
     baseURL: env.BETTER_AUTH_URL ?? env.APP_BASE_URL,
     secret: env.BETTER_AUTH_SECRET ?? 'fixture-mode-secret-never-used-live',
@@ -103,53 +131,83 @@ export function createAuthInstance(deps: AuthInstanceDeps = {}) {
     },
     /**
      * Better Auth's own built-in per-IP rate limiter is on by default under `next start`
-     * (production `NODE_ENV`) — a sensible default for a real deployment, and a trap for an
-     * e2e or CI run: `next start` is also how `PROVIDER_MODE=fixture` e2e serves the app
-     * (`playwright.config.ts`), so a suite that legitimately requests many codes from one IP in
-     * quick succession would get silently rate-limited and every later assertion would fail
-     * against a code that was never issued. §4.2's own D-28 send cap (Redis-backed, gating
-     * whether Resend is actually called) is the mechanism that matters for abuse in `live` mode;
-     * this generic layer is orthogonal defense-in-depth and is scoped to `live` accordingly.
+     * (production `NODE_ENV`) — a sensible default for a real deployment, and a trap for an e2e
+     * or CI run: `next start` is also how `PROVIDER_MODE=fixture` e2e serves the app
+     * (`playwright.config.ts`). §4.2's own D-28 send cap (Redis-backed, gating whether Resend is
+     * actually called) is the mechanism that matters for abuse in `live` mode; this generic layer
+     * is orthogonal defense-in-depth and is scoped to `live` accordingly.
      */
     rateLimit: {
       enabled: env.PROVIDER_MODE === 'live',
     },
     user: {
       deleteUser: {
-        // No `sendDeleteAccountVerification`: deletion is confirmed in the UI (a typed
-        // confirmation, `app/(app)/settings/account`), not by a second email round trip — the
-        // single operator already holds the session that is asking. Deleting immediately on
-        // this call is what §4.5's "self-service, confirmed, and idempotent" describes.
+        // No confirmation email round trip: deletion is confirmed in the UI (a typed
+        // confirmation, `app/(app)/settings/account`) — the single operator already holds the
+        // session that is asking. Deleting immediately on this call is what §4.5's
+        // "self-service, confirmed, and idempotent" describes.
         enabled: true,
+      },
+      /**
+       * D-38 — the "welcome1" seeded-account path (`seed-account.ts`). `input: false` means
+       * no signed-in user can set or clear this on themselves through the public
+       * `sign-up`/`update-user` endpoints' request bodies (Better Auth throws `FIELD_NOT_ALLOWED`
+       * if a caller tries) — the only two writers are `seed-account.ts`'s
+       * `provisionSeedAccountIfEligible` (sets it, via `internalAdapter.createUser`, bypassing
+       * the route layer this restriction lives in) and `clearMustChangePassword` (clears it, same
+       * bypass). `input: false` does not hide the field from session/user *output* — Better
+       * Auth's output serialization is unconditional on `additionalFields`, only *input* parsing
+       * checks this flag — so `getSession()` still sees the real value (`session.ts`).
+       */
+      additionalFields: {
+        mustChangePassword: {
+          type: 'boolean',
+          defaultValue: false,
+          input: false,
+        },
+      },
+    },
+    /**
+     * The allowlist gate for account creation — see this file's own doc comment above for why
+     * this is the structurally correct place for it, rather than a check in `flow.ts`.
+     */
+    databaseHooks: {
+      user: {
+        create: {
+          before: async (user) => {
+            const allowed = isAccountCreationAllowed(
+              env.PROVIDER_MODE === 'live' ? 'live' : 'fixture',
+              normalizeEmail(user.email),
+              env.ADMIN_EMAIL_ALLOWLIST,
+            );
+            if (!allowed) {
+              throw new APIError('FORBIDDEN', {
+                message: 'This address is not authorized to create an account.',
+              });
+            }
+            return { data: user };
+          },
+        },
+      },
+    },
+    emailAndPassword: {
+      enabled: true,
+      minPasswordLength: 12,
+      requireEmailVerification: true,
+      async sendResetPassword({ user, url }) {
+        await decideAndSend({ to: user.email, url, kind: 'reset-password' }, mailerDeps());
+      },
+    },
+    emailVerification: {
+      sendOnSignUp: true,
+      autoSignInAfterVerification: true,
+      async sendVerificationEmail({ user, url }) {
+        await decideAndSend({ to: user.email, url, kind: 'verify-email' }, mailerDeps());
       },
     },
     plugins: [
-      emailOTP({
-        otpLength: 6,
-        expiresIn: 300,
-        allowedAttempts: 3,
-        storeOTP: 'hashed',
-        resendStrategy: 'rotate',
-        disableSignUp: false,
-        async sendVerificationOTP({ email, otp, type }) {
-          await decideAndSend(
-            { to: email, otp, type },
-            {
-              providerMode: env.PROVIDER_MODE,
-              allowlist: env.ADMIN_EMAIL_ALLOWLIST,
-              redisClient: deps.redisClient ?? defaultRedisClient(),
-              mailerConfig: {
-                apiKey: env.RESEND_API_KEY ?? '',
-                from: env.RESEND_FROM ?? 'welcome@accounts.joshuai.nz',
-              },
-              rememberFixtureOtp,
-            },
-          );
-        },
-      }),
-      // Must be last (better-auth's own requirement): lets a server action call `auth.api.*`
-      // directly and have the resulting cookie written through `next/headers` automatically,
-      // instead of every call site having to thread a raw `Response` through itself.
+      // Lets a server action call `auth.api.*` directly and have the resulting cookie written
+      // through `next/headers` automatically. Better Auth's own requirement: must be last.
       nextCookies(),
     ],
   });
