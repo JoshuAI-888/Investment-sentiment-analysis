@@ -72,6 +72,13 @@ export const frameDisclosure = z.object({
   window: z.object({ from: timestamp, to: timestamp }),
   retrievedCount: z.number().int().nonnegative(),
   usedCount: z.number().int().nonnegative(),
+  /**
+   * True when `retrievedCount` is a lower bound, not an exact count — `evidenceForSecurity`'s own
+   * scan window (`repositories/evidence.ts`'s `CANDIDATE_SCAN_LIMIT`) was hit before every row for
+   * this axis was necessarily read. Never omit this: a caller rendering "N found" from a truncated
+   * count with no way to know it was truncated reports a wrong number with a right one's confidence.
+   */
+  truncated: z.boolean(),
   /** Reddit only: the subreddits actually polled this window. */
   subredditsPolled: z.array(z.string()).optional(),
   /** Reddit only: whether the comment tree for each retrieved post was read to completion. */

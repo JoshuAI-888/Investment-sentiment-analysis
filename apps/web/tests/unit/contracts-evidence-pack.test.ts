@@ -76,6 +76,7 @@ describe('frameDisclosure', () => {
         window: { from: new Date(), to: new Date() },
         retrievedCount: 40,
         usedCount: 30,
+        truncated: false,
         subredditsPolled: ['wallstreetbets'],
         treeComplete: true,
       }).success,
@@ -90,10 +91,23 @@ describe('frameDisclosure', () => {
         window: { from: new Date(), to: new Date() },
         retrievedCount: 3,
         usedCount: 3,
+        truncated: false,
         publicationSetVersion: 'substack-publications-v1',
         selectionBasis: 'sector coverage (D-29)',
       }).success,
     ).toBe(true);
+  });
+
+  it('rejects a disclosure missing `truncated` — never silently undisclosed', () => {
+    expect(
+      frameDisclosure.safeParse({
+        axis: 'reddit',
+        frameStatement: AXIS_FRAME_STATEMENT.reddit,
+        window: { from: new Date(), to: new Date() },
+        retrievedCount: 5000,
+        usedCount: 30,
+      }).success,
+    ).toBe(false);
   });
 });
 
@@ -111,6 +125,7 @@ describe('evidencePack', () => {
         window: { from: new Date(), to: new Date() },
         retrievedCount: 1,
         usedCount: 1,
+        truncated: false,
       },
     ],
     createdAt: new Date(),

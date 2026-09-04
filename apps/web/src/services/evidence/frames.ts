@@ -94,13 +94,8 @@ export type SubstackBasis = {
  * beats a guessed value. **Flagged under this lane's `RISKS`**: once F16a lands, its actual
  * metadata key names should be reconciled against this reader.
  *
- * **`AxisBundle.truncatedScan` is computed (from `evidenceForSecurity`'s own `truncated` flag)
- * but is not surfaced here at all** (lane-review finding 6). `repositories/evidence.ts` is
- * explicit that this flag must never be silently undisclosed once a real corpus exceeds the scan
- * window — but the frozen `FrameDisclosure` contract (`contracts/evidence-pack.ts`) has no field
- * for it. This is a real gap in the frozen contract, reported under this lane's `CONTRACTS` line
- * rather than added here (this lane cannot edit `src/contracts/`); once a `truncated` field
- * exists on `frameDisclosure`, wiring it through is `bundle.truncatedScan` away.
+ * **`AxisBundle.truncatedScan` is surfaced as `frameDisclosure.truncated`** (lane-review finding
+ * 6; the field was added to the frozen contract at merge time — see `MEMORY.md` D-43).
  */
 export function buildFrameDisclosure(
   bundle: AxisBundle,
@@ -114,6 +109,7 @@ export function buildFrameDisclosure(
     window: { from: window.from, to: window.to },
     retrievedCount: bundle.retrievedCount,
     usedCount,
+    truncated: bundle.truncatedScan,
   };
 
   if (bundle.axis === 'reddit') {
