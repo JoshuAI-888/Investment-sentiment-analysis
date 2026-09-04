@@ -24,6 +24,7 @@
     "measure:storage": "tsx scripts/measure-storage.ts"
   },
   "dependencies": {
+    "@upstash/qstash": "^2.11.3",
     "better-auth": "^1.7.2",
     "cron-parser": "^5.10.0",
     "decimal.js": "10.6.0",
