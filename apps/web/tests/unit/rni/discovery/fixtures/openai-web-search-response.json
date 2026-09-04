@@ -49,7 +49,36 @@
         {
           "type": "output_text",
           "text": "{\"candidates\":[{\"url\":\"https://www.reddit.com/r/stocks/comments/abc123/nvidia_execution/?utm_source=search\",\"community\":\"r/stocks\",\"title\":\"NVIDIA execution discussion\",\"excerpt\":\"NVDA execution remains the core bullish thesis.\",\"published_at\":\"2026-09-04T12:00:00.000Z\"},{\"url\":\"https://old.reddit.com/r/stocks/comments/abc123/renamed_slug/\",\"community\":\"r/stocks\",\"title\":\"Duplicate URL variant\",\"excerpt\":\"NVDA execution remains the core bullish thesis.\",\"published_at\":\"2026-09-04T12:00:00.000Z\"},{\"url\":\"https://www.reddit.com/r/stocks/comments/out123/older_post/\",\"community\":\"r/stocks\",\"title\":\"Older discussion\",\"excerpt\":\"This item predates the requested window.\",\"published_at\":\"2026-09-03T23:59:59.000Z\"},{\"url\":\"https://www.reddit.com/r/unconfigured/comments/new123/not_allowed/\",\"community\":\"r/unconfigured\",\"title\":\"Unconfigured community\",\"excerpt\":\"This source is outside the governed community set.\",\"published_at\":\"2026-09-04T13:00:00.000Z\"},{\"url\":\"https://www.reddit.com/r/stocks/comments/madeup1/not_consulted/\",\"community\":\"r/stocks\",\"title\":\"Invented candidate\",\"excerpt\":\"This URL was not returned by the search tool.\",\"published_at\":\"2026-09-04T14:00:00.000Z\"},{\"url\":\"https://www.reddit.com/r/stocks/comments/html123/page_dump/\",\"community\":\"r/stocks\",\"title\":\"Invalid HTML capture\",\"excerpt\":\"<!doctype html><html><body>page chrome</body></html>\",\"published_at\":\"2026-09-04T15:00:00.000Z\"},{\"url\":\"https://example.com/not-reddit\",\"community\":\"r/stocks\",\"title\":\"Unexpected domain\",\"excerpt\":\"Not eligible Reddit evidence.\",\"published_at\":\"2026-09-04T16:00:00.000Z\"}],\"limitations\":[\"Sampled Web Search coverage is not exhaustive.\",\"Exact publication time was available only for returned candidates.\"]}",
-          "annotations": []
+          "annotations": [
+            {
+              "type": "url_citation",
+              "url": "https://www.reddit.com/r/stocks/comments/abc123/nvidia_execution/?utm_source=search",
+              "title": "NVIDIA execution discussion",
+              "start_index": 180,
+              "end_index": 227
+            },
+            {
+              "type": "url_citation",
+              "url": "https://www.reddit.com/r/stocks/comments/abc123/nvidia_execution/?utm_source=search",
+              "title": "NVIDIA execution discussion",
+              "start_index": 245,
+              "end_index": 269
+            },
+            {
+              "type": "url_citation",
+              "url": "https://www.reddit.com/r/stocks/comments/out123/older_post/",
+              "title": "Older discussion",
+              "start_index": 631,
+              "end_index": 671
+            },
+            {
+              "type": "url_citation",
+              "url": "https://www.reddit.com/r/stocks/comments/out123/older_post/",
+              "title": "Older discussion",
+              "start_index": 689,
+              "end_index": 713
+            }
+          ]
         }
       ]
     }

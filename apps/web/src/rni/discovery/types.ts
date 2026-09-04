@@ -31,6 +31,22 @@ export type RedditDiscoveryCandidate = {
   providerSourceUrl: string;
 };
 
+export type RedditDiscoveryUrlCandidate = {
+  originalUrl: string;
+  canonicalUrl: string;
+  externalId: string;
+  sourceKind: 'post' | 'comment';
+  subredditOrScope: string;
+  title: string | null;
+  boundedContent: null;
+  contentSha256: null;
+  captureMode: null;
+  publishedAt: null;
+  publicationTimeVerified: false;
+  providerSourceUrl: string;
+  interpretationEligible: false;
+};
+
 export type ConsultedSource = {
   url: string;
   title: string | null;
@@ -45,9 +61,30 @@ export type RejectedDiscoveryCandidate = {
     | 'COMMUNITY_MISMATCH'
     | 'NOT_IN_PROVIDER_SOURCES'
     | 'NO_ANALYZABLE_CONTENT'
+    | 'EXCERPT_NOT_SOURCE_BOUND'
+    | 'PUBLISHED_AT_MISSING'
+    | 'PUBLISHED_AT_NOT_SOURCE_BOUND'
     | 'WHOLE_PAGE_HTML'
     | 'OUTSIDE_WINDOW';
 };
+
+export type WebSearchActionTrace =
+  | {
+      callId: string;
+      type: 'search';
+      sources: readonly ConsultedSource[];
+    }
+  | {
+      callId: string;
+      type: 'open_page';
+      url: string;
+    }
+  | {
+      callId: string;
+      type: 'find_in_page';
+      url: string;
+      pattern: string;
+    };
 
 export type DiscoveryUsage = {
   inputTokens: number | null;
@@ -59,9 +96,11 @@ export type RedditDiscoveryResult = {
   queryId: string;
   providerRequestId: string;
   resolvedModel: string;
-  promptVersion: 'rni-discovery-v1';
+  promptVersion: 'rni-discovery-v2';
   candidates: readonly RedditDiscoveryCandidate[];
+  urlOnlyCandidates: readonly RedditDiscoveryUrlCandidate[];
   consultedSources: readonly ConsultedSource[];
+  webSearchActions: readonly WebSearchActionTrace[];
   rejectedCandidates: readonly RejectedDiscoveryCandidate[];
   limitations: readonly string[];
   usage: DiscoveryUsage;
