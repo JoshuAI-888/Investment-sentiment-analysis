@@ -97,6 +97,16 @@ export type AxisDisclosure = {
 export type EvidencePack = {
   readonly securityId: string;
   readonly asOf: string;
+  /**
+   * F10 §6 DoD: "`retrievalQuery` and `retrievalWindow` are on the pack and visible
+   * downstream." The per-axis window lives on each `AxisDisclosure` too (three different
+   * frames can, in principle, use different windows); this is the single window the caller
+   * actually built the pack against, repeated at the top level so a consumer that only wants
+   * "what window is this pack for" never has to reconcile three per-axis copies.
+   */
+  readonly retrievalWindow: { readonly from: string | null; readonly to: string | null };
+  /** A human-readable description of what this pack was built from — the other half of that DoD line. */
+  readonly retrievalQuery: string;
   /** Bounded (≤30, ≤12 social), ordered by relevance then recency (F10 §4.3). */
   readonly items: readonly IncludedItem[];
   readonly excluded: readonly ExcludedItem[];

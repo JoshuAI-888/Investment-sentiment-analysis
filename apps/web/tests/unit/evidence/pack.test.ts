@@ -109,8 +109,8 @@ describe('buildEvidencePack', () => {
         asOf: new Date('2026-09-02T00:00:00.000Z'),
         items: [item],
         truncatedByScanWindow: false,
-        windowFrom: null,
-        windowTo: null,
+        windowFrom: '2026-08-26T00:00:00.000Z',
+        windowTo: '2026-09-02T00:00:00.000Z',
         reddit: { subredditsPolled: [], treeComplete: null },
         x: { watchlistVersion: 'v1', triggerEvent: 'price_move_2026-09-01' },
       },
@@ -123,6 +123,9 @@ describe('buildEvidencePack', () => {
     expect(pack.usedCount).toBe(1);
     expect(pack.retrievedCount).toBe(1);
     expect(pack.excluded).toHaveLength(0);
+    expect(pack.retrievalWindow).toEqual({ from: '2026-08-26T00:00:00.000Z', to: '2026-09-02T00:00:00.000Z' });
+    expect(pack.retrievalQuery).toContain(AAPL.symbol);
+    expect(pack.retrievalQuery).toContain('2026-08-26T00:00:00.000Z');
   });
 
   it('excludes an item with no deterministic match at all, spending no LLM call', async () => {

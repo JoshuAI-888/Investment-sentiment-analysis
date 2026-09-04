@@ -260,6 +260,11 @@ export async function buildEvidencePack(
   const pack: EvidencePack = {
     securityId: input.securityId,
     asOf: input.asOf.toISOString(),
+    retrievalWindow: { from: input.windowFrom, to: input.windowTo },
+    retrievalQuery:
+      `security=${input.securityId}` +
+      ` window=${input.windowFrom ?? 'unbounded'}..${input.windowTo ?? 'unbounded'}` +
+      ` asOf=${input.asOf.toISOString()}`,
     items: kept,
     excluded,
     retrievedCount: input.items.length,
