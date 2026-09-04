@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "price_target-04",
+    "packId": "collision-04",
+    "faultClass": "price_target",
+    "faultyClaimId": "claim-74",
+    "cleanClaimIds": [
+      "claim-29"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "This window's confirmed evidence for NVIDIA Corporation excludes one bare-token, unconfirmed collision.",
+    "statedFreshness": "2026-08-07",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-29",
+            "text": "The confirmed mentions of NVIDIA Corporation this window are limited to the unambiguous cashtag usage; a same-letters bare-token post was excluded as unconfirmed.",
+            "kind": "fact",
+            "evidenceIds": [
+              "ea82963f-1a62-4a3a-b197-4646d1a7a835"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "NVDA"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-74",
+            "text": "This window's evidence sets a price target for the shares.",
+            "kind": "fact",
+            "evidenceIds": [
+              "ea82963f-1a62-4a3a-b197-4646d1a7a835"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "NVDA"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

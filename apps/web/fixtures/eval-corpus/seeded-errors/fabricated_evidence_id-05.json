@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "fabricated_evidence_id-05",
+    "packId": "thin-01",
+    "faultClass": "fabricated_evidence_id",
+    "faultyClaimId": "claim-90",
+    "cleanClaimIds": [
+      "claim-41"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "Apple Inc.'s tracked sample this window is too thin for a stance read; none is asserted.",
+    "statedFreshness": "2026-08-10",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-41",
+            "text": "Only one tracked item mentions Apple Inc. this window — too thin a sample for a stance read.",
+            "kind": "fact",
+            "evidenceIds": [
+              "212ffd86-be2e-49ea-b571-9cf2a767e921"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "AAPL"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-90",
+            "text": "This claim cites an evidence item that does not actually exist in the run's pack.",
+            "kind": "fact",
+            "evidenceIds": [
+              "7b11ff42-38b7-4d7a-89c7-7c0bcdf98b2e"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "AAPL"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "body": {
+    "modelId": "google/gemini-3-pro",
+    "tokensIn": 400,
+    "tokensOut": 120,
+    "costUsd": "0.002000",
+    "content": "{\"c1\":3,\"c2\":2,\"c3\":2,\"c4\":3,\"violations\":[\"unsupported causal assertion\"],\"rationale\":\"The evidence does not establish the causal link the claim asserts.\"}"
+  }
+}

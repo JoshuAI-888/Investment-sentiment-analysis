@@ -1,0 +1,209 @@
+{
+  "meta": {
+    "id": "collision-03",
+    "bucket": "ticker_collision",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "TSLA",
+    "metrics": [
+      {
+        "metricId": "attention.mention_growth",
+        "calculationId": "calc_3f7fcf8b-a311-47c3-9a14-8f0571f5f89d",
+        "label": "Mention growth",
+        "display": "6.00",
+        "unit": "%",
+        "n": null,
+        "window": "7d",
+        "observedAt": "2026-08-07T12:00:00.000Z"
+      },
+      {
+        "metricId": "social.stance_x",
+        "calculationId": "calc_c233e747-0b80-4ba7-939e-a54af6a64b84",
+        "label": "X stance (shrunk)",
+        "display": "0.300000",
+        "unit": "",
+        "n": 6,
+        "window": "7d",
+        "observedAt": "2026-08-06T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "e0f24274-9ea8-445d-bd3f-07ff0811345c",
+          "stance": "neutral",
+          "relevant": true
+        },
+        {
+          "itemId": "b4b64489-f73f-4a64-b173-bf15894ec244",
+          "stance": "neutral",
+          "relevant": false
+        }
+      ],
+      "expectedDirection": "neutral",
+      "expectedAbstain": false,
+      "requiredAbstentions": [
+        "No stance drawn from the unconfirmed collided-ticker item; it must stay excluded."
+      ]
+    },
+    "goldOutput": {
+      "summary": "This window's confirmed evidence for Tesla, Inc. excludes one bare-token, unconfirmed collision.",
+      "statedFreshness": "2026-08-06",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-28",
+              "text": "The confirmed mentions of Tesla, Inc. this window are limited to the unambiguous cashtag usage; a same-letters bare-token post was excluded as unconfirmed.",
+              "kind": "fact",
+              "evidenceIds": [
+                "e0f24274-9ea8-445d-bd3f-07ff0811345c"
+              ],
+              "metricIds": [],
+              "relatedTickers": [
+                "TSLA"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": true
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "2083e85c-1c00-4ce6-ab4d-e83384c5b376",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=2083e85c-1c00-4ce6-ab4d-e83384c5b376 window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "e0f24274-9ea8-445d-bd3f-07ff0811345c",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Confirmed post about TSLA",
+          "snippet": "$TSLA discussed alongside Tesla, Inc.'s own name, unambiguous.",
+          "sourceUrl": "https://example.com/evidence/35",
+          "publisher": null,
+          "authorRef": "user_35",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-06T12:00:00.000Z",
+          "availableAt": "2026-08-06T12:00:00.000Z",
+          "ingestedAt": "2026-08-06T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "ad544613-73bb-4093-a63a-0ecdb9b8bb8d",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.880000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "e0f24274-9ea8-445d-bd3f-07ff0811345c"
+      }
+    ],
+    "excluded": [
+      {
+        "kind": "excluded",
+        "item": {
+          "id": "b4b64489-f73f-4a64-b173-bf15894ec244",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Bare-token post using the same letters as TSLA",
+          "snippet": "A post using the bare token 'TSLA' in a sentence about something else entirely, with no corroborating context.",
+          "sourceUrl": "https://example.com/evidence/36",
+          "publisher": null,
+          "authorRef": "user_36",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-08T12:00:00.000Z",
+          "availableAt": "2026-08-08T12:00:00.000Z",
+          "ingestedAt": "2026-08-08T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "32f15eec-6d59-46e3-bde0-c240832fa755",
+          "metadata": {}
+        },
+        "axis": "x",
+        "reason": "ticker_collision_unconfirmed",
+        "detail": "bare token 'TSLA' with no deterministic corroboration; entity.collision_guard did not confirm it"
+      }
+    ],
+    "retrievedCount": 2,
+    "usedCount": 1,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 2,
+        "usedCount": 1,
+        "exclusions": [
+          {
+            "reason": "ticker_collision_unconfirmed",
+            "count": 1
+          }
+        ],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

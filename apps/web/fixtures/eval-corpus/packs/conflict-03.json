@@ -1,0 +1,227 @@
+{
+  "meta": {
+    "id": "conflict-03",
+    "bucket": "conflicting_source",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "TSLA",
+    "metrics": [
+      {
+        "metricId": "social.stance_x",
+        "calculationId": "calc_74dba5ea-68b7-4846-b0f9-5131a253b3d0",
+        "label": "X stance (shrunk)",
+        "display": "0.150000",
+        "unit": "",
+        "n": 7,
+        "window": "7d",
+        "observedAt": "2026-08-05T12:00:00.000Z"
+      },
+      {
+        "metricId": "social.stance_substack",
+        "calculationId": "calc_30b9866c-8ef0-4117-933b-a57bfbb3f3da",
+        "label": "Substack stance (shrunk)",
+        "display": "-0.120000",
+        "unit": "",
+        "n": 5,
+        "window": "7d",
+        "observedAt": "2026-08-11T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "30f712b8-c281-49c3-ac9d-70a2d3044a58",
+          "stance": "bullish",
+          "relevant": true
+        },
+        {
+          "itemId": "18c74fcf-5f77-4945-9ebc-b68a4477b1ba",
+          "stance": "bearish",
+          "relevant": true
+        }
+      ],
+      "expectedDirection": "mixed",
+      "expectedAbstain": false,
+      "requiredAbstentions": [
+        "No single confident direction — the two axes disagree and both are reported, unblended (D-14)."
+      ]
+    },
+    "goldOutput": {
+      "summary": "Tesla, Inc.'s two tracked axes disagree this window: X reads more positively, Substack coverage reads more negatively.",
+      "statedFreshness": "2026-08-05",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-35",
+              "text": "The tracked X sample for Tesla, Inc. this window reads more positively.",
+              "kind": "fact",
+              "evidenceIds": [
+                "30f712b8-c281-49c3-ac9d-70a2d3044a58"
+              ],
+              "metricIds": [
+                "social.stance_x"
+              ],
+              "relatedTickers": [
+                "TSLA"
+              ],
+              "assertedDate": null
+            },
+            {
+              "claimId": "claim-36",
+              "text": "A Substack publication's coverage of Tesla, Inc. over the same window reads more negatively — the two sources disagree.",
+              "kind": "fact",
+              "evidenceIds": [
+                "18c74fcf-5f77-4945-9ebc-b68a4477b1ba"
+              ],
+              "metricIds": [
+                "social.stance_substack"
+              ],
+              "relatedTickers": [
+                "TSLA"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": false
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "1f7be1a2-663d-40ec-b4bf-c62173653cd2",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=1f7be1a2-663d-40ec-b4bf-c62173653cd2 window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "30f712b8-c281-49c3-ac9d-70a2d3044a58",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Positive-leaning post about TSLA",
+          "snippet": "$TSLA commentary describing conditions as improving.",
+          "sourceUrl": "https://example.com/evidence/45",
+          "publisher": null,
+          "authorRef": "user_45",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-05T12:00:00.000Z",
+          "availableAt": "2026-08-05T12:00:00.000Z",
+          "ingestedAt": "2026-08-05T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "d794c3ca-8fbd-4ecf-988f-c95dd5398b17",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.800000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "30f712b8-c281-49c3-ac9d-70a2d3044a58"
+      },
+      {
+        "kind": "included",
+        "item": {
+          "id": "18c74fcf-5f77-4945-9ebc-b68a4477b1ba",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "Negative-leaning coverage of Tesla, Inc.",
+          "snippet": "A newsletter piece on Tesla, Inc. describing conditions as deteriorating over the same window.",
+          "sourceUrl": "https://example.com/evidence/46",
+          "publisher": null,
+          "authorRef": "user_46",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-11T12:00:00.000Z",
+          "availableAt": "2026-08-11T12:00:00.000Z",
+          "ingestedAt": "2026-08-11T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "df4a776f-d225-4bd5-a377-502b9150ed01",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevanceScore": "0.780000",
+        "matchedVia": "company_name",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "18c74fcf-5f77-4945-9ebc-b68a4477b1ba"
+      }
+    ],
+    "excluded": [],
+    "retrievedCount": 2,
+    "usedCount": 2,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

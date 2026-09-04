@@ -1,0 +1,72 @@
+{
+  "meta": {
+    "id": "citation_unrelated_evidence-03",
+    "packId": "conflict-01",
+    "faultClass": "citation_unrelated_evidence",
+    "faultyClaimId": "claim-78",
+    "cleanClaimIds": [
+      "claim-31",
+      "claim-32"
+    ],
+    "deterministicallyCatchable": false
+  },
+  "output": {
+    "summary": "Apple Inc.'s two tracked axes disagree this window: X reads more positively, Substack coverage reads more negatively.",
+    "statedFreshness": "2026-08-03",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-31",
+            "text": "The tracked X sample for Apple Inc. this window reads more positively.",
+            "kind": "fact",
+            "evidenceIds": [
+              "5bb43599-18bb-4e34-8768-31fb9a5e7f1f"
+            ],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "AAPL"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-32",
+            "text": "A Substack publication's coverage of Apple Inc. over the same window reads more negatively — the two sources disagree.",
+            "kind": "fact",
+            "evidenceIds": [
+              "1a08ed46-3a41-40a9-9830-7917555284f2"
+            ],
+            "metricIds": [
+              "social.stance_substack"
+            ],
+            "relatedTickers": [
+              "AAPL"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-78",
+            "text": "The company changed its executive team this quarter, cited against an item that is actually about something unrelated.",
+            "kind": "fact",
+            "evidenceIds": [
+              "1a08ed46-3a41-40a9-9830-7917555284f2"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "AAPL"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": false
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "stale_date-05",
+    "packId": "sarcasm-04",
+    "faultClass": "stale_date",
+    "faultyClaimId": "claim-65",
+    "cleanClaimIds": [
+      "claim-24"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "The tone of this window's social mentions of NVIDIA Corporation is ambiguous; no directional read is drawn from it.",
+    "statedFreshness": "2026-08-07",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-24",
+            "text": "The tracked X sample for NVIDIA Corporation this window is ambiguous in tone — no confident direction is drawn from it.",
+            "kind": "fact",
+            "evidenceIds": [
+              "0e33b4db-eaee-4396-9828-f26c924604e6"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "NVDA"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-65",
+            "text": "This event is described as happening on a specific date, cited against evidence from a very different period.",
+            "kind": "fact",
+            "evidenceIds": [
+              "0e33b4db-eaee-4396-9828-f26c924604e6"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "NVDA"
+            ],
+            "assertedDate": "2026-01-01"
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

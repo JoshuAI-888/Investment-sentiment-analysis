@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "id": "wrong_number-04",
+    "packId": "clear-04",
+    "faultClass": "wrong_number",
+    "faultyClaimId": "claim-49",
+    "cleanClaimIds": [
+      "claim-7",
+      "claim-8"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "NVIDIA Corporation shows a deteriorating read across the tracked social sample this window.",
+    "statedFreshness": "2026-08-06",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-7",
+            "text": "Watched-account commentary about NVIDIA Corporation this window reads as deteriorating, drawn from the tracked X sample.",
+            "kind": "fact",
+            "evidenceIds": [
+              "45999b31-242f-4228-b770-0390bbcf5636"
+            ],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "NVDA"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-8",
+            "text": "A sector newsletter's coverage of NVIDIA Corporation is consistent with the same deteriorating read.",
+            "kind": "fact",
+            "evidenceIds": [
+              "8400ef3e-ff66-4f32-863c-d82fa08b3aa3"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "NVDA"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-49",
+            "text": "Mention growth for the window is 999.99%, well outside anything the stored metric shows.",
+            "kind": "fact",
+            "evidenceIds": [],
+            "metricIds": [
+              "attention.mention_growth"
+            ],
+            "relatedTickers": [
+              "NVDA"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": false
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

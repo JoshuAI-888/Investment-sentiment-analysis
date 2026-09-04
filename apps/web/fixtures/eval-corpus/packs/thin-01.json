@@ -1,0 +1,159 @@
+{
+  "meta": {
+    "id": "thin-01",
+    "bucket": "thin_evidence",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "AAPL",
+    "metrics": [
+      {
+        "metricId": "social.stance_x",
+        "calculationId": "calc_b6b8bdb4-c8f4-49b6-a3df-1ed39a3e1e0d",
+        "label": "X stance (shrunk)",
+        "display": "0.100000",
+        "unit": "",
+        "n": 2,
+        "window": "7d",
+        "observedAt": "2026-08-10T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "212ffd86-be2e-49ea-b571-9cf2a767e921",
+          "stance": "neutral",
+          "relevant": true
+        }
+      ],
+      "expectedDirection": "neutral",
+      "expectedAbstain": true,
+      "requiredAbstentions": [
+        "No stance score is asserted — sample size n=2 is below the n≥5 abstention floor (01-PRODUCT-SPEC.md §6.3)."
+      ]
+    },
+    "goldOutput": {
+      "summary": "Apple Inc.'s tracked sample this window is too thin for a stance read; none is asserted.",
+      "statedFreshness": "2026-08-10",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-41",
+              "text": "Only one tracked item mentions Apple Inc. this window — too thin a sample for a stance read.",
+              "kind": "fact",
+              "evidenceIds": [
+                "212ffd86-be2e-49ea-b571-9cf2a767e921"
+              ],
+              "metricIds": [],
+              "relatedTickers": [
+                "AAPL"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": true
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "7a263fee-f5ea-4e17-ab30-01fd3d38fc96",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=7a263fee-f5ea-4e17-ab30-01fd3d38fc96 window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "212ffd86-be2e-49ea-b571-9cf2a767e921",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Single post about AAPL",
+          "snippet": "One isolated mention of $AAPL this window, not enough for a stance read.",
+          "sourceUrl": "https://example.com/evidence/51",
+          "publisher": null,
+          "authorRef": "user_51",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-10T12:00:00.000Z",
+          "availableAt": "2026-08-10T12:00:00.000Z",
+          "ingestedAt": "2026-08-10T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "4cc5ebd8-d238-469d-9663-23209c9a9234",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.750000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "212ffd86-be2e-49ea-b571-9cf2a767e921"
+      }
+    ],
+    "excluded": [],
+    "retrievedCount": 1,
+    "usedCount": 1,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

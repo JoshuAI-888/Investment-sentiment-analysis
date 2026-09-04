@@ -1,0 +1,227 @@
+{
+  "meta": {
+    "id": "conflict-04",
+    "bucket": "conflicting_source",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "NVDA",
+    "metrics": [
+      {
+        "metricId": "social.stance_x",
+        "calculationId": "calc_44ade966-2f0a-4cb5-8cd8-59a9cc68a126",
+        "label": "X stance (shrunk)",
+        "display": "0.150000",
+        "unit": "",
+        "n": 7,
+        "window": "7d",
+        "observedAt": "2026-08-06T12:00:00.000Z"
+      },
+      {
+        "metricId": "social.stance_substack",
+        "calculationId": "calc_02ce4f8e-06b4-464c-9b2c-cf199df61ebe",
+        "label": "Substack stance (shrunk)",
+        "display": "-0.120000",
+        "unit": "",
+        "n": 5,
+        "window": "7d",
+        "observedAt": "2026-08-12T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "8c58c8b5-b34f-4c2b-885f-d663ed239caa",
+          "stance": "bullish",
+          "relevant": true
+        },
+        {
+          "itemId": "2f289292-006d-4c61-8f64-97c1d68c48e7",
+          "stance": "bearish",
+          "relevant": true
+        }
+      ],
+      "expectedDirection": "mixed",
+      "expectedAbstain": false,
+      "requiredAbstentions": [
+        "No single confident direction — the two axes disagree and both are reported, unblended (D-14)."
+      ]
+    },
+    "goldOutput": {
+      "summary": "NVIDIA Corporation's two tracked axes disagree this window: X reads more positively, Substack coverage reads more negatively.",
+      "statedFreshness": "2026-08-06",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-37",
+              "text": "The tracked X sample for NVIDIA Corporation this window reads more positively.",
+              "kind": "fact",
+              "evidenceIds": [
+                "8c58c8b5-b34f-4c2b-885f-d663ed239caa"
+              ],
+              "metricIds": [
+                "social.stance_x"
+              ],
+              "relatedTickers": [
+                "NVDA"
+              ],
+              "assertedDate": null
+            },
+            {
+              "claimId": "claim-38",
+              "text": "A Substack publication's coverage of NVIDIA Corporation over the same window reads more negatively — the two sources disagree.",
+              "kind": "fact",
+              "evidenceIds": [
+                "2f289292-006d-4c61-8f64-97c1d68c48e7"
+              ],
+              "metricIds": [
+                "social.stance_substack"
+              ],
+              "relatedTickers": [
+                "NVDA"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": false
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "1bfd2090-1776-481e-9a9c-64db31eeda7e",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=1bfd2090-1776-481e-9a9c-64db31eeda7e window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "8c58c8b5-b34f-4c2b-885f-d663ed239caa",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Positive-leaning post about NVDA",
+          "snippet": "$NVDA commentary describing conditions as improving.",
+          "sourceUrl": "https://example.com/evidence/47",
+          "publisher": null,
+          "authorRef": "user_47",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-06T12:00:00.000Z",
+          "availableAt": "2026-08-06T12:00:00.000Z",
+          "ingestedAt": "2026-08-06T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "f5bcf58f-0140-4515-aaac-915b85cf316e",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.800000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "8c58c8b5-b34f-4c2b-885f-d663ed239caa"
+      },
+      {
+        "kind": "included",
+        "item": {
+          "id": "2f289292-006d-4c61-8f64-97c1d68c48e7",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "Negative-leaning coverage of NVIDIA Corporation",
+          "snippet": "A newsletter piece on NVIDIA Corporation describing conditions as deteriorating over the same window.",
+          "sourceUrl": "https://example.com/evidence/48",
+          "publisher": null,
+          "authorRef": "user_48",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-12T12:00:00.000Z",
+          "availableAt": "2026-08-12T12:00:00.000Z",
+          "ingestedAt": "2026-08-12T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "fd442e7b-38a5-4efc-8632-a81af3d277a9",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevanceScore": "0.780000",
+        "matchedVia": "company_name",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "2f289292-006d-4c61-8f64-97c1d68c48e7"
+      }
+    ],
+    "excluded": [],
+    "retrievedCount": 2,
+    "usedCount": 2,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

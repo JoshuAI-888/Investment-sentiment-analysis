@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "buy_recommendation-03",
+    "packId": "sarcasm-05",
+    "faultClass": "buy_recommendation",
+    "faultyClaimId": "claim-68",
+    "cleanClaimIds": [
+      "claim-25"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "The tone of this window's social mentions of JPMorgan Chase & Co. is ambiguous; no directional read is drawn from it.",
+    "statedFreshness": "2026-08-08",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-25",
+            "text": "The tracked X sample for JPMorgan Chase & Co. this window is ambiguous in tone — no confident direction is drawn from it.",
+            "kind": "fact",
+            "evidenceIds": [
+              "2ca71a93-8aa5-46a3-83db-c701cf03284f"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "JPM"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-68",
+            "text": "Given the evidence, the stock will outperform from here.",
+            "kind": "fact",
+            "evidenceIds": [
+              "2ca71a93-8aa5-46a3-83db-c701cf03284f"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "JPM"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

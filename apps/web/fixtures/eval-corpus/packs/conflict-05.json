@@ -1,0 +1,227 @@
+{
+  "meta": {
+    "id": "conflict-05",
+    "bucket": "conflicting_source",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "JPM",
+    "metrics": [
+      {
+        "metricId": "social.stance_x",
+        "calculationId": "calc_86b0154d-5000-4862-9bd0-60cd89739c9b",
+        "label": "X stance (shrunk)",
+        "display": "0.150000",
+        "unit": "",
+        "n": 7,
+        "window": "7d",
+        "observedAt": "2026-08-07T12:00:00.000Z"
+      },
+      {
+        "metricId": "social.stance_substack",
+        "calculationId": "calc_2d00329e-62e0-4dbf-817d-d1d2f835b424",
+        "label": "Substack stance (shrunk)",
+        "display": "-0.120000",
+        "unit": "",
+        "n": 5,
+        "window": "7d",
+        "observedAt": "2026-08-13T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "33d105eb-bcdf-4769-9f3d-40170f9c1fe2",
+          "stance": "bullish",
+          "relevant": true
+        },
+        {
+          "itemId": "9f786feb-5f7c-470d-aa31-875f15e69263",
+          "stance": "bearish",
+          "relevant": true
+        }
+      ],
+      "expectedDirection": "mixed",
+      "expectedAbstain": false,
+      "requiredAbstentions": [
+        "No single confident direction — the two axes disagree and both are reported, unblended (D-14)."
+      ]
+    },
+    "goldOutput": {
+      "summary": "JPMorgan Chase & Co.'s two tracked axes disagree this window: X reads more positively, Substack coverage reads more negatively.",
+      "statedFreshness": "2026-08-07",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-39",
+              "text": "The tracked X sample for JPMorgan Chase & Co. this window reads more positively.",
+              "kind": "fact",
+              "evidenceIds": [
+                "33d105eb-bcdf-4769-9f3d-40170f9c1fe2"
+              ],
+              "metricIds": [
+                "social.stance_x"
+              ],
+              "relatedTickers": [
+                "JPM"
+              ],
+              "assertedDate": null
+            },
+            {
+              "claimId": "claim-40",
+              "text": "A Substack publication's coverage of JPMorgan Chase & Co. over the same window reads more negatively — the two sources disagree.",
+              "kind": "fact",
+              "evidenceIds": [
+                "9f786feb-5f7c-470d-aa31-875f15e69263"
+              ],
+              "metricIds": [
+                "social.stance_substack"
+              ],
+              "relatedTickers": [
+                "JPM"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": false
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "d51a8106-d30f-4708-80a7-5a4d6855a616",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=d51a8106-d30f-4708-80a7-5a4d6855a616 window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "33d105eb-bcdf-4769-9f3d-40170f9c1fe2",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Positive-leaning post about JPM",
+          "snippet": "$JPM commentary describing conditions as improving.",
+          "sourceUrl": "https://example.com/evidence/49",
+          "publisher": null,
+          "authorRef": "user_49",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-07T12:00:00.000Z",
+          "availableAt": "2026-08-07T12:00:00.000Z",
+          "ingestedAt": "2026-08-07T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "5fffaf16-4be7-4c92-8764-be91731204a6",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.800000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "33d105eb-bcdf-4769-9f3d-40170f9c1fe2"
+      },
+      {
+        "kind": "included",
+        "item": {
+          "id": "9f786feb-5f7c-470d-aa31-875f15e69263",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "Negative-leaning coverage of JPMorgan Chase & Co.",
+          "snippet": "A newsletter piece on JPMorgan Chase & Co. describing conditions as deteriorating over the same window.",
+          "sourceUrl": "https://example.com/evidence/50",
+          "publisher": null,
+          "authorRef": "user_50",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-13T12:00:00.000Z",
+          "availableAt": "2026-08-13T12:00:00.000Z",
+          "ingestedAt": "2026-08-13T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "5c2f6f49-7834-4dc0-a037-c71e6adf1f8b",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevanceScore": "0.780000",
+        "matchedVia": "company_name",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "9f786feb-5f7c-470d-aa31-875f15e69263"
+      }
+    ],
+    "excluded": [],
+    "retrievedCount": 2,
+    "usedCount": 2,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

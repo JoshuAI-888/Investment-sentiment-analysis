@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "id": "wrong_number-01",
+    "packId": "clear-01",
+    "faultClass": "wrong_number",
+    "faultyClaimId": "claim-46",
+    "cleanClaimIds": [
+      "claim-1",
+      "claim-2"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "Apple Inc. shows a improving read across the tracked social sample this window.",
+    "statedFreshness": "2026-08-03",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-1",
+            "text": "Watched-account commentary about Apple Inc. this window reads as improving, drawn from the tracked X sample.",
+            "kind": "fact",
+            "evidenceIds": [
+              "a4add868-d93a-4aec-9d46-0167dfa87791"
+            ],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "AAPL"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-2",
+            "text": "A sector newsletter's coverage of Apple Inc. is consistent with the same improving read.",
+            "kind": "fact",
+            "evidenceIds": [
+              "6343a79e-fedb-463a-bbfb-8d374f3f2779"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "AAPL"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-46",
+            "text": "Mention growth for the window is 999.99%, well outside anything the stored metric shows.",
+            "kind": "fact",
+            "evidenceIds": [],
+            "metricIds": [
+              "attention.mention_growth"
+            ],
+            "relatedTickers": [
+              "AAPL"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": false
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

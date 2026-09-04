@@ -1,0 +1,200 @@
+{
+  "meta": {
+    "id": "sarcasm-03",
+    "bucket": "sarcasm_ambiguity",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "TSLA",
+    "metrics": [
+      {
+        "metricId": "attention.mention_growth",
+        "calculationId": "calc_1cf72ec1-bc12-4149-821c-6dedea3af640",
+        "label": "Mention growth",
+        "display": "4.00",
+        "unit": "%",
+        "n": null,
+        "window": "7d",
+        "observedAt": "2026-08-08T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "9ea6dea1-7adc-455d-8c30-3c62f6ac27df",
+          "stance": "unclear",
+          "relevant": true
+        },
+        {
+          "itemId": "f775506b-2eb5-408b-a0f9-71c749f1490b",
+          "stance": "unclear",
+          "relevant": true
+        }
+      ],
+      "expectedDirection": "unclear",
+      "expectedAbstain": false,
+      "requiredAbstentions": [
+        "No stance direction asserted from tone that reads as sarcastic or ambiguous."
+      ]
+    },
+    "goldOutput": {
+      "summary": "The tone of this window's social mentions of Tesla, Inc. is ambiguous; no directional read is drawn from it.",
+      "statedFreshness": "2026-08-06",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-23",
+              "text": "The tracked X sample for Tesla, Inc. this window is ambiguous in tone — no confident direction is drawn from it.",
+              "kind": "fact",
+              "evidenceIds": [
+                "9ea6dea1-7adc-455d-8c30-3c62f6ac27df"
+              ],
+              "metricIds": [],
+              "relatedTickers": [
+                "TSLA"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": true
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "61d3396f-3e75-4265-86d3-e6438acc1155",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=61d3396f-3e75-4265-86d3-e6438acc1155 window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "9ea6dea1-7adc-455d-8c30-3c62f6ac27df",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Ambiguous post about TSLA",
+          "snippet": "\"Oh great, another TSLA conference call, exactly what I needed\" — tone reads as sarcastic, no clear direction.",
+          "sourceUrl": "https://example.com/evidence/25",
+          "publisher": null,
+          "authorRef": "user_25",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-06T12:00:00.000Z",
+          "availableAt": "2026-08-06T12:00:00.000Z",
+          "ingestedAt": "2026-08-06T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "7efe4da8-f3cf-424a-acba-87b2f2365f63",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.700000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "9ea6dea1-7adc-455d-8c30-3c62f6ac27df"
+      },
+      {
+        "kind": "included",
+        "item": {
+          "id": "f775506b-2eb5-408b-a0f9-71c749f1490b",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "Mixed-tone mention of Tesla, Inc.",
+          "snippet": "A short aside about Tesla, Inc. that could read either way depending on delivery.",
+          "sourceUrl": "https://example.com/evidence/26",
+          "publisher": null,
+          "authorRef": "user_26",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-09T12:00:00.000Z",
+          "availableAt": "2026-08-09T12:00:00.000Z",
+          "ingestedAt": "2026-08-09T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "9fd5b5e4-37cb-4896-b97a-57b515542426",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevanceScore": "0.650000",
+        "matchedVia": "company_name",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "f775506b-2eb5-408b-a0f9-71c749f1490b"
+      }
+    ],
+    "excluded": [],
+    "retrievedCount": 2,
+    "usedCount": 2,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

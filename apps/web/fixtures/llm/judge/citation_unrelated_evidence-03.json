@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "body": {
+    "modelId": "google/gemini-3-pro",
+    "tokensIn": 400,
+    "tokensOut": 120,
+    "costUsd": "0.002000",
+    "content": "{\"c1\":3,\"c2\":2,\"c3\":3,\"c4\":3,\"violations\":[\"citation does not support the claim\"],\"rationale\":\"The cited item is present but does not actually back this claim.\"}"
+  }
+}

@@ -1,0 +1,159 @@
+{
+  "meta": {
+    "id": "thin-04",
+    "bucket": "thin_evidence",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "NVDA",
+    "metrics": [
+      {
+        "metricId": "social.stance_x",
+        "calculationId": "calc_1190a4e7-1fc7-4dc9-850f-0452f66785ce",
+        "label": "X stance (shrunk)",
+        "display": "0.100000",
+        "unit": "",
+        "n": 2,
+        "window": "7d",
+        "observedAt": "2026-08-13T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "cf87c150-d627-43bc-82b6-d5cd62925c53",
+          "stance": "neutral",
+          "relevant": true
+        }
+      ],
+      "expectedDirection": "neutral",
+      "expectedAbstain": true,
+      "requiredAbstentions": [
+        "No stance score is asserted — sample size n=2 is below the n≥5 abstention floor (01-PRODUCT-SPEC.md §6.3)."
+      ]
+    },
+    "goldOutput": {
+      "summary": "NVIDIA Corporation's tracked sample this window is too thin for a stance read; none is asserted.",
+      "statedFreshness": "2026-08-13",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-44",
+              "text": "Only one tracked item mentions NVIDIA Corporation this window — too thin a sample for a stance read.",
+              "kind": "fact",
+              "evidenceIds": [
+                "cf87c150-d627-43bc-82b6-d5cd62925c53"
+              ],
+              "metricIds": [],
+              "relatedTickers": [
+                "NVDA"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": true
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "e4a90ff4-ee1d-4055-8c49-ca7547df0bd3",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=e4a90ff4-ee1d-4055-8c49-ca7547df0bd3 window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "cf87c150-d627-43bc-82b6-d5cd62925c53",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Single post about NVDA",
+          "snippet": "One isolated mention of $NVDA this window, not enough for a stance read.",
+          "sourceUrl": "https://example.com/evidence/54",
+          "publisher": null,
+          "authorRef": "user_54",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-13T12:00:00.000Z",
+          "availableAt": "2026-08-13T12:00:00.000Z",
+          "ingestedAt": "2026-08-13T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "28f0824d-f362-44dd-8fe9-5d034b8e5673",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.750000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "cf87c150-d627-43bc-82b6-d5cd62925c53"
+      }
+    ],
+    "excluded": [],
+    "retrievedCount": 1,
+    "usedCount": 1,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "meta": {
+    "id": "fabricated_evidence_id-03",
+    "packId": "conflict-04",
+    "faultClass": "fabricated_evidence_id",
+    "faultyClaimId": "claim-88",
+    "cleanClaimIds": [
+      "claim-37",
+      "claim-38"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "NVIDIA Corporation's two tracked axes disagree this window: X reads more positively, Substack coverage reads more negatively.",
+    "statedFreshness": "2026-08-06",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-37",
+            "text": "The tracked X sample for NVIDIA Corporation this window reads more positively.",
+            "kind": "fact",
+            "evidenceIds": [
+              "8c58c8b5-b34f-4c2b-885f-d663ed239caa"
+            ],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "NVDA"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-38",
+            "text": "A Substack publication's coverage of NVIDIA Corporation over the same window reads more negatively — the two sources disagree.",
+            "kind": "fact",
+            "evidenceIds": [
+              "2f289292-006d-4c61-8f64-97c1d68c48e7"
+            ],
+            "metricIds": [
+              "social.stance_substack"
+            ],
+            "relatedTickers": [
+              "NVDA"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-88",
+            "text": "This claim cites an evidence item that does not actually exist in the run's pack.",
+            "kind": "fact",
+            "evidenceIds": [
+              "320c8cdf-54a2-4a79-991a-ce1c694e2e68"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "NVDA"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": false
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "id": "wrong_number-03",
+    "packId": "clear-03",
+    "faultClass": "wrong_number",
+    "faultyClaimId": "claim-48",
+    "cleanClaimIds": [
+      "claim-5",
+      "claim-6"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "Tesla, Inc. shows a improving read across the tracked social sample this window.",
+    "statedFreshness": "2026-08-05",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-5",
+            "text": "Watched-account commentary about Tesla, Inc. this window reads as improving, drawn from the tracked X sample.",
+            "kind": "fact",
+            "evidenceIds": [
+              "1e6a7d8d-48bc-4c0d-86e0-89820a56f8d9"
+            ],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "TSLA"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-6",
+            "text": "A sector newsletter's coverage of Tesla, Inc. is consistent with the same improving read.",
+            "kind": "fact",
+            "evidenceIds": [
+              "4573b5b5-2f1c-4103-84d0-aecdb2e4e2d2"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "TSLA"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-48",
+            "text": "Mention growth for the window is 999.99%, well outside anything the stored metric shows.",
+            "kind": "fact",
+            "evidenceIds": [],
+            "metricIds": [
+              "attention.mention_growth"
+            ],
+            "relatedTickers": [
+              "TSLA"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": false
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

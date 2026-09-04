@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "price_target-03",
+    "packId": "collision-03",
+    "faultClass": "price_target",
+    "faultyClaimId": "claim-73",
+    "cleanClaimIds": [
+      "claim-28"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "This window's confirmed evidence for Tesla, Inc. excludes one bare-token, unconfirmed collision.",
+    "statedFreshness": "2026-08-06",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-28",
+            "text": "The confirmed mentions of Tesla, Inc. this window are limited to the unambiguous cashtag usage; a same-letters bare-token post was excluded as unconfirmed.",
+            "kind": "fact",
+            "evidenceIds": [
+              "e0f24274-9ea8-445d-bd3f-07ff0811345c"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "TSLA"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-73",
+            "text": "This window's evidence sets a price target for the shares.",
+            "kind": "fact",
+            "evidenceIds": [
+              "e0f24274-9ea8-445d-bd3f-07ff0811345c"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "TSLA"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "meta": {
+    "id": "citation_unrelated_evidence-04",
+    "packId": "conflict-02",
+    "faultClass": "citation_unrelated_evidence",
+    "faultyClaimId": "claim-79",
+    "cleanClaimIds": [
+      "claim-33",
+      "claim-34"
+    ],
+    "deterministicallyCatchable": false
+  },
+  "output": {
+    "summary": "Microsoft Corporation's two tracked axes disagree this window: X reads more positively, Substack coverage reads more negatively.",
+    "statedFreshness": "2026-08-04",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-33",
+            "text": "The tracked X sample for Microsoft Corporation this window reads more positively.",
+            "kind": "fact",
+            "evidenceIds": [
+              "b1d1b3fa-fd7b-4d43-b5cc-0a7eda94124c"
+            ],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "MSFT"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-34",
+            "text": "A Substack publication's coverage of Microsoft Corporation over the same window reads more negatively — the two sources disagree.",
+            "kind": "fact",
+            "evidenceIds": [
+              "d9a3a70a-fa07-4a92-8a7d-49af764d3017"
+            ],
+            "metricIds": [
+              "social.stance_substack"
+            ],
+            "relatedTickers": [
+              "MSFT"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-79",
+            "text": "The company changed its executive team this quarter, cited against an item that is actually about something unrelated.",
+            "kind": "fact",
+            "evidenceIds": [
+              "d9a3a70a-fa07-4a92-8a7d-49af764d3017"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "MSFT"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": false
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

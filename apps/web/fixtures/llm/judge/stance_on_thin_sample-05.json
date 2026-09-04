@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "body": {
+    "modelId": "google/gemini-3-pro",
+    "tokensIn": 400,
+    "tokensOut": 120,
+    "costUsd": "0.002000",
+    "content": "{\"c1\":2,\"c2\":2,\"c3\":3,\"c4\":3,\"violations\":[\"stance asserted on a thin sample\"],\"rationale\":\"A stance is asserted from a sample below the abstention floor.\"}"
+  }
+}

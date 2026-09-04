@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "citation_unrelated_evidence-02",
+    "packId": "collision-05",
+    "faultClass": "citation_unrelated_evidence",
+    "faultyClaimId": "claim-77",
+    "cleanClaimIds": [
+      "claim-30"
+    ],
+    "deterministicallyCatchable": false
+  },
+  "output": {
+    "summary": "This window's confirmed evidence for JPMorgan Chase & Co. excludes one bare-token, unconfirmed collision.",
+    "statedFreshness": "2026-08-08",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-30",
+            "text": "The confirmed mentions of JPMorgan Chase & Co. this window are limited to the unambiguous cashtag usage; a same-letters bare-token post was excluded as unconfirmed.",
+            "kind": "fact",
+            "evidenceIds": [
+              "f34c1dd3-07c3-47a9-9270-102b7aa167d8"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "JPM"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-77",
+            "text": "The company changed its executive team this quarter, cited against an item that is actually about something unrelated.",
+            "kind": "fact",
+            "evidenceIds": [
+              "f34c1dd3-07c3-47a9-9270-102b7aa167d8"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "JPM"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

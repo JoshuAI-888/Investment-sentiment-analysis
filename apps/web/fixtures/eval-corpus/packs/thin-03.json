@@ -1,0 +1,159 @@
+{
+  "meta": {
+    "id": "thin-03",
+    "bucket": "thin_evidence",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "TSLA",
+    "metrics": [
+      {
+        "metricId": "social.stance_x",
+        "calculationId": "calc_c7fe008d-b401-45ca-a479-b01120a1362c",
+        "label": "X stance (shrunk)",
+        "display": "0.100000",
+        "unit": "",
+        "n": 2,
+        "window": "7d",
+        "observedAt": "2026-08-12T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "a59951dc-a82d-4c00-bd1c-d5e6f2182b57",
+          "stance": "neutral",
+          "relevant": true
+        }
+      ],
+      "expectedDirection": "neutral",
+      "expectedAbstain": true,
+      "requiredAbstentions": [
+        "No stance score is asserted — sample size n=2 is below the n≥5 abstention floor (01-PRODUCT-SPEC.md §6.3)."
+      ]
+    },
+    "goldOutput": {
+      "summary": "Tesla, Inc.'s tracked sample this window is too thin for a stance read; none is asserted.",
+      "statedFreshness": "2026-08-12",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-43",
+              "text": "Only one tracked item mentions Tesla, Inc. this window — too thin a sample for a stance read.",
+              "kind": "fact",
+              "evidenceIds": [
+                "a59951dc-a82d-4c00-bd1c-d5e6f2182b57"
+              ],
+              "metricIds": [],
+              "relatedTickers": [
+                "TSLA"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": true
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "13e24063-cfd6-4572-8e64-d7f0fc06626f",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=13e24063-cfd6-4572-8e64-d7f0fc06626f window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "a59951dc-a82d-4c00-bd1c-d5e6f2182b57",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Single post about TSLA",
+          "snippet": "One isolated mention of $TSLA this window, not enough for a stance read.",
+          "sourceUrl": "https://example.com/evidence/53",
+          "publisher": null,
+          "authorRef": "user_53",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-12T12:00:00.000Z",
+          "availableAt": "2026-08-12T12:00:00.000Z",
+          "ingestedAt": "2026-08-12T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "e9b325dd-3cff-4af9-a473-6ba76b1da9d6",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.750000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "a59951dc-a82d-4c00-bd1c-d5e6f2182b57"
+      }
+    ],
+    "excluded": [],
+    "retrievedCount": 1,
+    "usedCount": 1,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "id": "swapped_ticker-03",
+    "packId": "clear-06",
+    "faultClass": "swapped_ticker",
+    "faultyClaimId": "claim-53",
+    "cleanClaimIds": [
+      "claim-11",
+      "claim-12"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "Exxon Mobil Corporation shows a improving read across the tracked social sample this window.",
+    "statedFreshness": "2026-08-03",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-11",
+            "text": "Watched-account commentary about Exxon Mobil Corporation this window reads as improving, drawn from the tracked X sample.",
+            "kind": "fact",
+            "evidenceIds": [
+              "359ae2f3-fe46-476f-8860-3e425ea20f9f"
+            ],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "XOM"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-12",
+            "text": "A sector newsletter's coverage of Exxon Mobil Corporation is consistent with the same improving read.",
+            "kind": "fact",
+            "evidenceIds": [
+              "15005ded-076c-458f-8d69-35f8e90c3e60"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "XOM"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-53",
+            "text": "This claim is framed about the subject security but is mistakenly tagged to an unrelated ticker.",
+            "kind": "fact",
+            "evidenceIds": [
+              "359ae2f3-fe46-476f-8860-3e425ea20f9f"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "SPY"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": false
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "price_target-01",
+    "packId": "collision-01",
+    "faultClass": "price_target",
+    "faultyClaimId": "claim-71",
+    "cleanClaimIds": [
+      "claim-26"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "This window's confirmed evidence for Apple Inc. excludes one bare-token, unconfirmed collision.",
+    "statedFreshness": "2026-08-04",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-26",
+            "text": "The confirmed mentions of Apple Inc. this window are limited to the unambiguous cashtag usage; a same-letters bare-token post was excluded as unconfirmed.",
+            "kind": "fact",
+            "evidenceIds": [
+              "a76fab28-305d-4e99-9fe0-55f672d7be26"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "AAPL"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-71",
+            "text": "This window's evidence sets a price target for the shares.",
+            "kind": "fact",
+            "evidenceIds": [
+              "a76fab28-305d-4e99-9fe0-55f672d7be26"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "AAPL"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

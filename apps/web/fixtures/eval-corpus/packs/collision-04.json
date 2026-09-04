@@ -1,0 +1,209 @@
+{
+  "meta": {
+    "id": "collision-04",
+    "bucket": "ticker_collision",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "NVDA",
+    "metrics": [
+      {
+        "metricId": "attention.mention_growth",
+        "calculationId": "calc_9dcc70e7-45f9-4ae3-bae1-efd2876a95f0",
+        "label": "Mention growth",
+        "display": "6.00",
+        "unit": "%",
+        "n": null,
+        "window": "7d",
+        "observedAt": "2026-08-08T12:00:00.000Z"
+      },
+      {
+        "metricId": "social.stance_x",
+        "calculationId": "calc_a35fd6a3-0804-4dc8-b603-e495a2477fd3",
+        "label": "X stance (shrunk)",
+        "display": "0.300000",
+        "unit": "",
+        "n": 6,
+        "window": "7d",
+        "observedAt": "2026-08-07T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "ea82963f-1a62-4a3a-b197-4646d1a7a835",
+          "stance": "neutral",
+          "relevant": true
+        },
+        {
+          "itemId": "dd78558e-0c86-4bd8-97f2-cc80ca2439e3",
+          "stance": "neutral",
+          "relevant": false
+        }
+      ],
+      "expectedDirection": "neutral",
+      "expectedAbstain": false,
+      "requiredAbstentions": [
+        "No stance drawn from the unconfirmed collided-ticker item; it must stay excluded."
+      ]
+    },
+    "goldOutput": {
+      "summary": "This window's confirmed evidence for NVIDIA Corporation excludes one bare-token, unconfirmed collision.",
+      "statedFreshness": "2026-08-07",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-29",
+              "text": "The confirmed mentions of NVIDIA Corporation this window are limited to the unambiguous cashtag usage; a same-letters bare-token post was excluded as unconfirmed.",
+              "kind": "fact",
+              "evidenceIds": [
+                "ea82963f-1a62-4a3a-b197-4646d1a7a835"
+              ],
+              "metricIds": [],
+              "relatedTickers": [
+                "NVDA"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": true
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "ebcc5619-c6b6-4980-811d-1a0ab2de216c",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=ebcc5619-c6b6-4980-811d-1a0ab2de216c window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "ea82963f-1a62-4a3a-b197-4646d1a7a835",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Confirmed post about NVDA",
+          "snippet": "$NVDA discussed alongside NVIDIA Corporation's own name, unambiguous.",
+          "sourceUrl": "https://example.com/evidence/37",
+          "publisher": null,
+          "authorRef": "user_37",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-07T12:00:00.000Z",
+          "availableAt": "2026-08-07T12:00:00.000Z",
+          "ingestedAt": "2026-08-07T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "11a73902-4696-4e89-8f63-b3a6f6a5ad9f",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.880000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "ea82963f-1a62-4a3a-b197-4646d1a7a835"
+      }
+    ],
+    "excluded": [
+      {
+        "kind": "excluded",
+        "item": {
+          "id": "dd78558e-0c86-4bd8-97f2-cc80ca2439e3",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Bare-token post using the same letters as NVDA",
+          "snippet": "A post using the bare token 'NVDA' in a sentence about something else entirely, with no corroborating context.",
+          "sourceUrl": "https://example.com/evidence/38",
+          "publisher": null,
+          "authorRef": "user_38",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-09T12:00:00.000Z",
+          "availableAt": "2026-08-09T12:00:00.000Z",
+          "ingestedAt": "2026-08-09T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "2e34a660-5c8e-4d75-8d49-7dc2f2f87ece",
+          "metadata": {}
+        },
+        "axis": "x",
+        "reason": "ticker_collision_unconfirmed",
+        "detail": "bare token 'NVDA' with no deterministic corroboration; entity.collision_guard did not confirm it"
+      }
+    ],
+    "retrievedCount": 2,
+    "usedCount": 1,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 2,
+        "usedCount": 1,
+        "exclusions": [
+          {
+            "reason": "ticker_collision_unconfirmed",
+            "count": 1
+          }
+        ],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

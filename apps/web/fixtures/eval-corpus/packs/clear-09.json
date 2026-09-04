@@ -1,0 +1,225 @@
+{
+  "meta": {
+    "id": "clear-09",
+    "bucket": "clear_stance",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "DIS",
+    "metrics": [
+      {
+        "metricId": "attention.mention_growth",
+        "calculationId": "calc_88c1bcc0-e41b-4d89-8b60-3e3573039de4",
+        "label": "Mention growth",
+        "display": "12.50",
+        "unit": "%",
+        "n": null,
+        "window": "7d",
+        "observedAt": "2026-08-09T12:00:00.000Z"
+      },
+      {
+        "metricId": "social.stance_x",
+        "calculationId": "calc_117c3abb-0bc2-4b4d-82aa-2d15b0f5cb34",
+        "label": "X stance (shrunk)",
+        "display": "0.400000",
+        "unit": "",
+        "n": 8,
+        "window": "7d",
+        "observedAt": "2026-08-06T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "1832f1cd-8f90-4b85-a563-b17c44350030",
+          "stance": "bearish",
+          "relevant": true
+        },
+        {
+          "itemId": "03ecd9c6-2448-483c-bef9-c07778e94728",
+          "stance": "bearish",
+          "relevant": true
+        }
+      ],
+      "expectedDirection": "bearish",
+      "expectedAbstain": false,
+      "requiredAbstentions": [
+        "No price target or buy/sell recommendation language."
+      ]
+    },
+    "goldOutput": {
+      "summary": "The Walt Disney Company shows a deteriorating read across the tracked social sample this window.",
+      "statedFreshness": "2026-08-06",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-17",
+              "text": "Watched-account commentary about The Walt Disney Company this window reads as deteriorating, drawn from the tracked X sample.",
+              "kind": "fact",
+              "evidenceIds": [
+                "1832f1cd-8f90-4b85-a563-b17c44350030"
+              ],
+              "metricIds": [
+                "social.stance_x"
+              ],
+              "relatedTickers": [
+                "DIS"
+              ],
+              "assertedDate": null
+            },
+            {
+              "claimId": "claim-18",
+              "text": "A sector newsletter's coverage of The Walt Disney Company is consistent with the same deteriorating read.",
+              "kind": "fact",
+              "evidenceIds": [
+                "03ecd9c6-2448-483c-bef9-c07778e94728"
+              ],
+              "metricIds": [],
+              "relatedTickers": [
+                "DIS"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": false
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "2b456256-28e9-457e-8796-631eab13cfa1",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=2b456256-28e9-457e-8796-631eab13cfa1 window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "1832f1cd-8f90-4b85-a563-b17c44350030",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Watched-account post about DIS",
+          "snippet": "$DIS commentary describing conditions as deteriorating this week.",
+          "sourceUrl": "https://example.com/evidence/17",
+          "publisher": null,
+          "authorRef": "user_17",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-06T12:00:00.000Z",
+          "availableAt": "2026-08-06T12:00:00.000Z",
+          "ingestedAt": "2026-08-06T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "560ed6ee-2268-4522-af1f-c76de4900e3b",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.910000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "1832f1cd-8f90-4b85-a563-b17c44350030"
+      },
+      {
+        "kind": "included",
+        "item": {
+          "id": "03ecd9c6-2448-483c-bef9-c07778e94728",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "Sector newsletter mentions The Walt Disney Company",
+          "snippet": "A curated publication notes The Walt Disney Company's recent activity as deteriorating.",
+          "sourceUrl": "https://example.com/evidence/18",
+          "publisher": null,
+          "authorRef": "user_18",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-08T12:00:00.000Z",
+          "availableAt": "2026-08-08T12:00:00.000Z",
+          "ingestedAt": "2026-08-08T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "4e3d095d-e53e-4b64-9e51-585f48f0c15a",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevanceScore": "0.870000",
+        "matchedVia": "company_name",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "03ecd9c6-2448-483c-bef9-c07778e94728"
+      }
+    ],
+    "excluded": [],
+    "retrievedCount": 2,
+    "usedCount": 2,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

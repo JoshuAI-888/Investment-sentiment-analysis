@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "price_target-02",
+    "packId": "collision-02",
+    "faultClass": "price_target",
+    "faultyClaimId": "claim-72",
+    "cleanClaimIds": [
+      "claim-27"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "This window's confirmed evidence for Microsoft Corporation excludes one bare-token, unconfirmed collision.",
+    "statedFreshness": "2026-08-05",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-27",
+            "text": "The confirmed mentions of Microsoft Corporation this window are limited to the unambiguous cashtag usage; a same-letters bare-token post was excluded as unconfirmed.",
+            "kind": "fact",
+            "evidenceIds": [
+              "b4ebcb52-4dcc-463c-862d-826ef0817be5"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "MSFT"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-72",
+            "text": "This window's evidence sets a price target for the shares.",
+            "kind": "fact",
+            "evidenceIds": [
+              "b4ebcb52-4dcc-463c-862d-826ef0817be5"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "MSFT"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}
