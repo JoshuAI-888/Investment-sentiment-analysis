@@ -23,7 +23,11 @@
  */
 import { z } from 'zod';
 import { providerId, type ProviderId } from '@/contracts/provider';
-import { ATTENTION_POLL_JOB_KEY, MARKET_DATA_POLL_JOB_KEY } from '@/services/jobs/collectors';
+import {
+  ATTENTION_POLL_JOB_KEY,
+  MARKET_DATA_POLL_JOB_KEY,
+  SUBSTACK_POLL_JOB_KEY,
+} from '@/services/jobs/collectors';
 import { X_SAMPLING_WINDOW_JOB_KEY } from '@/services/jobs/trigger';
 import { MODEL_TASKS } from '@/services/llm/ports';
 import { SCORER_IDS } from '@/adapters/scorer';
@@ -145,7 +149,12 @@ export const PIPELINE: readonly PipelineStage[] = [
     description:
       'Provider adapters poll each source on its own cadence (D-15: broad and continuous on the free sources, X spent only when the price trigger fires). Every adapter call returns a typed ProviderResult — success or a named failure kind — and none of them throws for an expected condition, so one provider outage never stops the loop for the others.',
     providers: ['apewisdom', 'market', 'fmp', 'marketaux', 'sec_edgar', 'fred', 'substack', 'x'],
-    jobKeys: [MARKET_DATA_POLL_JOB_KEY, ATTENTION_POLL_JOB_KEY, X_SAMPLING_WINDOW_JOB_KEY],
+    jobKeys: [
+      MARKET_DATA_POLL_JOB_KEY,
+      ATTENTION_POLL_JOB_KEY,
+      SUBSTACK_POLL_JOB_KEY,
+      X_SAMPLING_WINDOW_JOB_KEY,
+    ],
   },
   {
     id: 'raw_store',
@@ -220,6 +229,14 @@ export const JOBS: readonly JobTopology[] = [
     description:
       "Polls the ApeWisdom board (D-30) that both selects and ranks the 100-symbol universe. Because the same instrument selects and ranks, attention level is not independently interpretable — only rank change is (see the Formulas tab's limitations for attention.rank_change).",
     providers: ['apewisdom'],
+    wired: true,
+  },
+  {
+    jobKey: SUBSTACK_POLL_JOB_KEY,
+    label: 'Substack poll',
+    description:
+      "Polls the 13-publication, 10-of-11-GICS-sector confirmed set (D-29, DEPLOY.md MT-15) daily. Reddit is not sourced for the legacy product at all (D-39) — this is now the legacy product's only text-narrative channel with zero lead time. Full content:encoded HTML is retained (D-17); dedup is guid-scoped, a deliberate departure from the other collectors' full-payload hashing.",
+    providers: ['substack'],
     wired: true,
   },
   {

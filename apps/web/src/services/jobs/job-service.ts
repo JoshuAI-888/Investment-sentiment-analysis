@@ -27,8 +27,10 @@ import { getPool, type Queryable } from '@/repositories/client';
 import {
   ATTENTION_POLL_JOB_KEY,
   MARKET_DATA_POLL_JOB_KEY,
+  SUBSTACK_POLL_JOB_KEY,
   runAttentionPoll,
   runMarketDataPoll,
+  runSubstackPoll,
   type CollectorRunResult,
 } from './collectors';
 import { X_SAMPLING_WINDOW_JOB_KEY, type TriggerDispatchRequest } from './trigger';
@@ -65,6 +67,7 @@ const stubXSamplingWindowHandler: JobHandler = (_job, _db, _now) =>
 const DISPATCH_TABLE: Readonly<Record<string, JobHandler>> = {
   [MARKET_DATA_POLL_JOB_KEY]: (job, db, now) => runMarketDataPoll(job, db, now),
   [ATTENTION_POLL_JOB_KEY]: (_job, db, now) => runAttentionPoll(db, now),
+  [SUBSTACK_POLL_JOB_KEY]: (_job, db, now) => runSubstackPoll(db, now),
   [X_SAMPLING_WINDOW_JOB_KEY]: stubXSamplingWindowHandler,
 };
 
