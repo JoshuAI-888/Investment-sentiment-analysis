@@ -10,11 +10,20 @@
  * implementation needs from F11 once it merges.
  *
  * **Blindness is enforced by construction, not by convention.** `buildJudgeInput` takes only an
- * answer string, an evidence-pack's item texts, and stored metric values — there is no
+ * answer string, an evidence-pack's items, and stored metric values — there is no
  * `synthesisPrompt` parameter anywhere in this file's signatures for a caller to accidentally
  * thread through. `tests/unit/services/eval/judge-blind.test.ts` asserts this by construction:
- * it passes a synthesis-prompt-shaped string alongside the inputs this module actually accepts
- * and confirms it cannot appear in the built `JudgeInput`.
+ * it plants a canary in every field this module actually reads and confirms it surfaces only
+ * where it should, and plants one in every field it does *not* read (`metadata`, `sourceUrl`,
+ * `publisher`, `authorRef`) and confirms it never appears at all.
+ *
+ * **Review finding (lane-review round 1).** The evidence the judge saw used to be bare title +
+ * snippet strings, with no id and no date. That made two of `05-TEST-STRATEGY.md` §5.2's nine
+ * fault classes structurally undetectable: `fabricated_evidence_id` (there was no set of real
+ * ids to check a citation against) and `stale_date` (there was no date to compare a freshness
+ * claim to). `JudgeEvidenceItem` (`contracts.ts`) now carries `id`, `publishedAt` and
+ * `availableAt` alongside the text, so both are checkable in principle from the input the judge
+ * actually receives.
  */
 import type { ClassifiedItem } from '@/contracts/evidence-pack';
 import { judgeInput, judgeResponse, type JudgeInput, type JudgeResponse, type StoredMetricValue } from './contracts';
@@ -40,7 +49,8 @@ function evidenceItemText(item: ClassifiedItem): string {
 /**
  * Builds exactly what F12 §4.3 allows the judge to see. There is no code path from a
  * synthesiser's prompt or chain-of-thought into this object — the function's parameter list is
- * the enforcement.
+ * the enforcement, and only `id`, text, and the two dates are read off each item; `sourceUrl`,
+ * `publisher`, `authorRef`, `rawHash` and `metadata` never enter it.
  */
 export function buildJudgeInput(input: {
   answerText: string;
@@ -49,7 +59,12 @@ export function buildJudgeInput(input: {
 }): JudgeInput {
   return judgeInput.parse({
     answerText: input.answerText,
-    evidenceText: input.items.map(evidenceItemText),
+    evidence: input.items.map((classifiedItem) => ({
+      id: classifiedItem.item.id,
+      text: evidenceItemText(classifiedItem),
+      publishedAt: classifiedItem.item.publishedAt,
+      availableAt: classifiedItem.item.availableAt,
+    })),
     storedMetrics: input.storedMetrics,
   });
 }

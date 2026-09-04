@@ -12,6 +12,7 @@
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import Decimal from 'decimal.js';
 import { evalRunRecord, type EvalRunRecord } from './contracts';
 
 export type EvalResultStore = {
@@ -62,8 +63,9 @@ export function createFileEvalResultStore(filePath: string): EvalResultStore {
 export type RunComparison = {
   previousRunId: string;
   currentRunId: string;
-  overallMeanDelta: number;
-  perAxisDelta: { c1: number; c2: number; c3: number; c4: number };
+  /** Decimal strings, signed — `gate.ts`'s `perAxisMean`/`overallMean` are decimal strings too. */
+  overallMeanDelta: string;
+  perAxisDelta: { c1: string; c2: string; c3: string; c4: string };
   modelRouteChanged: boolean;
   verifierCatchRateChanged: boolean;
   /** §4.5: "an unexplained score movement between runs is investigated, not accepted." */
@@ -76,16 +78,19 @@ export type RunComparison = {
  * temperature 0 against a byte-identical, frozen corpus should reproduce near-exactly, so any
  * larger drift with no route change is exactly the "investigated, not accepted" case.
  */
-const UNEXPLAINED_MOVEMENT_TOLERANCE = 0.01;
+const UNEXPLAINED_MOVEMENT_TOLERANCE = '0.01';
+
+/** `current - previous`, in `decimal.js` — `gate.ts`'s means are decimal strings end to end, never JS numbers. */
+function delta(current: string, previous: string): Decimal {
+  return new Decimal(current).minus(previous);
+}
 
 export function compareRuns(previous: EvalRunRecord, current: EvalRunRecord): RunComparison {
-  const perAxisDelta = {
-    c1: current.tierC.perAxisMean.c1 - previous.tierC.perAxisMean.c1,
-    c2: current.tierC.perAxisMean.c2 - previous.tierC.perAxisMean.c2,
-    c3: current.tierC.perAxisMean.c3 - previous.tierC.perAxisMean.c3,
-    c4: current.tierC.perAxisMean.c4 - previous.tierC.perAxisMean.c4,
-  };
-  const overallMeanDelta = current.tierC.overallMean - previous.tierC.overallMean;
+  const c1Delta = delta(current.tierC.perAxisMean.c1, previous.tierC.perAxisMean.c1);
+  const c2Delta = delta(current.tierC.perAxisMean.c2, previous.tierC.perAxisMean.c2);
+  const c3Delta = delta(current.tierC.perAxisMean.c3, previous.tierC.perAxisMean.c3);
+  const c4Delta = delta(current.tierC.perAxisMean.c4, previous.tierC.perAxisMean.c4);
+  const overallMeanDelta = delta(current.tierC.overallMean, previous.tierC.overallMean);
 
   const modelRouteChanged =
     previous.modelRoute.judgeModelId !== current.modelRoute.judgeModelId ||
@@ -94,13 +99,13 @@ export function compareRuns(previous: EvalRunRecord, current: EvalRunRecord): Ru
   const verifierCatchRateChanged = previous.verifier?.catchRate !== current.verifier?.catchRate;
 
   const unexplainedMovement =
-    !modelRouteChanged && Math.abs(overallMeanDelta) > UNEXPLAINED_MOVEMENT_TOLERANCE;
+    !modelRouteChanged && overallMeanDelta.abs().greaterThan(UNEXPLAINED_MOVEMENT_TOLERANCE);
 
   return {
     previousRunId: previous.runId,
     currentRunId: current.runId,
-    overallMeanDelta,
-    perAxisDelta,
+    overallMeanDelta: overallMeanDelta.toFixed(4),
+    perAxisDelta: { c1: c1Delta.toFixed(4), c2: c2Delta.toFixed(4), c3: c3Delta.toFixed(4), c4: c4Delta.toFixed(4) },
     modelRouteChanged,
     verifierCatchRateChanged,
     unexplainedMovement,

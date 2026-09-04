@@ -2,9 +2,15 @@
  * Calibration (F12 §4.4, `DEPLOY.md` MT-11). A script/function that samples answers for the
  * owner to hand-score, then reports Spearman correlation between human and judge scores.
  * Non-blocking to the loop; blocking to any claim that the Tier C gate means something.
+ *
+ * The actual entry point the owner runs is `scripts/calibration-report.ts`, which uses
+ * `reduceToScalar` and `sampleForCalibration`/`computeCalibration` below (lane-review round 1
+ * finding 7: this file previously had the library functions but no script and no reduction
+ * function, so DoD item 7 could not be honestly checked).
  */
+import Decimal from 'decimal.js';
 import { spearmanCorrelation } from './spearman';
-import type { CalibrationResult } from './contracts';
+import type { CalibrationResult, JudgeResponse } from './contracts';
 
 export const CALIBRATION_SAMPLE_SIZE = 20;
 export const CALIBRATION_SPEARMAN_THRESHOLD = '0.7';
@@ -14,6 +20,21 @@ export type CalibrationSample = {
   humanScore: number;
   judgeScore: number;
 };
+
+/**
+ * Reduces a full four-axis `JudgeResponse` to the single scalar MT-11 correlates against the
+ * owner's hand-score: the mean across the same four axes the owner is asked to score on ("the
+ * same rubric", F12 §4.4). `decimal.js` because this is a mean of small integers, the same
+ * near-threshold-rounding concern `gate.ts`'s `axisMean` exists to avoid.
+ */
+export function reduceToScalar(response: Pick<JudgeResponse, 'c1' | 'c2' | 'c3' | 'c4'>): number {
+  return new Decimal(response.c1)
+    .plus(response.c2)
+    .plus(response.c3)
+    .plus(response.c4)
+    .dividedBy(4)
+    .toNumber();
+}
 
 /**
  * Fisher-Yates over a copy of `pool` — never mutates the caller's array. `rng` is injected so

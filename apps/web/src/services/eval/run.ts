@@ -3,10 +3,18 @@
  * Tier B/C verdicts, and fails the build on a gate breach"). The "fails the build" half is the
  * vitest assertions in `tests/eval/`, not this module — this module only computes and renders.
  */
+import Decimal from 'decimal.js';
 import type { CorpusJudgeResult } from './gate';
 import { evaluateTierCGate } from './gate';
-import type { CalibrationResult, EvalModelRoute, EvalRunRecord, SeededErrorAnswer } from './contracts';
+import type {
+  CalibrationResult,
+  CorpusPack,
+  EvalModelRoute,
+  EvalRunRecord,
+  SeededErrorAnswer,
+} from './contracts';
 import { measureVerifier, type Verifier } from './verifier-harness';
+import { computeStanceMacroF1 } from './stance-accuracy';
 
 export type RunEvalHarnessInput = {
   runId: string;
@@ -18,6 +26,8 @@ export type RunEvalHarnessInput = {
   seeded?: readonly SeededErrorAnswer[];
   verify?: Verifier;
   calibration?: CalibrationResult | null;
+  /** Tier D1 (`stance-accuracy.ts`) is computed from the same corpus packs, when supplied. */
+  corpusPacks?: readonly CorpusPack[];
 };
 
 export function runEvalHarness(input: RunEvalHarnessInput): EvalRunRecord {
@@ -26,6 +36,7 @@ export function runEvalHarness(input: RunEvalHarnessInput): EvalRunRecord {
     input.seeded !== undefined && input.verify !== undefined
       ? measureVerifier(input.seeded, input.verify)
       : null;
+  const stanceD1 = input.corpusPacks !== undefined ? computeStanceMacroF1(input.corpusPacks) : null;
 
   return {
     runId: input.runId,
@@ -35,7 +46,13 @@ export function runEvalHarness(input: RunEvalHarnessInput): EvalRunRecord {
     tierC,
     verifier,
     calibration: input.calibration ?? null,
+    stanceD1,
   };
+}
+
+/** Renders a decimal string to a fixed number of places for display, never via a JS float round-trip. */
+function fixed(value: string, places: number): string {
+  return new Decimal(value).toFixed(places);
 }
 
 export function formatEvalReport(record: EvalRunRecord): string {
@@ -45,11 +62,11 @@ export function formatEvalReport(record: EvalRunRecord): string {
       `${record.modelRoute.judgeModelId}@${record.modelRoute.judgeModelVersion} (temperature 0)`,
     '',
     'Axis     Mean',
-    `C1       ${tierC.perAxisMean.c1.toFixed(2)}`,
-    `C2       ${tierC.perAxisMean.c2.toFixed(2)}  (floor ${tierC.c2Floor} — no answer may score below this)`,
-    `C3       ${tierC.perAxisMean.c3.toFixed(2)}`,
-    `C4       ${tierC.perAxisMean.c4.toFixed(2)}`,
-    `Overall  ${tierC.overallMean.toFixed(2)}  (threshold 4.00)`,
+    `C1       ${fixed(tierC.perAxisMean.c1, 2)}`,
+    `C2       ${fixed(tierC.perAxisMean.c2, 2)}  (floor ${tierC.c2Floor} — no answer may score below this)`,
+    `C3       ${fixed(tierC.perAxisMean.c3, 2)}`,
+    `C4       ${fixed(tierC.perAxisMean.c4, 2)}`,
+    `Overall  ${fixed(tierC.overallMean, 2)}  (threshold 4.00)`,
     '',
     `Tier C gate: ${tierC.passed ? 'PASS' : 'FAIL'}`,
   ];
@@ -65,6 +82,15 @@ export function formatEvalReport(record: EvalRunRecord): string {
       `Tier B verifier — B8 false-positive rate: ${record.verifier.falsePositiveRate} ` +
         `(<= ${record.verifier.falsePositiveRateThreshold}: ${record.verifier.falsePositiveRatePassed ? 'PASS' : 'FAIL'})`,
     );
+  }
+
+  if (record.stanceD1 !== null) {
+    lines.push('');
+    lines.push('Tier D1 stance macro-F1 per axis (informational on this starter corpus — see DEFERRED):');
+    for (const axis of ['reddit', 'x', 'substack'] as const) {
+      const { macroF1, n } = record.stanceD1[axis];
+      lines.push(`  ${axis.padEnd(9)} ${macroF1 === null ? 'no labelled items' : `${fixed(macroF1, 2)} (n=${n})`}`);
+    }
   }
 
   if (record.calibration !== null) {

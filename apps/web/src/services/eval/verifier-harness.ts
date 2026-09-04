@@ -22,11 +22,18 @@ export const B7_CATCH_RATE_THRESHOLD = '0.90';
 export const B8_FALSE_POSITIVE_THRESHOLD = '0.10';
 
 /**
- * B7 is the fraction of `answer` (the faulted text) the verifier flags; B8 is the fraction of
- * `baseAnswer` (the same pack's clean answer) the verifier flags. Using the paired base/faulted
- * answer from the same seeded-error fixture is what `contracts.ts`'s `SeededErrorAnswer` shape
- * is for — it is the only way both rates ever come from a matched, apples-to-apples pair rather
- * than two unrelated samples.
+ * B7 is the fraction of `answer` (the faulted text) the verifier flags. Using the paired
+ * base/faulted answer from the same seeded-error fixture is what `contracts.ts`'s
+ * `SeededErrorAnswer` shape is for.
+ *
+ * **B8's denominator is distinct base answers, not distinct fixtures (lane-review round 1
+ * finding 6).** Several fixtures share one pack's clean `baseAnswer` — they inject different
+ * faults into the same underlying answer — so `seeded.length` overcounts how many *actually
+ * distinct* known-good answers were tested. Counting a shared clean answer once per fixture
+ * would silently mis-weight whichever base answer the verifier happens to false-positive on:
+ * with 8 fixtures over 5 distinct base answers, one real false positive is 1/5 = 0.2000, not
+ * 1/8 = 0.1250 — the difference between passing and failing the B8 ≤ 0.10 gate is exactly the
+ * kind of thing this rate exists to get right.
  */
 export function measureVerifier(
   seeded: readonly SeededErrorAnswer[],
@@ -37,21 +44,28 @@ export function measureVerifier(
   }
 
   let caught = 0;
-  let falsePositives = 0;
   for (const entry of seeded) {
     if (verify(entry.answer, entry.packId).flagged) caught += 1;
-    if (verify(entry.baseAnswer, entry.packId).flagged) falsePositives += 1;
   }
 
-  const n = new Decimal(seeded.length);
-  const catchRate = new Decimal(caught).dividedBy(n);
-  const falsePositiveRate = new Decimal(falsePositives).dividedBy(n);
+  const distinctGoodAnswers = new Map<string, SeededErrorAnswer>();
+  for (const entry of seeded) {
+    if (!distinctGoodAnswers.has(entry.baseAnswer)) distinctGoodAnswers.set(entry.baseAnswer, entry);
+  }
+
+  let falsePositives = 0;
+  for (const [baseAnswer, owner] of distinctGoodAnswers) {
+    if (verify(baseAnswer, owner.packId).flagged) falsePositives += 1;
+  }
+
+  const catchRate = new Decimal(caught).dividedBy(seeded.length);
+  const falsePositiveRate = new Decimal(falsePositives).dividedBy(distinctGoodAnswers.size);
 
   return {
     catchRate: catchRate.toFixed(4),
     falsePositiveRate: falsePositiveRate.toFixed(4),
     seededCount: seeded.length,
-    goodCount: seeded.length,
+    goodCount: distinctGoodAnswers.size,
     catchRateThreshold: B7_CATCH_RATE_THRESHOLD,
     falsePositiveRateThreshold: B8_FALSE_POSITIVE_THRESHOLD,
     catchRatePassed: catchRate.greaterThanOrEqualTo(B7_CATCH_RATE_THRESHOLD),

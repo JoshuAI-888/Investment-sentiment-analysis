@@ -8,7 +8,7 @@
  * an `EvidencePack` plus the human labels and expectations F12 §4.1 adds.
  */
 import { z } from 'zod';
-import { decimalString, stanceLabel, timestamp } from '@/contracts/primitives';
+import { decimalString, socialAxis, stanceLabel, timestamp } from '@/contracts/primitives';
 import { evidencePack } from '@/contracts/evidence-pack';
 
 /** `docs/05-TEST-STRATEGY.md` §5.1's five buckets, verbatim. */
@@ -195,13 +195,35 @@ export const judgeResponse = z.object({
 export type JudgeResponse = z.infer<typeof judgeResponse>;
 
 /**
- * What the judge is allowed to see (F12 §4.3): the answer, the evidence text, and the stored
- * metric values — **never** the synthesiser's prompt or reasoning. `judge.ts` builds this and
- * `judge-blind.test.ts` asserts the construction cannot leak a synthesis prompt into it.
+ * One evidence item as the judge is allowed to see it: its stable id (so a citation can be
+ * checked against a real one, or exposed as fabricated), its text, and the two dates F11's
+ * deterministic checks read (`05-TEST-STRATEGY.md` §6 items 3, 7, 8) — never anything about how
+ * or why it was retrieved.
+ *
+ * **Review finding (lane-review round 1).** The original `judgeInput` carried evidence as bare
+ * strings with no id or date, which made `fabricated_evidence_id` and `stale_date` structurally
+ * undetectable — the judge cannot tell a fabricated citation from a real one without seeing ids,
+ * or a stale date claim without seeing dates. This shape is the fix.
+ */
+export const judgeEvidenceItem = z.object({
+  id: z.string().min(1),
+  text: z.string().min(1),
+  /** As retrieved; `null` when the provider never supplied one (F10's `evidenceItem` shape). */
+  publishedAt: timestamp.nullable(),
+  /** PIT: when the item became available to this run — never re-derived, never re-fetched. */
+  availableAt: timestamp,
+});
+export type JudgeEvidenceItem = z.infer<typeof judgeEvidenceItem>;
+
+/**
+ * What the judge is allowed to see (F12 §4.3): the answer, the evidence (text, id, and dates),
+ * and the stored metric values — **never** the synthesiser's prompt or reasoning. `judge.ts`
+ * builds this and `judge-blind.test.ts` asserts the construction cannot leak anything else into
+ * it.
  */
 export const judgeInput = z.object({
   answerText: z.string().min(1),
-  evidenceText: z.array(z.string()),
+  evidence: z.array(judgeEvidenceItem),
   storedMetrics: z.array(storedMetricValue),
 });
 export type JudgeInput = z.infer<typeof judgeInput>;
@@ -214,10 +236,26 @@ export const evalModelRoute = z.object({
 });
 export type EvalModelRoute = z.infer<typeof evalModelRoute>;
 
+/**
+ * All four fields are decimal strings, not JS numbers (`02-ARCHITECTURE-CONTRACTS.md` §4.2).
+ *
+ * **Review finding (lane-review round 1).** A mean-of-three-fractions computed in floating
+ * point can land at `3.9999999999999996` instead of the exact `4.0`, failing the gate on a
+ * corpus whose true mean is exactly at the threshold, while a naive display rounds the same
+ * float back to `"4.00"` — a report that says PASS-shaped numbers next to a FAIL verdict.
+ * `gate.ts` computes this with `decimal.js`, the same discipline `verifier-harness.ts` already
+ * uses for B7/B8, and keeps it a decimal string end to end rather than converting back to a
+ * float for storage.
+ */
 export const tierCGateVerdict = z.object({
   passed: z.boolean(),
-  perAxisMean: z.object({ c1: z.number(), c2: z.number(), c3: z.number(), c4: z.number() }),
-  overallMean: z.number(),
+  perAxisMean: z.object({
+    c1: decimalString,
+    c2: decimalString,
+    c3: decimalString,
+    c4: decimalString,
+  }),
+  overallMean: decimalString,
   c2Floor: z.number(),
   c2Failures: z.array(z.string()),
   tierBViolationCount: z.number().int().nonnegative(),
@@ -225,6 +263,12 @@ export const tierCGateVerdict = z.object({
 });
 export type TierCGateVerdict = z.infer<typeof tierCGateVerdict>;
 
+/**
+ * `goodCount` is the count of **distinct** base answers B8 was measured against, not the count
+ * of seeded-error fixtures — several fixtures share one pack's clean `baseAnswer` (they inject
+ * different faults into the same answer), and counting it once per fixture would make B8's
+ * denominator wrong (lane-review round 1 finding 6).
+ */
 export const verifierMeasurement = z.object({
   catchRate: decimalString,
   falsePositiveRate: decimalString,
@@ -252,6 +296,26 @@ export const calibrationResult = z.discriminatedUnion('status', [
 ]);
 export type CalibrationResult = z.infer<typeof calibrationResult>;
 
+/**
+ * Tier D1 (`01-PRODUCT-SPEC.md` §4): per-axis stance macro-F1 against a hand-labelled set,
+ * "a single blended figure is not admissible" (D-14). `macroF1` is `null` when the corpus has
+ * zero labelled items on that axis — a missing axis is reported as missing, never as a zero.
+ */
+export const stanceAxisF1 = z.object({
+  macroF1: decimalString.nullable(),
+  n: z.number().int().nonnegative(),
+});
+export type StanceAxisF1 = z.infer<typeof stanceAxisF1>;
+
+export const stanceMacroF1Report = z.object({
+  reddit: stanceAxisF1,
+  x: stanceAxisF1,
+  substack: stanceAxisF1,
+});
+export type StanceMacroF1Report = z.infer<typeof stanceMacroF1Report>;
+
+export { socialAxis };
+
 /** One stored eval run (F12 §4.5 / DoD "eval results are stored per run and comparable"). */
 export const evalRunRecord = z.object({
   runId: z.string().min(1),
@@ -261,5 +325,7 @@ export const evalRunRecord = z.object({
   tierC: tierCGateVerdict,
   verifier: verifierMeasurement.nullable(),
   calibration: calibrationResult.nullable(),
+  /** Tier D1, informational on a starter corpus this small — see `stance-accuracy.ts`'s docstring. */
+  stanceD1: stanceMacroF1Report.nullable(),
 });
 export type EvalRunRecord = z.infer<typeof evalRunRecord>;
