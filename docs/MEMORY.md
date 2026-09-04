@@ -1017,6 +1017,12 @@ semantic identity for different content fails closed. This port does not decide 
 roles, model routes, rights policy or publication. Those remain the separate D-RNI-19
 assessment/publication boundary and I10 server-owned routing/configuration work.
 
+Migration `0024` supplies the corresponding additive storage without rewriting historical rows:
+claim dimension, immutable run/observation membership and one exact semantic-quality sidecar per
+observation. Multi-ticker content therefore has separate run membership and quality lineage for
+each source/security observation. The DATA adapter owns the transaction over these additions and
+the existing observation/claim/citation/theme tables.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

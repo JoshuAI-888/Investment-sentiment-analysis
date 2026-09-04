@@ -377,11 +377,12 @@
 | `CURRENT` | Refresh, accept and merge final SURFACE lane | code `c224c78`, tracker/merge head `b60ec14` descends `01a088c`; coordinator typecheck/focused lint/expanded RNI contract 37/37 pass; builder build and Chromium 22/22 pass |
 | `CURRENT` | Start I07 DATA/ENGINE composition | all three lanes merged in required order; resolve CR-DATA-002 only from the concrete E05 consumer and prove the smallest durable boundary with integration contracts |
 | `CURRENT` | Freeze I07 semantic composition as D-RNI-22 | SQL-free complete-E05-result port plus persist-after-all-security wrapper; focused integration 3/3, typecheck and scoped lint pass; DATA transaction adapter remains |
+| `CURRENT` | Add D-RNI-22 semantic storage to migration 0024 | nullable historical-compatible claim dimension, immutable run/observation membership and exact E05 quality sidecar; clean/forward disposable PostgreSQL migration gate 5/5 |
 
 ## I07A handoff
 
 - **Status:** `COMPLETE`; I07 remains `IN_PROGRESS` for the DATA adapter and D-RNI-19 durable
-  assessment/publication composition.
+  assessment/publication composition. The matching additive schema now exists in migration 0024.
 - **Files changed:** `apps/web/src/rni/composition/{index,semantic,types}.ts`,
   `apps/web/tests/integration/rni/composition/semantic-composition.test.ts`, D-RNI-22 and the two
   coordinator trackers.
@@ -389,13 +390,13 @@
   bounded evidence through E05, preserves independent multi-security outputs and calls one atomic
   semantic persistence port only after every classification succeeds. The port receives no
   table-shaped inputs and must return storage-selected identities on exact replay.
-- **Verification:** focused semantic composition integration 3/3, typecheck, scoped ESLint and
-  `git diff --check` pass.
+- **Verification:** focused semantic composition integration 3/3, typecheck, scoped ESLint,
+  `git diff --check` and clean/forward disposable PostgreSQL migration gate 5/5 pass.
 - **Risks/handoff:** no database adapter is claimed yet. DATA must implement one transaction over
-  observations, claims, source citations, themes and noise assessments, with exact replay and
-  crossed-content rejection. I07 must separately complete D-RNI-19 analytics, invocation,
-  assessment and sentence-citation persistence; I10 still owns active model and rights-policy
-  resolution.
+  the existing observations/claims/source-citations/themes plus migration 0024's claim dimension,
+  run membership and noise-quality sidecar, with exact replay and crossed-content rejection. I07
+  must separately complete D-RNI-19 analytics, invocation, assessment and sentence-citation
+  persistence; I10 still owns active model and rights-policy resolution.
 
 ## Coordinator notes
 

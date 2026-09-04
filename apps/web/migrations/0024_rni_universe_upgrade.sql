@@ -194,3 +194,86 @@ alter table universe_member
     selection_source <> 'fmp_sp500'
     or (provider_symbol is not null and provider_company_name is not null)
   );
+
+-- I07 / D-RNI-22 — atomic E05 semantic persistence.
+--
+-- `rni_evidence_claim` predates the four-dimension classifier. The nullable addition preserves
+-- historical/imported rows while every I07-created semantic claim carries its exact dimension.
+alter table rni_evidence_claim
+  add column dimension text null,
+  add constraint rni_evidence_claim_dimension_check check (
+    dimension is null or dimension in (
+      'company_fundamentals', 'market_trading', 'catalyst_event', 'retail_narrative'
+    )
+  );
+
+create table rni_run_observation (
+  run_id         uuid        not null references rni_run (id),
+  observation_id uuid        not null,
+  source_item_id uuid        not null,
+  security_id    uuid        not null,
+  created_at     timestamptz not null default now(),
+
+  primary key (run_id, observation_id),
+  constraint rni_run_observation_observation_fk
+    foreign key (observation_id, source_item_id, security_id)
+    references rni_security_observation (id, source_item_id, security_id),
+  constraint rni_run_observation_identity_unique
+    unique (run_id, source_item_id, security_id)
+);
+
+comment on table rni_run_observation is
+  'Immutable run membership for an independently classified source/security observation. One multi-ticker source therefore has one row per security and never shares semantic output.';
+
+create table rni_observation_semantic_quality (
+  observation_id       uuid         primary key,
+  source_item_id       uuid         not null,
+  security_id          uuid         not null,
+  support_start        integer      not null,
+  support_end          integer      not null,
+  evidence_text        text         not null,
+  is_sarcastic         boolean      not null,
+  sarcasm_probability  numeric(5,4) not null,
+  is_meme              boolean      not null,
+  meme_probability     numeric(5,4) not null,
+  is_spam              boolean      not null,
+  spam_probability     numeric(5,4) not null,
+  information_value    numeric(5,4) not null,
+  assertion_strength   numeric(5,4) not null,
+  evidence_quality     numeric(5,4) not null,
+  uncertainty          numeric(5,4) not null,
+  exclusion_reason     text         null,
+  created_at           timestamptz  not null default now(),
+
+  constraint rni_observation_semantic_quality_observation_fk
+    foreign key (observation_id, source_item_id, security_id)
+    references rni_security_observation (id, source_item_id, security_id),
+  constraint rni_observation_semantic_quality_support_check check (
+    support_start >= 0 and support_end > support_start
+  ),
+  constraint rni_observation_semantic_quality_evidence_check
+    check (length(evidence_text) between 1 and 2000),
+  constraint rni_observation_semantic_quality_probability_check check (
+    sarcasm_probability between 0 and 1
+    and meme_probability between 0 and 1
+    and spam_probability between 0 and 1
+    and information_value between 0 and 1
+    and assertion_strength between 0 and 1
+    and evidence_quality between 0 and 1
+    and uncertainty between 0 and 1
+  ),
+  constraint rni_observation_semantic_quality_exclusion_check check (
+    exclusion_reason is null or exclusion_reason in ('off_topic', 'spam', 'unresolved_context')
+  )
+);
+
+comment on table rni_observation_semantic_quality is
+  'Exact E05 source/security noise and evidence-quality sidecar. It is committed with the observation and remains independently replayable for E06.';
+
+create trigger rni_run_observation_append_only
+  before update or delete on rni_run_observation
+  for each row execute function reject_mutation();
+
+create trigger rni_observation_semantic_quality_append_only
+  before update or delete on rni_observation_semantic_quality
+  for each row execute function reject_mutation();

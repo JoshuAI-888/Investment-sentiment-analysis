@@ -177,6 +177,25 @@ describe.skipIf(url === undefined)('I05 — forward RNI universe migration', () 
       'source_provider',
       'source_retrieved_at',
     ]);
+    const { rows: semanticColumns } = await pool.query<{ table_name: string; column_name: string }>(
+      `select table_name, column_name
+         from information_schema.columns
+        where table_schema = 'public'
+          and (
+            (table_name = 'rni_evidence_claim' and column_name = 'dimension')
+            or (table_name = 'rni_run_observation' and column_name = 'observation_id')
+            or (table_name = 'rni_observation_semantic_quality' and column_name = 'evidence_quality')
+          )
+        order by table_name, column_name`,
+    );
+    expect(semanticColumns).toEqual([
+      { table_name: 'rni_evidence_claim', column_name: 'dimension' },
+      {
+        table_name: 'rni_observation_semantic_quality',
+        column_name: 'evidence_quality',
+      },
+      { table_name: 'rni_run_observation', column_name: 'observation_id' },
+    ]);
     await expectCeiling(configVersion);
 
     const { rows: securities } = await pool.query<{ id: string }>(
