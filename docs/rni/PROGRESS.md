@@ -27,7 +27,7 @@
 | G2 RNI contract frozen | `PASSED` | coordinator | PR #5 merged at `dd28ea2`; typed source contract at `9908eda` |
 | G3 DATA accepted | `PASSED` | DATA + reviewer | merged sequentially at `254fe45`; coordinator type/contract plus fresh PostgreSQL DATA 41/41 pass |
 | G4 ENGINE accepted | `IN_PROGRESS` | ENGINE + reviewer | E01–E05 accepted through `5d9b8f3`; E06–E10 remain |
-| G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01–S06 accepted through `ffd5119`; S07–S10 remain |
+| G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01–S07 accepted through `babd940`; S08–S10 remain |
 | G6 integrated preview | `NOT_STARTED` | coordinator | Depends G3–G5 |
 | G7 live Reddit/X/FMP gates | `NOT_STARTED` | coordinator + joshuai | Depends G6 and configured credentials |
 | G8 production approval | `NOT_STARTED` | joshuai | Depends all prior gates |
@@ -38,7 +38,7 @@
 |---|---|---|---|---|
 | DATA | `feat/rni-data-source-first` | `MERGED_TO_INTEGRATION` | `DATA.md` | lane `5926601`; merge `254fe45` |
 | ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01–E05 accepted | `ENGINE.md` | `5d9b8f3` |
-| SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01–S06 accepted | `SURFACE.md` | `ffd5119` |
+| SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01–S07 accepted | `SURFACE.md` | `babd940` |
 | INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I06 passed at `5950b53`; current coordinator record follows |
 
 ## Confirmed product decisions
@@ -113,3 +113,4 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — accepted SURFACE S06 at `ffd5119`: run and source state remain independently labelled for Reddit/X across partial, refreshing, stale, failed, unpublished and empty fixtures; in-progress sources expose no derived combined result. Coordinator typecheck/lint/contract 13/13 and Chromium 11/11 pass; SURFACE advanced to S07 and remains unmerged.
 - 2026-09-05 — accepted CR-SURFACE-04 for I02E/D-RNI-17: the additive manual-refresh command accepts only an idempotency key plus ticker/full scope; server composition owns auth, audit, active config/universe/window resolution and returns one durable run identity with accepted/duplicate disposition and resolved scope preview.
 - 2026-09-05 — accepted ENGINE E05 at `5d9b8f3`: committed bounded evidence is classified once per target security through an exact hashed no-tool payload; four dimensions, policy/taxonomy versions, source-bound claims/themes/noise and non-publishable citation proposals fail closed. Coordinator typecheck/lint and unit/contract/eval 15/15 pass; ENGINE advanced to E06 and remains unmerged.
+- 2026-09-05 — accepted SURFACE S07 through `babd940` after returning post-submit-only scope/fixed keys, a timing-dependent pending assertion, and an unguarded fixture route. D-RNI-17 service replay/crossed-key tests, pre-submit 501/ticker scope, fresh intentional keys, controlled pending disable and runtime fixture denial now pass; coordinator type/lint/contract 14/14, guard 1/1 and Chromium 4/4 twice. SURFACE advanced to S08 and remains unmerged.

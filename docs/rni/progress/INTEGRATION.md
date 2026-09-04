@@ -137,7 +137,7 @@
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
 | ENGINE | `E05_APPROVED` | yes through integration `6309b62`; next task rebases to `fec8c46` | builder serialized unit 1,254 + contract 93/22 skipped + integration 44/390 skipped + eval 2/2; coordinator typecheck/lint and focused 15/15 | yes | E01–E05 accepted through `5d9b8f3`; E06 active; lane remains held |
-| SURFACE | `S06_APPROVED` | yes through I02D (`ce80424`) | builder typecheck/lint/contract/build/Chromium 11/11; coordinator repeated typecheck/lint/contract 13/13 and Chromium 11/11 | yes | S01–S06 accepted through `ffd5119`; S07 active; lane remains held |
+| SURFACE | `S07_APPROVED` | yes at integration `fec8c46` | builder typecheck/lint/contract/build/guard and Chromium 4/4 twice; coordinator repeated typecheck/lint/contract 14/14, guard 1/1 and Chromium 4/4 twice | yes | S01–S07 accepted through `babd940`; S08 active; lane remains held |
 
 ## Live/deployment gates
 
@@ -191,6 +191,9 @@
 | ER-06 | P1 | `RESOLVED` | X content-version candidates do not identify exactly one latest interpretation version and A→B→A leaves B latest | `0e229d6` separates persistence versions from one latest interpretation candidate and records ordered A→B→A transitions |
 | SR-04 | P2 | `RESOLVED` | S02's first commit left its task/evidence/handoff record stale and did not identify the actual browser gate | `c4899b8` amends the task commit with exact type, lint, contract, build and Chromium evidence plus complete files/risks/handoff |
 | SR-05 | P1 | `RESOLVED` | S04 evidence dialogs reused citation-derived DOM IDs and lacked complete keyboard focus handling | `6c0df68` uses per-instance controls and proves focus entry/containment/Escape/restoration in Chromium 9/9 |
+| SR-06 | P1 | `RESOLVED` | S07 revealed scope only after submission and permanently reused one key per scope | `55b01ef` previews ticker/full scope before action and uses a new key for each intentional request |
+| SR-07 | P1 | `RESOLVED` | S07's 25 ms fixture made double-submit browser coverage timing-dependent | `a28121e` injects a deferred command and proves both controls remain disabled until explicit release; Chromium 4/4 twice |
+| SR-08 | P1 | `RESOLVED` | S07 emitted its deferred fixture harness as an unguarded production route | `babd940` forces request-time evaluation and returns not-found outside validated fixture mode; guard test passes |
 | IR-01 | P1 | `RESOLVED` | Universe activation can publish an unapproved, stale-parent or caller-altered FMP snapshot and can diverge selected count from stored members | FMP approval is one-way; activation requires the recorded admin, current parent, exact stored-member set and count; negative DB tests pass |
 | IR-02 | P1 | `RESOLVED` | FMP synchronization claims idempotency only after the external provider call and payload-hash reuse does not bind a new key | Command is committed before fetch; concurrent/later replay performs one fetch per key; expected and unexpected terminal outcomes retain audit and provider/payload/version lineage |
 | IR-03 | P1 | `RESOLVED` | An exactly 500-row FMP response passes the contract's greater-than-500 completeness gate | Minimum is 501 and the 500-row boundary test fails closed |
@@ -236,6 +239,7 @@
 | `CURRENT` | Accept SURFACE S06 independent source-state matrix | typecheck; focused lint; RNI contract 13/13; Chromium 11/11; ownership/base/diff review |
 | `CURRENT` | Resolve CR-SURFACE-04 with idempotent manual-refresh command | typecheck; focused lint; RNI contract 14/14; full contract 84/22 skipped |
 | `CURRENT` | Accept ENGINE E05 target-isolated semantic classifier | typecheck; focused lint; unit/contract/eval 15/15; ownership/base/diff review |
+| `CURRENT` | Accept SURFACE S07 idempotent manual-refresh controls | typecheck; focused lint; RNI contract 14/14; guard 1/1; deterministic Chromium 4/4 twice |
 
 ## Coordinator notes
 
