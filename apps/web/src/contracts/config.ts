@@ -48,8 +48,8 @@ export type AppSetting = z.infer<typeof appSetting>;
 
 export const universeVersionStatus = z.enum(['draft', 'staged', 'active', 'superseded']);
 
-/** D-27: the universe is 100 symbols. */
-export const UNIVERSE_MAX_SYMBOLS = 100;
+/** D-RNI-06: hard safety ceiling for the configurable FMP S&P 500 universe. */
+export const UNIVERSE_MAX_SYMBOLS = 600;
 
 export const universeVersion = z.object({
   id: bigintString,
@@ -60,14 +60,27 @@ export const universeVersion = z.object({
   selectedCount: z.number().int().nonnegative().max(UNIVERSE_MAX_SYMBOLS),
   selectionQuery: jsonValue.nullable(),
   impactPreview: jsonValue,
+  sourceProvider: z.string().min(1).nullable(),
+  sourceEndpoint: z.string().min(1).nullable(),
+  sourceRetrievedAt: timestamp.nullable(),
+  sourcePayloadHash: z.string().regex(/^[0-9a-f]{64}$/u).nullable(),
+  providerCallId: uuid.nullable(),
   createdBy: z.string().min(1),
   changeReason: z.string().min(1),
   createdAt: timestamp,
   activatedAt: timestamp.nullable(),
+  approvedBy: z.string().min(1).nullable(),
 });
 export type UniverseVersion = z.infer<typeof universeVersion>;
 
-export const selectionSource = z.enum(['checkbox', 'bulk_filter', 'import', 'preset', 'seed']);
+export const selectionSource = z.enum([
+  'checkbox',
+  'bulk_filter',
+  'import',
+  'preset',
+  'seed',
+  'fmp_sp500',
+]);
 
 export const universeMember = z.object({
   universeVersion: bigintString,
@@ -75,6 +88,9 @@ export const universeMember = z.object({
   enabled: z.boolean(),
   addedBy: z.string().min(1),
   selectionSource,
+  providerSymbol: z.string().min(1).nullable(),
+  providerCompanyName: z.string().min(1).nullable(),
+  constituentFirstAddedAt: timestamp.nullable(),
   createdAt: timestamp,
 });
 export type UniverseMember = z.infer<typeof universeMember>;

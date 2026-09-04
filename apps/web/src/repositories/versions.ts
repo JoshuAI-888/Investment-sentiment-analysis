@@ -20,7 +20,7 @@ const CONFIG_COLUMNS =
   'id, environment, status, parent_version, created_by, change_reason, created_at, effective_at, activated_at, approved_by, checksum';
 
 const UNIVERSE_COLUMNS =
-  'id, environment, config_version, status, parent_version, selected_count, selection_query, impact_preview, created_by, change_reason, created_at, activated_at';
+  'id, environment, config_version, status, parent_version, selected_count, selection_query, impact_preview, source_provider, source_endpoint, source_retrieved_at, source_payload_hash, provider_call_id, created_by, change_reason, created_at, activated_at, approved_by';
 
 export type NewConfigVersion = {
   environment: string;
@@ -135,6 +135,12 @@ export type NewUniverseVersion = {
   status?: 'draft' | 'staged';
   parentVersion?: string | null;
   selectionQuery?: unknown;
+  sourceProvider?: string | null;
+  sourceEndpoint?: string | null;
+  sourceRetrievedAt?: Date | string | null;
+  sourcePayloadHash?: string | null;
+  providerCallId?: string | null;
+  approvedBy?: string | null;
 };
 
 export async function insertUniverseVersion(
@@ -187,7 +193,7 @@ export async function activateUniverseVersion(
 ): Promise<UniverseVersion> {
   if (members.length > UNIVERSE_MAX_SYMBOLS) {
     throw new Error(
-      `${members.length} members exceeds universe.max_symbols (${UNIVERSE_MAX_SYMBOLS}, D-27). The database constraint would reject this too; failing here names the limit.`,
+      `${members.length} members exceeds universe.max_symbols (${UNIVERSE_MAX_SYMBOLS}, D-RNI-06). The database constraint would reject this too; failing here names the limit.`,
     );
   }
 
