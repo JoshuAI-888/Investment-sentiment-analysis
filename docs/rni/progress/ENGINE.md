@@ -13,10 +13,10 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 | ID | Task | Status | Acceptance evidence |
 |---|---|---|---|
-| E01 | Reddit OpenAI Web Search discovery and canonical candidate normalization | `COMPLETE` | 16 focused tests: exact source/evidence binding, URL-only abstention, complete action lineage, half-open windows, dedup, frozen-source compatibility; coordinator accepted rebased `f499cba` |
-| E02 | Existing X adapter port and independent terminal source slice | `COMPLETE` | 20 focused tests: partial-success propagation, isolation, tenant-safe identity, retrieval/version lineage, A→B→A latest selection, half-open windows; coordinator accepted rebased `581fcca` |
-| E03 | Persist-first workflow, retry, checkpoint and budget logic | `READY_FOR_REVIEW` | 17 focused tests: commit/checkpoint and enqueue/completion crashes, exact redelivery, lease heartbeat, retry not-before, bounded jitter, stable budget reservation, durable wall-time and hash integrity |
-| E04 | Security resolver and multi-security relationships | `NOT_STARTED` | NVDA/AMD comparative fixture |
+| E01 | Reddit OpenAI Web Search discovery and canonical candidate normalization | `COMPLETE` | 16 focused tests: exact source/evidence binding, URL-only abstention, complete action lineage, half-open windows, dedup, frozen-source compatibility; coordinator accepted, current rebased `534987d` |
+| E02 | Existing X adapter port and independent terminal source slice | `COMPLETE` | 20 focused tests: partial-success propagation, isolation, tenant-safe identity, retrieval/version lineage, A→B→A latest selection, half-open windows; coordinator accepted, current rebased `fb93b45` |
+| E03 | Persist-first workflow, retry, checkpoint and budget logic | `COMPLETE` | 17 focused tests: commit/checkpoint and enqueue/completion crashes, exact redelivery, lease heartbeat, retry not-before, bounded jitter, stable budget reservation, durable wall-time and hash integrity; coordinator accepted, current rebased `bb3d80c` |
+| E04 | Security resolver and multi-security relationships | `READY_FOR_REVIEW` | 19 focused tests: exact NVDA/AMD offsets, governed bare-ticker abstention, duplicate-symbol ambiguity, committed-evidence-only inference, cited canonical relationship deduplication; independent review READY |
 | E05 | Four-dimension classifier, themes, claims and noise labels | `NOT_STARTED` | Gold/schema/injection tests |
 | E06 | Platform-specific deterministic analytics and confidence | `NOT_STARTED` | Golden/replay/baseline tests |
 | E07 | Reddit/X convergence and agreement/divergence facts | `NOT_STARTED` | Divergence/scale imbalance/partial tests |
@@ -46,9 +46,10 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 | Suite | Status | Command/run link | Notes |
 |---|---|---|---|
-| discovery/adapter contract | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/discovery/openai-web-search.test.ts tests/contract/rni/discovery.test.ts --no-file-parallelism` | 2 files, 16 tests passed after coordinator fixes; coordinator accepted rebased `f499cba` |
-| X adapter/source slice | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/sources/x-source-slice.test.ts tests/contract/rni/x-source-slice.test.ts --no-file-parallelism` | 2 files, 20 tests passed after coordinator fixes; coordinator accepted rebased `581fcca` |
-| workflow/idempotency | `READY_FOR_REVIEW` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/workflow/persist-source.test.ts tests/contract/rni/persist-source-workflow.test.ts --no-file-parallelism` | 2 files, 17 tests passed; independent read-only review returned READY with no P0/P1/P2 findings |
+| discovery/adapter contract | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/discovery/openai-web-search.test.ts tests/contract/rni/discovery.test.ts --no-file-parallelism` | 2 files, 16 tests passed after coordinator fixes; coordinator accepted, current rebased `534987d` |
+| X adapter/source slice | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/sources/x-source-slice.test.ts tests/contract/rni/x-source-slice.test.ts --no-file-parallelism` | 2 files, 20 tests passed after coordinator fixes; coordinator accepted, current rebased `fb93b45` |
+| workflow/idempotency | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/workflow/persist-source.test.ts tests/contract/rni/persist-source-workflow.test.ts --no-file-parallelism` | 2 files, 17 tests passed; coordinator accepted, current rebased `bb3d80c` |
+| security resolution/relationships | `READY_FOR_REVIEW` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/observations/security-resolution.test.ts tests/contract/rni/security-resolution.test.ts tests/eval/rni/security-resolution.eval.test.ts --no-file-parallelism` | 3 files, 19 tests passed; independent read-only review returned READY with no P0/P1/P2 findings |
 | semantic gold set | `NOT_STARTED` | — | — |
 | analytics golden/replay | `NOT_STARTED` | — | — |
 | cross-source isolation | `NOT_STARTED` | — | — |
@@ -71,6 +72,9 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 | E03-R1-03 | P1 | `CLOSED` | Concurrent redelivery could bypass transient-error backoff | `claimStep` must durably enforce recorded `retryAt` as not-before; concurrent redelivery returns deferred until it passes |
 | E03-R1-04 | P2 | `CLOSED` | Wall-time budget reset on each process delivery | Claims return the original durable `startedAt`; local and injected budget checks use cumulative elapsed time across redelivery |
 | E03-R2-01 | P2 | `CLOSED` | Completed checkpoint validated output-hash format but not integrity | Redelivery recomputes the logical hash from the parsed durable source ID and interpretation idempotency key and fails closed on mismatch |
+| E04-R1-01 | P1 | `CLOSED` | Public model-entry exports could bypass the committed-evidence reader | Public barrel exposes only the persisted-evidence composition entry; contract test pins the export boundary and exact durable evidence lookup |
+| E04-R1-02 | P1 | `CLOSED` | A partial built-in ambiguous-ticker list could resolve ordinary uppercase prose | Resolver now requires a strict, versioned ambiguity policy from the governed caller and fails closed when it is absent; A, AI and IT challenge cases abstain |
+| E04-R1-03 | P1 | `CLOSED` | Equivalent inverse/symmetric proposals with different evidence offsets were not deduplicated | Relations deduplicate by canonical logical identity, select the shortest then earliest valid covering span, and sort before deterministic ID allocation |
 
 ## Open risks/blockers
 
@@ -82,7 +86,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 ### E01 — Reddit OpenAI Web Search discovery and canonical candidate normalization
 
-- **Status:** `COMPLETE`; coordinator accepted rebased `f499cba`
+- **Status:** `COMPLETE`; coordinator accepted; current rebased `534987d`
 - **Slice:** Added a Responses API Web Search request builder and injected transport boundary,
   strict structured-output parsing, complete per-call action/source validation, and deterministic
   Reddit post/comment URL normalization. Interpretation-eligible candidates require exact
@@ -114,7 +118,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 ### E02 — Existing X adapter port and independent terminal source slice
 
-- **Status:** `COMPLETE`; coordinator accepted rebased `581fcca`
+- **Status:** `COMPLETE`; coordinator accepted; current rebased `fb93b45`
 - **Slice:** Added a composition port around the existing authorised X recent-search adapter and
   an X-only terminal source-slice runner. A governed query set is invoked without Reddit inputs;
   each returned post is deterministically filtered to the exact half-open UTC window, normalized
@@ -146,7 +150,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 ### E03 — Persist-first workflow, retry, checkpoint and budget logic
 
-- **Status:** `READY_FOR_REVIEW`
+- **Status:** `COMPLETE`; coordinator accepted; current rebased `bb3d80c`
 - **Slice:** Added the portable operational `RniWorkflowPort` around the existing durable
   job/queue composition boundary while consuming the frozen `RniSourcePersistencePort` directly.
   The runner claims the `(run, stage, subject, version)` step, maintains its lease heartbeat,
@@ -174,31 +178,67 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 - **Risks/handoff:** integration must implement `RniWorkflowPort` over the repository's existing
   durable job/queue tables, including atomic lease/checkpoint/not-before rules and idempotent
   semantic enqueue. No lane-local source persistence interface, DATA-private import, migration,
-  frozen contract change or contract request was introduced. E04 has not started.
+  frozen contract change or contract request was introduced. E04 consumes only the committed
+  durable evidence read boundary.
+
+### E04 — Security resolver and multi-security relationships
+
+- **Status:** `READY_FOR_REVIEW`
+- **Slice:** Added pure exact-ticker and company-alias mention resolution with exact source offsets,
+  active-candidate filtering, overlap resolution, duplicate-symbol abstention and a required
+  versioned bare-ticker ambiguity policy. The only public model-capable composition path first
+  reads and validates the exact durable source item through the frozen read service. For sources
+  resolving at least two distinct securities, an injected bounded inference port may propose
+  comparative relationships; deterministic validation then rejects invented IDs, malformed or
+  non-covering evidence spans, canonicalizes inverse/symmetric relations and binds exact persisted
+  evidence text.
+- **Files changed:** `apps/web/src/rni/observations/{index,relationships,resolve-source,resolver,types}.ts`,
+  `apps/web/tests/unit/rni/observations/security-resolution.test.ts`,
+  `apps/web/tests/contract/rni/security-resolution.test.ts`,
+  `apps/web/tests/eval/rni/security-resolution.eval.test.ts`, and this tracker.
+- **Tests/results:** after rebase onto integration `6309b62`, focused unit + contract + eval 19/19
+  passed; serialized repository unit 1,242/1,242 passed; repository contract 91 passed and 22
+  pre-existing skips; repository integration 44 passed and 390 environment-gated skips; repository
+  eval 1/1 passed; `typecheck`, focused ESLint, full ESLint and `git diff --check` passed. Independent
+  read-only review returned READY with no P0/P1/P2 findings after all three initial P1s were closed.
+- **Models/prompts/formulas:** no model ID or prompt is added or changed; E09 owns production model
+  routes and prompts. The injected relationship port returns proposals only. Deterministic behavior
+  is exact boundary-aware ticker/alias matching, longest supported non-overlapping span selection,
+  cashtag-required abstention from a required versioned ambiguity set, inverse
+  `less_preferred_than` to `preferred_over` normalization, symmetric-ID ordering, logical relation
+  deduplication, shortest-then-earliest evidence selection and stable relation ordering/occurrence.
+- **Token/latency evidence:** no live model was called and no production token observation is
+  claimed. On the final base, the focused fake/in-memory fixture suite completed in 1.71 s; full
+  serialized unit in 20.51 s, contract in 4.75 s, integration in 9.45 s and eval in 1.17 s.
+- **Risks/handoff:** integration must inject the governed universe candidates and a complete,
+  versioned ambiguity policy; the resolver intentionally has no partial default. E09 must supply
+  the evaluated model route/prompt behind the bounded inference port. No DATA-private import,
+  shared schema, frozen contract change or contract request is required.
 
 ## Commits
 
 | SHA | Summary | Tests |
 |---|---|---|
-| `1645fd3` | E01 Web Search discovery and canonical candidate normalization | focused 10/10; unit 1,180/1,180; contract 78 passed/22 skipped; typecheck/lint passed |
-| `44e1bcb` | E01 exact evidence binding and complete action lineage | focused 15/15; unit 1,185/1,185; contract 78 passed/22 skipped; typecheck/lint passed |
-| `f499cba` | E01 full citation-span coverage; coordinator accepted | focused 16/16; unit 1,186/1,186; contract 78 passed/22 skipped; typecheck/lint passed |
-| `f380904` | E02 independent X adapter/source slice | focused 16/16; unit 1,200/1,200; contract 80 passed/22 skipped; typecheck/lint passed |
-| `581fcca` | E02 partial signal, tenant-safe identity and explicit latest/version lineage; coordinator accepted | focused 20/20; unit 1,204/1,204; contract 80 passed/22 skipped; typecheck/lint passed |
-| this task commit | E03 persist-first durable workflow slice | focused 17/17; serialized unit 1,223/1,223; contract 88 passed/22 skipped; typecheck/focused lint passed |
+| `bc4c3a2` | E01 Web Search discovery and canonical candidate normalization | focused 10/10; unit 1,180/1,180; contract 78 passed/22 skipped; typecheck/lint passed |
+| `43a84cd` | E01 exact evidence binding and complete action lineage | focused 15/15; unit 1,185/1,185; contract 78 passed/22 skipped; typecheck/lint passed |
+| `534987d` | E01 full citation-span coverage; coordinator accepted | focused 16/16; unit 1,186/1,186; contract 78 passed/22 skipped; typecheck/lint passed |
+| `a32d070` | E02 independent X adapter/source slice | focused 16/16; unit 1,200/1,200; contract 80 passed/22 skipped; typecheck/lint passed |
+| `fb93b45` | E02 partial signal, tenant-safe identity and explicit latest/version lineage; coordinator accepted | focused 20/20; unit 1,204/1,204; contract 80 passed/22 skipped; typecheck/lint passed |
+| `bb3d80c` | E03 persist-first durable workflow slice; coordinator accepted | focused 17/17; serialized unit 1,223/1,223; contract 88 passed/22 skipped; typecheck/focused lint passed |
+| this task commit | E04 deterministic security resolution and cited comparative relationships | focused 19/19; serialized unit 1,242/1,242; contract 91 passed/22 skipped; integration 44 passed/390 skipped; eval 1/1; typecheck/lint passed |
 
 ## Handoff
 
 ```text
 RNI LANE     ENGINE
 BRANCH       feat/rni-engine-live-slice
-BASE SHA     ce80424 (integration base required before handoff)
+BASE SHA     6309b62 (latest feat/rni-integration-demo at final verification)
 STATUS       PARTIAL
-TASKS        3/10; E04-E10 not started
-TESTS        E01 focused 16/16; E02 focused 20/20; E03 focused 17/17; serialized unit 1,223/1,223; contract 88 passed/22 skipped; typecheck/focused lint pass
+TASKS        4/10; E04 ready for review; E05-E10 not started
+TESTS        E01 focused 16/16; E02 focused 20/20; E03 focused 17/17; E04 focused 19/19; serialized unit 1,242/1,242; contract 91 passed/22 skipped; integration 44 passed/390 skipped; eval 1/1; typecheck/full lint pass
 CONTRACT     none
-RISKS        live Web Search/X smokes pending approved credentials; coordinator must compose the portable workflow port; default parallel unit runner has a pre-existing __float_probe__.ts scan race, serialized gate passes
-FILES        src/rni/{discovery,sources,workflow}/**; tests/unit/rni/{discovery,sources,workflow}/**; tests/contract/rni/{discovery,x-source-slice,persist-source-workflow}.test.ts; docs/rni/progress/ENGINE.md
-COMMITS      rebased E01/E02 series through 581fcca, plus E03 task commit
-DEMO PROOF   citation-bound Reddit; independent X terminal states; commit-before-ID-only-interpret crash/redelivery fixtures
+RISKS        live Web Search/X smokes pending approved credentials; coordinator must compose the portable workflow port and inject a complete versioned ticker ambiguity policy; E09 owns the evaluated relationship model/prompt
+FILES        src/rni/{discovery,sources,workflow,observations}/**; tests/unit/rni/{discovery,sources,workflow,observations}/**; tests/contract/rni/{discovery,x-source-slice,persist-source-workflow,security-resolution}.test.ts; tests/eval/rni/security-resolution.eval.test.ts; docs/rni/progress/ENGINE.md
+COMMITS      rebased E01/E02 series through fb93b45, E03 bb3d80c, plus E04 task commit
+DEMO PROOF   citation-bound Reddit; independent X terminal states; commit-before-ID-only-interpret; persisted NVDA/AMD exact mentions and cited canonical preference
 ```
