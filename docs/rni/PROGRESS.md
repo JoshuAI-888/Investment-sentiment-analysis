@@ -39,7 +39,7 @@
 | DATA | `feat/rni-data-source-first` | `MERGED_TO_INTEGRATION` | `DATA.md` | lane `5926601`; merge `254fe45` |
 | ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01–E02 accepted | `ENGINE.md` | `0e229d6`, must rebase current integration before E03 |
 | SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01–S02 accepted, S03 unblocked | `SURFACE.md` | S03 blocker `57fd90c`; rebase D-RNI-14 before implementation |
-| INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I02D security-detail contract (D-RNI-14; current task commit) |
+| INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I06R2 universe review corrections (D-RNI-15; current task commit) |
 
 ## Confirmed product decisions
 
@@ -72,7 +72,7 @@ The canonical matrix is [`INTEGRATION_PLAN.md`](INTEGRATION_PLAN.md) §10. Coord
 | Scope and branch isolation | `PASSED` | `RNI-00-CONTRACT.md`, path ownership and scoped legacy banners; PR #5 |
 | Source identity/persist-first/idempotency | `PASSED` | DATA merged at `254fe45`; crossed keys fail closed, source port returns committed IDs, concurrent outbox tests pass |
 | Reddit/X separation and combined honesty | `IN_PROGRESS` | ENGINE E01 source binding and SURFACE S02 Radar accepted; D-RNI-13 freezes source-separated cells; remaining pipeline/UI tasks open |
-| S&P 500/FMP universe migration | `CHANGES_REQUESTED` | independent review found activation approval/membership, pre-fetch idempotency, exact-500, clean-bootstrap and lineage gaps; coordinator corrections in progress |
+| S&P 500/FMP universe migration | `READY_FOR_REVIEW` | all six independent-review findings corrected; pre-fetch replay and clean 501-security bootstrap join approval/membership/count/date/lineage gates |
 | Model route and CI | `PASSED` | PR #2 route validation; PR #5 RNI path filter and green eval |
 | Toolchain reproducibility | `PASSED` | pinned pnpm 10.33 clean install plus PR #5 independent CI |
 | Retention and citation safety | `IN_PROGRESS` | DATA claim/source FK and ENGINE source/content binding findings resolved; full publication gate remains later work |
@@ -102,3 +102,4 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — accepted CR-SURFACE-03 as D-RNI-14; the additive security-detail read freezes exactly four cited dimensions per independently labelled platform and rejects missing, pooled, relabelled or uncited publishable data.
 - 2026-09-05 — independent review held I05/I06 on four P1 and two P2 universe findings: activation could alter/unapproved-stale membership, idempotency began after FMP, 500 rows passed, clean security bootstrap was absent, FMP lineage was DB-optional, and impossible dates passed structural validation.
 - 2026-09-05 — closed universe findings IR-01/03/05/06: FMP activation now requires one-way admin approval, exact stored membership and current parent; PostgreSQL requires complete provider lineage; exactly 500 and impossible dates fail; fresh DB activation/version tests pass 14/14.
+- 2026-09-05 — closed IR-02/04 as D-RNI-15: a durable command claim now precedes FMP dispatch and replays terminal outcomes with lineage; a reviewed hash-bound FMP profile import bootstraps a clean 501-security master. I05/I06 are ready for independent re-review.

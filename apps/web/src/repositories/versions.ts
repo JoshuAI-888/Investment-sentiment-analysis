@@ -223,6 +223,219 @@ export async function insertUniverseProviderCall(
   return id;
 }
 
+export type UniverseSyncCommandInput = {
+  readonly environment: string;
+  readonly idempotencyKey: string;
+  readonly actorId: string;
+  readonly correlationId: string;
+};
+
+export type UniverseSyncCommandClaim =
+  | { readonly state: 'claimed' }
+  | { readonly state: 'running' }
+  | { readonly state: 'completed'; readonly result: unknown }
+  | { readonly state: 'failed'; readonly errorMessage: string };
+
+type UniverseSyncCommandRow = {
+  readonly status: 'running' | 'completed' | 'failed';
+  readonly result_payload: unknown | null;
+  readonly error_message: string | null;
+};
+
+function universeSyncCommandObjectId(input: UniverseSyncCommandInput): string {
+  return `${input.environment}:${input.idempotencyKey}`;
+}
+
+function commandClaimFromRow(row: UniverseSyncCommandRow): UniverseSyncCommandClaim {
+  if (row.status === 'running') return { state: 'running' };
+  if (row.status === 'failed') {
+    if (row.error_message === null) throw new Error('Failed universe sync command has no error');
+    return { state: 'failed', errorMessage: row.error_message };
+  }
+  if (row.result_payload === null) throw new Error('Completed universe sync command has no result');
+  return { state: 'completed', result: row.result_payload };
+}
+
+/** Claim and commit the idempotency key before any FMP request is allowed to start. */
+export async function claimUniverseSyncCommand(
+  input: UniverseSyncCommandInput,
+): Promise<UniverseSyncCommandClaim> {
+  return withTransaction(async (tx) => {
+    const { rows: inserted } = await tx.query<UniverseSyncCommandRow>(
+      `insert into rni_universe_sync_command
+         (environment, idempotency_key, actor_id, correlation_id)
+       values ($1, $2, $3, $4)
+       on conflict (environment, idempotency_key) do nothing
+       returning status, result_payload, error_message`,
+      [input.environment, input.idempotencyKey, input.actorId, input.correlationId],
+    );
+    if (inserted[0] !== undefined) {
+      await tx.query(
+        `insert into audit_event
+           (actor_id, actor_role, action, object_type, object_id, environment, reason,
+            result, request_id, correlation_id)
+         values ($1, 'admin', 'request', 'rni_universe_sync_command', $2, $3,
+                 'Claim FMP universe synchronization before provider dispatch',
+                 'success', $4, $5)`,
+        [
+          input.actorId,
+          universeSyncCommandObjectId(input),
+          input.environment,
+          input.idempotencyKey,
+          input.correlationId,
+        ],
+      );
+      return { state: 'claimed' };
+    }
+
+    const { rows } = await tx.query<UniverseSyncCommandRow>(
+      `select status, result_payload, error_message
+         from rni_universe_sync_command
+        where environment = $1 and idempotency_key = $2`,
+      [input.environment, input.idempotencyKey],
+    );
+    const row = rows[0];
+    if (row === undefined) throw new Error('Universe sync command conflict could not be read');
+    const claim = commandClaimFromRow(row);
+    await tx.query(
+      `insert into audit_event
+         (actor_id, actor_role, action, object_type, object_id, environment, reason,
+          result, request_id, correlation_id, after_value)
+       values ($1, 'admin', 'replay', 'rni_universe_sync_command', $2, $3,
+               'Replay existing FMP universe synchronization command', $4, $5, $6, $7)`,
+      [
+        input.actorId,
+        universeSyncCommandObjectId(input),
+        input.environment,
+        claim.state === 'failed' ? 'failure' : 'success',
+        input.idempotencyKey,
+        input.correlationId,
+        JSON.stringify({ state: claim.state }),
+      ],
+    );
+    return claim;
+  });
+}
+
+export async function readUniverseSyncCommand(
+  input: Pick<UniverseSyncCommandInput, 'environment' | 'idempotencyKey'>,
+  db: Queryable = getPool(),
+): Promise<UniverseSyncCommandClaim> {
+  const { rows } = await db.query<UniverseSyncCommandRow>(
+    `select status, result_payload, error_message
+       from rni_universe_sync_command
+      where environment = $1 and idempotency_key = $2`,
+    [input.environment, input.idempotencyKey],
+  );
+  const row = rows[0];
+  if (row === undefined) throw new Error('Universe sync command was not found');
+  return commandClaimFromRow(row);
+}
+
+export async function waitForUniverseSyncCommand(
+  input: Pick<UniverseSyncCommandInput, 'environment' | 'idempotencyKey'>,
+  attempts = 100,
+): Promise<Exclude<UniverseSyncCommandClaim, { state: 'claimed' | 'running' }>> {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const claim = await readUniverseSyncCommand(input);
+    if (claim.state === 'completed' || claim.state === 'failed') return claim;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error('Universe sync command is still running');
+}
+
+export async function completeUniverseSyncCommand(input: {
+  readonly command: UniverseSyncCommandInput;
+  readonly result: unknown;
+  readonly auditResult: 'success' | 'failure';
+  readonly providerCallId: string;
+  readonly sourcePayloadHash: string | null;
+  readonly universeVersionId: string | null;
+}): Promise<void> {
+  await withTransaction(async (tx) => {
+    const { rowCount } = await tx.query(
+      `update rni_universe_sync_command
+          set status = 'completed', result_payload = $3, provider_call_id = $4,
+              source_payload_hash = $5, universe_version = $6, completed_at = now()
+        where environment = $1 and idempotency_key = $2 and status = 'running'`,
+      [
+        input.command.environment,
+        input.command.idempotencyKey,
+        JSON.stringify(input.result),
+        input.providerCallId,
+        input.sourcePayloadHash,
+        input.universeVersionId,
+      ],
+    );
+    if (rowCount !== 1) throw new Error('Universe sync command was not running at completion');
+    await tx.query(
+      `insert into audit_event
+         (actor_id, actor_role, action, object_type, object_id, environment, reason,
+          result, request_id, correlation_id, after_value)
+       values ($1, 'admin', 'complete', 'rni_universe_sync_command', $2, $3,
+               'Persist terminal FMP universe synchronization outcome',
+               $4, $5, $6, $7)`,
+      [
+        input.command.actorId,
+        universeSyncCommandObjectId(input.command),
+        input.command.environment,
+        input.auditResult,
+        input.command.idempotencyKey,
+        input.command.correlationId,
+        JSON.stringify({
+          providerCallId: input.providerCallId,
+          sourcePayloadHash: input.sourcePayloadHash,
+          universeVersionId: input.universeVersionId,
+        }),
+      ],
+    );
+  });
+}
+
+export async function failUniverseSyncCommand(input: {
+  readonly command: UniverseSyncCommandInput;
+  readonly errorMessage: string;
+  readonly providerCallId: string | null;
+  readonly sourcePayloadHash: string | null;
+}): Promise<void> {
+  await withTransaction(async (tx) => {
+    const { rowCount } = await tx.query(
+      `update rni_universe_sync_command
+          set status = 'failed', error_message = $3, provider_call_id = $4,
+              source_payload_hash = $5, completed_at = now()
+        where environment = $1 and idempotency_key = $2 and status = 'running'`,
+      [
+        input.command.environment,
+        input.command.idempotencyKey,
+        input.errorMessage,
+        input.providerCallId,
+        input.sourcePayloadHash,
+      ],
+    );
+    if (rowCount !== 1) throw new Error('Universe sync command was not running at failure');
+    await tx.query(
+      `insert into audit_event
+         (actor_id, actor_role, action, object_type, object_id, environment, reason,
+          result, request_id, correlation_id, after_value)
+       values ($1, 'admin', 'fail', 'rni_universe_sync_command', $2, $3,
+               'Persist failed FMP universe synchronization outcome',
+               'failure', $4, $5, $6)`,
+      [
+        input.command.actorId,
+        universeSyncCommandObjectId(input.command),
+        input.command.environment,
+        input.command.idempotencyKey,
+        input.command.correlationId,
+        JSON.stringify({
+          errorMessage: input.errorMessage,
+          providerCallId: input.providerCallId,
+          sourcePayloadHash: input.sourcePayloadHash,
+        }),
+      ],
+    );
+  });
+}
+
 export type StageFmpUniverseMember = {
   readonly securityId: string;
   readonly providerSymbol: string;

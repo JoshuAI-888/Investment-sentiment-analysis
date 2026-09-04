@@ -94,6 +94,88 @@ create unique index universe_version_fmp_snapshot_unique
   on universe_version (environment, source_provider, source_payload_hash)
   where source_provider = 'fmp' and source_payload_hash is not null;
 
+create table rni_universe_sync_command (
+  environment         text        not null,
+  idempotency_key     text        not null,
+  actor_id            text        not null,
+  correlation_id      text        not null,
+  status              text        not null default 'running',
+  result_payload      jsonb       null,
+  error_message       text        null,
+  provider_call_id    uuid        null references provider_call_log (id),
+  source_payload_hash text        null,
+  universe_version    bigint      null references universe_version (id),
+  created_at          timestamptz not null default now(),
+  completed_at        timestamptz null,
+
+  primary key (environment, idempotency_key),
+  constraint rni_universe_sync_command_status_check
+    check (status in ('running', 'completed', 'failed')),
+  constraint rni_universe_sync_command_payload_hash_check
+    check (source_payload_hash is null or source_payload_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_universe_sync_command_terminal_check check (
+    (status = 'running' and result_payload is null and error_message is null and completed_at is null)
+    or (status = 'completed' and result_payload is not null and error_message is null and completed_at is not null)
+    or (status = 'failed' and result_payload is null and error_message is not null and completed_at is not null)
+  )
+);
+
+comment on table rni_universe_sync_command is
+  'Durable pre-provider idempotency claim for the FMP universe command. One environment/key has one terminal outcome and every replay returns that outcome without another provider call.';
+
+create table rni_security_master_import (
+  id                uuid        primary key default gen_random_uuid(),
+  environment       text        not null,
+  source_provider   text        not null default 'fmp',
+  source_endpoint   text        not null,
+  source_retrieved_at timestamptz not null,
+  source_payload_hash text      not null,
+  imported_count    integer     not null,
+  reused_count      integer     not null,
+  imported_by       text        not null,
+  created_at        timestamptz not null default now(),
+
+  constraint rni_security_master_import_provider_check check (source_provider = 'fmp'),
+  constraint rni_security_master_import_hash_check check (source_payload_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_security_master_import_count_check check (
+    imported_count between 0 and 600 and reused_count between 0 and 600
+    and imported_count + reused_count between 501 and 600
+  ),
+  constraint rni_security_master_import_unique unique (environment, source_payload_hash)
+);
+
+comment on table rni_security_master_import is
+  'Versioned lineage for a human-reviewed FMP profile export used to bootstrap the canonical security master before current constituent synchronization.';
+
+create table rni_security_master_import_member (
+  import_id             uuid    not null references rni_security_master_import (id),
+  security_id           uuid    not null references security (id),
+  source_ordinal        integer not null,
+  provider_symbol       text    not null,
+  provider_company_name text    not null,
+  provider_exchange     text    not null,
+  provider_cik          text    null,
+
+  primary key (import_id, security_id),
+  constraint rni_security_master_import_member_ordinal_unique
+    unique (import_id, source_ordinal),
+  constraint rni_security_master_import_member_symbol_unique
+    unique (import_id, provider_symbol),
+  constraint rni_security_master_import_member_ordinal_check
+    check (source_ordinal between 0 and 599)
+);
+
+comment on table rni_security_master_import_member is
+  'Immutable mapping from each reviewed FMP profile-export row to the canonical security identity selected by that import.';
+
+create trigger rni_security_master_import_append_only
+  before update or delete on rni_security_master_import
+  for each row execute function reject_mutation();
+
+create trigger rni_security_master_import_member_append_only
+  before update or delete on rni_security_master_import_member
+  for each row execute function reject_mutation();
+
 alter table universe_member
   drop constraint universe_member_source_check;
 

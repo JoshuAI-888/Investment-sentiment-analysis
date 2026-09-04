@@ -103,7 +103,51 @@ Minimum preferred verification sources are public issuer investor-relations page
 
 For the demo, OpenAI Web Search is the Reddit acquisition path and has no Reddit Data API dependency. Store canonical URL, returned post/body/excerpt and relevant metadata only; never full page HTML. Label excerpt-only captures and sampled coverage. Configure and verify the existing X adapter separately; record its credentials, permitted watch/query scope, rate limits and freshness. X is never a Reddit fallback.
 
-Run an authenticated FMP capability probe against [`/stable/sp500-constituent`](https://site.financialmodelingprep.com/developer/docs/stable/sp-500). Record HTTP status, response schema/count/hash, retrieval time and entitlement result without logging the key. Resolve all members against the canonical security master and stage—but do not activate—the new universe. Activation is blocked on empty, partial, duplicate, ambiguous, unresolved or over-600 membership. `joshuai` reviews the impact preview and activates production. NVDA must be present and is the default UI selection.
+Run an authenticated FMP capability probe against [`/stable/sp500-constituent`](https://site.financialmodelingprep.com/developer/docs/stable/sp-500). Record HTTP status, response schema/count/hash, retrieval time and entitlement result without logging the key.
+
+Before the first current-constituent sync in a clean environment, a human must obtain and review
+an FMP `/stable/profile` export for every candidate constituent. Store the reviewed file in an
+approved secure location, not Git. Its JSON envelope is:
+
+```json
+{
+  "source": "fmp_profile_export",
+  "sourceEndpoint": "/stable/profile",
+  "retrievedAt": "2026-09-05T00:00:00.000Z",
+  "payloadSha256": "sha256-of-the-exact-ordered-securities-array",
+  "securities": [
+    {
+      "symbol": "NVDA",
+      "name": "NVIDIA Corporation",
+      "exchange": "NASDAQ",
+      "sector": "Technology",
+      "industry": "Semiconductors",
+      "cik": "0001045810",
+      "currency": "USD"
+    }
+  ]
+}
+```
+
+The export must contain 501–600 unique symbols including NVDA. Compute `payloadSha256` over the
+exact JSON serialization of the ordered `securities` array, then run from the repository root:
+
+```bash
+pnpm --dir apps/web rni:bootstrap-security-master /secure/path/fmp-profile-export.json production joshuai
+```
+
+The importer is transactional and idempotent by environment plus payload hash. It aborts on a
+hash/count/NVDA/duplicate failure or an ambiguous existing symbol, and emits the import identity,
+inserted count, reused count and replay state. Review that output and its `audit_event` before
+running the constituent sync.
+
+The sync durably claims its environment/idempotency key before dispatching FMP, and every
+expected provider, validation or staged outcome is replayed without another call for that key.
+Resolve all members against the canonical security master and stage—but do not activate—the new
+universe. Activation is blocked on empty, partial, duplicate, ambiguous, unresolved or over-600
+membership. `joshuai` must first approve the exact staged version, then activate that unchanged
+stored membership after reviewing its impact preview. NVDA must be present and is the default UI
+selection.
 
 ## 7. Vercel deployment
 

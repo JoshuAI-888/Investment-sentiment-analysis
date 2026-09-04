@@ -875,6 +875,21 @@ There is no pooled count or unlabeled dimension array. This additive read model 
 render the required comparison without joining DATA-private observations or inferring one
 platform from the other.
 
+### D-RNI-15 — FMP universe commands claim before dispatch and bootstrap from reviewed identities
+
+**Closes universe review IR-02 and IR-04, 2026-09-05.** An FMP universe synchronization command
+durably claims `(environment, idempotency_key)` before any provider request. One claimed key has
+one terminal expected outcome; concurrent and later delivery replay it without another provider
+call. The command record binds provider-call, payload-hash and staged-version lineage. A distinct
+key may observe the same provider payload and reuse the immutable staged universe, but receives
+its own command and provider-call audit trail.
+
+A clean environment is bootstrapped through a transactional, versioned import of a human-reviewed
+FMP profile export into the canonical security master. The exact ordered 501–600-security array is
+SHA-256-bound, must include NVDA and unique symbols, and fails closed on identity ambiguity. This
+bootstrap does not activate a universe: `joshuai` separately approves and activates the exact
+stored staged membership under D-RNI-06.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

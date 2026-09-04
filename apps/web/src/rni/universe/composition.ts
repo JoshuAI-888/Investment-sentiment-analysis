@@ -11,8 +11,12 @@ import type { ProviderId } from '../../contracts/provider';
 import { env } from '../../env';
 import { listActiveSecurities } from '../../repositories/security';
 import {
+  claimUniverseSyncCommand,
+  completeUniverseSyncCommand,
+  failUniverseSyncCommand,
   insertUniverseProviderCall,
   stageFmpUniverseVersion,
+  waitForUniverseSyncCommand,
 } from '../../repositories/versions';
 import { synchronizeFmpUniverse, type FmpUniverseSyncResult } from './sync';
 
@@ -57,21 +61,28 @@ export async function syncFmpUniverseFromEnvironment(input: {
   readonly idempotencyKey: string;
   readonly correlationId: string;
 }): Promise<FmpUniverseSyncResult> {
-  let providerCallId: string | null = null;
-  const deps = wrapperDeps(async (entry) => {
-    providerCallId = await insertUniverseProviderCall(entry);
-  });
-  const result = await fetchFmpSp500Constituents(
-    { ...(env.FMP_API_KEY === undefined ? {} : { apiKey: env.FMP_API_KEY }) },
-    env.PROVIDER_MODE,
-    deps,
-  );
-  if (providerCallId === null) {
-    throw new Error('FMP universe call completed without a persisted provider_call_log identity');
-  }
-
   return synchronizeFmpUniverse(input, {
-    fetchConstituents: async () => ({ ...result, providerCallId: providerCallId as string }),
+    claimCommand: (command) => claimUniverseSyncCommand(command),
+    waitForCommand: (command) => waitForUniverseSyncCommand(command),
+    completeCommand: (command) => completeUniverseSyncCommand(command),
+    failCommand: (command) => failUniverseSyncCommand(command),
+    fetchConstituents: async () => {
+      let providerCallId: string | null = null;
+      const deps = wrapperDeps(async (entry) => {
+        providerCallId = await insertUniverseProviderCall(entry);
+      });
+      const result = await fetchFmpSp500Constituents(
+        { ...(env.FMP_API_KEY === undefined ? {} : { apiKey: env.FMP_API_KEY }) },
+        env.PROVIDER_MODE,
+        deps,
+      );
+      if (providerCallId === null) {
+        throw new Error(
+          'FMP universe call completed without a persisted provider_call_log identity',
+        );
+      }
+      return { ...result, providerCallId };
+    },
     listSecurities: () => listActiveSecurities(),
     stage: (stageInput) => stageFmpUniverseVersion(stageInput),
   });
