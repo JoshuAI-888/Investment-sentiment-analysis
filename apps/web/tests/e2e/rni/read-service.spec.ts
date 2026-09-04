@@ -179,6 +179,7 @@ test.describe('RNI fixture read service', () => {
       disposition: 'accepted',
       scopePreview: { kind: 'full_universe', securityCount: 501 },
     });
+    expect(fullUniverse.runId).not.toBe(accepted.runId);
     await expect(
       service.requestManualRefresh({
         idempotencyKey: 'fixture-command-unsupported',

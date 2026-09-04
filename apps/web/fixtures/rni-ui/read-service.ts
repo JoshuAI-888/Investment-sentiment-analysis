@@ -463,6 +463,7 @@ export class FixtureRniCommandService implements RniCommandService {
     }>
   >();
   private executions = 0;
+  private nextRunSequence = 31;
 
   get executionCount(): number {
     return this.executions;
@@ -492,6 +493,8 @@ export class FixtureRniCommandService implements RniCommandService {
 
   private async accept(request: RniManualRefreshRequest): Promise<RniManualRefreshResult> {
     this.executions += 1;
+    const runId = `00000000-0000-4000-8000-${String(this.nextRunSequence).padStart(12, '0')}`;
+    this.nextRunSequence += 1;
     await new Promise((resolve) => setTimeout(resolve, 25));
     const scopePreview =
       request.scope.kind === 'ticker'
@@ -510,10 +513,7 @@ export class FixtureRniCommandService implements RniCommandService {
           };
     return {
       disposition: 'accepted',
-      runId:
-        request.scope.kind === 'ticker'
-          ? '00000000-0000-4000-8000-000000000031'
-          : '00000000-0000-4000-8000-000000000032',
+      runId,
       idempotencyKey: request.idempotencyKey,
       scopePreview,
     };

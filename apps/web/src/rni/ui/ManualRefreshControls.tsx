@@ -11,7 +11,7 @@ export function ManualRefreshControls() {
   const [error, setError] = useState<string | null>(null);
 
   function submit(kind: 'ticker' | 'full_universe') {
-    const key = kind === 'ticker' ? 'fixture-refresh-nvda' : 'fixture-refresh-full';
+    const key = crypto.randomUUID();
     setPending(kind);
     setResult(null);
     setError(null);
@@ -30,12 +30,34 @@ export function ManualRefreshControls() {
       <p>
         NVDA — NVIDIA Corporation · NASDAQ. Refreshes use one idempotency key per requested scope.
       </p>
-      <button type="button" disabled={pending !== null} onClick={() => submit('ticker')}>
-        Refresh NVDA
-      </button>
-      <button type="button" disabled={pending !== null} onClick={() => submit('full_universe')}>
-        Refresh full universe
-      </button>
+      <section aria-labelledby="rni-nvda-refresh">
+        <h2 id="rni-nvda-refresh">NVDA refresh</h2>
+        <p id="rni-nvda-scope-preview">
+          Scope preview: NVDA — NVIDIA Corporation · NASDAQ · rni-universe-fixture-v1
+        </p>
+        <button
+          type="button"
+          disabled={pending !== null}
+          aria-describedby="rni-nvda-scope-preview"
+          onClick={() => submit('ticker')}
+        >
+          Refresh NVDA
+        </button>
+      </section>
+      <section aria-labelledby="rni-full-universe-refresh">
+        <h2 id="rni-full-universe-refresh">Full-universe refresh</h2>
+        <p id="rni-full-universe-scope-preview">
+          Scope preview: 501 active securities · rni-universe-fixture-v1
+        </p>
+        <button
+          type="button"
+          disabled={pending !== null}
+          aria-describedby="rni-full-universe-scope-preview"
+          onClick={() => submit('full_universe')}
+        >
+          Refresh full universe
+        </button>
+      </section>
       {pending ? (
         <p role="status">Submitting {pending === 'ticker' ? 'NVDA' : 'full universe'} refresh…</p>
       ) : null}
@@ -45,8 +67,8 @@ export function ManualRefreshControls() {
           <p role="status">
             {result.disposition === 'accepted' ? 'Accepted' : 'Duplicate'} refresh · {result.runId}
           </p>
-          <p data-rni-refresh-scope-preview>
-            Scope preview:{' '}
+          <p data-rni-refresh-result-scope>
+            Submitted scope:{' '}
             {result.scopePreview.kind === 'ticker'
               ? `${result.scopePreview.ticker} — ${result.scopePreview.companyName} · ${result.scopePreview.exchange} · ${result.scopePreview.universeVersion}`
               : `${result.scopePreview.securityCount} active securities · ${result.scopePreview.universeVersion}`}
