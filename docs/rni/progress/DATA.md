@@ -16,7 +16,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | D01 | Canonical `rni_source_item` and retrieval/content tables | `READY_FOR_REVIEW` | Migration `0020`; 7 PostgreSQL repository/constraint tests pass |
 | D02 | Source-security links and four-dimension observations | `READY_FOR_REVIEW` | Migration `0021`; multi-ticker and four-dimension tests pass |
 | D03 | Claims, citations, themes, narratives and relationships | `BLOCKED` | Relational lineage 4/4 pass; pgvector and frozen ports await CR-DATA-002/003 |
-| D04 | Independent Reddit/X `run_source_slice` persistence | `NOT_STARTED` | Platform-isolation constraints |
+| D04 | Independent Reddit/X `run_source_slice` persistence | `READY_FOR_REVIEW` | Migration `0023`; exactly-two platform isolation 4/4 pass |
 | D05 | Cross-source summary persistence without component mutation | `NOT_STARTED` | Divergence/partial-state repository test |
 | D06 | Idempotent/concurrent inserts and transactional outbox | `NOT_STARTED` | Concurrent upsert + crash test |
 | D07 | Bounded-content, tombstone and rejected-discovery states | `NOT_STARTED` | HTML rejection and tombstone tests |
@@ -73,6 +73,22 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 - **Owner / attempted mitigation / next check:** coordinator; completed and tested the unaffected
   relational schema and concrete adapter without editing frozen contracts; resolve before adding
   embedding storage or exposing the adapter to ENGINE.
+
+### D04 — Independent Reddit/X platform slices
+
+- **Status:** `READY_FOR_REVIEW`
+- **Files:** `apps/web/migrations/0023_rni_platform_slices.sql`,
+  `apps/web/src/rni/repositories/runs.ts`,
+  `apps/web/tests/integration/rni-persistence/platform-slices.test.ts`, the D03 narrative FK
+  regression, and this progress file.
+- **Tests:** TypeScript; targeted ESLint; D04 PostgreSQL integration (`4/4`); cumulative DATA
+  persistence PostgreSQL regression (`20/20`); `git diff --check`.
+- **Result:** run creation is idempotent and atomic with exactly one Reddit plus one X slice;
+  independent success/unavailable states round-trip unchanged; missing, duplicate, or cross-run
+  slice sets fail before commit.
+- **Risk:** the frozen contract does not expose the bundle-write port; covered by CR-DATA-001.
+- **Handoff:** INTEGRATION can compose `getRniRunById`/`getRniPlatformSlices` behind the frozen
+  `RniReadService` after accepting the write-port request.
 
 ## Required invariants
 
@@ -152,7 +168,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | migration clean apply | `READY_FOR_REVIEW` | targeted D01 Vitest | Fresh schema applied through `0020`; 7/7 pass |
 | migration forward apply | `NOT_STARTED` | — | D09 lane gate |
 | repository unit | `READY_FOR_REVIEW` | typecheck + targeted ESLint | No errors |
-| database integration | `READY_FOR_REVIEW` | targeted D01-D03 Vitest | 16/16 relational tests pass against PostgreSQL |
+| database integration | `READY_FOR_REVIEW` | DATA persistence Vitest | 20/20 D01-D04 tests pass against PostgreSQL |
 | concurrency/idempotency | `NOT_STARTED` | — | D06 owns concurrent/outbox cases |
 | repository required gate | `NOT_STARTED` | — | D09 lane gate |
 
@@ -175,7 +191,8 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 |---|---|---|
 | 3c0cc56 | D01 canonical source-first schema and repository | Typecheck, targeted lint, PostgreSQL 7/7 |
 | bae4e9f | D02 multi-security links and observations | Typecheck, targeted lint, PostgreSQL 12/12 |
-| this commit | D03 relational claim/citation/narrative slice | Typecheck, targeted lint, PostgreSQL 16/16; vector blocked |
+| 2757f5c | D03 relational claim/citation/narrative slice | Typecheck, targeted lint, PostgreSQL 16/16; vector blocked |
+| this commit | D04 independent run/platform slices | Typecheck, targeted lint, PostgreSQL 20/20 |
 
 ## Handoff
 
@@ -184,11 +201,11 @@ RNI LANE     DATA
 BRANCH       feat/rni-data-source-first
 BASE SHA     86ec5b4757f45cbe96c651f413e8ff1109fef279
 STATUS       PARTIAL
-TASKS        2/9; D03 blocked, D04-D09 incomplete
-TESTS        D01-D03 relational PostgreSQL integration 16/16; typecheck/lint pass
+TASKS        3/9; D03 blocked, D05-D09 incomplete
+TESTS        D01-D04 PostgreSQL integration 20/20; typecheck/lint pass
 CONTRACT     CR-DATA-001, CR-DATA-002, CR-DATA-003
 RISKS        D03 pgvector/port blocked; concurrency/outbox deferred to D06
 FILES        migrations 0020-0022; source/observation/claim repositories; D01-D03 tests; DATA.md
-COMMITS      3c0cc56 (D01); bae4e9f (D02); this commit (D03 relational)
+COMMITS      3c0cc56 (D01); bae4e9f (D02); 2757f5c (D03 relational); this commit (D04)
 DEMO PROOF   one comparative source persists distinct bullish NVDA and bearish AMD observations
 ```

@@ -24,6 +24,7 @@ import {
   persistRniSecurityObservation,
 } from '../../../src/rni/repositories/observations';
 import { persistRniSource } from '../../../src/rni/repositories/source-items';
+import { persistRniRunWithSlices } from '../../../src/rni/repositories/runs';
 import { databaseUrl, makePool, resetSchema, truncateAll } from '../helpers/db';
 
 const url = databaseUrl();
@@ -190,6 +191,53 @@ describe.skipIf(url === undefined)('RNI D03 relational claims and narratives', (
 
     const storedClaim = await persistRniEvidenceClaim(claim(), pool);
     const narrativeId = randomUUID();
+    await persistRniRunWithSlices(
+      {
+        id: rniFixtureIds.run,
+        idempotencyKey: 'd03-narrative-run',
+        trigger: 'manual',
+        status: 'running',
+        windowStart: '2026-09-04T00:00:00.000Z',
+        windowEnd: '2026-09-05T00:00:00.000Z',
+        comparisonStart: null,
+        comparisonEnd: null,
+        universeVersion: 'u1',
+        configVersion: 'c1',
+        promptVersion: 'p1',
+        aiRoute: 'openai_direct',
+        requestedAt: '2026-09-05T00:00:00.000Z',
+        completedAt: null,
+      },
+      [
+        {
+          id: randomUUID(),
+          runId: rniFixtureIds.run,
+          platform: 'reddit',
+          status: 'complete',
+          eligibleSourceCount: 1,
+          coverageDisclosure: 'sampled',
+          lastAttemptAt: null,
+          lastSuccessfulRefreshAt: null,
+          dataThroughAt: null,
+          computedAt: null,
+          errorCode: null,
+        },
+        {
+          id: randomUUID(),
+          runId: rniFixtureIds.run,
+          platform: 'x',
+          status: 'unavailable',
+          eligibleSourceCount: 0,
+          coverageDisclosure: 'unavailable',
+          lastAttemptAt: null,
+          lastSuccessfulRefreshAt: null,
+          dataThroughAt: null,
+          computedAt: null,
+          errorCode: 'unavailable',
+        },
+      ],
+      pool,
+    );
     await persistRniNarrative(
       {
         id: narrativeId,
