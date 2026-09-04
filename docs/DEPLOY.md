@@ -321,10 +321,13 @@ to consider the Basic tier (`01-PRODUCT-SPEC.md` §5).
 
 ---
 
-## MT-06 🔴 — Provision LLM access
+## MT-06 ✅ — Provision LLM access. **Done — confirmed by the owner on Vercel, 2026-09-05.**
 
-**Blocks:** F10, F11, F12 — the entire agentic research feature, i.e. the product's thesis.
-**Status:** **not provisioned.** This is the largest single blocker in the plan.
+**Unblocked:** F10, F11, F12, and F21 through F12. Steps below retained as the record of what
+was provisioned.
+
+**Blocked:** F10, F11, F12 — the entire agentic research feature, i.e. the product's thesis.
+**Status:** **provisioned 2026-09-05.** Previously the largest single blocker in the plan.
 
 **Transport decided 2026-09-03 (D-34): Vercel AI Gateway.** Set `AI_GATEWAY_API_KEY` and
 `MODEL_TRANSPORT_DEFAULT=vercel_gateway`. One integration, unified spend visibility, provider
@@ -850,7 +853,7 @@ as-is, exactly as listed in the table above.
 | MT-03 | Confirm Neon (**Launch tier**, D-33) / Upstash / Vercel | 🟡 | ☐ |
 | MT-04 | ~~Create the QStash schedule~~ — **re-scoped to Wave 1** (was Wave 4); MT-08 runs on it | ✅ | ☑ **done 2026-09-05** |
 | MT-05 | Confirm provider keys and quotas | 🟡 | ☐ |
-| MT-06 | **Provision LLM access** — transport decided (Vercel AI Gateway, D-34); keys still to set | 🔴 | ☐ |
+| MT-06 | ~~Provision LLM access~~ — Vercel AI Gateway (D-34), keys set | ✅ | ☑ **done 2026-09-05** |
 | MT-07 | Initial universe = **100** (D-27); symbol list pulled and committed, ETFs excluded (B-21) | ✅ | ☑ **fully resolved** |
 | **MT-08** | **START THE COLLECTOR — genuinely next now (F16a unblocked, Reddit no longer a dependency).** Corpus lost is not recoverable (D-16) | 🔴🔴 | ☐ |
 | MT-13 | ~~File the Reddit Data API application~~ | ⬛ | **discarded, D-39** |
