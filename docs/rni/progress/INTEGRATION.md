@@ -17,6 +17,7 @@
 | I02D | Resolve CR-SURFACE-03 security-detail dimension read | `PASSED` | D-RNI-14; additive complete/cited per-platform dimension shape; focused 13 pass, full contract 83 pass/22 DB-skipped |
 | I02E | Resolve CR-SURFACE-04 idempotent manual-refresh command boundary | `PASSED` | D-RNI-17; additive intent-only request and server-resolved accepted/duplicate result; contract 14/14 |
 | I02F | Resolve CR-SURFACE-05 active-universe and staged-preview reads | `PASSED` | D-RNI-18; separate read-only service, bounded search and count-reconciled immutable impact; RNI 15/15, full contract 85/22 skipped |
+| I02F1 | Close universe-read contract review findings | `PASSED` | Legacy/FMP active union, 501-member FMP floor, impossible complete-impact rejection; focused and full contract pass |
 | I03 | Expand CI path filters for RNI prompts/agents/evals | `MERGED` | PR #5; actual `tests/eval/rni` path triggered and passed |
 | I04 | Pin/verify pnpm 10.33.0 and build-script policy | `PASSED` | Clean frozen install and PR #5 web/scorer CI passed |
 | I05 | Add forward universe migration and 600-member ceiling | `PASSED` | Independent re-review passed IR-01/03/05/06; focused validation 9 and fresh PostgreSQL activation/version gates 14 pass |
@@ -59,7 +60,7 @@
 | CR-SURFACE-02 | SURFACE | `ACCEPTED` | Add a cursor-paginated Radar page with run lineage, security identity, two non-poolable platform-labelled cells, and explicit pending/aligned/divergent/partial/insufficient cross-source state | DATA, ENGINE, SURFACE, INTEGRATION | `84dca87` / D-RNI-13 |
 | CR-SURFACE-03 | SURFACE | `ACCEPTED` | Add a bounded security-detail read with canonical identity and exactly four cited dimension assignments for each independently labelled platform | DATA, ENGINE, SURFACE, INTEGRATION | `ce80424` / D-RNI-14 |
 | CR-SURFACE-04 | SURFACE | `ACCEPTED` | Add an idempotent manual-refresh command boundary for ticker/full scope; server owns auth/audit/active config/universe/model/window resolution and returns one durable run identity plus resolved preview | ENGINE, SURFACE, INTEGRATION | D-RNI-17 / current I02E commit |
-| CR-SURFACE-05 | SURFACE | `ACCEPTED` | Add a separate read-only universe service for active metadata/default, bounded any-member search, and immutable staged impact preview; no provider or activation access | DATA, SURFACE, INTEGRATION | D-RNI-18 / current I02F commit |
+| CR-SURFACE-05 | SURFACE | `ACCEPTED` | Add a separate read-only universe service for active metadata/default, bounded any-member search, and immutable staged impact preview; legacy first-deployment parent remains representable; no provider or activation access | DATA, SURFACE, INTEGRATION | D-RNI-18 / current I02F1 correction |
 
 ### CR-DATA-001 decision
 
@@ -138,16 +139,18 @@
 - **Current behaviour:** frozen universe candidate values supported synchronization, but surfaces
   could not read current membership, select NVDA by contract, search beyond Radar results or show
   an immutable staged impact without reaching into integration-owned repositories.
-- **Decision:** accept a separate additive `RniUniverseReadService`. It exposes the active FMP
-  version and NVDA default, case-insensitive ticker/company search over only that version with a
-  50-member ceiling, and a staged preview whose full canonical add/remove sets reconcile counts.
+- **Decision:** accept a separate additive `RniUniverseReadService`. It exposes the active legacy
+  or FMP version and NVDA default, case-insensitive ticker/company search over only that version
+  with a 50-member ceiling, and a staged FMP preview whose full canonical add/remove sets reconcile
+  counts. FMP reads require the validated 501–600 range and provider lineage.
 - **Compatibility:** existing `RniReadService`, commands and candidate transport are unchanged.
   The new service cannot call a provider, synchronize, approve or activate a version.
 - **Affected lanes:** SURFACE consumes the reference values for S08; INTEGRATION composes live
   repository reads at I08; DATA storage ownership is unchanged.
 - **Acceptance:** the fixture contract returns NVDA, finds non-Radar MSFT from uppercase company
-  search and rejects staged identity/parent/count inconsistencies; typecheck/lint, RNI 15/15 and
-  full contract 85 pass with 22 database-only skips.
+  search, represents a 100→501 legacy/FMP transition and rejects undersized FMP, staged
+  identity/parent/count and impossible over-add/remove impacts; typecheck/lint, RNI 15/15 and full
+  contract 85 pass with 22 database-only skips.
 
 ## Lane intake
 
@@ -155,7 +158,7 @@
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
 | ENGINE | `E06_CHANGES_REQUESTED` | E06 based on `fec8c46`; must rebase to `03f8afc` before E07 | builder E06 focused 17/17 plus repository gates; coordinator typecheck/lint and focused 17/17 | yes | ER-07 open: zero-weight observations can satisfy the independent-source/confidence breadth gates; E01–E05 remain accepted |
-| SURFACE | `S08_UNBLOCKED` | must rebase to current I02F contract | builder S07 typecheck/lint/contract/build/guard and Chromium 4/4 twice; coordinator I02F type/lint, RNI 15/15 and full contract 85/22 skipped | yes | S01–S07 accepted through `babd940`; CR-SURFACE-05 accepted as D-RNI-18; S08 may start after rebase |
+| SURFACE | `S08_UNBLOCKED` | must rebase to current I02F1 correction | builder S07 typecheck/lint/contract/build/guard and Chromium 4/4 twice; coordinator I02F1 type/lint, RNI 15/15 and full contract 85/22 skipped | yes | S01–S07 accepted through `babd940`; CR-SURFACE-05 accepted as corrected D-RNI-18; S08 may start after rebase |
 
 ## Live/deployment gates
 
@@ -208,6 +211,8 @@
 | ER-05 | P1 | `RESOLVED` | X authors are unsalted SHA-256 hashes of mutable usernames rather than tenant-scoped hashes of stable identity | `0e229d6` omits identity by default and permits only an injected tenant policy over stable provider author ID, with tenant/rename/privacy tests |
 | ER-06 | P1 | `RESOLVED` | X content-version candidates do not identify exactly one latest interpretation version and A→B→A leaves B latest | `0e229d6` separates persistence versions from one latest interpretation candidate and records ordered A→B→A transitions |
 | ER-07 | P1 | `OPEN` | A zero-weight second source/group/community can satisfy the independent-source floor and remove single-source confidence caps while only one source contributes effective evidence | ENGINE must derive effective independence/breadth from positive-weight traces and add the mixed positive/zero regression before E06 acceptance |
+| ICR-01 | P1 | `RESOLVED` | D-RNI-18 cannot represent the preserved 100-member legacy active parent of the first staged FMP candidate, while undersized FMP versions pass | Active is an explicit legacy/FMP union; FMP active/staged variants require 501–600 and a 100→501 fixture passes |
+| ICR-02 | P1 | `RESOLVED` | Balanced arithmetic permits complete impact arrays that remove more members than active or add more members than staged | Frozen schema rejects both bounds; I08 retains repository-backed membership-set acceptance |
 | SR-04 | P2 | `RESOLVED` | S02's first commit left its task/evidence/handoff record stale and did not identify the actual browser gate | `c4899b8` amends the task commit with exact type, lint, contract, build and Chromium evidence plus complete files/risks/handoff |
 | SR-05 | P1 | `RESOLVED` | S04 evidence dialogs reused citation-derived DOM IDs and lacked complete keyboard focus handling | `6c0df68` uses per-instance controls and proves focus entry/containment/Escape/restoration in Chromium 9/9 |
 | SR-06 | P1 | `RESOLVED` | S07 revealed scope only after submission and permanently reused one key per scope | `55b01ef` previews ticker/full scope before action and uses a new key for each intentional request |
@@ -261,6 +266,7 @@
 | `CURRENT` | Accept SURFACE S07 idempotent manual-refresh controls | typecheck; focused lint; RNI contract 14/14; guard 1/1; deterministic Chromium 4/4 twice |
 | `CURRENT` | Resolve CR-SURFACE-05 with read-only universe selection boundary | typecheck; focused lint; RNI contract 15/15; full contract 85/22 skipped |
 | `CURRENT` | Review ENGINE E06 platform analytics | typecheck; focused lint; focused unit/contract/eval 17/17; ER-07 returned |
+| `CURRENT` | Close I02F universe-read P1 review findings | typecheck; focused lint; RNI contract 15/15; full contract 85/22 skipped; independent re-review pending |
 
 ## Coordinator notes
 
@@ -320,18 +326,22 @@
   consume only the reference active/search/staged values; live repository composition remains I08.
 - ENGINE E06 `3d6688e` is held on ER-07: raw zero-weight observations may remain visible in raw
   attention, but cannot manufacture effective source/community breadth for sentiment or confidence.
+- I02F1 closes ICR-01/02 with an explicit legacy/FMP active union, a 501-member FMP floor and
+  impossible over-add/remove rejection. Surface must use the superseding commit, not `03f8afc`.
 
 ## I02F handoff
 
 - **Files changed:** frozen RNI contracts and reference fixtures; RNI contract test; product
   contract; D-RNI-18; coordinator trackers.
-- **Behaviour:** the additive universe service returns active FMP metadata with NVDA as default,
-  bounded case-insensitive active-member search and a distinct immutable staged child whose
-  complete add/remove sets reconcile its count. It exposes no provider or mutation operation.
+- **Behaviour:** the additive universe service returns legacy-or-FMP active metadata with NVDA as
+  default, bounded case-insensitive active-member search and a distinct immutable FMP staged child
+  whose complete possible add/remove sets reconcile its 501–600 count. It exposes no provider or
+  mutation operation.
 - **Verification:** typecheck and focused lint pass; RNI contract 15/15; full contract 85 pass with
   22 database-only skips.
-- **Risk/handoff:** I08 must project these reads from the active/staged repository state and retain
-  version binding across each response. SURFACE owns fixture/UI/browser coverage after rebasing.
+- **Risk/handoff:** I08 must project these reads from the active/staged repository state, retain
+  version binding and verify added/removed identities against both stored memberships. SURFACE owns
+  fixture/UI/browser coverage after rebasing onto the I02F1 correction.
 
 ## I06R3 handoff
 

@@ -11,6 +11,7 @@ import type {
   RniSourceCommitResult,
   RniSourceItem,
   RniActiveUniverse,
+  RniActiveUniverseVersion,
   RniStagedUniversePreview,
   RniUniverseSearchResult,
 } from '../contracts';
@@ -340,6 +341,17 @@ const referenceActiveUniverseVersion = {
 export const referenceActiveUniverse: RniActiveUniverse = {
   version: referenceActiveUniverseVersion,
   defaultSecurity: referenceRadarPage.rows[0]!.security,
+};
+
+export const referenceLegacyActiveUniverseVersion: RniActiveUniverseVersion = {
+  id: '98',
+  status: 'active',
+  parentVersion: null,
+  securityCount: 100,
+  source: 'legacy_seed',
+  retrievedAt: null,
+  payloadSha256: null,
+  createdAt: '2026-09-01T00:00:00.000Z',
 };
 
 export const referenceUniverseSearchResult: RniUniverseSearchResult = {

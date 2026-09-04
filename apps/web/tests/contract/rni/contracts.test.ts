@@ -18,6 +18,8 @@ import {
   rniStagedUniversePreview,
   rniUniverseSearchQuery,
   rniUniverseSearchResult,
+  rniActiveUniverseVersion,
+  rniStagedUniverseVersion,
   rniUniverseSnapshotCandidate,
   type RniSourcePersistencePort,
   type RniReadService,
@@ -33,6 +35,7 @@ import {
   partialCombinedSummary,
   referenceRadarPage,
   referenceActiveUniverse,
+  referenceLegacyActiveUniverseVersion,
   referenceStagedUniversePreview,
   referenceUniverseSearchResult,
   referenceSecurityDetail,
@@ -401,6 +404,78 @@ describe('RNI frozen contracts', () => {
         },
       }),
     ).toThrow(/complete impact/u);
+
+    const expansion = Array.from({ length: 401 }, (_, index) => ({
+      id: `00000000-0000-4000-8000-${String(index + 1000).padStart(12, '0')}`,
+      ticker: `L${index}`,
+      companyName: `Legacy expansion ${index}`,
+      exchange: 'NYSE',
+    }));
+    expect(
+      rniStagedUniversePreview.parse({
+        activeVersion: referenceLegacyActiveUniverseVersion,
+        stagedVersion: {
+          id: '102',
+          status: 'staged',
+          parentVersion: referenceLegacyActiveUniverseVersion.id,
+          securityCount: 501,
+          source: 'fmp_sp500_constituent',
+          retrievedAt: '2026-09-05T01:00:00.000Z',
+          payloadSha256: 'c'.repeat(64),
+          createdAt: '2026-09-05T01:01:00.000Z',
+        },
+        added: expansion,
+        removed: [],
+      }).stagedVersion.securityCount,
+    ).toBe(501);
+
+    expect(() =>
+      rniActiveUniverseVersion.parse({
+        ...referenceActiveUniverse.version,
+        securityCount: 500,
+      }),
+    ).toThrow();
+    expect(() =>
+      rniStagedUniverseVersion.parse({
+        ...referenceStagedUniversePreview.stagedVersion,
+        securityCount: 500,
+      }),
+    ).toThrow();
+
+    const impossibleAdded = Array.from({ length: 504 }, (_, index) => ({
+      id: `10000000-0000-4000-8000-${String(index + 1000).padStart(12, '0')}`,
+      ticker: `A${index}`,
+      companyName: `Impossible addition ${index}`,
+      exchange: 'NYSE',
+    }));
+    const impossibleRemoved = Array.from({ length: 504 }, (_, index) => ({
+      id: `20000000-0000-4000-8000-${String(index + 1000).padStart(12, '0')}`,
+      ticker: `R${index}`,
+      companyName: `Impossible removal ${index}`,
+      exchange: 'NYSE',
+    }));
+    expect(() =>
+      rniStagedUniversePreview.parse({
+        activeVersion: referenceActiveUniverse.version,
+        stagedVersion: {
+          ...referenceStagedUniversePreview.stagedVersion,
+          securityCount: referenceActiveUniverse.version.securityCount,
+        },
+        added: impossibleAdded,
+        removed: impossibleRemoved,
+      }),
+    ).toThrow(/cannot remove more members/u);
+    expect(() =>
+      rniStagedUniversePreview.parse({
+        activeVersion: referenceActiveUniverse.version,
+        stagedVersion: {
+          ...referenceStagedUniversePreview.stagedVersion,
+          securityCount: referenceActiveUniverse.version.securityCount,
+        },
+        added: impossibleAdded,
+        removed: impossibleRemoved,
+      }),
+    ).toThrow(/cannot add more members/u);
   });
 
   it('rejects an over-600-member FMP universe candidate', () => {

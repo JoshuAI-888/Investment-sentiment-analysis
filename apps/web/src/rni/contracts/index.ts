@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const RNI_UNIVERSE_MAX_SYMBOLS = 600;
+export const RNI_FMP_UNIVERSE_MIN_SYMBOLS = 501;
 
 export const rniPlatform = z.enum(['reddit', 'x']);
 export type RniPlatform = z.infer<typeof rniPlatform>;
@@ -424,20 +425,37 @@ export type RniRadarSecurity = z.infer<typeof rniRadarSecurity>;
 
 const rniUniverseVersionReadFields = {
   id: z.string().min(1),
-  securityCount: z.number().int().positive().max(RNI_UNIVERSE_MAX_SYMBOLS),
-  source: z.literal('fmp_sp500_constituent'),
-  retrievedAt: rniIsoTimestamp,
-  payloadSha256: rniSha256,
   createdAt: rniIsoTimestamp,
 };
 
-export const rniActiveUniverseVersion = z
+const rniLegacyActiveUniverseVersion = z
   .object({
     ...rniUniverseVersionReadFields,
     status: z.literal('active'),
     parentVersion: z.string().min(1).nullable(),
+    securityCount: z.literal(100),
+    source: z.literal('legacy_seed'),
+    retrievedAt: z.null(),
+    payloadSha256: z.null(),
   })
   .strict();
+
+const rniFmpActiveUniverseVersion = z
+  .object({
+    ...rniUniverseVersionReadFields,
+    status: z.literal('active'),
+    parentVersion: z.string().min(1).nullable(),
+    securityCount: z.number().int().min(RNI_FMP_UNIVERSE_MIN_SYMBOLS).max(RNI_UNIVERSE_MAX_SYMBOLS),
+    source: z.literal('fmp_sp500_constituent'),
+    retrievedAt: rniIsoTimestamp,
+    payloadSha256: rniSha256,
+  })
+  .strict();
+
+export const rniActiveUniverseVersion = z.discriminatedUnion('source', [
+  rniLegacyActiveUniverseVersion,
+  rniFmpActiveUniverseVersion,
+]);
 export type RniActiveUniverseVersion = z.infer<typeof rniActiveUniverseVersion>;
 
 export const rniStagedUniverseVersion = z
@@ -445,6 +463,10 @@ export const rniStagedUniverseVersion = z
     ...rniUniverseVersionReadFields,
     status: z.literal('staged'),
     parentVersion: z.string().min(1),
+    securityCount: z.number().int().min(RNI_FMP_UNIVERSE_MIN_SYMBOLS).max(RNI_UNIVERSE_MAX_SYMBOLS),
+    source: z.literal('fmp_sp500_constituent'),
+    retrievedAt: rniIsoTimestamp,
+    payloadSha256: rniSha256,
   })
   .strict();
 export type RniStagedUniverseVersion = z.infer<typeof rniStagedUniverseVersion>;
@@ -530,6 +552,20 @@ export const rniStagedUniversePreview = z
         code: z.ZodIssueCode.custom,
         path: ['added'],
         message: 'Staged additions and removals must be unique and disjoint',
+      });
+    }
+    if (preview.removed.length > preview.activeVersion.securityCount) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['removed'],
+        message: 'A staged preview cannot remove more members than the active universe contains',
+      });
+    }
+    if (preview.added.length > preview.stagedVersion.securityCount) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['added'],
+        message: 'A staged preview cannot add more members than the staged universe contains',
       });
     }
     if (
