@@ -501,10 +501,101 @@ export const rniRadarPage = z
   });
 export type RniRadarPage = z.infer<typeof rniRadarPage>;
 
+export const rniSecurityDetailDimension = rniDimensionAssignment
+  .extend({
+    citationIds: z.array(z.string().uuid()),
+  })
+  .strict()
+  .superRefine((assignment, context) => {
+    if (assignment.stance !== 'insufficient' && assignment.citationIds.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['citationIds'],
+        message: 'A publishable dimension assignment requires a citation',
+      });
+    }
+    if (assignment.stance === 'insufficient' && assignment.score !== null) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['score'],
+        message: 'An insufficient dimension cannot carry a score',
+      });
+    }
+  });
+export type RniSecurityDetailDimension = z.infer<typeof rniSecurityDetailDimension>;
+
+export const rniSecurityDetailPlatform = z
+  .object({
+    platform: rniPlatform,
+    status: rniSliceStatus,
+    summary: z.string().min(1),
+    citationIds: z.array(z.string().uuid()),
+    dimensions: z.array(rniSecurityDetailDimension).length(4),
+    eligibleSourceCount: z.number().int().nonnegative(),
+    coverageDisclosure: z.string().min(1),
+    confidence: rniUnitDecimal.nullable(),
+    lastSuccessfulRefreshAt: rniIsoTimestamp.nullable(),
+    dataThroughAt: rniIsoTimestamp.nullable(),
+    computedAt: rniIsoTimestamp.nullable(),
+  })
+  .strict()
+  .superRefine((result, context) => {
+    const dimensionKeys = result.dimensions.map((assignment) => assignment.dimension);
+    if (
+      new Set(dimensionKeys).size !== rniDimensionKey.options.length ||
+      !rniDimensionKey.options.every((dimension) => dimensionKeys.includes(dimension))
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dimensions'],
+        message: 'A platform detail requires each of the four RNI dimensions exactly once',
+      });
+    }
+
+    if (
+      ['pending', 'running', 'failed', 'unavailable'].includes(result.status) &&
+      result.dimensions.some((assignment) => assignment.stance !== 'insufficient')
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dimensions'],
+        message: 'A non-publishable platform cannot carry a publishable dimension assignment',
+      });
+    }
+  });
+export type RniSecurityDetailPlatform = z.infer<typeof rniSecurityDetailPlatform>;
+
+export const rniSecurityDetail = z
+  .object({
+    runId: z.string().uuid(),
+    security: rniRadarSecurity,
+    reddit: rniSecurityDetailPlatform,
+    x: rniSecurityDetailPlatform,
+  })
+  .strict()
+  .superRefine((detail, context) => {
+    if (detail.reddit.platform !== 'reddit') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['reddit', 'platform'],
+        message: 'The Reddit detail must contain only Reddit dimensions',
+      });
+    }
+    if (detail.x.platform !== 'x') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['x', 'platform'],
+        message: 'The X detail must contain only X dimensions',
+      });
+    }
+  });
+export type RniSecurityDetail = z.infer<typeof rniSecurityDetail>;
+
 export interface RniReadService {
   getRadarPage(query: RniRadarQuery): Promise<RniRadarPage>;
   getRun(runId: string): Promise<RniRun>;
   getPlatformSlices(runId: string): Promise<readonly RniPlatformSlice[]>;
+  getSecurityDetail(runId: string, securityId: string): Promise<RniSecurityDetail>;
   getSecuritySummary(runId: string, securityId: string): Promise<RniCombinedSummary>;
   getCitation(citationId: string): Promise<RniCitation>;
   getEvidence(sourceItemId: string): Promise<RniSourceItem>;

@@ -5,6 +5,7 @@ import type {
   RniPlatformSlice,
   RniRadarPage,
   RniRun,
+  RniSecurityDetail,
   RniSecurityMention,
   RniSecurityObservation,
   RniSourceCommitResult,
@@ -30,6 +31,7 @@ export const rniFixtureIds = {
   summary: '00000000-0000-4000-8000-000000000013',
   redditCitation: '00000000-0000-4000-8000-000000000014',
   searchQuery: '00000000-0000-4000-8000-000000000015',
+  xCitation: '00000000-0000-4000-8000-000000000016',
 } as const;
 
 export const comparativeSource: RniSourceItem = {
@@ -268,12 +270,12 @@ export const referenceRadarPage: RniRadarPage = {
         lastSuccessfulRefreshAt: '2026-09-05T00:06:00.000Z',
         dataThroughAt: '2026-09-05T00:00:00.000Z',
         computedAt: '2026-09-05T00:07:30.000Z',
-        citationIds: ['00000000-0000-4000-8000-000000000016'],
+        citationIds: [rniFixtureIds.xCitation],
       },
       combined: {
         state: 'divergent',
         summary: 'Reddit and X disagree; neither source result is replaced or averaged away.',
-        citationIds: [rniFixtureIds.redditCitation, '00000000-0000-4000-8000-000000000016'],
+        citationIds: [rniFixtureIds.redditCitation, rniFixtureIds.xCitation],
       },
     },
     {
@@ -317,4 +319,93 @@ export const referenceRadarPage: RniRadarPage = {
     },
   ],
   nextCursor: null,
+};
+
+export const referenceSecurityDetail: RniSecurityDetail = {
+  runId: rniFixtureIds.run,
+  security: referenceRadarPage.rows[0]!.security,
+  reddit: {
+    platform: 'reddit',
+    status: 'complete',
+    summary: 'The observed Reddit sample is bullish on NVDA execution.',
+    citationIds: [rniFixtureIds.redditCitation],
+    dimensions: [
+      {
+        dimension: 'company_fundamentals',
+        stance: 'bullish',
+        score: '0.75',
+        rationale: 'Execution and product demand are viewed positively.',
+        citationIds: [rniFixtureIds.redditCitation],
+      },
+      {
+        dimension: 'market_trading',
+        stance: 'bullish',
+        score: '0.62',
+        rationale: 'The sampled discussion expresses positive trading intent.',
+        citationIds: [rniFixtureIds.redditCitation],
+      },
+      {
+        dimension: 'catalyst_event',
+        stance: 'neutral',
+        score: '0.05',
+        rationale: 'No dominant near-term catalyst stance appears in the sample.',
+        citationIds: [rniFixtureIds.redditCitation],
+      },
+      {
+        dimension: 'retail_narrative',
+        stance: 'bullish',
+        score: '0.70',
+        rationale: 'The sampled narrative emphasizes continued execution momentum.',
+        citationIds: [rniFixtureIds.redditCitation],
+      },
+    ],
+    eligibleSourceCount: 2,
+    coverageDisclosure: 'Observed Reddit sample discovered through OpenAI Web Search.',
+    confidence: '0.82',
+    lastSuccessfulRefreshAt: '2026-09-05T00:07:00.000Z',
+    dataThroughAt: '2026-09-05T00:00:00.000Z',
+    computedAt: '2026-09-05T00:07:00.000Z',
+  },
+  x: {
+    platform: 'x',
+    status: 'complete',
+    summary: 'The configured X sample is bearish on near-term valuation.',
+    citationIds: [rniFixtureIds.xCitation],
+    dimensions: [
+      {
+        dimension: 'company_fundamentals',
+        stance: 'neutral',
+        score: '0.08',
+        rationale: 'The sample does not take a clear stance on business fundamentals.',
+        citationIds: [rniFixtureIds.xCitation],
+      },
+      {
+        dimension: 'market_trading',
+        stance: 'bearish',
+        score: '-0.68',
+        rationale: 'The sampled discussion expresses valuation and near-term trading concern.',
+        citationIds: [rniFixtureIds.xCitation],
+      },
+      {
+        dimension: 'catalyst_event',
+        stance: 'neutral',
+        score: '0',
+        rationale: 'No dominant catalyst stance appears in the configured sample.',
+        citationIds: [rniFixtureIds.xCitation],
+      },
+      {
+        dimension: 'retail_narrative',
+        stance: 'bearish',
+        score: '-0.58',
+        rationale: 'The configured sample emphasizes valuation pressure.',
+        citationIds: [rniFixtureIds.xCitation],
+      },
+    ],
+    eligibleSourceCount: 5,
+    coverageDisclosure: 'Configured X query sample; not platform-wide coverage.',
+    confidence: '0.74',
+    lastSuccessfulRefreshAt: '2026-09-05T00:06:00.000Z',
+    dataThroughAt: '2026-09-05T00:00:00.000Z',
+    computedAt: '2026-09-05T00:07:30.000Z',
+  },
 };

@@ -14,6 +14,7 @@
 | I02A | Resolve CR-DATA-001 source-persistence port | `READY_FOR_REVIEW` | `6b67657`; additive frozen contract; fake-port duplicate delivery returns the committed identity |
 | I02B | Resolve DATA/SURFACE contract requests | `READY_FOR_REVIEW` | `264ea9c`; D-RNI-09–12; narrow citation lookup plus explicit storage, pgvector, and universe-validation ownership decisions; contract 79 pass |
 | I02C | Resolve CR-SURFACE-02 Radar read shape | `PASSED` | `84dca87`; D-RNI-13; additive cursor page with security identity and non-poolable Reddit/X/combined cells; contract 81 pass |
+| I02D | Resolve CR-SURFACE-03 security-detail dimension read | `PASSED` | D-RNI-14; additive complete/cited per-platform dimension shape; focused 13 pass, full contract 83 pass/22 DB-skipped |
 | I03 | Expand CI path filters for RNI prompts/agents/evals | `MERGED` | PR #5; actual `tests/eval/rni` path triggered and passed |
 | I04 | Pin/verify pnpm 10.33.0 and build-script policy | `PASSED` | Clean frozen install and PR #5 web/scorer CI passed |
 | I05 | Add forward universe migration and 600-member ceiling | `READY_FOR_REVIEW` | Clean + forward PostgreSQL migration tests pass; 600 accepted and 601 rejected in DB and Zod |
@@ -50,6 +51,7 @@
 | CR-DATA-004 | DATA | `RESOLVED_NO_CHANGE` | I06 synchronizer owns duplicate, completeness, NVDA, ambiguous, and unresolved validation; transport schema remains structural | DATA, INTEGRATION | `e535624` + `264ea9c` |
 | CR-SURFACE-01 | SURFACE | `ACCEPTED` | Add `RniReadService.getCitation(citationId)` returning frozen `RniCitation`; evidence remains a second source-ID read | DATA, SURFACE, INTEGRATION | `264ea9c` |
 | CR-SURFACE-02 | SURFACE | `ACCEPTED` | Add a cursor-paginated Radar page with run lineage, security identity, two non-poolable platform-labelled cells, and explicit pending/aligned/divergent/partial/insufficient cross-source state | DATA, ENGINE, SURFACE, INTEGRATION | `84dca87` / D-RNI-13 |
+| CR-SURFACE-03 | SURFACE | `ACCEPTED` | Add a bounded security-detail read with canonical identity and exactly four cited dimension assignments for each independently labelled platform | DATA, ENGINE, SURFACE, INTEGRATION | `CURRENT` / D-RNI-14 |
 
 ### CR-DATA-001 decision
 
@@ -92,6 +94,23 @@
   partial result, independent sample counts and cursor semantics; fallback, relabelled and pooled
   shapes fail contract parsing.
 
+### CR-SURFACE-03 decision
+
+- **Current behaviour:** the frozen service exposed Radar cells and three-part summaries but no
+  per-security, per-platform dimension assignments.
+- **Decision:** accept additive `getSecurityDetail(runId, securityId)`. The result carries
+  canonical security identity plus fixed Reddit/X records, each with exactly one assignment for
+  all four frozen dimensions and independent state, count, coverage, confidence, freshness,
+  summary and citation fields.
+- **Compatibility:** existing read methods and Radar shapes are unchanged. Publishable dimensions
+  require citations; insufficient dimensions are unscored; a non-publishable platform cannot
+  carry a publishable dimension. There is no pooled count or unlabeled platform collection.
+- **Affected lanes:** SURFACE implements the fixture/UI consumer; ENGINE produces assignments and
+  citations; DATA/INTEGRATION later project the live read model.
+- **Acceptance:** the NVDA fixture has all four dimensions for both sources and preserves a
+  bullish-Reddit/bearish-X trading stance. Missing dimensions, pooled counts, cross-labelled
+  platforms and uncited publishable assignments fail contract parsing.
+
 ## Lane intake
 
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
@@ -131,6 +150,8 @@
 | `docs/features/RNI-00-CONTRACT.md`, `docs/MEMORY.md` | Record CR-DATA-002–004 and CR-SURFACE-01 outcomes as D-RNI-09–12 | `264ea9c` | contract/doc review |
 | `apps/web/src/rni/contracts/index.ts`, `src/rni/testing/reference-fixtures.ts` | Resolve CR-SURFACE-02 with cursor-paginated, source-separated Radar reads | `84dca87` | typecheck; RNI contract 11 pass; full contract 81 pass/22 DB-skipped |
 | `docs/features/RNI-00-CONTRACT.md`, `docs/MEMORY.md` | Record the non-poolable Radar read rule as D-RNI-13 | `84dca87` | contract/doc review |
+| `apps/web/src/rni/contracts/index.ts`, `src/rni/testing/reference-fixtures.ts` | Resolve CR-SURFACE-03 with complete, cited, per-platform dimension reads | `CURRENT` | typecheck; lint; RNI contract 13 pass; full contract 83 pass/22 DB-skipped |
+| `docs/features/RNI-00-CONTRACT.md`, `docs/MEMORY.md` | Record the security-detail dimension rule as D-RNI-14 | `CURRENT` | contract/doc review |
 
 ## Review findings
 
@@ -211,6 +232,9 @@
   combined states. Coordinator typecheck, focused lint, contract 11/11, production build and
   Chromium desktop/narrow/keyboard tests 4/4 pass. The branch remains unmerged until the lane is
   complete and the prescribed DATA→ENGINE→SURFACE order permits it.
+- CR-SURFACE-03 is accepted as D-RNI-14. SURFACE must rebase the I02D contract before resuming
+  S03, implement the fixture service method, and render dimensions only from the fixed Reddit/X
+  detail records. The live DATA projection remains I07/I08 integration work.
 
 ## I05 handoff
 

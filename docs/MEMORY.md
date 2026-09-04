@@ -863,6 +863,18 @@ non-terminal, missing or insufficient. This additive read model unblocks SURFACE
 exposing DATA repositories, inventing a second security catalogue or permitting one platform
 to stand in for the other.
 
+### D-RNI-14 — Security-detail dimensions remain complete, cited and platform-bound
+
+**Accepts CR-SURFACE-03, 2026-09-05.** `RniReadService.getSecurityDetail(runId, securityId)`
+returns canonical security identity plus fixed Reddit and X detail records. Each platform owns
+exactly one assignment for all four frozen RNI dimensions, its independent status, eligible
+source count, coverage, confidence, freshness, summary and citations. A publishable dimension
+requires at least one persisted citation ID; an insufficient dimension is unscored. Pending,
+running, failed or unavailable platforms may carry only insufficient dimension assignments.
+There is no pooled count or unlabeled dimension array. This additive read model lets SURFACE
+render the required comparison without joining DATA-private observations or inferring one
+platform from the other.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

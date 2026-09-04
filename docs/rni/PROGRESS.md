@@ -27,7 +27,7 @@
 | G2 RNI contract frozen | `PASSED` | coordinator | PR #5 merged at `dd28ea2`; typed source contract at `9908eda` |
 | G3 DATA accepted | `PASSED` | DATA + reviewer | merged sequentially at `254fe45`; coordinator type/contract plus fresh PostgreSQL DATA 41/41 pass |
 | G4 ENGINE accepted | `IN_PROGRESS` | ENGINE + reviewer | E01 accepted at `b3e8220`; E02 corrections accepted at `0e229d6`; E03–E10 remain |
-| G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01 accepted at `71010bd`; S02 accepted at `c4899b8` with coordinator type/contract/build/browser verification; S03–S10 remain |
+| G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01–S02 accepted; CR-SURFACE-03 accepted as D-RNI-14 and S03 unblocked; S03–S10 remain |
 | G6 integrated preview | `NOT_STARTED` | coordinator | Depends G3–G5 |
 | G7 live Reddit/X/FMP gates | `NOT_STARTED` | coordinator + joshuai | Depends G6 and configured credentials |
 | G8 production approval | `NOT_STARTED` | joshuai | Depends all prior gates |
@@ -38,8 +38,8 @@
 |---|---|---|---|---|
 | DATA | `feat/rni-data-source-first` | `MERGED_TO_INTEGRATION` | `DATA.md` | lane `5926601`; merge `254fe45` |
 | ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01–E02 accepted | `ENGINE.md` | `0e229d6`, must rebase current integration before E03 |
-| SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01–S02 accepted | `SURFACE.md` | `c4899b8`, awaiting lane completion/order |
-| INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I02C Radar contract `84dca87` |
+| SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01–S02 accepted, S03 unblocked | `SURFACE.md` | S03 blocker `57fd90c`; rebase D-RNI-14 before implementation |
+| INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I02D security-detail contract (D-RNI-14; current task commit) |
 
 ## Confirmed product decisions
 
@@ -99,3 +99,4 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — reviewed ENGINE E02 `3b73f25`; held acceptance because usable partial X responses could be labelled complete, author identity hashing was unsalted/mutable, and content-version output did not identify exactly one latest interpretation candidate.
 - 2026-09-05 — accepted SURFACE S02 at `c4899b8` after its same-commit tracker was reconciled; coordinator typecheck, focused lint, contract 11/11, production build and Chromium desktop/narrow/keyboard 4/4 all passed.
 - 2026-09-05 — accepted ENGINE E02 corrections at `0e229d6`; partial-success signaling, tenant-safe stable identity and A→B→A latest-version semantics are covered by 20/20 independently rerun focused tests.
+- 2026-09-05 — accepted CR-SURFACE-03 as D-RNI-14; the additive security-detail read freezes exactly four cited dimensions per independently labelled platform and rejects missing, pooled, relabelled or uncited publishable data.

@@ -203,6 +203,14 @@ when both independently labelled platform cells are terminal and publishable. Pe
 unavailable, failed or insufficient platform states remain explicit and cannot be relabelled as
 cross-source agreement.
 
+`RniReadService.getSecurityDetail(runId, securityId)` is the bounded four-dimension read boundary.
+It returns canonical security identity and fixed, independently labelled `reddit` and `x`
+platform details. Each platform owns exactly one assignment for every frozen RNI dimension,
+along with its own status, source count, coverage, confidence, freshness, summary and citation
+IDs. Every non-insufficient dimension assignment has at least one persisted citation ID. The
+shape has no pooled count or unlabeled dimension collection, and a non-publishable platform may
+carry only insufficient, unscored dimensions.
+
 ## 11. Publication and test gates
 
 A claim publishes only when every claim citation resolves to a persisted source item, belongs to
@@ -213,6 +221,7 @@ Merge acceptance requires frozen tests for: multi-ticker opposing stance; compar
 URL-before-classification; duplicate delivery; excerpt-only capture; Reddit unavailable while X
 completes; X unavailable while Reddit completes; cross-source divergence; zero/short baseline;
 FMP >500 constituents and invalid payloads; manual double-click and scheduled redelivery; citation
-deletion/mismatch; authz; prompt injection; deterministic replay; and legacy regression.
+deletion/mismatch; per-platform four-dimension completeness and divergence; authz; prompt
+injection; deterministic replay; and legacy regression.
 
 Live source checks are recorded deployment gates, never deterministic CI dependencies.

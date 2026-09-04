@@ -7,6 +7,7 @@ import {
   rniRadarPage,
   rniRadarQuery,
   rniRunRequest,
+  rniSecurityDetail,
   rniSecurityMention,
   rniSecurityObservation,
   rniSourceCommitResult,
@@ -24,6 +25,7 @@ import {
   independentPlatformSlices,
   partialCombinedSummary,
   referenceRadarPage,
+  referenceSecurityDetail,
   comparativeSourceCommit,
   comparativeSourceDuplicateCommit,
   rniFixtureIds,
@@ -88,6 +90,7 @@ describe('RNI frozen contracts', () => {
       getPlatformSlices: async () => {
         throw new Error('not used');
       },
+      getSecurityDetail: async () => referenceSecurityDetail,
       getSecuritySummary: async () => partialCombinedSummary,
       getCitation: async (citationId) => {
         if (citationId !== comparativeCitation.id) throw new Error('citation not found');
@@ -114,6 +117,7 @@ describe('RNI frozen contracts', () => {
       getRadarPage: async () => rniRadarPage.parse(referenceRadarPage),
       getRun: async () => referenceRadarPage.run,
       getPlatformSlices: async () => independentPlatformSlices,
+      getSecurityDetail: async () => referenceSecurityDetail,
       getSecuritySummary: async () => partialCombinedSummary,
       getCitation: async () => comparativeCitation,
       getEvidence: async () => comparativeSource,
@@ -130,6 +134,87 @@ describe('RNI frozen contracts', () => {
     expect(page.rows[0]?.combined.state).toBe('divergent');
     expect(page.rows[1]?.x.stance).toBe('insufficient');
     expect(page.rows[1]?.combined.state).toBe('partial');
+  });
+
+  it('returns all four dimensions independently for Reddit and X security detail', async () => {
+    const fake: RniReadService = {
+      getRadarPage: async () => referenceRadarPage,
+      getRun: async () => referenceRadarPage.run,
+      getPlatformSlices: async () => independentPlatformSlices,
+      getSecurityDetail: async () => rniSecurityDetail.parse(referenceSecurityDetail),
+      getSecuritySummary: async () => partialCombinedSummary,
+      getCitation: async () => comparativeCitation,
+      getEvidence: async () => comparativeSource,
+    };
+
+    const detail = await fake.getSecurityDetail(rniFixtureIds.run, rniFixtureIds.nvda);
+    expect(detail.security).toEqual(referenceRadarPage.rows[0]!.security);
+    expect(detail.reddit.dimensions.map(({ dimension }) => dimension)).toEqual([
+      'company_fundamentals',
+      'market_trading',
+      'catalyst_event',
+      'retail_narrative',
+    ]);
+    expect(detail.x.dimensions.map(({ dimension }) => dimension)).toEqual(
+      detail.reddit.dimensions.map(({ dimension }) => dimension),
+    );
+    expect(detail.reddit.dimensions[1]?.stance).toBe('bullish');
+    expect(detail.x.dimensions[1]?.stance).toBe('bearish');
+  });
+
+  it('rejects missing, pooled, relabelled, or uncited security-detail dimensions', () => {
+    expect(() =>
+      rniSecurityDetail.parse({
+        ...referenceSecurityDetail,
+        reddit: {
+          ...referenceSecurityDetail.reddit,
+          dimensions: referenceSecurityDetail.reddit.dimensions.slice(0, 3),
+        },
+      }),
+    ).toThrow();
+    expect(() =>
+      rniSecurityDetail.parse({
+        ...referenceSecurityDetail,
+        reddit: {
+          ...referenceSecurityDetail.reddit,
+          dimensions: [
+            referenceSecurityDetail.reddit.dimensions[0],
+            referenceSecurityDetail.reddit.dimensions[0],
+            referenceSecurityDetail.reddit.dimensions[2],
+            referenceSecurityDetail.reddit.dimensions[3],
+          ],
+        },
+      }),
+    ).toThrow(/each of the four RNI dimensions exactly once/u);
+    expect(() =>
+      rniSecurityDetail.parse({
+        ...referenceSecurityDetail,
+        eligibleSourceCount: 7,
+      }),
+    ).toThrow();
+    expect(() =>
+      rniSecurityDetail.parse({
+        ...referenceSecurityDetail,
+        x: { ...referenceSecurityDetail.x, platform: 'reddit' },
+      }),
+    ).toThrow(/X detail/u);
+    expect(() =>
+      rniSecurityDetail.parse({
+        ...referenceSecurityDetail,
+        x: {
+          ...referenceSecurityDetail.x,
+          dimensions: referenceSecurityDetail.x.dimensions.map((assignment, index) =>
+            index === 1 ? { ...assignment, citationIds: [] } : assignment,
+          ),
+        },
+      }),
+    ).toThrow(/requires a citation/u);
+    expect(() =>
+      rniSecurityDetail.parse({
+        ...referenceSecurityDetail,
+        x: { ...referenceSecurityDetail.x, status: 'unavailable' },
+      }),
+    ).toThrow(/non-publishable platform/u);
   });
 
   it('rejects relabelled, pooled, or fallback Radar cells', () => {
