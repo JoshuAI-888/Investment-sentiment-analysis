@@ -86,6 +86,9 @@ export type MetricsGatherer = (input: {
 
 /** The real implementation — calls F09's `assembleTickerSnapshot` and flattens its metrics. */
 export const realMetricsGatherer: MetricsGatherer = async (input) => {
-  const snapshot = await assembleTickerSnapshot(input.symbol, { asOf: input.asOf, db: input.db });
+  const snapshot = await assembleTickerSnapshot(input.symbol, {
+    asOf: input.asOf,
+    ...(input.db === undefined ? {} : { db: input.db }),
+  });
   return flattenMetrics(snapshot);
 };

@@ -66,7 +66,7 @@ export type ResearchModelError =
   | { readonly kind: 'schema_invalid'; readonly issues: readonly string[]; readonly raw: string }
   | { readonly kind: 'timeout' }
   | { readonly kind: 'upstream'; readonly status: number }
-  | { readonly kind: 'budget_denied'; readonly scope: 'account' | 'global' };
+  | { readonly kind: 'budget_denied'; readonly scope: 'account' | 'global'; readonly message: string };
 
 export type ResearchModelResult<T> =
   | { readonly ok: true; readonly data: T; readonly meta: ResearchModelCallMeta }
