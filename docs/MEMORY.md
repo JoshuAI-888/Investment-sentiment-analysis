@@ -908,6 +908,46 @@ create.before` does — `live`-mode only — so in fixture/e2e mode any address 
 auto-provisions, matching self-service sign-up's own fixture behavior and needing no separate
 test seam.
 
+### D-39 — MT-13 is discarded: the legacy product drops Reddit-API sourcing entirely; RNI's OpenAI-Web-Search Reddit path is now the only Reddit channel
+
+**Owner decision, 2026-09-05, given twice** ("MT-13 can now be discarded, RNI stream replaces
+this" and, restated explicitly, "for reddit we are not going to source data from its data API.
+RNI stream replaces this"). This is a narrower, harder claim than `RNI-00-CONTRACT.md`'s existing
+scoping banner in `DEPLOY.md` (added 2026-09-05, before this decision), which only said MT-13
+does not gate *RNI*. **D-39 goes further: the legacy product's own Reddit channel is retired, not
+merely deferred.** There is no fallback to §6.1's scraping contingency either — that contingency
+existed only for a rejected Data API application, which is now moot because the application is
+not being filed at all.
+
+**What this changes, concretely:**
+
+- **MT-13 is closed, not blocked.** Nobody files the Reddit Data API application. `DEPLOY.md`'s
+  ordering ("the longest pole in the plan") no longer applies — there is nothing on that queue.
+- **F04's Reddit adapter is out of scope**, not merely unbuilt. `progress/collect.md`'s "Reddit
+  still blocked on MT-13" line is corrected to "Reddit is not built for the legacy product;
+  RNI's `apps/web/src/rni/**` OpenAI Web Search path is the only Reddit acquisition this
+  repository has."
+- **F08's attention leaderboard already re-sourced to the Reddit API** (`progress/surface.md`,
+  merged 2026-09-03) — that re-source is now itself the thing to reconsider, not this decision's
+  problem to solve today. Recorded here as a flag for whoever next touches F08: its data source
+  needs a decision (fall back to ApeWisdom's cross-check ranking, which D-30 already demoted but
+  did not delete, or read RNI's persisted Reddit evidence across the namespace boundary — the
+  latter is a `RNI-00-CONTRACT.md` precedence question the RNI coordinator must answer, not
+  something COLLECT/SURFACE can decide unilaterally). **Not resolved by D-39 itself** — F08's
+  leaderboard keeps running on whatever it already reads until that follow-up lands.
+- **MT-08 (start the collector) no longer waits on Reddit at all.** Its corpus, for the legacy
+  product, is Substack (MT-15, confirmed) + market data (daily bars) + the deferred X cohort +
+  FMP fundamentals (schema unverified) — Reddit is not a blocker because it is not a planned
+  legacy source any more.
+- **`RNI-00-CONTRACT.md`'s existing note** ("MT-13 and Reddit Data API approval continue to gate
+  the legacy collector but do not gate RNI") **is superseded by this decision**, not merely
+  narrowed: it no longer gates the legacy collector either, because the legacy collector no
+  longer plans to use it.
+
+**What this does not change.** RNI's Reddit path (D-RNI-02) is unaffected — it never depended on
+the Data API. The legacy product's non-Reddit corpus and every other MT/decision stand as
+recorded. This is a scope cut, not a data-model change: no migration, no contract revision.
+
 ---
 
 ## 2. Rulings made during review

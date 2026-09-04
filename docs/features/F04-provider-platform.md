@@ -3,6 +3,13 @@
 > **RNI scope:** Reddit acquisition is OpenAI Web Search with no Reddit API dependency; X is an
 > independent datasource using authorised access, never a fallback. See `RNI-00-CONTRACT.md`.
 
+> **Amended 2026-09-05 (D-39).** The Reddit Data API adapter named in §2's `In` list is
+> **discarded, not deferred.** The owner ruled out Reddit-Data-API sourcing for the legacy
+> product entirely; RNI's OpenAI Web Search path is the only Reddit acquisition this repository
+> builds, for either surface. Every `Reddit Data API` row below (§2, §4.3's provider table,
+> §4.4's continuous-poll list) is struck from this lane's scope. See `../MEMORY.md` D-39 and
+> `../progress/collect.md`.
+
 **Wave:** 1 · **Lane:** **COLLECT** · **Estimate:** 18–24 h · **Depends on:** F01, F03
 
 ## 1. Purpose

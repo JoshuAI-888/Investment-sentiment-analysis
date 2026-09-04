@@ -21,6 +21,15 @@ instead, each lane file has exactly one writing account. Either way the invarian
 
 ## Phase
 
+> **2026-09-05 — MT-13 discarded (D-39); MT-04 done.** The owner ruled out Reddit-Data-API
+> sourcing for the legacy product entirely — RNI's OpenAI Web Search Reddit path is now the only
+> Reddit channel this repository has, for either surface. This is not "RNI covers it in the
+> meantime": MT-13 is closed, nobody files the application, and F04 does not build a Reddit
+> adapter. **MT-08 no longer waits on MT-13.** Separately, the owner confirmed the QStash
+> schedule is created and firing, closing MT-04 and unblocking F16a. See `MEMORY.md` D-39 and
+> `DEPLOY.md`'s MT-04/MT-08/MT-13 sections. **Next work below is corrected accordingly** — F16a
+> (dispatch core) is now the genuinely unblocked next COLLECT pickup, with MT-08 following it.
+
 **Building. Wave 1's serial skeleton (F01, F03, F22, F05) merged 2026-09-03. F02, F06 and F20's
 queue-and-persistence half all merged 2026-09-03**, each after a multi-round adversarial
 `lane-review` (three rounds for F02, five for F06, five for F20's queue half — see the session
@@ -90,9 +99,9 @@ clears the weekly-cadence bar). See `DEPLOY.md` MT-15 and `MEMORY.md` **B-30**/*
 
 **Next work, in order:**
 
-1. **`DEPLOY.md` MT-13** — file the Reddit application. **Confirmed unfiled on 2026-09-03.** Free,
-   and now unambiguously the longest lead in the plan: it is the only remaining blocker whose
-   clock someone else controls.
+1. ~~**`DEPLOY.md` MT-13**~~ — **discarded 2026-09-05 (D-39).** Not filed, not filing it — RNI's
+   OpenAI Web Search path is the only Reddit channel for either surface now. **F16a (dispatch
+   core) is the genuinely next COLLECT pickup**: its only blocker, MT-04, is done.
 2. ~~**`DEPLOY.md` MT-15**~~ — **confirmed 2026-09-04.** 13 Substack publications, 10/11 GICS
    sectors. **This is still the only channel that can collect today** — no key, no approval — but
    collection now waits on wiring the confirmed list into F04's Substack config (COLLECT), an
@@ -108,8 +117,9 @@ clears the weekly-cadence bar). See `DEPLOY.md` MT-15 and `MEMORY.md` **B-30**/*
    and fixed (**B-25**), five `lane-review` rounds. F20's queue half: the charging/attribution
    model settled (**B-24**), a real drain-loop bug found and fixed (**B-23**), five rounds. F02:
    OTP/abuse-controls/admin-gating/account-lifecycle, three rounds. Session logs dated
-   2026-09-03 have the detail per feature. F04's remaining adapters and F16a stay blocked on
-   MT-13 and MT-04 respectively.
+   2026-09-03 have the detail per feature. **F04's Reddit adapter is discarded, not blocked
+   (D-39, 2026-09-05) — it will not be built.** F16a was blocked on MT-04; **MT-04 is done
+   (2026-09-05)**, so F16a is now this plan's next COLLECT pickup.
 6. **Next SELECTs**: **SURFACE → F07–F09** (dashboard, leaderboard, ticker detail — all three
    open now that F06 has merged, per `06-PARALLEL-LANES.md` §1b). **F07 merged 2026-09-04** (PR
    #7) — dashboard, market and sector composites, two review rounds. **F08's own repository
@@ -134,8 +144,9 @@ clears the weekly-cadence bar). See `DEPLOY.md` MT-15 and `MEMORY.md` **B-30**/*
 > in-flight work rather than starting anything new.
 
 `PROGRESS.md`'s previous instruction — that the first task is to confirm MT-08 has started —
-is not executable as written: MT-08 needs F04's collector and F16a's dispatcher, which need
-F01, MT-04 and MT-13. MT-08 stays the most time-critical item in the plan under D-16, and the
+is not executable as written: MT-08 needs F04's collector (Reddit dropped by D-39; Substack and
+market data are the live channels) and F16a's dispatcher, which needs F01 (merged) and MT-04
+(**done**, D-39/2026-09-05 note above). MT-08 stays the most time-critical item in the plan under D-16, and the
 way to serve it is the minimal-collector path in its own entry, not a check an agent cannot
 perform.
 
@@ -212,7 +223,7 @@ lane files** — see the three links above.
 |---|---|---|---|
 | **Collector start date** | **NOT STARTED** | **Today. MT-08** | MT-08 |
 | **Days of corpus accrued** | *derived: today − start date* | ≥ 14 for rank-change · ~365 for Tier D4 | — |
-| Reddit API approval | **not applied** | Approved. **MT-13 — longest lead in the plan** | MT-13 |
+| ~~Reddit API approval~~ | — | **Void — discarded, D-39.** Legacy product does not source Reddit from its Data API; RNI's OpenAI Web Search path covers Reddit for the repository | — |
 | Judge/human Spearman (calibration) | not measured | ≥ 0.7 | MT-11 |
 | Per-axis stance macro-F1 (Reddit / X / Substack) | not measured | ≥ 0.80 **per axis** (Tier D1) | F12 — lane TBA |
 | Verifier catch rate (B7) | not measured | ≥ 0.90 | F12 — lane TBA |

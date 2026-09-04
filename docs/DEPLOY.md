@@ -1,9 +1,18 @@
 # Deploy — Manual Tasks for the Owner
 
-> **RNI scope (2026-09-05):** use `rni/DEPLOY.md` for RNI. MT-13 and Reddit Data API approval
-> continue to gate the legacy collector but do **not** gate RNI, whose Reddit acquisition path is
-> OpenAI Web Search. RNI's live gates are OpenAI source-first capture, independent X access, FMP
-> S&P 500 entitlement/activation and `joshuai` production approval.
+> **RNI scope (2026-09-05):** use `rni/DEPLOY.md` for RNI. RNI's live gates are OpenAI
+> source-first capture, independent X access, FMP S&P 500 entitlement/activation and `joshuai`
+> production approval.
+
+> **MT-13 discarded (2026-09-05, D-39).** The legacy product no longer plans to source Reddit
+> from its Data API at all — not "deferred while RNI covers it," **retired**. RNI's OpenAI
+> Web Search Reddit path (`D-RNI-02`) is now the only Reddit acquisition this repository has, for
+> either surface. MT-13 is closed, not blocked; nothing files that application. See MT-13's own
+> section below (retained per this file's convention of marking superseded rather than deleting)
+> and `MEMORY.md` D-39.
+
+> **MT-04 done (2026-09-05).** The QStash schedule is created and firing against
+> `/api/cron/dispatch` on production. F16a is unblocked.
 
 Everything here needs a human. The build agent cannot do these, and it must not fake them —
 a stubbed key is a lie the tests will later believe.
@@ -20,12 +29,12 @@ top**: it is the only remaining item whose lead time is outside the owner's cont
 
 | # | Task | Why it is first |
 |---|---|---|
-| 1 | **MT-13 — file the Reddit Data API application** | **Confirmed not filed.** $0, and the only item here with an **external queue**: slow, opaque, and able to reject without explanation. Nothing downstream shortens it, and it gates the largest channel in the product. Every other task on this list completes when you decide to do it; this one completes when someone else decides |
-| 2 | ~~MT-15 — name the Substack publications~~ | **Confirmed 2026-09-04.** 13 publications, 10/11 sectors. **This is the only channel that can collect today** — no key, no approval — so it is what actually starts the forward-only clock, once F04's config is wired to the confirmed list |
-| 3 | **MT-04 — create the QStash schedule** | Re-scoped to **Wave 1**: MT-08 runs on it. Needs a stable deploy URL first, which is the only reason it is not higher |
+| ⬛ | ~~MT-13 — file the Reddit Data API application~~ | **Discarded 2026-09-05 (D-39).** Not "waiting for RNI" — retired outright. RNI's OpenAI Web Search path is now the only Reddit channel this repository has |
+| ✅ | ~~MT-15 — name the Substack publications~~ | **Confirmed 2026-09-04.** 13 publications, 10/11 sectors. **This is the only channel that can collect today** — no key, no approval — so it is what actually starts the forward-only clock, once F04's config is wired to the confirmed list |
+| ✅ | ~~MT-04 — create the QStash schedule~~ | **Done 2026-09-05.** Schedule created and firing against production. Unblocks F16a directly and MT-08 through it |
 | ✅ | ~~MT-07's symbol list~~ | **Done 2026-09-03.** Ranking pulled, ETFs excluded, committed as `migrations/seed/universe-v1.json` (B-21) |
-| 5 | **MT-08 — start the collector** | Still the highest-value outcome in the plan, but **not executable until F04 and F16a exist** (`PROGRESS.md`). It is a milestone, not a task you can do this afternoon |
-| 6 | **MT-06 — set the LLM keys** | Transport decided (Vercel AI Gateway, D-34); the keys and the different-vendor verify route are still to provision. Unblocks Wave 3 |
+| 1 | **MT-08 — start the collector** | Still the highest-value outcome in the plan. **Now genuinely next**: F16a is unblocked (MT-04 done) and Reddit is no longer a dependency (D-39) — only F16a itself needs building and the standard production env vars need confirming |
+| 2 | **MT-06 — set the LLM keys** | Transport decided (Vercel AI Gateway, D-34); the keys and the different-vendor verify route are still to provision. Unblocks Wave 3 (F10/F11/F12, and F21 through F12) |
 | ✅ | ~~MT-00~~ · ~~MT-07 size~~ · ~~MT-12~~ · ~~MT-14~~ · ~~MT-01~~ | Closed by **D-26** (admin email), **D-27**/**D-30** (universe), **D-32** (budgets, X at zero), **D-31** (daily bars), **D-25** (flatten) |
 
 **Why MT-08 dropped from first to fifth, and it is not a change of priority.** Under D-16 a
@@ -230,12 +239,15 @@ URL — which MT-04 needs next.
 
 ---
 
-## MT-04 🔴 — Create the QStash schedule
+## MT-04 ✅ — Create the QStash schedule. **Done 2026-09-05.**
 
-**Blocks:** **F16a — and therefore MT-08.** Re-scoped 2026-09-03: F16's dispatch core moved to
-**Wave 1** (D-15, D-16), so this is no longer a Wave 4 task. The collector cannot run on a
+**Confirmed by the owner (2026-09-05): the schedule is created and firing.** F16a is unblocked;
+the steps below are retained as the record of what was done and for anyone re-verifying the
+configuration, not as an open task.
+
+**Blocked:** **F16a — and therefore MT-08.** Re-scoped 2026-09-03: F16's dispatch core moved to
+**Wave 1** (D-15, D-16), so this was no longer a Wave 4 task. The collector cannot run on a
 schedule that does not exist, and under forward-only collection a late start is permanent loss.
-**Do this in the first week, not before the first deploy** — see the ordering note below.
 
 Exactly **one** schedule, created once, by hand. The admin console must never be able to
 create, edit or delete it (ADR-013).
@@ -292,8 +304,8 @@ nothing for days.
 
 | Provider | Confirm | Note |
 |---|---|---|
-| **Reddit Data API** | **approval status** — see MT-13 | **The largest channel.** Free non-commercial tier, 100 QPM. Not yet applied for |
-| **Substack RSS** | nothing to provision — `https://<publication>.substack.com/feed` | Free, officially supported, **zero lead time**. Build against this while MT-13 waits. Publication set is MT-15 |
+| ~~Reddit Data API~~ | — | **Discarded (D-39).** Not sourced for the legacy product at all; RNI's OpenAI Web Search path is the only Reddit channel |
+| **Substack RSS** | nothing to provision — `https://<publication>.substack.com/feed` | Free, officially supported, **zero lead time**, and now the legacy product's primary text channel. Publication set is MT-15 |
 | **X API** | pay-per-use account funded; note the balance; set `X_BEARER_TOKEN` | **$0.005/Post read, no free tier.** Ceilings in MT-12. Trigger-sampled only (D-15). `X_BEARER_TOKEN` is required in `PROVIDER_MODE=live` even though nothing dispatches it yet (matches `ALPHA_VANTAGE_API_KEY`'s row) |
 | **Market data (intraday)** | tier, price, delay, call limit — see MT-14 | D-15's trigger depends on it. **Wave 1** |
 | FMP Starter | key active; **which plan tier**, exactly | Fundamentals and filings. Entitlement probe still applies, but OQ-2's urgency drops with D-19 |
@@ -438,18 +450,20 @@ plan.** There is no backfill and there will not be. The corpus accrues in wall-c
 production, before the UI exists and before most of Wave 1 is written. Then do not stop it, and
 do not reset the database.
 
-A minimal collector — Reddit API → raw store, nothing else — is worth deploying **ahead of F04's
-full adapter platform** if that shortens the wall-clock delay. Full bodies from day one (D-17):
-what is not captured cannot be re-scored later.
+**Corpus, post-D-39:** Reddit is not a legacy source any more (discarded, not deferred). A
+minimal collector — Substack RSS → raw store, nothing else — is worth deploying **ahead of F04's
+full adapter platform** if that shortens the wall-clock delay; Substack is the only channel with
+zero lead time and no approval. Full bodies from day one (D-17): what is not captured cannot be
+re-scored later.
 
 **Collector start date:** ______________ **Depth ≥ 14 on:** ______________
 **12-month corpus milestone (Tier D4 becomes runnable):** ______________
 
-### Step-by-step, once F04 + F16a are merged and MT-02/03/04/13/15 are done
+### Step-by-step, once F04 + F16a are merged and MT-02/03/04/05 are done
 
 This is a milestone, not a single click — it's what happens once everything above is in place.
 There is nothing to do here today if F16a hasn't been built yet; come back to this section once
-the coordinator reports F16a merged.
+the coordinator reports F16a merged. **MT-13 is no longer a prerequisite (D-39, discarded).**
 
 1. Confirm every environment variable from MT-02, MT-03, MT-04 and MT-05 is set in Vercel for
    **Production** (not just Preview).
@@ -601,7 +615,17 @@ Indicative allocation (D-20):
 
 ---
 
-## MT-13 🔴🔴 — File the Reddit Data API application. **Confirmed not filed as of 2026-09-03.**
+## MT-13 ⬛ — DISCARDED (D-39, 2026-09-05). File the Reddit Data API application.
+
+> **Discarded 2026-09-05.** Owner decision, given twice: "MT-13 can now be discarded, RNI stream
+> replaces this," then restated explicitly — "for reddit we are not going to source data from
+> its data API. RNI stream replaces this." **Nobody files this application.** The legacy product
+> does not gain a Reddit channel by any path other than reading RNI's persisted evidence, should
+> a future decision choose to cross that namespace boundary (`MEMORY.md` D-39 flags this as an
+> open follow-up for F08, not decided here). Retained below, unmodified, per this file's own
+> convention of marking superseded rather than deleting — this section is history, not a task.
+
+<details><summary>Original task, retained for the record</summary>
 
 > **Escalated 2026-09-03.** The owner confirmed this has not been submitted. With MT-00 and MT-07
 > now closed, **this is the longest pole in the plan** — every other blocker above was closed by a
@@ -658,6 +682,8 @@ shortens an opaque approval queue. Move on to MT-15 (Substack) and MT-03/MT-04
 prohibition for Reddit has been lifted); D-16's forward-only ruling still rules out historical
 archive backfill. That path carries the accepted ToS risk and is an engineering decision, not a
 re-scoping conversation.
+
+</details>
 
 ---
 
@@ -822,12 +848,12 @@ as-is, exactly as listed in the table above.
 | MT-01 | ~~Migrate to its own repository~~ — resolved by the flatten, not a migration | ✅ | ☑ **D-25** |
 | MT-02 | Verify Resend domain and deliverability | 🟡 | ☐ |
 | MT-03 | Confirm Neon (**Launch tier**, D-33) / Upstash / Vercel | 🟡 | ☐ |
-| MT-04 | Create the QStash schedule — **re-scoped to Wave 1** (was Wave 4); MT-08 runs on it | 🔴 | ☐ |
+| MT-04 | ~~Create the QStash schedule~~ — **re-scoped to Wave 1** (was Wave 4); MT-08 runs on it | ✅ | ☑ **done 2026-09-05** |
 | MT-05 | Confirm provider keys and quotas | 🟡 | ☐ |
 | MT-06 | **Provision LLM access** — transport decided (Vercel AI Gateway, D-34); keys still to set | 🔴 | ☐ |
 | MT-07 | Initial universe = **100** (D-27); symbol list pulled and committed, ETFs excluded (B-21) | ✅ | ☑ **fully resolved** |
-| **MT-08** | **START THE COLLECTOR — today. Corpus lost is not recoverable (D-16)** | 🔴🔴 | ☐ |
-| **MT-13** | **File the Reddit Data API application — confirmed NOT FILED; now the longest pole** | 🔴🔴 | ☐ |
+| **MT-08** | **START THE COLLECTOR — genuinely next now (F16a unblocked, Reddit no longer a dependency).** Corpus lost is not recoverable (D-16) | 🔴🔴 | ☐ |
+| MT-13 | ~~File the Reddit Data API application~~ | ⬛ | **discarded, D-39** |
 | **MT-14** | ~~Choose the market-data tier~~ — FMP Starter daily bars; intraday deferred with an evidence trigger | ✅ | ☑ **D-31** |
 | MT-15 | Substack set — **fully confirmed 2026-09-04**: 13 publications, 10/11 GICS sectors (Utilities a disclosed gap). Still needs wiring into F04's collection config | ✅ | ☑ **owner-confirmed** |
 | MT-09 | ~~Vercel Pro + FMP display agreement~~ | ⬛ | **void (D-11)** |
