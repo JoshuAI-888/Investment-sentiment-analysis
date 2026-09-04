@@ -35,7 +35,34 @@ import {
 } from './fakes';
 
 const WEB_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
-const SCANNED = [path.join(WEB_ROOT, 'src/services/jobs'), path.join(WEB_ROOT, 'src/adapters/scorer.ts')];
+
+/**
+ * **F20's own scoring-path files, named explicitly — not a directory listing.** This scanned a
+ * whole-directory `readdir('src/services/jobs')` until F16a (`docs/features/
+ * F16-scheduler-dispatcher.md`) landed genuinely non-scoring modules in the same directory
+ * (`services/jobs/schedule.ts`'s `Number.parseInt` on an interval-seconds string,
+ * `services/jobs/heartbeat.ts`'s `.toFixed(1)` on a wall-clock age in minutes) — neither is a
+ * score, and this invariant's own docstring already says "over the scoring modules," not "over
+ * everything this directory happens to hold." A directory scan was the convenient way to
+ * enumerate F20's files when F20 owned the whole directory alone; it stopped being that the
+ * moment a second feature shared the folder. Named explicitly so a *future* file this list omits
+ * fails loudly as "not scanned" rather than silently, the same way an added file used to fail
+ * loudly as "flagged" — this is a narrowing of *scope*, not of *strength*, over the files F20's
+ * own invariant is actually about.
+ */
+const SCANNED = [
+  ...[
+    'ports.ts',
+    'routing.ts',
+    'scores.ts',
+    'scoring-queue.ts',
+    'scoring-worker.ts',
+    'scorer-client.ts',
+    'rescore.ts',
+    'stance-availability.ts',
+  ].map((name) => path.join(WEB_ROOT, 'src/services/jobs', name)),
+  path.join(WEB_ROOT, 'src/adapters/scorer.ts'),
+];
 
 /**
  * Values chosen so a float round-trip is *visible*. `String(Number('0.100000'))` is `'0.1'`;
