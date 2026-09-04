@@ -31,7 +31,7 @@
 | I07 | Compose DATA repositories and ENGINE services | `NOT_STARTED` | Integration contract tests |
 | I08 | Compose SURFACE routes/nav/API with auth | `NOT_STARTED` | Authenticated preview e2e |
 | I09 | Wire QStash jobs/manual idempotent refresh | `NOT_STARTED` | Signed redelivery/double-click tests |
-| I10 | Seed RNI Direct routes and optional Gateway selection | `NOT_STARTED` | Legacy route unchanged; parity test |
+| I10 | Seed RNI Direct routes and optional Gateway selection | `NOT_STARTED` | D-RNI-21 policy locked; legacy route unchanged, budget enforcement and parity tests pending |
 | I11 | Run live Reddit, X and FMP gates | `NOT_STARTED` | Provider audit IDs and screenshots/log links |
 | I12 | Full regression, preview, production approval and smoke | `NOT_STARTED` | `joshuai` approval + production evidence |
 
@@ -200,6 +200,22 @@
   reject unavailable Gateway/client model injection, replay exactly, reject crossed-key scope, and
   show an existing Direct run unchanged while a later run uses the successor Gateway config.
 
+### Owner-approved I10 model and budget baseline
+
+- **Decision:** D-RNI-21 keeps Direct as the default; `gpt-5.6-terra` with low reasoning serves
+  discovery, relationship and classification, while `gpt-5.6-sol` with low reasoning serves
+  verifier and challenger. Gateway is explicit same-OpenAI-family parity only, with configured
+  slugs capability-checked at I10 and no silent cross-provider or unevaluated-model fallback.
+- **Budget:** hard maximums are USD 2/manual ticker run, USD 25/full-universe run and USD 50 per
+  rolling 24 hours; warn at USD 300/calendar month and stop at USD 500/calendar month. The RNI AI
+  ledger includes model-token and OpenAI Web Search tool charges, with worst-case pre-dispatch
+  reservation. X and FMP commercial charges stay outside this ledger.
+- **Compatibility:** no frozen API shape changes. Historical run/config/model/cost lineage remains
+  immutable. Any later model or limit change requires a successor version after evaluation.
+- **Acceptance:** I10 must prove Direct default resolution, configured Gateway parity, unavailable-
+  model fail-closed behavior, exact per-task model/reasoning lineage, hard-limit rejection, monthly
+  warning observability and historical replay across a successor configuration.
+
 ## Lane intake
 
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
@@ -339,6 +355,7 @@
 | `CURRENT` | Resolve CR-SURFACE-06 as D-RNI-20 and freeze future-run route settings | typecheck; focused lint; RNI contract 17/17; full contract 87/22 skipped; exact replay/crossed-key/history tests |
 | `CURRENT` | Accept corrected ENGINE E08 cited synthesis | final `b96162a` descends `a8ed02e`; code byte-identical to reviewed `3132589`; typecheck; scoped lint; focused unit/contract/eval 46/46; branch diff check; independent adversarial review READY |
 | `CURRENT` | Review ENGINE E09 model routing and prompt registry | `a6177d3` descends `f4f7318`; typecheck; scoped lint; focused router plus E08 regression 57/57; branch diff check; independent adversarial review CHANGES REQUESTED on ER-14–17 |
+| `CURRENT` | Lock owner-approved RNI model and AI-spend baseline as D-RNI-21 | Direct default; Terra/low discovery/relationship/classification; Sol/low verifier/challenger; Gateway parity without silent fallback; USD 2/25/50 hard and USD 300 warning/500 monthly stop; documentation validation |
 
 ## Coordinator notes
 

@@ -18,6 +18,20 @@ Record owner, reviewer, date, and evidence for:
 - user roles, identity provider, data-retention periods, and incident owners;
 - demo disclaimers and confirmation that trading/execution is out of scope.
 
+Owner-approved RNI baseline, 2026-09-05:
+
+- OpenAI Direct is the default route.
+- Reddit discovery, security relationship resolution and semantic classification use
+  `gpt-5.6-terra` with low reasoning effort.
+- Catalyst verification and challenger calls use `gpt-5.6-sol` with low reasoning effort.
+- Gateway is an explicit parity route to the same OpenAI model family. It has no silent
+  cross-provider or unevaluated-model fallback; I10 must validate the configured Gateway slugs.
+- RNI AI-spend hard limits are USD 2 per manual ticker run, USD 25 per full-universe run and USD 50
+  per rolling 24 hours. Warn at USD 300 per calendar month and stop at USD 500.
+- The RNI AI ledger includes model-token and OpenAI Web Search tool charges. X and FMP commercial
+  charges are governed separately. Revisit these limits after the first measured full-universe
+  run; any change creates a later versioned configuration and does not rewrite historical runs.
+
 Prohibited for the Milford constrained demo: Bloomberg, FactSet, LSEG/Refinitiv, broker research, institutional feeds, or any source a normal private retail user could not obtain. A convenient API does not make its terms suitable; approve use and redistribution separately.
 
 ## 2. Accounts and projects
@@ -86,6 +100,8 @@ Neon supports branching for isolated development/testing and pgvector for vector
 5. Run the frozen eval set against exact model/prompt/schema versions.
 6. Run prompt-cache probe and record eligible/cached tokens, latency, cost, and quality.
 7. Do not enable fallback to an unevaluated model.
+8. Verify pre-dispatch worst-case reservation rejects calls that would cross the D-RNI-21 per-run,
+   rolling-day or calendar-month hard limits, and that the monthly warning is observable.
 
 ## 6. Sources and discovery
 

@@ -48,6 +48,10 @@
 - X: independent datasource; never fallback.
 - Output: Reddit sentiment, X sentiment, combined summary.
 - RNI AI route: OpenAI Direct default; Gateway optional.
+- Balanced model policy: Terra/low for discovery, relationship and classification; Sol/low for
+  verification and challenger; Gateway is explicit same-family parity with no silent fallback.
+- Initial RNI AI limits: USD 2/manual ticker run, USD 25/full-universe run, USD 50/rolling day,
+  USD 300/month warning and USD 500/month hard stop (D-RNI-21).
 - Universe: current FMP S&P 500, configurable; NVDA selected by default.
 - Retention: bounded relevant post/comment/X content and metadata only.
 - MCP: read-only contract/skeleton for this release.
@@ -76,7 +80,7 @@ The canonical matrix is [`INTEGRATION_PLAN.md`](INTEGRATION_PLAN.md) §10. Coord
 | Model route and CI | `PASSED` | PR #2 route validation; PR #5 RNI path filter and green eval |
 | Toolchain reproducibility | `PASSED` | pinned pnpm 10.33 clean install plus PR #5 independent CI |
 | Retention and citation safety | `IN_PROGRESS` | DATA claim/source FK and ENGINE source/content binding findings resolved; full publication gate remains later work |
-| Cost and 500+ symbol workload | `NOT_STARTED` | — |
+| Cost and 500+ symbol workload | `POLICY_LOCKED` | D-RNI-21 owner-approved limits; I10 enforcement and measured full-universe calibration pending |
 | Authentication/deployment | `READY` | — |
 
 ## Merge log
@@ -124,3 +128,4 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — accepted CR-SURFACE-06 as D-RNI-20: a frozen future-run route service exposes the active config, Direct/Gateway availability and server-resolved task models without secrets; its intent-only idempotent command creates a successor config and never rewrites historical runs. Typecheck/lint, RNI contract 17/17 and full contract 87/22 skipped pass; SURFACE S09 is unblocked after rebase.
 - 2026-09-05 — accepted corrected ENGINE E08 at final handoff `b96162a` (code reviewed at byte-identical `3132589`): a trusted common cutoff excludes future evidence from claim-specific verifier inputs, Reddit/X evidence is bounded social corroboration rather than factual verification, persisted claims and distinct verifier/challenger invocations are revalidated, and native canonical identity plus original citation URLs and the active rights policy fail closed. Coordinator typecheck/lint and focused unit/contract/eval 46/46 pass; independent adversarial review returned READY. ENGINE advances to E09 and remains unmerged.
 - 2026-09-05 — reviewed ENGINE E09 `a6177d3`; focused router plus E08 regression 57/57, typecheck, lint and diff checks pass, but independent review returned four P1s. E09 must route every active ENGINE model stage, strictly parse/delimit task inputs, retain historical prompt definitions and durably finalize both successful and failed model-call attempts with complete prompt/tool/budget lineage. E01–E08 remain accepted; E09 is changes requested and E10 has not started.
+- 2026-09-05 — owner approved D-RNI-21: Direct remains the RNI default; Terra/low serves discovery, relationship and classification; Sol/low serves verifier/challenger; Gateway is explicit same-family parity without silent fallback. Initial AI-spend limits are USD 2/manual run, USD 25/full-universe run, USD 50/rolling day, USD 300/month warning and USD 500/month hard stop; I10 implementation and measured calibration remain pending.

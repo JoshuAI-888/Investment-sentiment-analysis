@@ -981,6 +981,26 @@ reused for different intent fails. Historical `rni_run.ai_route`, config version
 lineage are never updated. I10 composes live Direct/Gateway routing and I08 composes the
 authenticated Settings API; SURFACE S09 consumes only this service through a fixture.
 
+### D-RNI-21 — Balanced RNI model routing and initial AI spend limits are owner-approved
+
+**Owner decision, 2026-09-05.** OpenAI Direct remains the default RNI route. Reddit discovery,
+security relationship resolution and semantic classification use `gpt-5.6-terra` with low
+reasoning effort. Catalyst verification and challenger calls use `gpt-5.6-sol` with low reasoning
+effort. Vercel AI Gateway is an explicitly selected parity route to the same OpenAI model family;
+it must not silently fall back to another provider or an unevaluated model. I10 must capability-
+check configured Gateway model slugs rather than hardcode them into a frozen contract. If either
+approved model is unavailable, the affected route is unavailable until a separately evaluated
+successor configuration is approved.
+
+The initial RNI AI-spend policy is USD 2 hard maximum per manual ticker run, USD 25 hard maximum
+per full-universe run, USD 50 hard maximum in a rolling 24-hour period, a USD 300 calendar-month
+warning and a USD 500 calendar-month hard stop. Enforcement includes model-token and OpenAI Web
+Search tool charges routed through Direct or Gateway; X and FMP commercial charges remain separate
+provider controls. Pre-dispatch checks reserve the worst-case governed call cost, fail closed when
+a hard boundary would be exceeded and never rewrite historical usage. The limits are an initial
+demo baseline and may change only through a later owner-approved, versioned configuration after a
+measured full-universe run.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to
