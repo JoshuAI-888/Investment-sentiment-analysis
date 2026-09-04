@@ -205,7 +205,7 @@
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
-| ENGINE | `E08_CHANGES_REQUESTED` | no; first handoff based on `e010124`, current `12e1a42` | first handoff focused 31/31 plus typecheck/lint/diff; independent adversarial review returned ER-10–13 | yes | CR-ENGINE-001 accepted as D-RNI-19; E08 correction and current-base rebase required; E01–E07 remain accepted |
+| ENGINE | `E08_ACCEPTED` | yes at `a8ed02e`; exact handoff `3132589` | coordinator typecheck/lint and focused 46/46; corrected-tree independent adversarial review READY; branch diff clean | yes | ER-10–13 resolved under D-RNI-19; E01–E08 accepted; I07 owns durable reads/persistence and E09 may begin |
 | SURFACE | `S09_UNBLOCKED` | yes at `82ed8de`; must rebase I02H | coordinator I02H typecheck/lint, RNI contract 17/17 and full contract 87/22 skipped | yes | CR-SURFACE-06 accepted as D-RNI-20; S01–S08 accepted; S09 may resume after rebase |
 
 ## Live/deployment gates
@@ -261,10 +261,10 @@
 | ER-07 | P1 | `RESOLVED` | A zero-weight second source/group/community can satisfy the independent-source floor and remove single-source confidence caps while only one source contributes effective evidence | `ecbf049` derives effective source/community/cluster/author/narrative breadth from positive-weight traces; mixed positive/zero regression keeps sentiment/confidence insufficient at floor two |
 | ER-08 | P2 | `RESOLVED` | E06 added two test files with blank lines at EOF, contradicting its branch-range diff-check claim | `ecbf049` removes only the EOF lines; `git diff --check 098f010..ecbf049` passes |
 | ER-09 | P2 | `RESOLVED_BEFORE_HANDOFF` | The first observed E07 commit added a blank line at EOF in `convergence/types.ts` | The exact handoff `d1ef93a` removes the blank line; branch-range diff check passes |
-| ER-10 | P1 | `OPEN` | E08 accepts old content first discovered/observed after a claim cutoff, does not cutoff-check claim evidence and exposes future evidence to the verifier before output validation | Enforce D-RNI-19 availability on claim/support/counter sources and exclude post-cutoff evidence from each affected inference input |
-| ER-11 | P1 | `OPEN` | Reddit/X-only corroboration publishes as an independently verified factual catalyst | Use bounded social-corroboration copy and prove in-scope output never claims factual verification |
-| ER-12 | P1 | `OPEN` | Claim text/cutoff and one shared model-run descriptor are caller assertions; the trusted reader cannot prove persisted claim input or distinct verifier/challenger invocation lineage | Resolve trusted persisted claim/preparation and separate invocation snapshots through the injected D-RNI-19 boundary; add tamper/missing/swap tests |
-| ER-13 | P1 | `OPEN` | Citation URL equality alone accepts consistently wrong-host/search-result lineage and does not bind the active rights policy | Revalidate approved Reddit/X canonical URLs and the expected active rights-policy version before inference/publication |
+| ER-10 | P1 | `RESOLVED` | E08 accepts old content first discovered/observed after a claim cutoff, does not cutoff-check claim evidence and exposes future evidence to the verifier before output validation | `3132589` binds one trusted assessment cutoff, rejects future convergence/claim inputs and filters claim-specific corroboration/counterevidence before either model sees it |
+| ER-11 | P1 | `RESOLVED` | Reddit/X-only corroboration publishes as an independently verified factual catalyst | `3132589` uses explicit corroboration roles and bounded social-corroboration copy; in-scope output cannot claim factual verification |
+| ER-12 | P1 | `RESOLVED` | Claim text/cutoff and one shared model-run descriptor are caller assertions; the trusted reader cannot prove persisted claim input or distinct verifier/challenger invocation lineage | `3132589` revalidates exact persisted claims and separate trusted verifier/challenger invocation descriptors, with tamper/missing/swap tests |
+| ER-13 | P1 | `RESOLVED` | Citation URL equality alone accepts consistently wrong-host/search-result lineage and does not bind the active rights policy | `3132589` validates native Reddit/X canonical identity while preserving the stored original citation URL and requires the trusted active rights-policy version |
 | ICR-01 | P1 | `RESOLVED` | D-RNI-18 cannot represent the preserved 100-member legacy active parent of the first staged FMP candidate, while undersized FMP versions pass | Active is an explicit legacy/FMP union; FMP active/staged variants require 501–600 and a 100→501 fixture passes |
 | ICR-02 | P1 | `RESOLVED` | Balanced arithmetic permits complete impact arrays that remove more members than active or add more members than staged | Frozen schema rejects both bounds; I08 retains repository-backed membership-set acceptance |
 | SR-04 | P2 | `RESOLVED` | S02's first commit left its task/evidence/handoff record stale and did not identify the actual browser gate | `c4899b8` amends the task commit with exact type, lint, contract, build and Chromium evidence plus complete files/risks/handoff |
@@ -333,6 +333,7 @@
 | `CURRENT` | Accept corrected SURFACE S08 universe settings | typecheck; focused lint; RNI contract 15/15; production build; Chromium 3/3; independent adversarial review READY; ownership/base/diff review |
 | `CURRENT` | Resolve CR-ENGINE-001 as D-RNI-19 and return E08 ER-10–13 | first handoff typecheck; scoped lint; focused unit/contract/eval 31/31; branch diff check; independent adversarial review CHANGES REQUESTED |
 | `CURRENT` | Resolve CR-SURFACE-06 as D-RNI-20 and freeze future-run route settings | typecheck; focused lint; RNI contract 17/17; full contract 87/22 skipped; exact replay/crossed-key/history tests |
+| `CURRENT` | Accept corrected ENGINE E08 cited synthesis | exact `3132589` descends `a8ed02e`; typecheck; scoped lint; focused unit/contract/eval 46/46; branch diff check; independent adversarial review READY |
 
 ## Coordinator notes
 

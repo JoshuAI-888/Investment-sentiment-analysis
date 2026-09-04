@@ -26,7 +26,7 @@
 | G1 model-route branch merged | `PASSED` | coordinator | PR #2, main commit `09ad439` |
 | G2 RNI contract frozen | `PASSED` | coordinator | PR #5 merged at `dd28ea2`; typed source contract at `9908eda` |
 | G3 DATA accepted | `PASSED` | DATA + reviewer | merged sequentially at `254fe45`; coordinator type/contract plus fresh PostgreSQL DATA 41/41 pass |
-| G4 ENGINE accepted | `IN_PROGRESS` | ENGINE + reviewer | E01–E07 accepted through `d1ef93a`; E08–E10 remain |
+| G4 ENGINE accepted | `IN_PROGRESS` | ENGINE + reviewer | E01–E08 accepted through `3132589`; E09–E10 remain |
 | G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01–S08 accepted through `f929ab8`; S09–S10 remain |
 | G6 integrated preview | `NOT_STARTED` | coordinator | Depends G3–G5 |
 | G7 live Reddit/X/FMP gates | `NOT_STARTED` | coordinator + joshuai | Depends G6 and configured credentials |
@@ -37,7 +37,7 @@
 | Workstream | Branch | Status | Progress file | Latest accepted commit |
 |---|---|---|---|---|
 | DATA | `feat/rni-data-source-first` | `MERGED_TO_INTEGRATION` | `DATA.md` | lane `5926601`; merge `254fe45` |
-| ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01–E07 accepted | `ENGINE.md` | `d1ef93a` |
+| ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01–E08 accepted | `ENGINE.md` | `3132589` |
 | SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01–S08 accepted | `SURFACE.md` | `f929ab8` |
 | INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I06 passed at `5950b53`; current coordinator record follows |
 
@@ -122,3 +122,4 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — accepted SURFACE S08 at `f929ab8` after SR-09–14 correction: the server owns the frozen universe-read seam, the UI is props-only, parsed search is bounded and version-bound, active legacy/FMP lineage plus staged identity impact remain explicit, and keyboard/live-status/legacy branches are covered. Coordinator type/lint, RNI contract 15/15, production build and Chromium 3/3 pass; independent adversarial review returned READY. SURFACE advances to S09 and remains unmerged.
 - 2026-09-05 — accepted CR-ENGINE-001 as D-RNI-19 for I07: P0 keeps Reddit/X source rights and labels separate social evidence as corroboration, while migration `0024` and the integration port must persist exact claim/cutoff, separate verifier/challenger invocations, claim-specific citation roles, analytics lineage and ordered sentence trace. E08 `70dcfed` remains changes-requested on ER-10–13 despite focused 31/31: hindsight evidence, factual-verification overstatement, caller-declared claim/model lineage and incomplete URL/rights validation must fail closed before acceptance.
 - 2026-09-05 — accepted CR-SURFACE-06 as D-RNI-20: a frozen future-run route service exposes the active config, Direct/Gateway availability and server-resolved task models without secrets; its intent-only idempotent command creates a successor config and never rewrites historical runs. Typecheck/lint, RNI contract 17/17 and full contract 87/22 skipped pass; SURFACE S09 is unblocked after rebase.
+- 2026-09-05 — accepted corrected ENGINE E08 at `3132589`: a trusted common cutoff excludes future evidence from claim-specific verifier inputs, Reddit/X evidence is bounded social corroboration rather than factual verification, persisted claims and distinct verifier/challenger invocations are revalidated, and native canonical identity plus original citation URLs and the active rights policy fail closed. Coordinator typecheck/lint and focused unit/contract/eval 46/46 pass; independent adversarial review returned READY. ENGINE advances to E09 and remains unmerged.
