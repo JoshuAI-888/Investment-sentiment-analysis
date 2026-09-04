@@ -83,6 +83,8 @@ export class RniFixtureUnsupportedTickerError extends Error {
   }
 }
 
+export type FixtureRniCommandServiceOptions = Readonly<{ deferred?: boolean }>;
+
 function run(
   status: RniRunStatus,
   requestedAt = FIXTURE_TIME,
@@ -464,9 +466,19 @@ export class FixtureRniCommandService implements RniCommandService {
   >();
   private executions = 0;
   private nextRunSequence = 31;
+  private readonly deferredResolutions: Array<() => void> = [];
+
+  constructor(private readonly options: FixtureRniCommandServiceOptions = {}) {}
 
   get executionCount(): number {
     return this.executions;
+  }
+
+  releaseNext(): boolean {
+    const release = this.deferredResolutions.shift();
+    if (!release) return false;
+    release();
+    return true;
   }
 
   async requestManualRefresh(request: RniManualRefreshRequest): Promise<RniManualRefreshResult> {
@@ -495,7 +507,7 @@ export class FixtureRniCommandService implements RniCommandService {
     this.executions += 1;
     const runId = `00000000-0000-4000-8000-${String(this.nextRunSequence).padStart(12, '0')}`;
     this.nextRunSequence += 1;
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await this.waitForCompletion();
     const scopePreview =
       request.scope.kind === 'ticker'
         ? {
@@ -517,6 +529,13 @@ export class FixtureRniCommandService implements RniCommandService {
       idempotencyKey: request.idempotencyKey,
       scopePreview,
     };
+  }
+
+  private waitForCompletion(): Promise<void> {
+    if (!this.options.deferred) {
+      return new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    return new Promise((resolve) => this.deferredResolutions.push(resolve));
   }
 }
 

@@ -2,10 +2,15 @@
 
 import { useState } from 'react';
 import { createFixtureRniCommandService } from '../../../fixtures/rni-ui/read-service';
-import type { RniManualRefreshResult } from '@/rni/contracts';
+import type { RniCommandService, RniManualRefreshResult } from '@/rni/contracts';
 
-export function ManualRefreshControls() {
-  const [service] = useState(createFixtureRniCommandService);
+export function ManualRefreshControls({
+  service: injectedService,
+}: {
+  service?: RniCommandService;
+}) {
+  const [fixtureService] = useState(createFixtureRniCommandService);
+  const service = injectedService ?? fixtureService;
   const [pending, setPending] = useState<string | null>(null);
   const [result, setResult] = useState<RniManualRefreshResult | null>(null);
   const [error, setError] = useState<string | null>(null);
