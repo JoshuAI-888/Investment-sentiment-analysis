@@ -22,25 +22,42 @@ export type RniSynthesisClaim = {
 
 export type RniCitationEvidenceRole =
   | 'social_claim'
-  | 'independent_verification'
+  | 'corroborating'
   | 'counterevidence';
 
-/** Required trusted lineage boundary pending coordinator resolution of CR-ENGINE-001. */
+/** Trusted D-RNI-19 lineage boundary; coordinator-owned I07 supplies durable composition. */
 export type RniCitationPublicationLineage = {
+  readonly claimId: string | null;
   readonly citationId: string;
   readonly runId: string;
   readonly securityId: string;
   readonly evidenceRole: RniCitationEvidenceRole;
   readonly analyticsArtifactHash: string | null;
+  readonly rightsPolicyVersion: string;
+};
+
+export type RniInferenceInvocationDescriptor<
+  TStage extends 'verification' | 'challenger' = 'verification' | 'challenger',
+> = {
+  readonly modelRunId: string;
+  readonly stage: TStage;
+  readonly runId: string;
+  readonly securityId: string;
+  readonly modelId: string;
+  readonly promptVersion: string;
+  readonly policyVersion: string;
+  readonly rightsPolicyVersion: string;
+  readonly claimIds: readonly string[];
+  readonly assessmentCutoffAt: string;
 };
 
 export type RniCitedSynthesisRequest = {
   readonly codeVersion: typeof RNI_CITED_SYNTHESIS_CODE_VERSION;
   readonly policyVersion: string;
+  readonly rightsPolicyVersion: string;
   readonly summaryId: string;
-  readonly modelRunId: string;
-  readonly modelId: string;
-  readonly promptVersion: string;
+  readonly verificationInvocation: RniInferenceInvocationDescriptor<'verification'>;
+  readonly challengerInvocation: RniInferenceInvocationDescriptor<'challenger'>;
   readonly createdAt: string;
   readonly convergenceArtifact: RniConvergenceArtifact;
   readonly claims: readonly RniSynthesisClaim[];
@@ -57,6 +74,11 @@ export type RniVerifiedCitationEvidence = {
   readonly source: RniSourceItem;
 };
 
+export type RniVerificationClaimInput = {
+  readonly claim: RniSynthesisClaim;
+  readonly evidence: readonly RniVerifiedCitationEvidence[];
+};
+
 export type RniVerificationModelInput = {
   readonly policy: {
     readonly version: string;
@@ -64,14 +86,11 @@ export type RniVerificationModelInput = {
     readonly allowedTools: readonly [];
     readonly outputTextPublication: 'forbidden_structured_verdicts_only';
   };
-  readonly promptVersion: string;
-  readonly modelId: string;
-  readonly modelRunId: string;
+  readonly invocation: RniInferenceInvocationDescriptor<'verification'>;
   readonly runId: string;
   readonly securityId: string;
   readonly convergenceFacts: RniConvergenceResult;
-  readonly claims: readonly RniSynthesisClaim[];
-  readonly evidence: readonly RniVerifiedCitationEvidence[];
+  readonly claimInputs: readonly RniVerificationClaimInput[];
 };
 
 export type RniClaimVerdict = 'supported' | 'contradicted' | 'contested' | 'unverified';
@@ -87,7 +106,8 @@ export interface RniVerificationInferencePort {
   verify(input: RniVerificationModelInput): Promise<unknown>;
 }
 
-export type RniChallengerModelInput = RniVerificationModelInput & {
+export type RniChallengerModelInput = Omit<RniVerificationModelInput, 'invocation'> & {
+  readonly invocation: RniInferenceInvocationDescriptor<'challenger'>;
   readonly verification: readonly RniClaimAssessment[];
 };
 
@@ -105,7 +125,7 @@ export type RniSummaryStatement = {
   readonly heading: 'Reddit sentiment' | 'X sentiment' | 'Combined summary';
   readonly origin:
     | 'platform_conclusion'
-    | 'verified_catalyst'
+    | 'corroborated_catalyst'
     | 'challenged_catalyst'
     | 'cross_source_fact'
     | 'coverage_disclosure';
@@ -138,5 +158,11 @@ export type RniCitedSynthesisArtifact = {
 };
 
 export type RniSynthesisEvidenceReader = Pick<RniReadService, 'getCitation' | 'getEvidence'> & {
-  getCitationLineage(citationId: string): Promise<RniCitationPublicationLineage>;
+  getCitationLineage(
+    claimId: string | null,
+    citationId: string,
+  ): Promise<RniCitationPublicationLineage | null>;
+  getSynthesisClaim(claimId: string): Promise<RniSynthesisClaim>;
+  getModelInvocation(modelRunId: string): Promise<RniInferenceInvocationDescriptor>;
+  getActiveRightsPolicyVersion(runId: string): Promise<string>;
 };

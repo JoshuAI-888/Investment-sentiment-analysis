@@ -10,6 +10,7 @@ import {
 } from '../contracts';
 import { replayPlatformFacts } from '../convergence';
 import type { RniConvergenceArtifact } from '../convergence';
+import { canonicalizeRedditUrl } from '../discovery';
 import {
   RNI_CITED_SYNTHESIS_CODE_VERSION,
   type RniChallengerAssessment,
@@ -19,6 +20,7 @@ import {
   type RniCitedSynthesisRequest,
   type RniCitedSynthesisResult,
   type RniClaimAssessment,
+  type RniInferenceInvocationDescriptor,
   type RniSummaryStatement,
   type RniSynthesisClaim,
   type RniSynthesisEvidenceReader,
@@ -56,14 +58,29 @@ const claimSchema = z
   })
   .strict();
 
+const invocationSchema = z
+  .object({
+    modelRunId: z.string().uuid(),
+    stage: z.enum(['verification', 'challenger']),
+    runId: z.string().uuid(),
+    securityId: z.string().uuid(),
+    modelId: z.string().min(1),
+    promptVersion: z.string().min(1),
+    policyVersion: z.string().min(1),
+    rightsPolicyVersion: z.string().min(1),
+    claimIds: uniqueUuidArray,
+    assessmentCutoffAt: rniIsoTimestamp,
+  })
+  .strict();
+
 const requestSchema = z
   .object({
     codeVersion: z.literal(RNI_CITED_SYNTHESIS_CODE_VERSION),
     policyVersion: z.string().min(1),
+    rightsPolicyVersion: z.string().min(1),
     summaryId: z.string().uuid(),
-    modelRunId: z.string().uuid(),
-    modelId: z.string().min(1),
-    promptVersion: z.string().min(1),
+    verificationInvocation: invocationSchema.extend({ stage: z.literal('verification') }),
+    challengerInvocation: invocationSchema.extend({ stage: z.literal('challenger') }),
     createdAt: rniIsoTimestamp,
     convergenceArtifact: z.custom<RniConvergenceArtifact>(
       (value) => value !== null && typeof value === 'object',
@@ -117,6 +134,14 @@ type PreparedSynthesis = {
   readonly modelInput: RniVerificationModelInput;
 };
 
+type ResolvedSynthesisEvidence = {
+  readonly evidenceById: ReadonlyMap<
+    string,
+    Omit<RniVerifiedCitationEvidence, 'lineage'>
+  >;
+  readonly claimEvidenceById: ReadonlyMap<string, readonly RniVerifiedCitationEvidence[]>;
+};
+
 function sortIds(values: readonly string[]): readonly string[] {
   return [...values].sort((left, right) => left.localeCompare(right));
 }
@@ -160,12 +185,40 @@ function validateRequestOwnership(request: RniCitedSynthesisRequest): void {
   if (Date.parse(request.createdAt) < Date.parse(request.convergenceArtifact.inputSnapshot.asOf)) {
     throw new Error('RNI synthesis creation cannot precede its convergence facts');
   }
+  if (request.verificationInvocation.modelRunId === request.challengerInvocation.modelRunId) {
+    throw new Error('Verifier and challenger require distinct persisted model invocations');
+  }
+  const assessmentCutoffAt = request.convergenceArtifact.inputSnapshot.asOf;
+  const claimIds = sortIds(request.claims.map(({ id }) => id));
+  for (const invocation of [request.verificationInvocation, request.challengerInvocation]) {
+    if (
+      invocation.runId !== runId ||
+      invocation.securityId !== securityId ||
+      invocation.policyVersion !== request.policyVersion ||
+      invocation.rightsPolicyVersion !== request.rightsPolicyVersion ||
+      invocation.assessmentCutoffAt !== assessmentCutoffAt ||
+      canonicalHash(sortIds(invocation.claimIds)) !== canonicalHash(claimIds)
+    ) {
+      throw new Error('Model invocation lineage does not match this synthesis request');
+    }
+  }
   for (const claim of request.claims) {
     if (claim.runId !== runId || claim.securityId !== securityId) {
       throw new Error('RNI synthesis refuses a cross-run or cross-security claim');
     }
     if (Date.parse(claim.verificationCutoffAt) > Date.parse(request.createdAt)) {
       throw new Error('Catalyst verification cutoff cannot follow synthesis creation');
+    }
+  }
+  if (
+    request.claims.some(({ verificationCutoffAt }) => verificationCutoffAt !== assessmentCutoffAt)
+  ) {
+    throw new Error('One synthesis verification batch requires one persisted assessment cutoff');
+  }
+  for (const platform of PLATFORM_ORDER) {
+    const dataThroughAt = request.convergenceArtifact.result.platforms[platform].dataThroughAt;
+    if (dataThroughAt !== null && Date.parse(dataThroughAt) > Date.parse(assessmentCutoffAt)) {
+      throw new Error('Model-visible convergence facts cannot follow the assessment cutoff');
     }
   }
   const requestedIds = new Set(request.citationIds);
@@ -181,20 +234,89 @@ function validateRequestOwnership(request: RniCitedSynthesisRequest): void {
   }
 }
 
+function canonicalizeXStatusUrl(value: string): { canonicalUrl: string; externalId: string } | null {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase().replace(/^www\./u, '');
+    const match = url.pathname.match(/^\/(?:i\/web|[A-Za-z0-9_]+)\/status\/([0-9]+)\/?$/u);
+    if (url.protocol !== 'https:' || host !== 'x.com' || match?.[1] === undefined) return null;
+    return {
+      canonicalUrl: `https://x.com/i/web/status/${match[1]}`,
+      externalId: match[1],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function validatePublicationUrl(source: z.infer<typeof rniSourceItem>): void {
+  if (source.platform === 'reddit') {
+    const canonical = canonicalizeRedditUrl(source.canonicalUrl);
+    const original = canonicalizeRedditUrl(source.originalUrl);
+    if (
+      canonical === null ||
+      original === null ||
+      canonical.canonicalUrl !== source.canonicalUrl ||
+      original.canonicalUrl !== source.canonicalUrl ||
+      canonical.sourceKind !== source.sourceKind ||
+      original.sourceKind !== source.sourceKind ||
+      canonical.externalId !== source.externalId ||
+      original.externalId !== source.externalId
+    ) {
+      throw new Error('Reddit publication evidence requires an approved canonical post URL');
+    }
+    return;
+  }
+  const canonical = canonicalizeXStatusUrl(source.canonicalUrl);
+  const original = canonicalizeXStatusUrl(source.originalUrl);
+  if (
+    canonical?.canonicalUrl !== source.canonicalUrl ||
+    original?.canonicalUrl !== source.canonicalUrl ||
+    canonical.externalId !== source.externalId ||
+    original.externalId !== source.externalId
+  ) {
+    throw new Error('X publication evidence requires a canonical status URL');
+  }
+}
+
+async function validateTrustedInputs(
+  request: RniCitedSynthesisRequest,
+  reader: RniSynthesisEvidenceReader,
+): Promise<void> {
+  const activeRightsPolicyVersion = await reader.getActiveRightsPolicyVersion(
+    request.convergenceArtifact.result.runId,
+  );
+  if (activeRightsPolicyVersion !== request.rightsPolicyVersion) {
+    throw new Error('Synthesis request does not use the trusted active rights policy');
+  }
+  await Promise.all(
+    request.claims.map(async (claim) => {
+      const persisted = normalizeClaim(
+        claimSchema.parse(await reader.getSynthesisClaim(claim.id)),
+      );
+      if (canonicalHash(persisted) !== canonicalHash(claim)) {
+        throw new Error('Synthesis claim text, cutoff, or lineage differs from persisted state');
+      }
+    }),
+  );
+  await Promise.all(
+    [request.verificationInvocation, request.challengerInvocation].map(async (invocation) => {
+      const persisted = invocationSchema.parse(
+        await reader.getModelInvocation(invocation.modelRunId),
+      ) as RniInferenceInvocationDescriptor;
+      if (canonicalHash(persisted) !== canonicalHash(invocation)) {
+        throw new Error('Model invocation descriptor differs from persisted lineage');
+      }
+    }),
+  );
+}
+
 async function resolveEvidence(
   request: RniCitedSynthesisRequest,
   reader: RniSynthesisEvidenceReader,
-): Promise<readonly RniVerifiedCitationEvidence[]> {
+): Promise<ResolvedSynthesisEvidence> {
   const evidence = await Promise.all(
     request.citationIds.map(async (citationId) => {
-      const lineage = await reader.getCitationLineage(citationId);
-      if (
-        lineage.citationId !== citationId ||
-        lineage.runId !== request.convergenceArtifact.result.runId ||
-        lineage.securityId !== request.convergenceArtifact.result.securityId
-      ) {
-        throw new Error('Citation ownership lookup did not verify the requested run and security');
-      }
       const citation = rniCitation.parse(await reader.getCitation(citationId));
       if (citation.id !== citationId) {
         throw new Error('Citation lookup returned a different persisted citation identity');
@@ -206,19 +328,60 @@ async function resolveEvidence(
       if (source.platform !== citation.platform) {
         throw new Error('Citation and persisted evidence platform lineage must match');
       }
-      if (citation.url !== source.originalUrl && citation.url !== source.canonicalUrl) {
-        throw new Error('Citation URL must resolve to its persisted source URL');
+      validatePublicationUrl(source);
+      if (citation.url !== source.originalUrl) {
+        throw new Error('Publication citation URL must equal its persisted original source URL');
+      }
+      if (source.rightsPolicyVersion !== request.rightsPolicyVersion) {
+        throw new Error('Publication evidence does not match the active rights policy');
       }
       if (!source.boundedContent.includes(citation.evidenceText)) {
         throw new Error('Citation evidence text must exist in persisted bounded evidence');
       }
-      return { lineage, citation, source };
+      return { citation, source };
     }),
   );
   const evidenceById = new Map(evidence.map((entry) => [entry.citation.id, entry]));
+  const validateLineage = (
+    lineage: Awaited<ReturnType<RniSynthesisEvidenceReader['getCitationLineage']>>,
+    claimId: string | null,
+    citationId: string,
+  ) => {
+    if (
+      lineage === null ||
+      lineage.claimId !== claimId ||
+      lineage.citationId !== citationId ||
+      lineage.runId !== request.convergenceArtifact.result.runId ||
+      lineage.securityId !== request.convergenceArtifact.result.securityId ||
+      lineage.rightsPolicyVersion !== request.rightsPolicyVersion
+    ) {
+      throw new Error(
+        'Citation role lookup did not verify claim, run, security, and rights policy',
+      );
+    }
+    return lineage;
+  };
+  const claimEvidenceById = new Map<string, readonly RniVerifiedCitationEvidence[]>();
   for (const claim of request.claims) {
+    const claimEvidence = (
+      await Promise.all(
+        request.citationIds.map(async (citationId) => {
+          const lineage = await reader.getCitationLineage(claim.id, citationId);
+          if (lineage === null) return null;
+          const validated = validateLineage(lineage, claim.id, citationId);
+          const persisted = evidenceById.get(citationId);
+          if (persisted === undefined) {
+            throw new Error('Claim-specific citation role references unavailable evidence');
+          }
+          return { ...persisted, lineage: validated };
+        }),
+      )
+    ).filter((entry): entry is RniVerifiedCitationEvidence => entry !== null);
+    const claimEvidenceByCitation = new Map(
+      claimEvidence.map((entry) => [entry.citation.id, entry]),
+    );
     for (const citationId of claim.sourceCitationIds) {
-      const persisted = evidenceById.get(citationId);
+      const persisted = claimEvidenceByCitation.get(citationId);
       if (
         persisted?.citation.platform !== claim.platform ||
         persisted.lineage.evidenceRole !== 'social_claim'
@@ -226,23 +389,37 @@ async function resolveEvidence(
         throw new Error('Catalyst claim citations must remain on the claim platform');
       }
     }
+    claimEvidenceById.set(claim.id, claimEvidence);
   }
   for (const platform of PLATFORM_ORDER) {
     for (const citationId of request.platformCitationIds[platform]) {
       const persisted = evidenceById.get(citationId);
+      const lineage = validateLineage(
+        await reader.getCitationLineage(null, citationId),
+        null,
+        citationId,
+      );
       if (
         persisted?.citation.platform !== platform ||
-        persisted.lineage.evidenceRole !== 'social_claim' ||
-        persisted.lineage.analyticsArtifactHash !==
+        lineage.evidenceRole !== 'social_claim' ||
+        lineage.analyticsArtifactHash !==
           request.convergenceArtifact.result.platforms[platform].analyticsArtifactHash
       ) {
         throw new Error(
           'Platform conclusion citations must remain in the exact platform analytics lineage',
         );
       }
+      if (
+        !claimEvidenceIsAvailableBy(
+          { ...persisted, lineage },
+          request.convergenceArtifact.inputSnapshot.asOf,
+        )
+      ) {
+        throw new Error('Publication evidence was discovered or observed after the cutoff');
+      }
     }
   }
-  return evidence;
+  return { evidenceById, claimEvidenceById };
 }
 
 async function prepareSynthesis(
@@ -253,7 +430,34 @@ async function prepareSynthesis(
   const convergenceArtifact = replayPlatformFacts(parsed.convergenceArtifact);
   const request = normalizeRequest(parsed, convergenceArtifact);
   validateRequestOwnership(request);
-  const evidence = await resolveEvidence(request, reader);
+  await validateTrustedInputs(request, reader);
+  const resolvedEvidence = await resolveEvidence(request, reader);
+  const claimInputs = request.claims.map((claim) => {
+    const claimSourceIds = new Set(claim.sourceCitationIds);
+    const claimEvidence = resolvedEvidence.claimEvidenceById.get(claim.id) ?? [];
+    const claimEvidenceByCitation = new Map(
+      claimEvidence.map((entry) => [entry.citation.id, entry]),
+    );
+    for (const citationId of claimSourceIds) {
+      const persistedClaimEvidence = claimEvidenceByCitation.get(citationId);
+      if (
+        persistedClaimEvidence === undefined ||
+        !claimEvidenceIsAvailableBy(persistedClaimEvidence, claim.verificationCutoffAt)
+      ) {
+        throw new Error('Catalyst claim evidence was discovered or observed after the cutoff');
+      }
+    }
+    return {
+      claim,
+      evidence: claimEvidence.filter(
+        (entry) =>
+          claimSourceIds.has(entry.citation.id) ||
+          ((entry.lineage.evidenceRole === 'corroborating' ||
+            entry.lineage.evidenceRole === 'counterevidence') &&
+            corroborationEvidenceIsAvailableBy(entry, claim.verificationCutoffAt)),
+      ),
+    };
+  });
   for (const platform of PLATFORM_ORDER) {
     const platformFacts = request.convergenceArtifact.result.platforms[platform];
     const publishable =
@@ -274,14 +478,11 @@ async function prepareSynthesis(
         allowedTools: [],
         outputTextPublication: 'forbidden_structured_verdicts_only',
       },
-      promptVersion: request.promptVersion,
-      modelId: request.modelId,
-      modelRunId: request.modelRunId,
+      invocation: request.verificationInvocation,
       runId: request.convergenceArtifact.result.runId,
       securityId: request.convergenceArtifact.result.securityId,
       convergenceFacts: request.convergenceArtifact.result,
-      claims: request.claims,
-      evidence,
+      claimInputs,
     },
   };
 }
@@ -297,12 +498,26 @@ function isPlatformReady(input: RniVerificationModelInput, platform: 'reddit' | 
   );
 }
 
-function evidenceIsAvailableBy(
+function claimEvidenceIsAvailableBy(
   evidence: RniVerifiedCitationEvidence,
   cutoff: string,
 ): boolean {
-  const evidenceAt = evidence.source.publishedAt ?? evidence.source.observedAt;
-  return Date.parse(evidenceAt) <= Date.parse(cutoff);
+  const cutoffMs = Date.parse(cutoff);
+  return (
+    Date.parse(evidence.source.discoveredAt) <= cutoffMs &&
+    Date.parse(evidence.source.observedAt) <= cutoffMs
+  );
+}
+
+function corroborationEvidenceIsAvailableBy(
+  evidence: RniVerifiedCitationEvidence,
+  cutoff: string,
+): boolean {
+  return (
+    claimEvidenceIsAvailableBy(evidence, cutoff) &&
+    evidence.source.publishedAt !== null &&
+    Date.parse(evidence.source.publishedAt) <= Date.parse(cutoff)
+  );
 }
 
 function validateVerification(
@@ -310,11 +525,10 @@ function validateVerification(
   input: RniVerificationModelInput,
 ): readonly RniClaimAssessment[] {
   const parsed = verificationOutputSchema.parse(rawOutput);
-  if (parsed.assessments.length !== input.claims.length) {
+  if (parsed.assessments.length !== input.claimInputs.length) {
     throw new Error('Verification must assess every catalyst claim exactly once');
   }
-  const claims = new Map(input.claims.map((claim) => [claim.id, claim]));
-  const evidence = new Map(input.evidence.map((entry) => [entry.citation.id, entry]));
+  const claimInputs = new Map(input.claimInputs.map((entry) => [entry.claim.id, entry]));
   const assessments = parsed.assessments
     .map((assessment) => ({
       ...assessment,
@@ -323,8 +537,14 @@ function validateVerification(
     }))
     .sort((left, right) => left.claimId.localeCompare(right.claimId));
   for (const assessment of assessments) {
-    const claim = claims.get(assessment.claimId);
-    if (claim === undefined) throw new Error('Verification invented an unknown catalyst claim');
+    const claimInput = claimInputs.get(assessment.claimId);
+    if (claimInput === undefined) {
+      throw new Error('Verification invented an unknown catalyst claim');
+    }
+    const { claim } = claimInput;
+    const evidence = new Map(
+      claimInput.evidence.map((entry) => [entry.citation.id, entry]),
+    );
     const supporting = new Set(assessment.supportingCitationIds);
     const contradicting = new Set(assessment.contradictingCitationIds);
     const claimSourceItemIds = new Set(
@@ -339,10 +559,10 @@ function validateVerification(
     for (const citationId of supporting) {
       const persisted = evidence.get(citationId);
       if (
-        persisted?.lineage.evidenceRole !== 'independent_verification' ||
-        !evidenceIsAvailableBy(persisted, claim.verificationCutoffAt)
+        persisted?.lineage.evidenceRole !== 'corroborating' ||
+        !corroborationEvidenceIsAvailableBy(persisted, claim.verificationCutoffAt)
       ) {
-        throw new Error('Catalyst support requires independent persisted evidence by the cutoff');
+        throw new Error('Catalyst support requires separate persisted corroboration by the cutoff');
       }
       if (claimSourceItemIds.has(persisted.citation.sourceItemId)) {
         throw new Error('Catalyst support cannot reuse the claim source under another citation');
@@ -352,7 +572,7 @@ function validateVerification(
       const persisted = evidence.get(citationId);
       if (
         persisted?.lineage.evidenceRole !== 'counterevidence' ||
-        !evidenceIsAvailableBy(persisted, claim.verificationCutoffAt)
+        !corroborationEvidenceIsAvailableBy(persisted, claim.verificationCutoffAt)
       ) {
         throw new Error('Catalyst contradiction requires persisted counterevidence by the cutoff');
       }
@@ -477,7 +697,7 @@ function assembleResult(
   challenger: RniChallengerAssessment,
   request: RniCitedSynthesisRequest,
 ): RniCitedSynthesisResult {
-  const claims = new Map(input.claims.map((claim) => [claim.id, claim]));
+  const claims = new Map(input.claimInputs.map(({ claim }) => [claim.id, claim]));
   const redditStatement = platformConclusionStatement(input, request, 'reddit');
   const xStatement = platformConclusionStatement(input, request, 'x');
   const redditStatements: RniSummaryStatement[] = [redditStatement];
@@ -523,8 +743,8 @@ function assembleResult(
     if (assessment.verdict === 'supported') {
       combinedStatements.push({
         heading: 'Combined summary',
-        origin: 'verified_catalyst',
-        text: `Independently verified catalyst claim: “${sentenceClaimText(claim.claimText)}”`,
+        origin: 'corroborated_catalyst',
+        text: `Separate persisted social evidence corroborates the catalyst claim: “${sentenceClaimText(claim.claimText)}”`,
         citationIds: sortIds([
           ...claim.sourceCitationIds,
           ...assessment.supportingCitationIds,
@@ -616,6 +836,7 @@ async function calculateFromOutputs(
   const verification = validateVerification(rawVerification, prepared.modelInput);
   const challengerInput: RniChallengerModelInput = {
     ...prepared.modelInput,
+    invocation: prepared.request.challengerInvocation,
     verification,
   };
   const challenger = validateChallenger(rawChallenger, challengerInput);
@@ -647,15 +868,15 @@ export async function synthesizeCitedNarrative(
   challenger: RniChallengerInferencePort,
 ): Promise<RniCitedSynthesisArtifact> {
   const prepared = await prepareSynthesis(request, reader);
-  const hasEligibleClaim = prepared.modelInput.claims.some((claim) =>
+  const hasEligibleClaim = prepared.modelInput.claimInputs.some(({ claim }) =>
     isPlatformReady(prepared.modelInput, claim.platform),
   );
   if (!hasEligibleClaim) {
     return calculateFromOutputs(
       prepared,
       {
-        assessments: prepared.modelInput.claims.map(({ id }) => ({
-          claimId: id,
+        assessments: prepared.modelInput.claimInputs.map(({ claim }) => ({
+          claimId: claim.id,
           verdict: 'unverified',
           supportingCitationIds: [],
           contradictingCitationIds: [],
@@ -668,6 +889,7 @@ export async function synthesizeCitedNarrative(
   const verification = validateVerification(rawVerification, prepared.modelInput);
   const challengerInput: RniChallengerModelInput = {
     ...prepared.modelInput,
+    invocation: prepared.request.challengerInvocation,
     verification,
   };
   const hasEligibleVerdict = verification.some(({ verdict }) => verdict !== 'unverified');
