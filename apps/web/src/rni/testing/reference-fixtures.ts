@@ -1,4 +1,5 @@
 import type {
+  RniCitation,
   RniCombinedSummary,
   RniComparativeRelation,
   RniPlatformSlice,
@@ -50,6 +51,14 @@ export const comparativeSource: RniSourceItem = {
   metadata: { fixture: true },
   rightsPolicyVersion: 'rni-source-policy-v1',
   createdAt: '2026-09-05T00:05:01.000Z',
+};
+
+export const comparativeCitation: RniCitation = {
+  id: rniFixtureIds.redditCitation,
+  sourceItemId: rniFixtureIds.source,
+  platform: 'reddit',
+  url: comparativeSource.originalUrl,
+  evidenceText: 'NVDA has execution momentum',
 };
 
 export const comparativeSourceCommit: RniSourceCommitResult = {

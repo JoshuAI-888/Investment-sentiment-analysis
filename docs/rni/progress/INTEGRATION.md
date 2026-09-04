@@ -12,6 +12,7 @@
 | I01 | Review and merge `fix/require-ai-model-routes-live-mode` | `MERGED` | PR #2, `09ad439` |
 | I02 | Freeze RNI contracts, fixtures, routes and migration allocation | `MERGED` | PR #5 merge `dd28ea2`; source SHA `9908eda` |
 | I02A | Resolve CR-DATA-001 source-persistence port | `READY_FOR_REVIEW` | `6b67657`; additive frozen contract; fake-port duplicate delivery returns the committed identity |
+| I02B | Resolve DATA/SURFACE contract requests | `READY_FOR_REVIEW` | D-RNI-09–12; narrow citation lookup plus explicit storage, pgvector, and universe-validation ownership decisions; contract 79 pass |
 | I03 | Expand CI path filters for RNI prompts/agents/evals | `MERGED` | PR #5; actual `tests/eval/rni` path triggered and passed |
 | I04 | Pin/verify pnpm 10.33.0 and build-script policy | `PASSED` | Clean frozen install and PR #5 web/scorer CI passed |
 | I05 | Add forward universe migration and 600-member ceiling | `READY_FOR_REVIEW` | Clean + forward PostgreSQL migration tests pass; 600 accepted and 601 rejected in DB and Zod |
@@ -43,6 +44,10 @@
 | ID | From | Status | Decision | Affected lanes | Contract SHA |
 |---|---|---|---|---|---|
 | CR-DATA-001 | DATA | `ACCEPTED` | Freeze additive commit-returning persistence port; concrete DATA adapter must pass the same duplicate-delivery semantics | DATA, ENGINE, INTEGRATION | `6b67657` |
+| CR-DATA-002 | DATA | `DEFERRED_TO_I07` | Keep storage-shaped semantic writes DATA-private until an implemented ENGINE consumer proves the smallest cross-lane port | DATA, ENGINE, INTEGRATION | I02B task commit |
+| CR-DATA-003 | DATA | `RESOLVED_NO_CHANGE` | pgvector remains deferred for this vertical slice; relational claim/narrative storage proceeds without an extension or placeholder | DATA, ENGINE, INTEGRATION | I02B task commit |
+| CR-DATA-004 | DATA | `RESOLVED_NO_CHANGE` | I06 synchronizer owns duplicate, completeness, NVDA, ambiguous, and unresolved validation; transport schema remains structural | DATA, INTEGRATION | `e535624` + I02B task commit |
+| CR-SURFACE-01 | SURFACE | `ACCEPTED` | Add `RniReadService.getCitation(citationId)` returning frozen `RniCitation`; evidence remains a second source-ID read | DATA, SURFACE, INTEGRATION | I02B task commit |
 
 ### CR-DATA-001 decision
 
@@ -59,13 +64,25 @@
   false on duplicate delivery. DATA must run the same case against its concrete adapter before
   handoff.
 
+### I02B decisions
+
+- **CR-DATA-002:** defer a public semantic write port until I07 has an implemented ENGINE
+  consumer. DATA's relational table inputs remain private; the coordinator will freeze only the
+  minimum consumed boundary.
+- **CR-DATA-003:** confirm the existing pgvector deferral. Migration `0022` carries relational
+  lineage only; a later embedding phase requires its own migration and Neon capability gate.
+- **CR-DATA-004:** assign resolution semantics to the integration synchronizer implemented in
+  I06. The frozen universe candidate remains a structural transport schema.
+- **CR-SURFACE-01:** accept one additive citation lookup. A consumer resolves citation ID to the
+  frozen citation record and then source ID to bounded evidence, without repository access.
+
 ## Lane intake
 
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
-| DATA | `NOT_STARTED` | no | — | — | — |
-| ENGINE | `NOT_STARTED` | no | — | — | — |
-| SURFACE | `NOT_STARTED` | no | — | — | — |
+| DATA | `CHANGES_REQUESTED` | no | local lane gates green; full integration legacy race reported | yes | held on DR-01–04 and CR-DATA-001 conformance |
+| ENGINE | `CHANGES_REQUESTED` | no | focused 10, unit 1,180, contract 78, lint/type pass | yes | held on ER-01–03 source-lineage findings |
+| SURFACE | `S01_APPROVED` | no | contract 7 + fixture Playwright 2 pass | yes | held for merge order and I02B rebase; S02 may proceed |
 
 ## Live/deployment gates
 
@@ -91,15 +108,23 @@
 | `apps/web/src/contracts/config.ts`, `src/repositories/versions.ts` | Keep typed and application activation ceilings aligned with migration `0024` | `a7b13b6` | lint, typecheck, unit and integration suites |
 | `apps/web/src/rni/contracts/index.ts`, `src/rni/testing/reference-fixtures.ts` | Resolve CR-DATA-001 with one commit-returning source-persistence boundary | `6b67657` | RNI contract test + full contract suite |
 | `docs/features/RNI-00-CONTRACT.md`, `docs/MEMORY.md` | Record the accepted cross-lane persistence rule as D-RNI-08 | `6b67657` | contract/doc review |
-| `apps/web/migrations/0024_rni_universe_upgrade.sql`, `src/repositories/versions.ts` | Make FMP snapshot staging immutable, auditable, payload-idempotent, and independent of activation | I06 task commit | disposable PostgreSQL 501-member stage/replay test |
-| `apps/web/src/adapters/fmp-universe.ts`, `src/rni/universe/**`, `app/api/rni/universe/sync/route.ts` | Compose authenticated FMP retrieval, strict validation, security-master resolution, and admin-only staging | I06 task commit | adapter/unit, service/route integration, lint, typecheck, production build |
-| `apps/web/app/(admin)/admin/settings/universe/page.tsx` | Identify the FMP-current preset and preserve separate human-approved activation on the existing Settings route | I06 task commit | `check:copy`; production build route manifest |
+| `apps/web/migrations/0024_rni_universe_upgrade.sql`, `src/repositories/versions.ts` | Make FMP snapshot staging immutable, auditable, payload-idempotent, and independent of activation | `e535624` | disposable PostgreSQL 501-member stage/replay test |
+| `apps/web/src/adapters/fmp-universe.ts`, `src/rni/universe/**`, `app/api/rni/universe/sync/route.ts` | Compose authenticated FMP retrieval, strict validation, security-master resolution, and admin-only staging | `e535624` | adapter/unit, service/route integration, lint, typecheck, production build |
+| `apps/web/app/(admin)/admin/settings/universe/page.tsx` | Identify the FMP-current preset and preserve separate human-approved activation on the existing Settings route | `e535624` | `check:copy`; production build route manifest |
+| `apps/web/src/rni/contracts/index.ts`, `src/rni/testing/reference-fixtures.ts` | Resolve CR-SURFACE-01 with citation-ID lookup through the frozen read service | I02B task commit | RNI contract 9 pass; full contract 79 pass/22 DB-skipped |
+| `docs/features/RNI-00-CONTRACT.md`, `docs/MEMORY.md` | Record CR-DATA-002–004 and CR-SURFACE-01 outcomes as D-RNI-09–12 | I02B task commit | contract/doc review |
 
 ## Review findings
 
 | ID | Priority | Status | Finding | Resolution |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| DR-01 | P1 | `OPEN` | Conflicting source external ID and canonical URL can resolve to different rows but the repository silently chooses one | Returned to DATA; require crossed-natural-key failure test |
+| DR-02 | P1 | `OPEN` | Citation FK does not require the cited source to equal its claim source | Returned to DATA; require composite claim/source FK and mismatch test |
+| DR-03 | P1 | `OPEN` | Concrete runs accept nonexistent config/universe version strings | Returned to DATA; require existing-version FKs and rejection test |
+| DR-04 | P2 | `OPEN` | Terminal tombstone timestamp/reason remain directly mutable at the database boundary | Returned to DATA; make terminal metadata immutable after transition |
+| ER-01 | P1 | `OPEN` | Model-supplied excerpt/time is not bound to the exact consulted Web Search source | Returned to ENGINE; require exact provenance or URL-only abstention |
+| ER-02 | P1 | `OPEN` | A multi-call response can omit one action's source trace and still succeed | Returned to ENGINE; validate every Web Search action fail-closed |
+| ER-03 | P2 | `OPEN` | Prompt-injection fixture starts after provider generation but was described as an end-to-end guard | Returned to ENGINE; add pre-generation eval or narrow claim |
 
 ## Open risks/blockers
 
@@ -118,7 +143,8 @@
 | `dd28ea2` | PR #5 contract-freeze merge to `main` | GitHub web/scorer/eval and Vercel preview green |
 | `a7b13b6` | Forward-only universe lineage schema and 600-member ceiling | lint; typecheck; unit 1,172; contract 77 pass/22 DB-skipped; integration 358 pass/2 transient timing failures, both files green on immediate rerun (72 pass); I05 DB cases 3/3 pass |
 | `6b67657` | Accept CR-DATA-001 and freeze the commit-returning persistence port | lint; typecheck; RNI contract 8 pass; full contract 78 pass/22 DB-skipped |
-| I06 task commit | Stage validated current FMP S&P 500 snapshots without activating them | lint; typecheck; unit 1,175; contract 78 pass/22 DB-skipped; RNI service/route 16 pass; PostgreSQL universe 4 pass + versions 9 pass; `check:copy`; production build |
+| `e535624` | Stage validated current FMP S&P 500 snapshots without activating them | lint; typecheck; unit 1,175; contract 78 pass/22 DB-skipped; RNI service/route 16 pass; PostgreSQL universe 4 pass + versions 9 pass; `check:copy`; production build |
+| I02B task commit | Resolve remaining initial lane contract requests and freeze citation lookup | lint; typecheck; RNI contract 9 pass; full contract 79 pass/22 DB-skipped |
 
 ## Coordinator notes
 
@@ -136,6 +162,9 @@
   created, and only stages an immutable candidate. No code path in this task activates it.
 - The database tests that reset the shared public schema must run serially. A parallel diagnostic
   invocation collided during schema reset; the isolated universe and versions gates both passed.
+- DATA and ENGINE handoffs were reviewed against the frozen contract and returned with open P1
+  lineage findings; neither branch is merged. SURFACE S01 is approved as a fixture-only slice,
+  but waits behind merge order and must consume I02B before citation work.
 
 ## I05 handoff
 

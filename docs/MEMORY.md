@@ -819,6 +819,38 @@ enqueues interpretation from a caller-proposed ID. Duplicate delivery returns th
 committed ID with false insertion flags, preserving source-first ordering without importing a
 DATA-private repository or duplicating transaction semantics in ENGINE.
 
+### D-RNI-09 — pgvector remains deferred for the RNI vertical slice
+
+**Resolves CR-DATA-003, 2026-09-05.** The relational claim, citation, theme, narrative and
+membership schema is in scope; enabling the `vector` extension and persisting embeddings is not.
+This follows the explicit deployment and integration-plan deferral and avoids introducing an
+untested Neon prerequisite. A later embedding phase requires a separate migration, capability
+gate and decision; migration `0022` must not contain a placeholder vector representation.
+
+### D-RNI-10 — Storage-private semantic write shapes are composed only when consumed
+
+**Defers CR-DATA-002 to I07, 2026-09-05.** DATA may keep its relational claim/theme/narrative
+write inputs private while the storage slice is reviewed. The coordinator will freeze only the
+smallest port required by an implemented ENGINE consumer during I07, rather than making every
+table-shaped input a public cross-lane API in advance. Citation reads are handled separately by
+D-RNI-12.
+
+### D-RNI-11 — Universe candidate semantics are enforced by the synchronizer
+
+**Resolves CR-DATA-004, 2026-09-05.** `rniUniverseSnapshotCandidate` remains a structural 1–600
+member transport schema. The integration-owned FMP synchronizer is the authoritative fail-closed
+boundary for complete-count, duplicate symbol, NVDA, active-security resolution and ambiguity
+checks, and it stages only a validated candidate. DATA fixtures exercise those outcomes without
+expanding the frozen schema into a repository-specific resolution result.
+
+### D-RNI-12 — Citation IDs resolve through the frozen read service
+
+**Accepts CR-SURFACE-01, 2026-09-05.** `RniReadService` adds the narrow
+`getCitation(citationId)` method returning the already-frozen `RniCitation`. A surface resolves a
+summary citation to source identity, platform, URL and bounded supporting text, then calls
+`getEvidence(sourceItemId)`. It never treats citation and source IDs as interchangeable or joins
+DATA-private tables directly.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

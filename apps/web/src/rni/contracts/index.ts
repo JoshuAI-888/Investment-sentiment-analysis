@@ -356,5 +356,6 @@ export interface RniReadService {
   getRun(runId: string): Promise<RniRun>;
   getPlatformSlices(runId: string): Promise<readonly RniPlatformSlice[]>;
   getSecuritySummary(runId: string, securityId: string): Promise<RniCombinedSummary>;
+  getCitation(citationId: string): Promise<RniCitation>;
   getEvidence(sourceItemId: string): Promise<RniSourceItem>;
 }

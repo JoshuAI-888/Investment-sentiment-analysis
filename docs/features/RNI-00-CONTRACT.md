@@ -189,6 +189,11 @@ Command routes require CSRF/authz, an idempotency key and audit entry. Read resp
 source-slice freshness and citation lineage. MCP v1 is read-only and invokes the same read
 service; it cannot bypass portal authentication, publication gates or evidence redaction.
 
+`RniReadService.getCitation(citationId)` resolves a summary citation ID to its persisted source
+identity, platform, canonical citation URL and bounded supporting text. Consumers then call
+`getEvidence(sourceItemId)`; they must not guess that a citation ID is a source ID or bypass the
+read service to join storage-private tables.
+
 ## 11. Publication and test gates
 
 A claim publishes only when every claim citation resolves to a persisted source item, belongs to

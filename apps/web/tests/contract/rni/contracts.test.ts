@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   rniCombinedSummary,
   rniComparativeRelation,
+  rniCitation,
   rniPlatformSlice,
   rniRunRequest,
   rniSecurityMention,
@@ -10,8 +11,10 @@ import {
   rniSourceItem,
   rniUniverseSnapshotCandidate,
   type RniSourcePersistencePort,
+  type RniReadService,
 } from '@/rni/contracts';
 import {
+  comparativeCitation,
   comparativeMentions,
   comparativeObservations,
   comparativeRelation,
@@ -71,6 +74,30 @@ describe('RNI frozen contracts', () => {
       retrievalInserted: false,
       contentVersionInserted: false,
     });
+  });
+
+  it('resolves summary citation IDs before reading their persisted source evidence', async () => {
+    const fake: RniReadService = {
+      getRun: async () => { throw new Error('not used'); },
+      getPlatformSlices: async () => { throw new Error('not used'); },
+      getSecuritySummary: async () => partialCombinedSummary,
+      getCitation: async (citationId) => {
+        if (citationId !== comparativeCitation.id) throw new Error('citation not found');
+        return rniCitation.parse(comparativeCitation);
+      },
+      getEvidence: async (sourceItemId) => {
+        if (sourceItemId !== comparativeSource.id) throw new Error('source not found');
+        return rniSourceItem.parse(comparativeSource);
+      },
+    };
+
+    const summary = await fake.getSecuritySummary(rniFixtureIds.run, rniFixtureIds.nvda);
+    const citation = await fake.getCitation(summary.sections[0]!.citationIds[0]!);
+    const evidence = await fake.getEvidence(citation.sourceItemId);
+
+    expect(citation.platform).toBe('reddit');
+    expect(citation.url).toBe(evidence.originalUrl);
+    expect(evidence.boundedContent).toContain(citation.evidenceText);
   });
 
   it('requires decimal strings for semantic scores so calculation inputs round-trip exactly', () => {
