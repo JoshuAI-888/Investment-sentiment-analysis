@@ -14,3 +14,16 @@ export * from './scoring-worker';
 export * from './scorer-client';
 export * from './rescore';
 export * from './stance-availability';
+
+// F16a (F16 §0's Wave 1 half) — the dispatch core, the trigger path and the heartbeat.
+export * from './redis';
+export * from './dispatch-lock';
+export * from './schedule';
+export * from './idempotency';
+export * from './x-budget';
+export * from './qstash';
+export * from './collectors';
+export * from './trigger';
+export * from './job-service';
+export * from './dispatch';
+export * from './heartbeat';
