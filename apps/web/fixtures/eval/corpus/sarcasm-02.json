@@ -187,7 +187,8 @@
         "retrievedCount": 6,
         "usedCount": 5,
         "watchlistVersion": "x-watchlist-v1",
-        "triggerEventId": "trigger-coin-price-move-001"
+        "triggerEventId": "trigger-coin-price-move-001",
+        "truncated": false
       }
     ],
     "createdAt": "2026-08-08T00:00:00.000Z"

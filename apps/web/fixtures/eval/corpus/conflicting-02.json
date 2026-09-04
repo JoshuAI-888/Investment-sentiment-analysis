@@ -210,7 +210,8 @@
         "subredditsPolled": [
           "stocks"
         ],
-        "treeComplete": true
+        "treeComplete": true,
+        "truncated": false
       },
       {
         "axis": "substack",
@@ -222,7 +223,8 @@
         "retrievedCount": 4,
         "usedCount": 3,
         "publicationSetVersion": "substack-publications-v1",
-        "selectionBasis": "sector coverage (D-29)"
+        "selectionBasis": "sector coverage (D-29)",
+        "truncated": false
       }
     ],
     "createdAt": "2026-08-08T00:00:00.000Z"
