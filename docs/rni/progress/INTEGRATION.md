@@ -222,7 +222,7 @@
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
 | ENGINE | `E09_CHANGES_REQUESTED` | yes at `bdb23ce`; corrected E09 handoff `c4668b3` | coordinator typecheck/lint, focused router 17/17 and E08 regression 46/46; independent correction review returned ER-15–18 | yes | E01–E08 accepted; ER-14 closed, but E09 must preserve exact historical prompt bytes, make delimiters unspoofable, unify classifier/dispatched hashes and retain failed-call telemetry; E10 not started |
-| SURFACE | `ACCEPTED_WAITING_ORDER` | yes at `87742d0`; final lane `c68980b` | coordinator typecheck/lint, RNI contract 17/17, production build and complete Chromium 22/22; independent review PASS | yes | S01–S10 accepted; merge waits behind ENGINE per DATA→ENGINE→SURFACE order |
+| SURFACE | `ACCEPTED_WAITING_ORDER` | yes at `87742d0`; code `c68980b`, tracker head `5d9cd3d` | coordinator typecheck/lint, RNI contract 17/17, production build and complete Chromium 22/22; independent review PASS | yes | S01–S10 accepted; merge waits behind ENGINE per DATA→ENGINE→SURFACE order |
 
 ## Live/deployment gates
 
@@ -360,6 +360,7 @@
 | `CURRENT` | Re-review corrected ENGINE E09 routing | `c4668b3` descends `bdb23ce`; coordinator focused router 17/17, E08 regression 46/46, typecheck/scoped lint/diff pass; ER-14 closed, independent adversarial review CHANGES REQUESTED on ER-15–18 |
 | `CURRENT` | Accept SURFACE S09 future-run AI route settings | `8d1d943` descends `bdb23ce`; coordinator typecheck/lint, RNI contract 17/17, production build and Chromium 3/3; independent adversarial review PASS; S10 remains |
 | `CURRENT` | Accept final SURFACE S10 accessibility/responsive audit | `c68980b` descends `87742d0`; ownership/diff, typecheck, focused lint, RNI contract 17/17, production build and Chromium 22/22 pass; independent adversarial review PASS |
+| `CURRENT` | Record SURFACE accepted-state handoff | tracker-only `5d9cd3d` marks S01–S10 ready for merge; clean branch remains unmerged behind ENGINE |
 
 ## Coordinator notes
 
