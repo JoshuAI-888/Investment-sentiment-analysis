@@ -21,7 +21,7 @@ top**: it is the only remaining item whose lead time is outside the owner's cont
 | # | Task | Why it is first |
 |---|---|---|
 | 1 | **MT-13 — file the Reddit Data API application** | **Confirmed not filed.** $0, and the only item here with an **external queue**: slow, opaque, and able to reject without explanation. Nothing downstream shortens it, and it gates the largest channel in the product. Every other task on this list completes when you decide to do it; this one completes when someone else decides |
-| 2 | ~~MT-15 — name the Substack publications~~ | **Confirmed 2026-09-04.** 13 publications, 10/11 sectors. **This is the only channel that can collect today** — no key, no approval — so it is what actually starts the forward-only clock, once F04's config is wired to the confirmed list |
+| 2 | ~~MT-15 — name the Substack publications~~ | **Confirmed and wired 2026-09-04 (D-40).** 13 publications, 10/11 sectors, committed and validated in `src/adapters/substack-publications.ts`. **This is the only channel that can collect today** — no key, no approval — but starting the forward-only clock still needs F16a's dispatcher, which does not exist yet |
 | 3 | **MT-04 — create the QStash schedule** | Re-scoped to **Wave 1**: MT-08 runs on it. Needs a stable deploy URL first, which is the only reason it is not higher |
 | ✅ | ~~MT-07's symbol list~~ | **Done 2026-09-03.** Ranking pulled, ETFs excluded, committed as `migrations/seed/universe-v1.json` (B-21) |
 | 5 | **MT-08 — start the collector** | Still the highest-value outcome in the plan, but **not executable until F04 and F16a exist** (`PROGRESS.md`). It is a milestone, not a task you can do this afternoon |
@@ -758,9 +758,13 @@ familiarity, or citation frequency."*
 
 **Confirmed by the owner 2026-09-04.** The candidate list below is now the disclosed set — no
 longer a draft. **Count: 13 publications, covering 10 of the 11 GICS sectors** in the seed
-universe (Utilities has no dedicated pick — accepted as a disclosed gap, see below). **Recorded
-in config version:** ______ (still pending — F04's Substack collection config has not been wired
-to a named publication list yet; that wiring, not this sign-off, is what's left).
+universe (Utilities has no dedicated pick — accepted as a disclosed gap, see below). **Wired
+2026-09-04 (`MEMORY.md` D-40):** `migrations/seed/substack-publications-v1.json` +
+`src/adapters/substack-publications.ts` now load and validate this exact list. **Recorded in
+`config_version`:** still pending — that table needs F15's governance machinery and a live
+`DATABASE_URL`, the same blocker the symbol list has for `pnpm seed:universe`. The JSON artifact
+is the only version that exists today, and is what the loader and F10's future disclosure both
+read from.
 
 ### Step-by-step, assuming no prior research into financial Substacks
 
@@ -851,7 +855,7 @@ as-is, exactly as listed in the table above.
 | **MT-08** | **START THE COLLECTOR — today. Corpus lost is not recoverable (D-16)** | 🔴🔴 | ☐ |
 | **MT-13** | **File the Reddit Data API application — confirmed NOT FILED; now the longest pole** | 🔴🔴 | ☐ |
 | **MT-14** | ~~Choose the market-data tier~~ — FMP Starter daily bars; intraday deferred with an evidence trigger | ✅ | ☑ **D-31** |
-| MT-15 | Substack set — **fully confirmed 2026-09-04**: 13 publications, 10/11 GICS sectors (Utilities a disclosed gap). Still needs wiring into F04's collection config | ✅ | ☑ **owner-confirmed** |
+| MT-15 | Substack set — **fully confirmed and wired 2026-09-04**: 13 publications, 10/11 GICS sectors (Utilities a disclosed gap), loaded by `src/adapters/substack-publications.ts` | ✅ | ☑ **D-40** |
 | MT-09 | ~~Vercel Pro + FMP display agreement~~ | ⬛ | **void (D-11)** |
 | MT-10 | ~~Privacy, terms, legal read~~ | ⬛ | **void (D-11)** |
 | MT-11 | Calibrate the judge | 🟢 | ☐ |

@@ -1,0 +1,27 @@
+{
+  "confirmedAt": "2026-09-04",
+  "basis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. (D-29)",
+  "sectorsRepresented": 10,
+  "sectorsTotal": 11,
+  "disclosedGaps": [
+    {
+      "sector": "Utilities",
+      "reason": "Two search passes (2026-09-03) found no candidate that is both genuinely utilities/power-sector-specific and weekly-or-better cadence. Owner-accepted gap, disclosed under source spec §6.1 rather than a forced weak pick. See DEPLOY.md MT-15 for the rejected candidate list."
+    }
+  ],
+  "publications": [
+    { "slug": "doomberg", "name": "Doomberg", "sector": "Energy" },
+    { "slug": "netinterest", "name": "Net Interest", "sector": "Financials" },
+    { "slug": "thesemiconductornewsletter", "name": "The Semiconductor Newsletter", "sector": "Information Technology" },
+    { "slug": "semiconductor", "name": "Bits and Bytes", "sector": "Information Technology" },
+    { "slug": "boutiquebiotech", "name": "Boutique Biotech", "sector": "Health Care" },
+    { "slug": "thebiobrief", "name": "Bio Brief", "sector": "Health Care" },
+    { "slug": "adamjosephson", "name": "As the Consumer Turns", "sector": "Consumer Staples" },
+    { "slug": "matthewmcclintock", "name": "Matt McClintock Retail/Consumer Research", "sector": "Consumer Staples" },
+    { "slug": "reits", "name": "REIT Dividends", "sector": "Real Estate" },
+    { "slug": "industrialanalyst", "name": "Industrial Tech Stock Analyst", "sector": "Industrials" },
+    { "slug": "metalsandminers", "name": "Metals and Miners", "sector": "Materials" },
+    { "slug": "entertainment", "name": "The Entertainment Strategy Guy", "sector": "Communication Services" },
+    { "slug": "consumerspec", "name": "Consumer Spec", "sector": "Consumer Discretionary" }
+  ]
+}

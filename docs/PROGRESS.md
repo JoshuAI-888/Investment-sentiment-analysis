@@ -95,15 +95,23 @@ the project deploys cleanly with no runtime errors in the last 7 days. **F10, F1
 unblocked** and await lane allocation at the Wave 2 gate; a live-mode misconfiguration will still
 surface via F01 §4.2's existing boot assertion. See `MEMORY.md` D-39.
 
+**2026-09-04 — MT-15's Substack list wired into F04's config (D-40).** The confirmed
+13-publication set is now a committed, zod-validated artifact
+(`migrations/seed/substack-publications-v1.json` + `src/adapters/substack-publications.ts`),
+mirroring `universe-seed.ts`'s pattern for the symbol list. This is the adapters-layer half only
+— no `app_setting`/`config_version` row yet (needs F15's governance machinery and a live
+`DATABASE_URL`) and **no polling starts from this alone**, since F16a's dispatcher still doesn't
+exist. MT-08 is unaffected. See `MEMORY.md` D-40.
+
 **Next work, in order:**
 
 1. **`DEPLOY.md` MT-13** — file the Reddit application. **Confirmed unfiled on 2026-09-03.** Free,
    and now unambiguously the longest lead in the plan: it is the only remaining blocker whose
    clock someone else controls.
-2. ~~**`DEPLOY.md` MT-15**~~ — **confirmed 2026-09-04.** 13 Substack publications, 10/11 GICS
-   sectors. **This is still the only channel that can collect today** — no key, no approval — but
-   collection now waits on wiring the confirmed list into F04's Substack config (COLLECT), an
-   engineering task rather than an owner decision.
+2. ~~**`DEPLOY.md` MT-15**~~ — **confirmed 2026-09-04, wired 2026-09-04 (D-40).** 13 Substack
+   publications, 10/11 GICS sectors, now a committed, validated config artifact
+   (`substack-publications.ts`). **This is still the only channel that can collect today** — no
+   key, no approval — but *collecting* still needs F16a's dispatcher, which does not exist yet.
 3. ~~**F01**~~ — **merged 2026-09-03.** The repository now has a toolchain, a gate and a
    shape to be parallel in.
 4. ~~**F03 → F22 → F05**~~ — **all merged 2026-09-03.** The Wave 1 skeleton SPINE owed is

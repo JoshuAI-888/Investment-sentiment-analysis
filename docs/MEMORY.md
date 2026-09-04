@@ -932,6 +932,32 @@ so its blockers are unaffected by this decision either way.
 
 ---
 
+### D-40 — MT-15's confirmed Substack list wired into F04's config
+
+**Closes the wiring half of MT-15.** The owner-confirmed 13-publication, 10/11-GICS-sector set
+(`DEPLOY.md` MT-15) is now a committed, validated artifact: `migrations/seed/substack-publications-v1.json`
+plus a loader, `src/adapters/substack-publications.ts` (`getSubstackPublications`,
+`getSubstackDisclosureBasis`), mirroring `repositories/universe-seed.ts`'s own pattern for the
+symbol list — a git-committed JSON seed a loader validates with zod and refuses to fabricate if
+missing (`SubstackPublicationListMissing`, parallel to `SeedListMissing`).
+
+**Deliberately not a `config_version`/`app_setting` row yet.** `contracts/config.ts`'s versioned
+config tables (0006 migration) are where F10's disclosure line (*"selected on the basis recorded
+in config version {v}"*) ultimately points, but writing that row needs F15's not-yet-built
+governance machinery and a live `DATABASE_URL` — the same blocker `universe-seed.ts` has for
+`pnpm seed:universe`. Until then `getSubstackDisclosureBasis()` returns the basis string directly
+from the JSON artifact, which is the only version that currently exists.
+
+**Scope, and what is still not done.** This is the adapters-layer half only — `src/adapters/` is
+COLLECT-owned, so nothing here touches `src/repositories/` (SPINE) or issues a database write.
+**F16a (the dispatcher) still does not exist**, so nothing polls these feeds yet; wiring the list
+is preparatory, not the start of collection. MT-08 ("start the collector") remains gated on F16a
+being built and MT-04 (the QStash schedule), unchanged by this entry. 7 new unit tests added
+(`tests/unit/adapters/substack-publications.test.ts`); full unit suite (101 files, 1178 tests),
+typecheck and lint all verified green against this change.
+
+---
+
 ## 2. Rulings made during review
 
 Each closes a finding in `00-ADVERSARIAL-REVIEW.md`. Rationale is there; recorded here so a
