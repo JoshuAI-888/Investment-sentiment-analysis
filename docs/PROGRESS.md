@@ -190,8 +190,8 @@ F10's corpora arrived.
 |---|---|---|---|---|
 | F10 | Evidence and stance pipeline | 3 | `merged 2026-09-05` | **MT-06 done, unblocked and merged.** Evidence normalization/dedupe, the D-21 LLM relevance/collision methods (new `services/llm/model-client.ts` `ModelClient` port), the evidence-pack builder, the three per-axis disclosures (Reddit's is D-39's honest not-collected statement), the availability checker. 64 new unit tests; full suite 1235/1235; lint/typecheck/build clean. **Deferred (named trigger: F12 exists):** DoD's B1/B2/B5 numeric gates need a real F12 corpus. See `progress/log/2026-09-05-f10-evidence-stance-pipeline.md` |
 | F11 | Research agent and verifier | 3 | `merged 2026-09-05` | State machine, deterministic checks + bounded model-verification claim ledger, budget-gated `ResearchModelClient`, retraction. 1391/1391 unit on the full merged tree; contract 109/109; integration 361/361; build clean. **Deferred (trigger: F12 exists):** B3/B4/B6/B7/B8's measured gates. See `progress/log/2026-09-05-f11-research-agent.md` |
-| F12 | Evaluation harness and judge | 3 | `blocked` | **F10+F11 (both now merged) — genuinely next.** Extended with Tier D; built from scratch, not ported (D-18 — `archive/` is gone) |
-| F21 | MCP server and MCP Apps surface | 3 | `not started` | — **New (D-10).** Depends on F12+F20 (F20 done). Placed at the Wave 3 exit, not after Wave 5 |
+| F12 | Evaluation harness and judge | 3 | `merged 2026-09-05` | 30 frozen corpus packs (5 buckets) + 45 seeded-error answers (9 fault classes), LLM-assisted labels disclosed as pending human audit (`docs/eval-corpus/LABELLING.md`, weaker than D-35's own pattern — named, not hidden), a blind judge on its own route, the Tier C gate (hard C2≥3 floor), judge adversarial validation, MT-11's calibration script (reports `PENDING`, no fabricated number). Two real measured numbers: **B8 = 0.0000** (0/67, real, passes ≤0.10); **B7 = 0.7778 deterministic-only** (35/45 — the 2 semantic-only fault classes need a live model key this sandbox lacks). 1472/1472 unit on the full merged tree; contract 135/135; integration 391/391; `test:eval` 17/17; build clean. **Real gap:** CI's eval job path filter matches none of F10/F11/F12's actual paths — `test:eval` does not trigger in CI as configured; flagged for F01's CI owner. See `progress/log/2026-09-05-f12-evaluation-harness.md` and `MEMORY.md` D-40 |
+| F21 | MCP server and MCP Apps surface | 3 | `not started` | — **New (D-10).** Depends on F12 (now merged) + F20 (done) — **both prerequisites now satisfied**. Placed at the Wave 3 exit, not after Wave 5 |
 
 Status values: `not started` · `in progress` · `in review` · `merged` · `blocked` · `deferred`
 
@@ -229,9 +229,9 @@ lane files** — see the three links above.
 | ~~Reddit API approval~~ | — | **Void — discarded, D-39.** Legacy product does not source Reddit from its Data API; RNI's OpenAI Web Search path covers Reddit for the repository | — |
 | Judge/human Spearman (calibration) | not measured | ≥ 0.7 | MT-11 |
 | Per-axis stance macro-F1 (Reddit / X / Substack) | not measured | ≥ 0.80 **per axis** (Tier D1) | F12 — lane TBA |
-| Verifier catch rate (B7) | not measured | ≥ 0.90 | F12 — lane TBA |
-| Verifier false-positive rate (B8) | not measured | ≤ 0.10 | F12 — lane TBA |
-| Judge mean score (Tier C) | not measured | ≥ 4.0, no C2 < 3 | F12 — lane TBA |
+| Verifier catch rate (B7) | **0.7778, deterministic-only (35/45)** — 2 of 9 fault classes need a live model key not available in this session; **not yet the real B7** | ≥ 0.90 | F12 (merged 2026-09-05) |
+| Verifier false-positive rate (B8) | **0.0000 (0/67), real and measured** — passes | ≤ 0.10 | F12 (merged 2026-09-05) |
+| Judge mean score (Tier C) | Gate mechanics built and tested against fixture judge responses only — **not yet run against a live judge model** | ≥ 4.0, no C2 < 3 | F12 (merged 2026-09-05) |
 
 Days accrued is **derived, not stored** — a stored counter would need a write every day and
 would be wrong between writes. Record the start date once; compute the rest.

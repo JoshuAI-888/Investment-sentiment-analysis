@@ -948,6 +948,46 @@ not being filed at all.
 the Data API. The legacy product's non-Reddit corpus and every other MT/decision stand as
 recorded. This is a scope cut, not a data-model change: no migration, no contract revision.
 
+### D-40 — F12's judge is a known-limitation gate, not evidence of quality; its v1 corpus labels are weaker than D-35's own pattern
+
+**Recorded 2026-09-05, on F12's merge.** Two things F12's build agent asked the coordinator to
+record, since `MEMORY.md` is coordinator-only.
+
+**The judge's known limitation.** F12's LLM judge is systematically forgiving of fluent,
+well-cited, subtly wrong prose (`00-ADVERSARIAL-REVIEW.md` F-22) — this is not a defect to fix,
+it is the reason `01-PRODUCT-SPEC.md` §4's Tier C gate is not, by itself, evidence the product's
+prose is trustworthy. It is kept honest only by three structural checks, not by the judge's own
+judgment: the seeded-error adversarial validation (no seeded-error answer may score ≥ 4 on C2,
+tested against F12's 45-answer seeded-error corpus), the hard C2 ≥ 3 floor that is never averaged
+away regardless of the corpus mean, and MT-11's calibration (Spearman correlation between a human
+scorer and the judge). **As of this merge, MT-11 has not run — no human scorer was available in
+this build session** — so the Tier C gate's real-world meaning is unconfirmed until it does. The
+gate mechanics themselves (mean ≥ 4.0, the C2 floor, zero Tier-B violations, judge blindness to
+the synthesis prompt) are built and tested, but only against deliberately-authored fixture judge
+responses, disclosed as such throughout F12's tests — not against a live judge model, since this
+build session had no live model key.
+
+**Two real, measured numbers, and one that is not yet real.** B8 (verifier false-positive rate)
+is genuinely measured: **0.0000** (0 of 67 clean claims wrongly flagged), passing the ≤ 0.10 gate
+for real. B7 (verifier catch rate) is measured **deterministic-only: 0.7778** (35 of 45 seeded
+errors) — the seven fault classes F11's deterministic checks can catch on their own each score
+5/5; the two semantic-only classes (`unsupported_causal_claim`, `citation_unrelated_evidence`)
+score 0/5 because they are only ever catchable through the bounded model-verification pass, which
+needs a live model call this session could not make. **B7's real number, including the model-
+verification pass, is not yet measured** — record it in `PROGRESS.md`'s global counters once a
+session with live model access runs the full harness.
+
+**The corpus label provenance gap, relative to D-35.** D-35 ("the v1 labelled set is
+LLM-assisted with human audit, and the assist is disclosed") was written for a different labelled
+set with an independent human anchor. F12's v1 corpus has no such anchor: every pack's evidence,
+labels, and gold synthesis answer were drafted by the same kind of system (an LLM-driven build
+agent) that the corpus exists to grade — disclosed plainly in `docs/eval-corpus/LABELLING.md`
+(`labelSource: 'llm_assisted_pending_human_audit'` on every pack, enforced by a zod literal, not
+just prose) rather than presented as equivalent to D-35's own, stronger position. This is a
+disclosed limitation, not a silently accepted one: the corpus is usable for testing the harness's
+own mechanics (gate logic, judge blindness, adversarial validation) today, but its packs should
+not be read as validated ground truth until an owner audit pass actually happens.
+
 ---
 
 ## 2. Rulings made during review
