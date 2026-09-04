@@ -26,7 +26,7 @@
 | G1 model-route branch merged | `PASSED` | coordinator | PR #2, main commit `09ad439` |
 | G2 RNI contract frozen | `PASSED` | coordinator | PR #5 merged at `dd28ea2`; typed source contract at `9908eda` |
 | G3 DATA accepted | `PASSED` | DATA + reviewer | merged sequentially at `254fe45`; coordinator type/contract plus fresh PostgreSQL DATA 41/41 pass |
-| G4 ENGINE accepted | `IN_PROGRESS` | ENGINE + reviewer | E01–E04 accepted through final-base `4f57f01`; E05–E10 remain |
+| G4 ENGINE accepted | `IN_PROGRESS` | ENGINE + reviewer | E01–E05 accepted through `5d9b8f3`; E06–E10 remain |
 | G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01–S06 accepted through `ffd5119`; S07–S10 remain |
 | G6 integrated preview | `NOT_STARTED` | coordinator | Depends G3–G5 |
 | G7 live Reddit/X/FMP gates | `NOT_STARTED` | coordinator + joshuai | Depends G6 and configured credentials |
@@ -37,7 +37,7 @@
 | Workstream | Branch | Status | Progress file | Latest accepted commit |
 |---|---|---|---|---|
 | DATA | `feat/rni-data-source-first` | `MERGED_TO_INTEGRATION` | `DATA.md` | lane `5926601`; merge `254fe45` |
-| ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01–E04 accepted | `ENGINE.md` | `4f57f01` |
+| ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01–E05 accepted | `ENGINE.md` | `5d9b8f3` |
 | SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01–S06 accepted | `SURFACE.md` | `ffd5119` |
 | INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I06 passed at `5950b53`; current coordinator record follows |
 
@@ -112,3 +112,4 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — accepted ENGINE E04 at final-base `4f57f01` (implementation reviewed at pre-amend `59a936f`): committed bounded evidence is the sole public resolution entry, exact security resolution requires a versioned ambiguity policy, and comparative relations fail closed on IDs/spans before deterministic canonicalization. Coordinator typecheck/lint and unit/contract/eval 19/19 pass; ENGINE advanced to E05 and remains unmerged.
 - 2026-09-05 — accepted SURFACE S06 at `ffd5119`: run and source state remain independently labelled for Reddit/X across partial, refreshing, stale, failed, unpublished and empty fixtures; in-progress sources expose no derived combined result. Coordinator typecheck/lint/contract 13/13 and Chromium 11/11 pass; SURFACE advanced to S07 and remains unmerged.
 - 2026-09-05 — accepted CR-SURFACE-04 for I02E/D-RNI-17: the additive manual-refresh command accepts only an idempotency key plus ticker/full scope; server composition owns auth, audit, active config/universe/window resolution and returns one durable run identity with accepted/duplicate disposition and resolved scope preview.
+- 2026-09-05 — accepted ENGINE E05 at `5d9b8f3`: committed bounded evidence is classified once per target security through an exact hashed no-tool payload; four dimensions, policy/taxonomy versions, source-bound claims/themes/noise and non-publishable citation proposals fail closed. Coordinator typecheck/lint and unit/contract/eval 15/15 pass; ENGINE advanced to E06 and remains unmerged.
