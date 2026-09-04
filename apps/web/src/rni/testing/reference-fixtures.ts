@@ -12,6 +12,8 @@ import type {
   RniSourceItem,
   RniActiveUniverse,
   RniActiveUniverseVersion,
+  RniAiRouteSetting,
+  RniAiRouteSettingUpdateResult,
   RniStagedUniversePreview,
   RniUniverseSearchResult,
 } from '../contracts';
@@ -240,6 +242,52 @@ export const referenceRun: RniRun = {
   aiRoute: 'openai_direct',
   requestedAt: '2026-09-05T00:00:00.000Z',
   completedAt: '2026-09-05T00:08:00.000Z',
+};
+
+const referenceRniResolvedModels: RniAiRouteSetting['resolvedModels'] = [
+  {
+    task: 'rni_verification',
+    provider: 'openai',
+    modelId: 'fixture-rni-model',
+    modelRevision: 'fixture-rni-model-2026-09-05',
+    promptVersion: 'rni-verification-fixture-v1',
+  },
+  {
+    task: 'rni_challenger',
+    provider: 'openai',
+    modelId: 'fixture-rni-model',
+    modelRevision: 'fixture-rni-model-2026-09-05',
+    promptVersion: 'rni-challenger-fixture-v1',
+  },
+];
+
+export const referenceDirectAiRouteSetting: RniAiRouteSetting = {
+  configVersion: 'fixture-config-v1',
+  aiRoute: 'openai_direct',
+  resolvedModels: referenceRniResolvedModels,
+  options: [
+    { aiRoute: 'openai_direct', available: true, unavailableReason: null },
+    { aiRoute: 'vercel_ai_gateway', available: true, unavailableReason: null },
+  ],
+  effectiveAt: '2026-09-05T00:00:00.000Z',
+};
+
+export const referenceGatewayAiRouteSetting: RniAiRouteSetting = {
+  ...referenceDirectAiRouteSetting,
+  configVersion: 'fixture-config-v2',
+  aiRoute: 'vercel_ai_gateway',
+  resolvedModels: referenceRniResolvedModels.map((model) => ({
+    ...model,
+    modelId: `openai/${model.modelId}`,
+  })),
+  effectiveAt: '2026-09-05T01:00:00.000Z',
+};
+
+export const referenceGatewayAiRouteUpdateResult: RniAiRouteSettingUpdateResult = {
+  disposition: 'accepted',
+  idempotencyKey: 'fixture-ai-route-gateway-1',
+  previousConfigVersion: referenceDirectAiRouteSetting.configVersion,
+  setting: referenceGatewayAiRouteSetting,
 };
 
 export const referenceRadarPage: RniRadarPage = {

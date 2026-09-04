@@ -275,6 +275,101 @@ export const rniRunRequest = z
   });
 export type RniRunRequest = z.infer<typeof rniRunRequest>;
 
+export const rniResolvedModelRoute = z
+  .object({
+    task: z.string().min(1),
+    provider: z.string().min(1),
+    modelId: z.string().min(1),
+    modelRevision: z.string().min(1),
+    promptVersion: z.string().min(1),
+  })
+  .strict();
+export type RniResolvedModelRoute = z.infer<typeof rniResolvedModelRoute>;
+
+export const rniAiRouteOption = z
+  .object({
+    aiRoute: rniAiRoute,
+    available: z.boolean(),
+    unavailableReason: z.string().min(1).nullable(),
+  })
+  .strict()
+  .superRefine((option, context) => {
+    if (option.available === (option.unavailableReason !== null)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['unavailableReason'],
+        message: 'Only an unavailable AI route carries an unavailable reason',
+      });
+    }
+  });
+export type RniAiRouteOption = z.infer<typeof rniAiRouteOption>;
+
+export const rniAiRouteSetting = z
+  .object({
+    configVersion: z.string().min(1),
+    aiRoute: rniAiRoute,
+    resolvedModels: z.array(rniResolvedModelRoute).min(1),
+    options: z.array(rniAiRouteOption).length(rniAiRoute.options.length),
+    effectiveAt: rniIsoTimestamp,
+  })
+  .strict()
+  .superRefine((setting, context) => {
+    const routeNames = setting.options.map(({ aiRoute }) => aiRoute);
+    if (
+      new Set(routeNames).size !== rniAiRoute.options.length ||
+      !rniAiRoute.options.every((route) => routeNames.includes(route))
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['options'],
+        message: 'AI route settings require exactly one Direct and one Gateway option',
+      });
+    }
+    if (
+      new Set(setting.resolvedModels.map(({ task }) => task)).size !== setting.resolvedModels.length
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['resolvedModels'],
+        message: 'Each RNI model task must resolve exactly once',
+      });
+    }
+    if (
+      !setting.options.some(({ aiRoute, available }) => aiRoute === setting.aiRoute && available)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['aiRoute'],
+        message: 'The selected AI route must be configured and available',
+      });
+    }
+  });
+export type RniAiRouteSetting = z.infer<typeof rniAiRouteSetting>;
+
+/** Intent only; the server owns auth, audit actor, route availability and model resolution. */
+export const rniAiRouteSettingUpdateRequest = z
+  .object({
+    idempotencyKey: z.string().min(1),
+    aiRoute: rniAiRoute,
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type RniAiRouteSettingUpdateRequest = z.infer<typeof rniAiRouteSettingUpdateRequest>;
+
+export const rniAiRouteSettingUpdateResult = z
+  .object({
+    disposition: z.enum(['accepted', 'duplicate']),
+    idempotencyKey: z.string().min(1),
+    previousConfigVersion: z.string().min(1),
+    setting: rniAiRouteSetting,
+  })
+  .strict()
+  .refine((result) => result.setting.configVersion !== result.previousConfigVersion, {
+    message: 'A route-setting command must return a new future config version',
+    path: ['setting', 'configVersion'],
+  });
+export type RniAiRouteSettingUpdateResult = z.infer<typeof rniAiRouteSettingUpdateResult>;
+
 export const rniManualRefreshScope = z.discriminatedUnion('kind', [
   z
     .object({
@@ -825,4 +920,12 @@ export interface RniUniverseReadService {
  */
 export interface RniCommandService {
   requestManualRefresh(request: RniManualRefreshRequest): Promise<RniManualRefreshResult>;
+}
+
+/** Read current routing and create an audited config version for runs requested afterward. */
+export interface RniAiRouteSettingsService {
+  getCurrentAiRouteSetting(): Promise<RniAiRouteSetting>;
+  updateFutureAiRoute(
+    request: RniAiRouteSettingUpdateRequest,
+  ): Promise<RniAiRouteSettingUpdateResult>;
 }

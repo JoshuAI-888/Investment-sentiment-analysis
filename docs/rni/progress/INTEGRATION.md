@@ -19,6 +19,7 @@
 | I02F | Resolve CR-SURFACE-05 active-universe and staged-preview reads | `PASSED` | D-RNI-18; separate read-only service, bounded search and count-reconciled immutable impact; RNI 15/15, full contract 85/22 skipped |
 | I02F1 | Close universe-read contract review findings | `PASSED` | Independent re-review READY at `098f010`; legacy/FMP union, FMP floor and impossible-impact rejection; focused 15/15, full contract 85/22 skipped |
 | I02G | Resolve CR-ENGINE-001 catalyst publication lineage | `PASSED` | D-RNI-19; claim-bound point-in-time social corroboration, separate model invocations and sentence trace assigned to I07/migration 0024 |
+| I02H | Resolve CR-SURFACE-06 future-run AI route settings | `PASSED` | D-RNI-20; server-resolved Direct/Gateway read plus intent-only successor-config command; RNI contract 17/17, full contract 87/22 skipped |
 | I03 | Expand CI path filters for RNI prompts/agents/evals | `MERGED` | PR #5; actual `tests/eval/rni` path triggered and passed |
 | I04 | Pin/verify pnpm 10.33.0 and build-script policy | `PASSED` | Clean frozen install and PR #5 web/scorer CI passed |
 | I05 | Add forward universe migration and 600-member ceiling | `PASSED` | Independent re-review passed IR-01/03/05/06; focused validation 9 and fresh PostgreSQL activation/version gates 14 pass |
@@ -63,6 +64,7 @@
 | CR-SURFACE-03 | SURFACE | `ACCEPTED` | Add a bounded security-detail read with canonical identity and exactly four cited dimension assignments for each independently labelled platform | DATA, ENGINE, SURFACE, INTEGRATION | `ce80424` / D-RNI-14 |
 | CR-SURFACE-04 | SURFACE | `ACCEPTED` | Add an idempotent manual-refresh command boundary for ticker/full scope; server owns auth/audit/active config/universe/model/window resolution and returns one durable run identity plus resolved preview | ENGINE, SURFACE, INTEGRATION | D-RNI-17 / current I02E commit |
 | CR-SURFACE-05 | SURFACE | `ACCEPTED` | Add a separate read-only universe service for active metadata/default, bounded any-member search, and immutable staged impact preview; legacy first-deployment parent remains representable; no provider or activation access | DATA, SURFACE, INTEGRATION | D-RNI-18 / current I02F1 correction |
+| CR-SURFACE-06 | SURFACE | `ACCEPTED` | Add a future-run route setting read plus idempotent intent-only command; server resolves availability/models and creates a successor config without rewriting historical runs | ENGINE, SURFACE, INTEGRATION | D-RNI-20 / current I02H commit |
 
 ### CR-DATA-001 decision
 
@@ -179,13 +181,32 @@
   self-citation and cross-run/security roles; persist/replay separate verifier/challenger runs and
   prove every non-coverage sentence resolves through stored citation edges.
 
+### CR-SURFACE-06 decision
+
+- **Current behaviour:** `RniAiRoute` existed only on immutable run records. SURFACE could neither
+  read the active future-run route/model resolution nor request an audited change without inventing
+  a client-owned config mutation.
+- **Decision:** D-RNI-20 accepts additive `RniAiRouteSettingsService` schemas and service. The read
+  returns active config/version/effective time, selected route, unique task-level resolved model
+  identities and exactly one availability record for Direct and Gateway. The command accepts only
+  idempotency key, route and bounded reason and returns the successor config setting.
+- **Ownership:** SURFACE implements only fixture-backed presentation. I08 owns authenticated API
+  composition; I10 owns capability checks, model mapping and route execution. Credentials and
+  model selection remain server-owned. Gateway model identifiers are configured, not hardcoded.
+- **Compatibility:** default Direct behavior and existing run/request/read shapes are unchanged.
+  Success creates a new config version for later runs; prior run route/config and model-call
+  lineage are immutable. Exact replay is duplicate and crossed-key intent fails.
+- **Acceptance:** update Direct to configured Gateway, reread it, prove task models are resolved,
+  reject unavailable Gateway/client model injection, replay exactly, reject crossed-key scope, and
+  show an existing Direct run unchanged while a later run uses the successor Gateway config.
+
 ## Lane intake
 
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
 | ENGINE | `E08_CHANGES_REQUESTED` | no; first handoff based on `e010124`, current `12e1a42` | first handoff focused 31/31 plus typecheck/lint/diff; independent adversarial review returned ER-10–13 | yes | CR-ENGINE-001 accepted as D-RNI-19; E08 correction and current-base rebase required; E01–E07 remain accepted |
-| SURFACE | `S08_APPROVED` | yes at `ee47959` | coordinator typecheck/lint, RNI contract 15/15, production build and Chromium 3/3; independent adversarial review READY | yes | SR-09–14 resolved at `f929ab8`; S01–S08 accepted; lane remains held until S09–S10 |
+| SURFACE | `S09_UNBLOCKED` | yes at `82ed8de`; must rebase I02H | coordinator I02H typecheck/lint, RNI contract 17/17 and full contract 87/22 skipped | yes | CR-SURFACE-06 accepted as D-RNI-20; S01–S08 accepted; S09 may resume after rebase |
 
 ## Live/deployment gates
 
@@ -311,6 +332,7 @@
 | `CURRENT` | Accept ENGINE E07 deterministic cross-source facts | typecheck; focused lint; unit/contract/eval 21/21; branch diff check; ownership/base review |
 | `CURRENT` | Accept corrected SURFACE S08 universe settings | typecheck; focused lint; RNI contract 15/15; production build; Chromium 3/3; independent adversarial review READY; ownership/base/diff review |
 | `CURRENT` | Resolve CR-ENGINE-001 as D-RNI-19 and return E08 ER-10–13 | first handoff typecheck; scoped lint; focused unit/contract/eval 31/31; branch diff check; independent adversarial review CHANGES REQUESTED |
+| `CURRENT` | Resolve CR-SURFACE-06 as D-RNI-20 and freeze future-run route settings | typecheck; focused lint; RNI contract 17/17; full contract 87/22 skipped; exact replay/crossed-key/history tests |
 
 ## Coordinator notes
 

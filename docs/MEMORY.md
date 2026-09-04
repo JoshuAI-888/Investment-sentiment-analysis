@@ -965,6 +965,22 @@ enters the affected model input. Publication revalidates the platform-canonical 
 rights-policy version. Absence remains `unverified`, never false, and every non-coverage sentence
 retains at least one persisted citation edge.
 
+### D-RNI-20 — AI route settings create future config versions, never rewrite runs
+
+**Accepts CR-SURFACE-06, 2026-09-05.** `RniAiRouteSettingsService` exposes the active RNI config,
+selected Direct/Gateway route, server-resolved task-level model identities and the availability of
+both choices. It exposes no credential, endpoint token or client-selected model ID. OpenAI Direct
+is the default. Gateway model slugs remain configured data and are not hardcoded into the frozen
+contract; an unconfigured Gateway remains visible but unavailable.
+
+The update command accepts only an idempotency key, route intent and bounded reason. Auth, audit
+actor, route capability/credential checks, cloning the active configuration, resolving models and
+activating the successor are integration-owned. Success creates a new immutable config version
+used only by runs requested afterward. Exact same-key replay returns the committed result; a key
+reused for different intent fails. Historical `rni_run.ai_route`, config version and per-call model
+lineage are never updated. I10 composes live Direct/Gateway routing and I08 composes the
+authenticated Settings API; SURFACE S09 consumes only this service through a fixture.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

@@ -211,7 +211,8 @@ source-slice freshness and citation lineage. MCP v1 is read-only and invokes the
 service; it cannot bypass portal authentication, publication gates or evidence redaction.
 
 `RniReadService.getCitation(citationId)` resolves a summary citation ID to its persisted source
-identity, platform, canonical citation URL and bounded supporting text. Consumers then call
+identity, platform, preserved original citation URL and bounded supporting text; canonical source
+identity remains available on the source record. Consumers then call
 `getEvidence(sourceItemId)`; they must not guess that a citation ID is a source ID or bypass the
 read service to join storage-private tables.
 
@@ -239,6 +240,16 @@ remain server-owned. An exact replay returns `duplicate` with the original durab
 resolved scope preview; reusing a key for different scope fails instead of starting different
 work. A ticker preview resolves canonical security/company/exchange identity, while a full preview
 binds the active universe version and a positive count no greater than the frozen 600 ceiling.
+
+`RniAiRouteSettingsService` is the additive future-run routing boundary. Its read returns the
+active config version, selected `openai_direct` or `vercel_ai_gateway` route, task-level resolved
+provider/model/revision/prompt identities, and both route availability states without credentials.
+OpenAI Direct is the clean/default selection. Its command accepts only an idempotency key, route
+intent and bounded change reason; auth, audit actor, credential/capability checks, model resolution,
+config cloning and activation remain server-owned. Selecting an unavailable route fails. A
+successful command creates and returns a new config version for runs requested afterward; exact
+same-key replay returns `duplicate`, crossed-key intent fails, and historical run/model-call
+lineage is never rewritten.
 
 `RniUniverseReadService` is the separate read-only boundary for universe Settings and security
 selection. `getActiveUniverse()` returns active version metadata and canonical NVDA default. The

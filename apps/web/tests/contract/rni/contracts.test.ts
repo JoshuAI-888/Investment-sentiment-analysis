@@ -7,6 +7,9 @@ import {
   rniRadarPage,
   rniRadarQuery,
   rniRunRequest,
+  rniAiRouteSetting,
+  rniAiRouteSettingUpdateRequest,
+  rniAiRouteSettingUpdateResult,
   rniManualRefreshRequest,
   rniManualRefreshResult,
   rniSecurityDetail,
@@ -24,6 +27,7 @@ import {
   type RniSourcePersistencePort,
   type RniReadService,
   type RniUniverseReadService,
+  type RniAiRouteSettingsService,
 } from '@/rni/contracts';
 import {
   comparativeCitation,
@@ -39,6 +43,10 @@ import {
   referenceStagedUniversePreview,
   referenceUniverseSearchResult,
   referenceSecurityDetail,
+  referenceDirectAiRouteSetting,
+  referenceGatewayAiRouteSetting,
+  referenceGatewayAiRouteUpdateResult,
+  referenceRun,
   comparativeSourceCommit,
   comparativeSourceDuplicateCommit,
   rniFixtureIds,
@@ -281,6 +289,107 @@ describe('RNI frozen contracts', () => {
       comparisonEnd: null,
     });
     expect(request.aiRoute).toBe('openai_direct');
+  });
+
+  it('changes only the versioned AI route used by future runs', async () => {
+    let current = rniAiRouteSetting.parse(referenceDirectAiRouteSetting);
+    const results = new Map<string, ReturnType<typeof rniAiRouteSettingUpdateResult.parse>>();
+    const scopes = new Map<string, string>();
+    const fake: RniAiRouteSettingsService = {
+      getCurrentAiRouteSetting: async () => current,
+      updateFutureAiRoute: async (input) => {
+        const request = rniAiRouteSettingUpdateRequest.parse(input);
+        const scope = JSON.stringify({ aiRoute: request.aiRoute, reason: request.reason });
+        const existingScope = scopes.get(request.idempotencyKey);
+        if (existingScope !== undefined && existingScope !== scope) {
+          throw new Error('AI route idempotency key is already bound to another request');
+        }
+        const existing = results.get(request.idempotencyKey);
+        if (existing !== undefined) {
+          return { ...existing, disposition: 'duplicate' };
+        }
+        if (request.aiRoute !== 'vercel_ai_gateway') throw new Error('unexpected fixture route');
+        scopes.set(request.idempotencyKey, scope);
+        current = rniAiRouteSetting.parse(referenceGatewayAiRouteSetting);
+        const result = rniAiRouteSettingUpdateResult.parse(referenceGatewayAiRouteUpdateResult);
+        results.set(request.idempotencyKey, result);
+        return result;
+      },
+    };
+
+    const historicalRun = structuredClone(referenceRun);
+    const before = await fake.getCurrentAiRouteSetting();
+    const accepted = await fake.updateFutureAiRoute({
+      idempotencyKey: 'fixture-ai-route-gateway-1',
+      aiRoute: 'vercel_ai_gateway',
+      reason: 'Exercise the optional configured route.',
+    });
+    const duplicate = await fake.updateFutureAiRoute({
+      idempotencyKey: 'fixture-ai-route-gateway-1',
+      aiRoute: 'vercel_ai_gateway',
+      reason: 'Exercise the optional configured route.',
+    });
+    const after = await fake.getCurrentAiRouteSetting();
+    const futureRun = {
+      ...historicalRun,
+      configVersion: after.configVersion,
+      aiRoute: after.aiRoute,
+    };
+
+    expect(before.aiRoute).toBe('openai_direct');
+    expect(accepted.disposition).toBe('accepted');
+    expect(duplicate).toMatchObject({
+      disposition: 'duplicate',
+      idempotencyKey: accepted.idempotencyKey,
+      setting: accepted.setting,
+    });
+    expect(after.aiRoute).toBe('vercel_ai_gateway');
+    expect(after.resolvedModels.every(({ modelId }) => modelId.includes('/'))).toBe(true);
+    expect(historicalRun).toMatchObject({
+      configVersion: 'fixture-config-v1',
+      aiRoute: 'openai_direct',
+    });
+    expect(futureRun).toMatchObject({
+      configVersion: 'fixture-config-v2',
+      aiRoute: 'vercel_ai_gateway',
+    });
+    await expect(
+      fake.updateFutureAiRoute({
+        idempotencyKey: 'fixture-ai-route-gateway-1',
+        aiRoute: 'openai_direct',
+        reason: 'Cross the key scope.',
+      }),
+    ).rejects.toThrow(/already bound/u);
+  });
+
+  it('keeps AI route/model resolution server-owned and rejects unavailable selection', () => {
+    expect(() =>
+      rniAiRouteSettingUpdateRequest.parse({
+        idempotencyKey: 'fixture-ai-route-secret-1',
+        aiRoute: 'vercel_ai_gateway',
+        reason: 'Attempt to inject model resolution.',
+        modelId: 'client-selected-model',
+      }),
+    ).toThrow();
+    expect(() =>
+      rniAiRouteSetting.parse({
+        ...referenceGatewayAiRouteSetting,
+        options: referenceGatewayAiRouteSetting.options.map((option) =>
+          option.aiRoute === 'vercel_ai_gateway'
+            ? { ...option, available: false, unavailableReason: 'Gateway is not configured.' }
+            : option,
+        ),
+      }),
+    ).toThrow(/selected AI route must be configured/u);
+    expect(() =>
+      rniAiRouteSetting.parse({
+        ...referenceDirectAiRouteSetting,
+        resolvedModels: [
+          referenceDirectAiRouteSetting.resolvedModels[0],
+          referenceDirectAiRouteSetting.resolvedModels[0],
+        ],
+      }),
+    ).toThrow(/resolve exactly once/u);
   });
 
   it('freezes client-owned manual refresh intent and server-resolved scope previews', () => {
