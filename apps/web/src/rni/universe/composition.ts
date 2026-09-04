@@ -15,12 +15,13 @@ import {
   completeUniverseSyncCommand,
   failUniverseSyncCommand,
   insertUniverseProviderCall,
-  stageFmpUniverseVersion,
-  waitForUniverseSyncCommand,
+  stageAndCompleteFmpUniverseCommand,
 } from '../../repositories/versions';
 import { synchronizeFmpUniverse, type FmpUniverseSyncResult } from './sync';
 
-function wrapperDeps(onCallLog: (entry: CallLogEntry) => Promise<void>): Omit<WrapperDeps, 'fetcher'> {
+function wrapperDeps(
+  onCallLog: (entry: CallLogEntry) => Promise<void>,
+): Omit<WrapperDeps, 'fetcher'> {
   const cache = new Map<string, CacheEntry>();
   const breakers = new Map<ProviderId, BreakerState>();
   const rateLimits = new Map<ProviderId, RateLimiterState>();
@@ -63,7 +64,6 @@ export async function syncFmpUniverseFromEnvironment(input: {
 }): Promise<FmpUniverseSyncResult> {
   return synchronizeFmpUniverse(input, {
     claimCommand: (command) => claimUniverseSyncCommand(command),
-    waitForCommand: (command) => waitForUniverseSyncCommand(command),
     completeCommand: (command) => completeUniverseSyncCommand(command),
     failCommand: (command) => failUniverseSyncCommand(command),
     fetchConstituents: async () => {
@@ -84,6 +84,6 @@ export async function syncFmpUniverseFromEnvironment(input: {
       return { ...result, providerCallId };
     },
     listSecurities: () => listActiveSecurities(),
-    stage: (stageInput) => stageFmpUniverseVersion(stageInput),
+    stageAndComplete: (stageInput) => stageAndCompleteFmpUniverseCommand(stageInput),
   });
 }

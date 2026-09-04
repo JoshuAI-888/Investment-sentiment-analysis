@@ -16,9 +16,10 @@ function errorResponse(
   message: string,
   requestId: string,
   details?: Record<string, unknown>,
+  retryable = status >= 500,
 ) {
   return NextResponse.json(
-    { error: { code, message, retryable: status >= 500, requestId, ...(details ? { details } : {}) } },
+    { error: { code, message, retryable, requestId, ...(details ? { details } : {}) } },
     { status },
   );
 }
@@ -59,6 +60,25 @@ export async function POST(request: Request) {
     idempotencyKey,
     correlationId: requestId,
   });
+  if (!result.ok && result.kind === 'in_progress') {
+    return errorResponse(
+      409,
+      'CONFLICT',
+      'This universe synchronization is already running.',
+      requestId,
+      { retryAt: result.retryAt },
+      true,
+    );
+  }
+  if (!result.ok && result.kind === 'command_failed') {
+    return errorResponse(
+      409,
+      'CONFLICT',
+      'This universe synchronization key has a terminal failed outcome.',
+      requestId,
+      { commandState: 'failed' },
+    );
+  }
   if (!result.ok && result.kind === 'provider') {
     return errorResponse(
       503,

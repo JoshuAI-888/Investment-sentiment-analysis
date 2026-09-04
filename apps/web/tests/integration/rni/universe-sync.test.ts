@@ -72,15 +72,17 @@ function harness(count = 501) {
     | { readonly state: 'completed'; readonly result: unknown }
     | { readonly state: 'failed'; readonly errorMessage: string }
     | null = null;
-  const fetchConstituents = vi.fn(async () => ({
-    ok: true,
-    data: { constituents: fixture.constituents, payloadSha256: 'a'.repeat(64) },
-    meta: META,
-    providerCallId: '00000000-0000-4000-8000-999999999999',
-  }) as const);
+  const fetchConstituents = vi.fn(
+    async () =>
+      ({
+        ok: true,
+        data: { constituents: fixture.constituents, payloadSha256: 'a'.repeat(64) },
+        meta: META,
+        providerCallId: '00000000-0000-4000-8000-999999999999',
+      }) as const,
+  );
   const deps: FmpUniverseSyncDeps = {
     claimCommand: async () => command ?? { state: 'claimed' },
-    waitForCommand: async () => command ?? { state: 'failed', errorMessage: 'not completed' },
     completeCommand: async ({ result }) => {
       command = { state: 'completed', result };
     },
@@ -89,8 +91,9 @@ function harness(count = 501) {
     },
     fetchConstituents,
     listSecurities: async () => fixture.securities,
-    stage: async (input) => {
+    stageAndComplete: async ({ stage: input }) => {
       stagedInputs.push(input);
+      command = { state: 'completed', result: { ok: true, staged } };
       return staged;
     },
   };
@@ -131,6 +134,23 @@ describe('synchronizeFmpUniverse', () => {
     expect(h.stagedInputs).toHaveLength(1);
   });
 
+  it('returns a retryable in-progress result without waiting or dispatching another fetch', async () => {
+    const h = harness();
+    h.deps.claimCommand = async () => ({
+      state: 'running',
+      retryAt: '2026-09-05T00:02:00.000Z',
+    });
+
+    const result = await synchronizeFmpUniverse(REQUEST, h.deps);
+
+    expect(result).toEqual({
+      ok: false,
+      kind: 'in_progress',
+      retryAt: '2026-09-05T00:02:00.000Z',
+    });
+    expect(h.fetchConstituents).not.toHaveBeenCalled();
+  });
+
   it('does not call the staging repository for a partial provider response', async () => {
     const h = harness(499);
     const result = await synchronizeFmpUniverse(REQUEST, h.deps);
@@ -143,7 +163,6 @@ describe('synchronizeFmpUniverse', () => {
     let staged = false;
     const deps: FmpUniverseSyncDeps = {
       claimCommand: async () => ({ state: 'claimed' }),
-      waitForCommand: async () => ({ state: 'failed', errorMessage: 'not completed' }),
       completeCommand: async () => {},
       failCommand: async () => {},
       fetchConstituents: async () => ({
@@ -156,7 +175,7 @@ describe('synchronizeFmpUniverse', () => {
         read = true;
         return [];
       },
-      stage: async () => {
+      stageAndComplete: async () => {
         staged = true;
         throw new Error('must not stage');
       },

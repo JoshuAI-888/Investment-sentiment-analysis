@@ -3,10 +3,7 @@ import type { ProviderError, ProviderMeta } from '../../contracts/provider';
 import { providerError } from '../../contracts/provider';
 import { universeVersion } from '../../contracts/config';
 import type { FmpSp500Payload } from '../../adapters/fmp-universe';
-import type {
-  StageFmpUniverseInput,
-  StageFmpUniverseOutcome,
-} from '../../repositories/versions';
+import type { StageFmpUniverseInput, StageFmpUniverseOutcome } from '../../repositories/versions';
 import {
   validateAndResolveFmpUniverse,
   type FmpUniverseValidationIssue,
@@ -28,13 +25,11 @@ export type FmpUniverseFetchResult =
     };
 
 export type FmpUniverseSyncDeps = {
-  claimCommand(input: FmpUniverseSyncRequest): Promise<
+  claimCommand(
+    input: FmpUniverseSyncRequest,
+  ): Promise<
     | { readonly state: 'claimed' }
-    | { readonly state: 'running' }
-    | { readonly state: 'completed'; readonly result: unknown }
-    | { readonly state: 'failed'; readonly errorMessage: string }
-  >;
-  waitForCommand(input: FmpUniverseSyncRequest): Promise<
+    | { readonly state: 'running'; readonly retryAt: string }
     | { readonly state: 'completed'; readonly result: unknown }
     | { readonly state: 'failed'; readonly errorMessage: string }
   >;
@@ -54,12 +49,17 @@ export type FmpUniverseSyncDeps = {
   }): Promise<void>;
   fetchConstituents(): Promise<FmpUniverseFetchResult>;
   listSecurities(): Promise<readonly UniverseSecurity[]>;
-  stage(input: StageFmpUniverseInput): Promise<StageFmpUniverseOutcome>;
+  stageAndComplete(input: {
+    readonly command: FmpUniverseSyncRequest;
+    readonly stage: StageFmpUniverseInput;
+  }): Promise<StageFmpUniverseOutcome>;
 };
 
 export type FmpUniverseSyncResult =
   | { readonly ok: true; readonly staged: StageFmpUniverseOutcome }
   | { readonly ok: false; readonly kind: 'provider'; readonly error: ProviderError }
+  | { readonly ok: false; readonly kind: 'in_progress'; readonly retryAt: string }
+  | { readonly ok: false; readonly kind: 'command_failed'; readonly errorCode: string }
   | {
       readonly ok: false;
       readonly kind: 'invalid_snapshot';
@@ -110,7 +110,7 @@ function replayResult(
     | { readonly state: 'failed'; readonly errorMessage: string },
 ): FmpUniverseSyncResult {
   if (claim.state === 'failed') {
-    throw new Error(`Prior FMP universe synchronization failed: ${claim.errorMessage}`);
+    return { ok: false, kind: 'command_failed', errorCode: claim.errorMessage };
   }
   return storedSyncResult.parse(claim.result);
 }
@@ -121,7 +121,9 @@ export async function synchronizeFmpUniverse(
 ): Promise<FmpUniverseSyncResult> {
   const claim = await deps.claimCommand(input);
   if (claim.state === 'completed' || claim.state === 'failed') return replayResult(claim);
-  if (claim.state === 'running') return replayResult(await deps.waitForCommand(input));
+  if (claim.state === 'running') {
+    return { ok: false, kind: 'in_progress', retryAt: claim.retryAt };
+  }
 
   let providerCallId: string | null = null;
   let sourcePayloadHash: string | null = null;
@@ -170,26 +172,20 @@ export async function synchronizeFmpUniverse(
       return result;
     }
 
-    const staged = await deps.stage({
-      environment: input.environment,
-      sourceRetrievedAt: validated.snapshot.retrievedAt,
-      sourcePayloadHash: validated.snapshot.payloadSha256,
-      providerCallId: fetched.providerCallId,
-      members: validated.members,
-      actorId: input.actorId,
-      requestId: input.idempotencyKey,
-      correlationId: input.correlationId,
-    });
-    const result: FmpUniverseSyncResult = { ok: true, staged };
-    await deps.completeCommand({
+    const staged = await deps.stageAndComplete({
       command: input,
-      result,
-      auditResult: 'success',
-      providerCallId: fetched.providerCallId,
-      sourcePayloadHash: fetched.data.payloadSha256,
-      universeVersionId: staged.version.id,
+      stage: {
+        environment: input.environment,
+        sourceRetrievedAt: validated.snapshot.retrievedAt,
+        sourcePayloadHash: validated.snapshot.payloadSha256,
+        providerCallId: fetched.providerCallId,
+        members: validated.members,
+        actorId: input.actorId,
+        requestId: input.idempotencyKey,
+        correlationId: input.correlationId,
+      },
     });
-    return result;
+    return { ok: true, staged };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unexpected universe sync error';
     await deps.failCommand({

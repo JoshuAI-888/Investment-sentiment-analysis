@@ -106,4 +106,46 @@ describe('POST /api/rni/universe/sync', () => {
       error: { code: 'UNIVERSE_SYNC_INVALID', retryable: false },
     });
   });
+
+  it('returns a retryable conflict while the same command key is still running', async () => {
+    mocks.sync.mockResolvedValue({
+      ok: false,
+      kind: 'in_progress',
+      retryAt: '2026-09-05T00:02:00.000Z',
+    });
+    const response = await POST(
+      request({ origin: 'http://localhost:3000', 'idempotency-key': 'sync-running' }),
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'CONFLICT',
+        retryable: true,
+        details: { retryAt: '2026-09-05T00:02:00.000Z' },
+      },
+    });
+  });
+
+  it('returns a terminal conflict for an abandoned command without leaking its error', async () => {
+    mocks.sync.mockResolvedValue({
+      ok: false,
+      kind: 'command_failed',
+      errorCode: 'UNIVERSE_SYNC_COMMAND_ABANDONED',
+    });
+    const response = await POST(
+      request({ origin: 'http://localhost:3000', 'idempotency-key': 'sync-abandoned' }),
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'CONFLICT',
+        message: 'This universe synchronization key has a terminal failed outcome.',
+        retryable: false,
+        requestId: expect.any(String),
+        details: { commandState: 'failed' },
+      },
+    });
+  });
 });

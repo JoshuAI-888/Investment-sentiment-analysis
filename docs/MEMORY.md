@@ -879,16 +879,31 @@ platform from the other.
 
 **Closes universe review IR-02 and IR-04, 2026-09-05.** An FMP universe synchronization command
 durably claims `(environment, idempotency_key)` before any provider request. One claimed key has
-one terminal expected outcome; concurrent and later delivery replay it without another provider
-call. The command record binds provider-call, payload-hash and staged-version lineage. A distinct
-key may observe the same provider payload and reuse the immutable staged universe, but receives
-its own command and provider-call audit trail.
+one terminal expected outcome; an active concurrent delivery observes the same running command,
+and later delivery replays its terminal result without another provider call. The command record
+binds provider-call, payload-hash and staged-version lineage. A distinct key may observe the same
+provider payload and reuse the immutable staged universe, but receives its own command and
+provider-call audit trail.
 
 A clean environment is bootstrapped through a transactional, versioned import of a human-reviewed
 FMP profile export into the canonical security master. The exact ordered 501–600-security array is
 SHA-256-bound, must include NVDA and unique symbols, and fails closed on identity ambiguity. This
 bootstrap does not activate a universe: `joshuai` separately approves and activates the exact
 stored staged membership under D-RNI-06.
+
+### D-RNI-16 — Abandoned universe commands fail terminally and staging is atomic
+
+**Closes universe re-review IR-07 and IR-08, 2026-09-05.** A running FMP universe command has a
+bounded lease longer than the provider wrapper's complete retry window. A concurrent request does
+not poll, block or redispatch; it receives a retryable conflict with the lease expiry. When a
+later request observes an expired claim, it atomically records an audited terminal abandonment
+and returns that failed command. It never automatically repeats the external request; an operator
+must inspect the audit and intentionally choose a new idempotency key.
+
+For a valid candidate, immutable universe staging/reuse and successful command completion share
+one database transaction. Failure or process termination between those writes therefore leaves
+neither an orphaned staged version nor a falsely successful command. Expected provider and
+validation failures remain terminal replayable command results with their available lineage.
 
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 

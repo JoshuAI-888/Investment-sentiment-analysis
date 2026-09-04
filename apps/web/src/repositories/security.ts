@@ -17,13 +17,20 @@ const COLUMNS =
 
 export type NewSecurity = Omit<Security, 'id' | 'createdAt' | 'updatedAt'> & { id?: string };
 
-export async function insertSecurity(input: NewSecurity, db: Queryable = getPool()): Promise<Security> {
+export async function insertSecurity(
+  input: NewSecurity,
+  db: Queryable = getPool(),
+): Promise<Security> {
   // node-postgres serialises JavaScript arrays as PostgreSQL arrays (`{...}`), which JSONB
   // accepts as an object-shaped value. Bind the canonical JSON text explicitly so aliases
-  // round-trip as the array required by the frozen security contract.
+  // round-trip as the array required by the frozen security contract. Older internal fixtures
+  // passed pre-encoded JSON around the historical bug; decode that compatibility form once.
+  const aliases = z
+    .array(z.string())
+    .parse(typeof input.aliases === 'string' ? JSON.parse(input.aliases) : input.aliases);
   const { columns, placeholders, values } = insertClause({
     ...input,
-    aliases: JSON.stringify(input.aliases),
+    aliases: JSON.stringify(aliases),
   });
   const { rows } = await db.query(
     `insert into security (${columns}) values (${placeholders}) returning ${COLUMNS}`,
@@ -145,9 +152,7 @@ export async function importFmpSecurityMasterSnapshot(
 ): Promise<FmpSecurityMasterImportResult> {
   const snapshot = fmpSecurityMasterSnapshot.parse(input.snapshot);
   return withTransaction(async (tx) => {
-    await tx.query('select pg_advisory_xact_lock(hashtext($1))', [
-      'rni-security-master-import',
-    ]);
+    await tx.query('select pg_advisory_xact_lock(hashtext($1))', ['rni-security-master-import']);
     const { rows: prior } = await tx.query<{
       id: string;
       imported_count: number;
@@ -402,7 +407,8 @@ export async function searchSecurities(
     exchange: match.exchange,
     assetType: match.assetType,
     eligibilityState:
-      (eligibilityBySecurityId.get(match.id) as SecurityProfileSnapshot['eligibilityState'] | undefined) ??
-      null,
+      (eligibilityBySecurityId.get(match.id) as
+        | SecurityProfileSnapshot['eligibilityState']
+        | undefined) ?? null,
   }));
 }

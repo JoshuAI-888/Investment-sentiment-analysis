@@ -105,6 +105,7 @@ create table rni_universe_sync_command (
   provider_call_id    uuid        null references provider_call_log (id),
   source_payload_hash text        null,
   universe_version    bigint      null references universe_version (id),
+  lease_expires_at    timestamptz null default (now() + interval '2 minutes'),
   created_at          timestamptz not null default now(),
   completed_at        timestamptz null,
 
@@ -114,9 +115,12 @@ create table rni_universe_sync_command (
   constraint rni_universe_sync_command_payload_hash_check
     check (source_payload_hash is null or source_payload_hash ~ '^[0-9a-f]{64}$'),
   constraint rni_universe_sync_command_terminal_check check (
-    (status = 'running' and result_payload is null and error_message is null and completed_at is null)
-    or (status = 'completed' and result_payload is not null and error_message is null and completed_at is not null)
-    or (status = 'failed' and result_payload is null and error_message is not null and completed_at is not null)
+    (status = 'running' and result_payload is null and error_message is null
+      and completed_at is null and lease_expires_at is not null)
+    or (status = 'completed' and result_payload is not null and error_message is null
+      and completed_at is not null and lease_expires_at is null)
+    or (status = 'failed' and result_payload is null and error_message is not null
+      and completed_at is not null and lease_expires_at is null)
   )
 );
 

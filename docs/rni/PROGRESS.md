@@ -72,7 +72,7 @@ The canonical matrix is [`INTEGRATION_PLAN.md`](INTEGRATION_PLAN.md) §10. Coord
 | Scope and branch isolation | `PASSED` | `RNI-00-CONTRACT.md`, path ownership and scoped legacy banners; PR #5 |
 | Source identity/persist-first/idempotency | `PASSED` | DATA merged at `254fe45`; crossed keys fail closed, source port returns committed IDs, concurrent outbox tests pass |
 | Reddit/X separation and combined honesty | `IN_PROGRESS` | ENGINE E01 source binding and SURFACE S02 Radar accepted; D-RNI-13 freezes source-separated cells; remaining pipeline/UI tasks open |
-| S&P 500/FMP universe migration | `READY_FOR_REVIEW` | all six independent-review findings corrected; pre-fetch replay and clean 501-security bootstrap join approval/membership/count/date/lineage gates |
+| S&P 500/FMP universe migration | `READY_FOR_REVIEW` | I05 passed; I06R3 adds audited no-redispatch abandonment, atomic stage/command success and missing PostgreSQL branch coverage |
 | Model route and CI | `PASSED` | PR #2 route validation; PR #5 RNI path filter and green eval |
 | Toolchain reproducibility | `PASSED` | pinned pnpm 10.33 clean install plus PR #5 independent CI |
 | Retention and citation safety | `IN_PROGRESS` | DATA claim/source FK and ENGINE source/content binding findings resolved; full publication gate remains later work |
@@ -104,3 +104,5 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — closed universe findings IR-01/03/05/06: FMP activation now requires one-way admin approval, exact stored membership and current parent; PostgreSQL requires complete provider lineage; exactly 500 and impossible dates fail; fresh DB activation/version tests pass 14/14.
 - 2026-09-05 — closed IR-02/04 as D-RNI-15: a durable command claim now precedes FMP dispatch and replays terminal outcomes with lineage; a reviewed hash-bound FMP profile import bootstraps a clean 501-security master. I05/I06 are ready for independent re-review.
 - 2026-09-05 — accepted ENGINE E03 at `1597eea` after coordinator base/ownership review and focused 17/17 rerun; accepted SURFACE S03 at `b85d9c7` after D-RNI-14 consumption review, typecheck and RNI contract 13/13. Builders advanced to E04/S04; lane merges remain held.
+- 2026-09-05 — independent re-review passed I05 and held I06 on abandoned running commands plus non-atomic stage/terminal persistence. I06R3 opened for audited no-redispatch stale terminalization, atomic staging, and missing database branch coverage.
+- 2026-09-05 — closed I06 re-review IR-07–10 as D-RNI-16: active duplicates return retry timing without refetch, abandoned claims terminalize without redispatch, staging and command success are atomic, and PostgreSQL covers invalid replay plus bootstrap conflicts/immutability. I06 is ready for final re-review.

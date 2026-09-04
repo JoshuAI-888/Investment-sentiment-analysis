@@ -141,8 +141,12 @@ hash/count/NVDA/duplicate failure or an ambiguous existing symbol, and emits the
 inserted count, reused count and replay state. Review that output and its `audit_event` before
 running the constituent sync.
 
-The sync durably claims its environment/idempotency key before dispatching FMP, and every
-expected provider, validation or staged outcome is replayed without another call for that key.
+The sync durably claims its environment/idempotency key before dispatching FMP. A concurrent
+request for the same active key receives a retryable conflict with `retryAt`; it does not wait or
+call FMP again. A later request replays the terminal provider, validation or staged outcome. If a
+worker terminates and the claim expires, the next observation records a terminal abandoned-command
+failure without redispatching. Review its command/provider audit before intentionally retrying
+with a new idempotency key. Staging and successful command completion commit atomically.
 Resolve all members against the canonical security master and stage—but do not activate—the new
 universe. Activation is blocked on empty, partial, duplicate, ambiguous, unresolved or over-600
 membership. `joshuai` must first approve the exact staged version, then activate that unchanged

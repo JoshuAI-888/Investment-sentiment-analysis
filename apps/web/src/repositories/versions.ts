@@ -55,7 +55,9 @@ export async function findActiveConfigVersion(
     [environment],
   );
   const row = rows[0];
-  return row === undefined ? null : configVersion.parse(camelizeRow(row as Record<string, unknown>));
+  return row === undefined
+    ? null
+    : configVersion.parse(camelizeRow(row as Record<string, unknown>));
 }
 
 export type ActivationAudit = {
@@ -232,7 +234,7 @@ export type UniverseSyncCommandInput = {
 
 export type UniverseSyncCommandClaim =
   | { readonly state: 'claimed' }
-  | { readonly state: 'running' }
+  | { readonly state: 'running'; readonly retryAt: string }
   | { readonly state: 'completed'; readonly result: unknown }
   | { readonly state: 'failed'; readonly errorMessage: string };
 
@@ -240,6 +242,7 @@ type UniverseSyncCommandRow = {
   readonly status: 'running' | 'completed' | 'failed';
   readonly result_payload: unknown | null;
   readonly error_message: string | null;
+  readonly lease_expires_at: Date | null;
 };
 
 function universeSyncCommandObjectId(input: UniverseSyncCommandInput): string {
@@ -247,7 +250,12 @@ function universeSyncCommandObjectId(input: UniverseSyncCommandInput): string {
 }
 
 function commandClaimFromRow(row: UniverseSyncCommandRow): UniverseSyncCommandClaim {
-  if (row.status === 'running') return { state: 'running' };
+  if (row.status === 'running') {
+    if (row.lease_expires_at === null) {
+      throw new Error('Running universe sync command has no lease expiry');
+    }
+    return { state: 'running', retryAt: row.lease_expires_at.toISOString() };
+  }
   if (row.status === 'failed') {
     if (row.error_message === null) throw new Error('Failed universe sync command has no error');
     return { state: 'failed', errorMessage: row.error_message };
@@ -266,7 +274,7 @@ export async function claimUniverseSyncCommand(
          (environment, idempotency_key, actor_id, correlation_id)
        values ($1, $2, $3, $4)
        on conflict (environment, idempotency_key) do nothing
-       returning status, result_payload, error_message`,
+       returning status, result_payload, error_message, lease_expires_at`,
       [input.environment, input.idempotencyKey, input.actorId, input.correlationId],
     );
     if (inserted[0] !== undefined) {
@@ -289,13 +297,43 @@ export async function claimUniverseSyncCommand(
     }
 
     const { rows } = await tx.query<UniverseSyncCommandRow>(
-      `select status, result_payload, error_message
+      `select status, result_payload, error_message, lease_expires_at
          from rni_universe_sync_command
         where environment = $1 and idempotency_key = $2`,
       [input.environment, input.idempotencyKey],
     );
-    const row = rows[0];
+    let row = rows[0];
     if (row === undefined) throw new Error('Universe sync command conflict could not be read');
+    if (row.status === 'running') {
+      const { rows: abandoned } = await tx.query<UniverseSyncCommandRow>(
+        `update rni_universe_sync_command
+            set status = 'failed', error_message = 'UNIVERSE_SYNC_COMMAND_ABANDONED',
+                lease_expires_at = null, completed_at = now()
+          where environment = $1 and idempotency_key = $2 and status = 'running'
+            and lease_expires_at <= now()
+        returning status, result_payload, error_message, lease_expires_at`,
+        [input.environment, input.idempotencyKey],
+      );
+      if (abandoned[0] !== undefined) {
+        row = abandoned[0];
+        await tx.query(
+          `insert into audit_event
+             (actor_id, actor_role, action, object_type, object_id, environment, reason,
+              result, request_id, correlation_id, after_value)
+           values ($1, 'admin', 'fail', 'rni_universe_sync_command', $2, $3,
+                   'Terminalize abandoned FMP universe synchronization without redispatch',
+                   'failure', $4, $5, $6)`,
+          [
+            input.actorId,
+            universeSyncCommandObjectId(input),
+            input.environment,
+            input.idempotencyKey,
+            input.correlationId,
+            JSON.stringify({ errorMessage: 'UNIVERSE_SYNC_COMMAND_ABANDONED' }),
+          ],
+        );
+      }
+    }
     const claim = commandClaimFromRow(row);
     await tx.query(
       `insert into audit_event
@@ -322,7 +360,7 @@ export async function readUniverseSyncCommand(
   db: Queryable = getPool(),
 ): Promise<UniverseSyncCommandClaim> {
   const { rows } = await db.query<UniverseSyncCommandRow>(
-    `select status, result_payload, error_message
+    `select status, result_payload, error_message, lease_expires_at
        from rni_universe_sync_command
       where environment = $1 and idempotency_key = $2`,
     [input.environment, input.idempotencyKey],
@@ -332,64 +370,62 @@ export async function readUniverseSyncCommand(
   return commandClaimFromRow(row);
 }
 
-export async function waitForUniverseSyncCommand(
-  input: Pick<UniverseSyncCommandInput, 'environment' | 'idempotencyKey'>,
-  attempts = 100,
-): Promise<Exclude<UniverseSyncCommandClaim, { state: 'claimed' | 'running' }>> {
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const claim = await readUniverseSyncCommand(input);
-    if (claim.state === 'completed' || claim.state === 'failed') return claim;
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-  throw new Error('Universe sync command is still running');
-}
-
-export async function completeUniverseSyncCommand(input: {
+type CompleteUniverseSyncCommandInput = {
   readonly command: UniverseSyncCommandInput;
   readonly result: unknown;
   readonly auditResult: 'success' | 'failure';
   readonly providerCallId: string;
   readonly sourcePayloadHash: string | null;
   readonly universeVersionId: string | null;
-}): Promise<void> {
-  await withTransaction(async (tx) => {
-    const { rowCount } = await tx.query(
-      `update rni_universe_sync_command
+};
+
+async function completeUniverseSyncCommandInTransaction(
+  input: CompleteUniverseSyncCommandInput,
+  tx: Queryable,
+): Promise<void> {
+  const { rowCount } = await tx.query(
+    `update rni_universe_sync_command
           set status = 'completed', result_payload = $3, provider_call_id = $4,
-              source_payload_hash = $5, universe_version = $6, completed_at = now()
+              source_payload_hash = $5, universe_version = $6, lease_expires_at = null,
+              completed_at = now()
         where environment = $1 and idempotency_key = $2 and status = 'running'`,
-      [
-        input.command.environment,
-        input.command.idempotencyKey,
-        JSON.stringify(input.result),
-        input.providerCallId,
-        input.sourcePayloadHash,
-        input.universeVersionId,
-      ],
-    );
-    if (rowCount !== 1) throw new Error('Universe sync command was not running at completion');
-    await tx.query(
-      `insert into audit_event
+    [
+      input.command.environment,
+      input.command.idempotencyKey,
+      JSON.stringify(input.result),
+      input.providerCallId,
+      input.sourcePayloadHash,
+      input.universeVersionId,
+    ],
+  );
+  if (rowCount !== 1) throw new Error('Universe sync command was not running at completion');
+  await tx.query(
+    `insert into audit_event
          (actor_id, actor_role, action, object_type, object_id, environment, reason,
           result, request_id, correlation_id, after_value)
        values ($1, 'admin', 'complete', 'rni_universe_sync_command', $2, $3,
                'Persist terminal FMP universe synchronization outcome',
                $4, $5, $6, $7)`,
-      [
-        input.command.actorId,
-        universeSyncCommandObjectId(input.command),
-        input.command.environment,
-        input.auditResult,
-        input.command.idempotencyKey,
-        input.command.correlationId,
-        JSON.stringify({
-          providerCallId: input.providerCallId,
-          sourcePayloadHash: input.sourcePayloadHash,
-          universeVersionId: input.universeVersionId,
-        }),
-      ],
-    );
-  });
+    [
+      input.command.actorId,
+      universeSyncCommandObjectId(input.command),
+      input.command.environment,
+      input.auditResult,
+      input.command.idempotencyKey,
+      input.command.correlationId,
+      JSON.stringify({
+        providerCallId: input.providerCallId,
+        sourcePayloadHash: input.sourcePayloadHash,
+        universeVersionId: input.universeVersionId,
+      }),
+    ],
+  );
+}
+
+export async function completeUniverseSyncCommand(
+  input: CompleteUniverseSyncCommandInput,
+): Promise<void> {
+  await withTransaction(async (tx) => completeUniverseSyncCommandInTransaction(input, tx));
 }
 
 export async function failUniverseSyncCommand(input: {
@@ -402,7 +438,7 @@ export async function failUniverseSyncCommand(input: {
     const { rowCount } = await tx.query(
       `update rni_universe_sync_command
           set status = 'failed', error_message = $3, provider_call_id = $4,
-              source_payload_hash = $5, completed_at = now()
+              source_payload_hash = $5, lease_expires_at = null, completed_at = now()
         where environment = $1 and idempotency_key = $2 and status = 'running'`,
       [
         input.command.environment,
@@ -464,17 +500,16 @@ export type StageFmpUniverseOutcome = {
   };
 };
 
-/** Creates an immutable staged FMP snapshot. It never activates or mutates the current version. */
-export async function stageFmpUniverseVersion(
+async function stageFmpUniverseVersionInTransaction(
   input: StageFmpUniverseInput,
+  tx: Queryable,
 ): Promise<StageFmpUniverseOutcome> {
-  return withTransaction(async (tx) => {
-    await tx.query('select pg_advisory_xact_lock(hashtext($1))', [
-      `universe-fmp-stage:${input.environment}`,
-    ]);
+  await tx.query('select pg_advisory_xact_lock(hashtext($1))', [
+    `universe-fmp-stage:${input.environment}`,
+  ]);
 
-    const requested = await tx.query(
-      `select ${QUALIFIED_UNIVERSE_COLUMNS}
+  const requested = await tx.query(
+    `select ${QUALIFIED_UNIVERSE_COLUMNS}
          from audit_event ae
          join universe_version uv on uv.id::text = ae.object_id
         where ae.environment = $1
@@ -483,129 +518,157 @@ export async function stageFmpUniverseVersion(
           and ae.request_id = $2
         order by ae.occurred_at desc
         limit 1`,
-      [input.environment, input.requestId],
-    );
-    const existing =
-      requested.rows[0] === undefined
-        ? await tx.query(
-            `select ${UNIVERSE_COLUMNS}
+    [input.environment, input.requestId],
+  );
+  const existing =
+    requested.rows[0] === undefined
+      ? await tx.query(
+          `select ${UNIVERSE_COLUMNS}
                from universe_version
               where environment = $1 and source_provider = 'fmp' and source_payload_hash = $2`,
-            [input.environment, input.sourcePayloadHash],
-          )
-        : requested;
-    const existingRow = existing.rows[0];
-    if (existingRow !== undefined) {
-      const version = universeVersion.parse(camelizeRow(existingRow as Record<string, unknown>));
-      const impact = version.impactPreview as {
-        addedSecurityIds?: readonly string[];
-        removedSecurityIds?: readonly string[];
-      };
-      return {
-        version,
-        memberCount: version.selectedCount,
-        reused: true,
-        impactPreview: {
-          addedSecurityIds: impact.addedSecurityIds ?? [],
-          removedSecurityIds: impact.removedSecurityIds ?? [],
-        },
-      };
-    }
+          [input.environment, input.sourcePayloadHash],
+        )
+      : requested;
+  const existingRow = existing.rows[0];
+  if (existingRow !== undefined) {
+    const version = universeVersion.parse(camelizeRow(existingRow as Record<string, unknown>));
+    const impact = version.impactPreview as {
+      addedSecurityIds?: readonly string[];
+      removedSecurityIds?: readonly string[];
+    };
+    return {
+      version,
+      memberCount: version.selectedCount,
+      reused: true,
+      impactPreview: {
+        addedSecurityIds: impact.addedSecurityIds ?? [],
+        removedSecurityIds: impact.removedSecurityIds ?? [],
+      },
+    };
+  }
 
-    const { rows: configs } = await tx.query<{ id: string }>(
-      `select id from config_version where environment = $1 and status = 'active'`,
-      [input.environment],
-    );
-    const configVersion = configs[0]?.id;
-    if (configVersion === undefined) {
-      throw new Error(`No active config_version in ${input.environment}`);
-    }
+  const { rows: configs } = await tx.query<{ id: string }>(
+    `select id from config_version where environment = $1 and status = 'active'`,
+    [input.environment],
+  );
+  const configVersion = configs[0]?.id;
+  if (configVersion === undefined) {
+    throw new Error(`No active config_version in ${input.environment}`);
+  }
 
-    const { rows: activeVersions } = await tx.query<{ id: string }>(
-      `select id from universe_version where environment = $1 and status = 'active'`,
-      [input.environment],
-    );
-    const parentVersion = activeVersions[0]?.id ?? null;
-    const { rows: activeMembers } =
-      parentVersion === null
-        ? { rows: [] as { security_id: string }[] }
-        : await tx.query<{ security_id: string }>(
-            `select security_id from universe_member
+  const { rows: activeVersions } = await tx.query<{ id: string }>(
+    `select id from universe_version where environment = $1 and status = 'active'`,
+    [input.environment],
+  );
+  const parentVersion = activeVersions[0]?.id ?? null;
+  const { rows: activeMembers } =
+    parentVersion === null
+      ? { rows: [] as { security_id: string }[] }
+      : await tx.query<{ security_id: string }>(
+          `select security_id from universe_member
               where universe_version = $1 and enabled = true`,
-            [parentVersion],
-          );
-    const priorIds = new Set(activeMembers.map(({ security_id }) => security_id));
-    const nextIds = new Set(input.members.map(({ securityId }) => securityId));
-    const addedSecurityIds = [...nextIds].filter((id) => !priorIds.has(id)).sort();
-    const removedSecurityIds = [...priorIds].filter((id) => !nextIds.has(id)).sort();
-    const impactPreview = { addedSecurityIds, removedSecurityIds };
+          [parentVersion],
+        );
+  const priorIds = new Set(activeMembers.map(({ security_id }) => security_id));
+  const nextIds = new Set(input.members.map(({ securityId }) => securityId));
+  const addedSecurityIds = [...nextIds].filter((id) => !priorIds.has(id)).sort();
+  const removedSecurityIds = [...priorIds].filter((id) => !nextIds.has(id)).sort();
+  const impactPreview = { addedSecurityIds, removedSecurityIds };
 
-    const { rows } = await tx.query(
-      `insert into universe_version
+  const { rows } = await tx.query(
+    `insert into universe_version
          (environment, config_version, status, parent_version, selected_count, selection_query,
           impact_preview, source_provider, source_endpoint, source_retrieved_at,
           source_payload_hash, provider_call_id, created_by, change_reason)
        values ($1, $2, 'staged', $3, $4, $5, $6, 'fmp', '/stable/sp500-constituent',
                $7, $8, $9, $10, $11)
        returning ${UNIVERSE_COLUMNS}`,
-      [
-        input.environment,
-        configVersion,
-        parentVersion,
-        input.members.length,
-        JSON.stringify({ preset: 'sp500_fmp_current' }),
-        JSON.stringify(impactPreview),
-        input.sourceRetrievedAt,
-        input.sourcePayloadHash,
-        input.providerCallId,
-        input.actorId,
-        `Staged current S&P 500 membership from FMP (${input.sourceRetrievedAt})`,
-      ],
-    );
-    const stagedRow = rows[0];
-    if (stagedRow === undefined) throw new Error('universe_version stage insert returned no row');
-    const version = universeVersion.parse(camelizeRow(stagedRow as Record<string, unknown>));
+    [
+      input.environment,
+      configVersion,
+      parentVersion,
+      input.members.length,
+      JSON.stringify({ preset: 'sp500_fmp_current' }),
+      JSON.stringify(impactPreview),
+      input.sourceRetrievedAt,
+      input.sourcePayloadHash,
+      input.providerCallId,
+      input.actorId,
+      `Staged current S&P 500 membership from FMP (${input.sourceRetrievedAt})`,
+    ],
+  );
+  const stagedRow = rows[0];
+  if (stagedRow === undefined) throw new Error('universe_version stage insert returned no row');
+  const version = universeVersion.parse(camelizeRow(stagedRow as Record<string, unknown>));
 
-    for (const member of input.members) {
-      await tx.query(
-        `insert into universe_member
+  for (const member of input.members) {
+    await tx.query(
+      `insert into universe_member
            (universe_version, security_id, added_by, selection_source, provider_symbol,
             provider_company_name, constituent_first_added_at)
          values ($1, $2, $3, 'fmp_sp500', $4, $5, $6)`,
-        [
-          version.id,
-          member.securityId,
-          input.actorId,
-          member.providerSymbol,
-          member.providerCompanyName,
-          member.constituentFirstAddedAt,
-        ],
-      );
-    }
+      [
+        version.id,
+        member.securityId,
+        input.actorId,
+        member.providerSymbol,
+        member.providerCompanyName,
+        member.constituentFirstAddedAt,
+      ],
+    );
+  }
 
-    await tx.query(
-      `insert into audit_event
+  await tx.query(
+    `insert into audit_event
          (actor_id, actor_role, action, object_type, object_id, environment, reason,
           after_value, result, request_id, correlation_id)
        values ($1, 'admin', 'stage', 'universe_version', $2, $3, $4, $5,
                'success', $6, $7)`,
-      [
-        input.actorId,
-        version.id,
-        input.environment,
-        'Stage validated FMP S&P 500 candidate for human approval',
-        JSON.stringify({ selectedCount: input.members.length, ...impactPreview }),
-        input.requestId,
-        input.correlationId,
-      ],
-    );
+    [
+      input.actorId,
+      version.id,
+      input.environment,
+      'Stage validated FMP S&P 500 candidate for human approval',
+      JSON.stringify({ selectedCount: input.members.length, ...impactPreview }),
+      input.requestId,
+      input.correlationId,
+    ],
+  );
 
-    return {
-      version,
-      memberCount: input.members.length,
-      reused: false,
-      impactPreview,
-    };
+  return {
+    version,
+    memberCount: input.members.length,
+    reused: false,
+    impactPreview,
+  };
+}
+
+/** Creates an immutable staged FMP snapshot. It never activates or mutates the current version. */
+export async function stageFmpUniverseVersion(
+  input: StageFmpUniverseInput,
+): Promise<StageFmpUniverseOutcome> {
+  return withTransaction(async (tx) => stageFmpUniverseVersionInTransaction(input, tx));
+}
+
+/** Stage/reuse the immutable candidate and terminalize its command in one transaction. */
+export async function stageAndCompleteFmpUniverseCommand(input: {
+  readonly command: UniverseSyncCommandInput;
+  readonly stage: StageFmpUniverseInput;
+}): Promise<StageFmpUniverseOutcome> {
+  return withTransaction(async (tx) => {
+    const staged = await stageFmpUniverseVersionInTransaction(input.stage, tx);
+    await completeUniverseSyncCommandInTransaction(
+      {
+        command: input.command,
+        result: { ok: true, staged },
+        auditResult: 'success',
+        providerCallId: input.stage.providerCallId,
+        sourcePayloadHash: input.stage.sourcePayloadHash,
+        universeVersionId: staged.version.id,
+      },
+      tx,
+    );
+    return staged;
   });
 }
 
@@ -786,7 +849,9 @@ export async function activateUniverseVersion(
 
     const activated = rows[0];
     if (activated === undefined) {
-      throw new Error(`universe_version ${versionId} is not a draft or staged version in ${environment}`);
+      throw new Error(
+        `universe_version ${versionId} is not a draft or staged version in ${environment}`,
+      );
     }
 
     await tx.query(
