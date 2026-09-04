@@ -3,7 +3,7 @@
 **Writer:** DATA builder only  
 **Branch:** `feat/rni-data-source-first`  
 **Depends on:** merged RNI contract-freeze SHA  
-**Status:** `READY_FOR_REVIEW`
+**Status:** `IN_PROGRESS`
 
 ## Owned paths
 
@@ -11,17 +11,17 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 
 ## Tasks
 
-| ID  | Task                                                        | Status             | Acceptance evidence                                                              |
-| --- | ----------------------------------------------------------- | ------------------ | -------------------------------------------------------------------------------- |
-| D01 | Canonical `rni_source_item` and retrieval/content tables    | `READY_FOR_REVIEW` | Frozen port implemented; crossed natural-key conflict fails closed; 9/9 pass     |
-| D02 | Source-security links and four-dimension observations       | `READY_FOR_REVIEW` | Migration `0021`; multi-ticker and four-dimension tests pass                     |
-| D03 | Claims, citations, themes, narratives and relationships     | `READY_FOR_REVIEW` | Composite claim/source citation lineage enforced; 5/5 pass                       |
-| D04 | Independent Reddit/X `run_source_slice` persistence         | `READY_FOR_REVIEW` | Runs foreign-key immutable config/universe version IDs; 5/5 pass                 |
-| D05 | Cross-source summary persistence without component mutation | `READY_FOR_REVIEW` | Divergence/partial repository tests 4/4 pass                                     |
-| D06 | Idempotent/concurrent inserts and transactional outbox      | `READY_FOR_REVIEW` | 8-way concurrent upsert and outbox rollback 3/3 pass                             |
-| D07 | Bounded-content, tombstone and rejected-discovery states    | `READY_FOR_REVIEW` | Terminal status, timestamp, and reason are immutable; 3/3 pass                   |
-| D08 | FMP >500-member fixture support for integration migration   | `READY_FOR_REVIEW` | 501-member and six invalid activation fixtures 4/4 pass                          |
-| D09 | Full DATA lane verification and handoff                     | `READY_FOR_REVIEW` | DATA 40/40; lint/type/unit/contract green; only known non-RNI clock race remains |
+| ID  | Task                                                        | Status             | Acceptance evidence                                                          |
+| --- | ----------------------------------------------------------- | ------------------ | ---------------------------------------------------------------------------- |
+| D01 | Canonical `rni_source_item` and retrieval/content tables    | `READY_FOR_REVIEW` | Frozen port implemented; crossed natural-key conflict fails closed; 9/9 pass |
+| D02 | Source-security links and four-dimension observations       | `READY_FOR_REVIEW` | Migration `0021`; multi-ticker and four-dimension tests pass                 |
+| D03 | Claims, citations, themes, narratives and relationships     | `IN_PROGRESS`      | Re-review: enforce null-safe claim/narrative security identity               |
+| D04 | Independent Reddit/X `run_source_slice` persistence         | `READY_FOR_REVIEW` | Runs foreign-key immutable config/universe version IDs; 5/5 pass             |
+| D05 | Cross-source summary persistence without component mutation | `READY_FOR_REVIEW` | Divergence/partial repository tests 4/4 pass                                 |
+| D06 | Idempotent/concurrent inserts and transactional outbox      | `READY_FOR_REVIEW` | 8-way concurrent upsert and outbox rollback 3/3 pass                         |
+| D07 | Bounded-content, tombstone and rejected-discovery states    | `READY_FOR_REVIEW` | Terminal status, timestamp, and reason are immutable; 3/3 pass               |
+| D08 | FMP >500-member fixture support for integration migration   | `READY_FOR_REVIEW` | 501-member and six invalid activation fixtures 4/4 pass                      |
+| D09 | Full DATA lane verification and handoff                     | `IN_PROGRESS`      | Rebase and focused gate rerun pending after final D03 fix                    |
 
 ## Task evidence
 
@@ -304,7 +304,8 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | d8a83c0     | D08 >500-member FMP universe fixture support          | Typecheck, targeted lint, DATA 34/34                              |
 | 5362337     | D09 migration rehearsal and initial handoff           | Lint/type/unit/contract/DATA pass; legacy integration race        |
 | af3cd49     | Import accepted CR-DATA-001 contract code and tests   | Frozen port and fixture contract tests                            |
-| this commit | Coordinator review fixes and renewed handoff          | DATA 40/40; unit 1171/1171; contract 100/100; integration 396/397 |
+| cb60846     | First coordinator review fixes and renewed handoff    | DATA 40/40; unit 1171/1171; contract 100/100; integration 396/397 |
+| this commit | Null-safe narrative membership integrity correction   | D03 PostgreSQL 6/6; TypeScript pass                               |
 
 ## Handoff
 
@@ -318,6 +319,6 @@ TESTS        lint/type pass; unit 1171/1171; contract 100/100; DATA 40/40; integ
 CONTRACT     CR-DATA-001 accepted; CR-DATA-002 deferred to I07; CR-DATA-003 and 004 resolved
 RISKS        broader D03 write port deferred; one known non-RNI integration clock race
 FILES        migrations 0020-0023; DATA repositories; RNI persistence tests/fixtures; accepted source-port contract files; DATA.md
-COMMITS      3c0cc56 (D01); bae4e9f (D02); 2757f5c (D03); adb91a4 (D04); ca9ca72 (D05); 2cc02d7 (D06); e75a0af (D07); d8a83c0 (D08); 5362337 (D09); af3cd49 (accepted port); this commit (review fixes)
+COMMITS      3c0cc56 (D01); bae4e9f (D02); 2757f5c (D03); adb91a4 (D04); ca9ca72 (D05); 2cc02d7 (D06); e75a0af (D07); d8a83c0 (D08); 5362337 (D09); af3cd49 (accepted port); cb60846 (first review fixes); this commit (membership fix)
 DEMO PROOF   one comparative source persists distinct bullish NVDA and bearish AMD observations
 ```

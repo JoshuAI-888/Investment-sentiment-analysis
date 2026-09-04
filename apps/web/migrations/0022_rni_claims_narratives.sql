@@ -1,7 +1,7 @@
 -- 0022 — RNI claims, citations, themes, narratives and comparative relationships.
 --
 -- Every semantic object remains attached to persisted source evidence. Claim/narrative vectors
--- are intentionally not declared here until CR-DATA-003 resolves the binding pgvector conflict.
+-- are intentionally absent because CR-DATA-003 resolved pgvector as deferred for this slice.
 
 alter table rni_security_observation
   add constraint rni_security_observation_id_source_security_unique
@@ -154,6 +154,30 @@ create table rni_narrative_membership (
   constraint rni_narrative_membership_reason_check check (length(adjudication_reason) > 0)
 );
 
+create or replace function rni_narrative_membership_security_valid() returns trigger
+language plpgsql as $$
+declare
+  security_matches boolean;
+begin
+  select narrative.security_id is not distinct from claim.security_id
+    into security_matches
+    from rni_narrative as narrative
+    join rni_evidence_claim as claim on claim.id = new.claim_id
+   where narrative.id = new.narrative_id;
+
+  if security_matches is not true then
+    raise exception 'RNI narrative membership requires matching claim and narrative security identity'
+      using errcode = 'check_violation',
+            constraint = 'rni_narrative_membership_security_match';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger rni_narrative_membership_security_match
+  before insert on rni_narrative_membership
+  for each row execute function rni_narrative_membership_security_valid();
+
 create table rni_comparative_relation (
   id                    uuid        primary key default gen_random_uuid(),
   source_item_id        uuid        not null references rni_source_item (id),
@@ -206,4 +230,4 @@ comment on table rni_claim_citation is
   'Every citation is a foreign-key edge from a claim to a persisted source item; dangling prose evidence cannot be stored.';
 
 comment on table rni_narrative_membership is
-  'Narratives reference atomic persisted claims. Similarity is a candidate signal and never substitutes for adjudication.';
+  'Narratives reference atomic persisted claims with the same security identity. Security-specific narratives accept only claims for that security; null/global narratives accept only null/global claims. Similarity never substitutes for adjudication.';

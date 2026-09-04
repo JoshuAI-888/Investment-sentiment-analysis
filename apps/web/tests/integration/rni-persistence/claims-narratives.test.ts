@@ -301,4 +301,103 @@ describe.skipIf(url === undefined)('RNI D03 relational claims and narratives', (
     expect(await persistRniNarrativeMembership(membership, pool)).toEqual({ inserted: true });
     expect(await persistRniNarrativeMembership(membership, pool)).toEqual({ inserted: false });
   });
+
+  it('rejects an opposing-security claim from a security-specific narrative', async () => {
+    const versions = await seedRniVersionLineage(pool, 'd03-opposing-security');
+    const runId = randomUUID();
+    await persistRniRunWithSlices(
+      {
+        id: runId,
+        idempotencyKey: 'd03-opposing-security-run',
+        trigger: 'manual',
+        status: 'running',
+        windowStart: '2026-09-04T00:00:00.000Z',
+        windowEnd: '2026-09-05T00:00:00.000Z',
+        comparisonStart: null,
+        comparisonEnd: null,
+        universeVersion: versions.universeVersion,
+        configVersion: versions.configVersion,
+        promptVersion: 'p1',
+        aiRoute: 'openai_direct',
+        requestedAt: '2026-09-05T00:00:00.000Z',
+        completedAt: null,
+      },
+      [
+        {
+          id: randomUUID(),
+          runId,
+          platform: 'reddit',
+          status: 'complete',
+          eligibleSourceCount: 1,
+          coverageDisclosure: 'sampled',
+          lastAttemptAt: null,
+          lastSuccessfulRefreshAt: null,
+          dataThroughAt: null,
+          computedAt: null,
+          errorCode: null,
+        },
+        {
+          id: randomUUID(),
+          runId,
+          platform: 'x',
+          status: 'unavailable',
+          eligibleSourceCount: 0,
+          coverageDisclosure: 'unavailable',
+          lastAttemptAt: null,
+          lastSuccessfulRefreshAt: null,
+          dataThroughAt: null,
+          computedAt: null,
+          errorCode: 'unavailable',
+        },
+      ],
+      pool,
+    );
+
+    const narrativeId = randomUUID();
+    await persistRniNarrative(
+      {
+        id: narrativeId,
+        runId,
+        securityId: rniFixtureIds.nvda,
+        canonicalThesis: 'NVDA execution supports AI infrastructure leadership.',
+        direction: 'bullish',
+        horizon: null,
+        status: 'candidate',
+        adjudicatorRunId: randomUUID(),
+        firstSourceAt: comparativeSource.publishedAt,
+        lastSourceAt: comparativeSource.publishedAt,
+        independentSourceCount: 1,
+        rawRepetitionCount: 1,
+        inputHash: HASH_A,
+        createdAt: '2026-09-05T00:07:00.000Z',
+      },
+      pool,
+    );
+    const amdClaim = await persistRniEvidenceClaim(
+      claim({
+        id: randomUUID(),
+        securityId: rniFixtureIds.amd,
+        observationId: rniFixtureIds.amdObservation,
+        inputHash: HASH_B,
+        claimText: 'AMD is the preferable execution story.',
+      }),
+      pool,
+    );
+
+    await expect(
+      persistRniNarrativeMembership(
+        {
+          narrativeId,
+          claimId: amdClaim.id,
+          similarity: '0.9',
+          membershipConfidence: '0.9',
+          isIndependent: true,
+          duplicateGroupHash: null,
+          adjudicationReason: 'Must be rejected despite semantic similarity.',
+          createdAt: '2026-09-05T00:07:01.000Z',
+        },
+        pool,
+      ),
+    ).rejects.toMatchObject({ constraint: 'rni_narrative_membership_security_match' });
+  });
 });
