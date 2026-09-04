@@ -1,4 +1,9 @@
 import type {
+  RniAiRoute,
+  RniAiRouteSetting,
+  RniAiRouteSettingUpdateRequest,
+  RniAiRouteSettingUpdateResult,
+  RniAiRouteSettingsService,
   RniCitation,
   RniCommandService,
   RniCombinedStatus,
@@ -29,9 +34,17 @@ import {
   referenceSecurityDetail,
   rniFixtureIds,
   referenceActiveUniverse,
+  referenceDirectAiRouteSetting,
+  referenceGatewayAiRouteSetting,
   referenceStagedUniversePreview,
 } from '@/rni/testing/reference-fixtures';
-import { rniUniverseSearchQuery, rniUniverseSearchResult } from '@/rni/contracts';
+import {
+  rniAiRouteSetting,
+  rniAiRouteSettingUpdateRequest,
+  rniAiRouteSettingUpdateResult,
+  rniUniverseSearchQuery,
+  rniUniverseSearchResult,
+} from '@/rni/contracts';
 
 const FIXTURE_TIME = '2026-09-05T00:08:00.000Z';
 const STALE_TIME = '2026-08-25T00:08:00.000Z';
@@ -125,7 +138,22 @@ export class RniFixtureUnsupportedTickerError extends Error {
   }
 }
 
+export class RniFixtureAiRouteCommandConflictError extends Error {
+  constructor(readonly idempotencyKey: string) {
+    super(`RNI fixture AI route idempotency key was reused: ${idempotencyKey}`);
+    this.name = 'RniFixtureAiRouteCommandConflictError';
+  }
+}
+
+export class RniFixtureUnavailableAiRouteError extends Error {
+  constructor(readonly aiRoute: RniAiRoute, readonly reason: string) {
+    super(`RNI fixture AI route is unavailable: ${aiRoute}`);
+    this.name = 'RniFixtureUnavailableAiRouteError';
+  }
+}
+
 export type FixtureRniCommandServiceOptions = Readonly<{ deferred?: boolean }>;
+export type FixtureRniAiRouteSettingsServiceOptions = Readonly<{ gatewayAvailable?: boolean }>;
 
 function run(
   status: RniRunStatus,
@@ -534,6 +562,91 @@ export class FixtureRniUniverseReadService implements RniUniverseReadService {
 
 export function createFixtureRniUniverseReadService(): RniUniverseReadService {
   return new FixtureRniUniverseReadService();
+}
+
+/** Fixture-only mutable implementation of the frozen future-run route boundary. */
+export class FixtureRniAiRouteSettingsService implements RniAiRouteSettingsService {
+  private current: RniAiRouteSetting;
+  private nextConfigVersion = 2;
+  private readonly requests = new Map<
+    string,
+    Readonly<{ scope: string; result: RniAiRouteSettingUpdateResult }>
+  >();
+
+  constructor(options: FixtureRniAiRouteSettingsServiceOptions = {}) {
+    const direct = copy(referenceDirectAiRouteSetting);
+    this.current = rniAiRouteSetting.parse(
+      options.gatewayAvailable === false
+        ? {
+            ...direct,
+            options: direct.options.map((option) =>
+              option.aiRoute === 'vercel_ai_gateway'
+                ? {
+                    ...option,
+                    available: false,
+                    unavailableReason: 'Gateway is not configured for this fixture.',
+                  }
+                : option,
+            ),
+          }
+        : direct,
+    );
+  }
+
+  async getCurrentAiRouteSetting(): Promise<RniAiRouteSetting> {
+    return copy(this.current);
+  }
+
+  async updateFutureAiRoute(
+    input: RniAiRouteSettingUpdateRequest,
+  ): Promise<RniAiRouteSettingUpdateResult> {
+    const request = rniAiRouteSettingUpdateRequest.parse(input);
+    const scope = JSON.stringify({ aiRoute: request.aiRoute, reason: request.reason });
+    const existing = this.requests.get(request.idempotencyKey);
+    if (existing) {
+      if (existing.scope !== scope) {
+        throw new RniFixtureAiRouteCommandConflictError(request.idempotencyKey);
+      }
+      return copy({ ...existing.result, disposition: 'duplicate' });
+    }
+
+    const option = this.current.options.find(({ aiRoute }) => aiRoute === request.aiRoute);
+    if (!option || !option.available) {
+      throw new RniFixtureUnavailableAiRouteError(
+        request.aiRoute,
+        option?.unavailableReason ?? 'Route is not configured for this fixture.',
+      );
+    }
+
+    const previousConfigVersion = this.current.configVersion;
+    this.current = this.createSuccessorSetting(request.aiRoute);
+    const result = rniAiRouteSettingUpdateResult.parse({
+      disposition: 'accepted',
+      idempotencyKey: request.idempotencyKey,
+      previousConfigVersion,
+      setting: this.current,
+    });
+    this.requests.set(request.idempotencyKey, { scope, result });
+    return copy(result);
+  }
+
+  private createSuccessorSetting(aiRoute: RniAiRoute): RniAiRouteSetting {
+    const template = aiRoute === 'vercel_ai_gateway'
+      ? referenceGatewayAiRouteSetting
+      : referenceDirectAiRouteSetting;
+    const version = this.nextConfigVersion;
+    this.nextConfigVersion += 1;
+
+    return rniAiRouteSetting.parse({
+      ...copy(template),
+      configVersion: `fixture-config-v${version}`,
+      effectiveAt: `2026-09-05T0${version}:00:00.000Z`,
+    });
+  }
+}
+
+export function createFixtureRniAiRouteSettingsService(): RniAiRouteSettingsService {
+  return new FixtureRniAiRouteSettingsService();
 }
 
 export class FixtureRniCommandService implements RniCommandService {

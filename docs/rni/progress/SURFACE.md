@@ -3,7 +3,7 @@
 **Writer:** SURFACE builder only  
 **Branch:** `feat/rni-surface-demo`  
 **Depends on:** merged RNI contract-freeze SHA; fixture-backed `RniReadService`  
-**Status:** `BLOCKED` — S01–S08 ready for merge; S09 awaits the frozen route/model setting boundary; S10 not started
+**Status:** `IN_PROGRESS` — S01–S08 ready for merge; S09 ready for coordinator review; S10 not started
 
 ## Owned paths
 
@@ -21,7 +21,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | S06 | Per-platform freshness, run progress and partial/failure states  | `READY_FOR_MERGE` | Coordinator accepted `ffd5119`             |
 | S07 | Manual ticker/full refresh controls and double-submit prevention | `READY_FOR_MERGE` | Coordinator accepted through `babd940` |
 | S08 | S&P 500 search, NVDA default and universe Settings components    | `READY_FOR_MERGE` | Coordinator accepted                         |
-| S09 | Route/model display and Direct/Gateway future-run setting        | `BLOCKED`         | CR-SURFACE-06: no frozen setting boundary   |
+| S09 | Route/model display and Direct/Gateway future-run setting        | `READY_FOR_REVIEW` | D-RNI-20 fixture, contract and Chromium proof |
 | S10 | Accessibility, responsive and full SURFACE handoff               | `NOT_STARTED`     | Required audits and lane report            |
 
 ## Required invariants
@@ -46,7 +46,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | CR-SURFACE-03 | `ACCEPTED` | D-RNI-14 / `ce80424` adds frozen `getSecurityDetail(runId, securityId)` with canonical identity, fixed Reddit/X detail records, exactly four cited platform-bound dimensions, and independent state/freshness/coverage/confidence.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | S03 consumes only the additive read shape; Radar remains unchanged.               |
 | CR-SURFACE-04 | `ACCEPTED` | D-RNI-17 / `fec8c46` adds frozen `RniCommandService.requestManualRefresh` with a required idempotency key, ticker/full scope, accepted/duplicate disposition, durable run ID, and resolved scope preview. Exact same-key replay returns the original run/preview; crossed-key scope fails closed. | S07 uses the fixture command boundary; I09 owns live auth, CSRF, audit and queue composition. |
 | CR-SURFACE-05 | `ACCEPTED` | D-RNI-18 corrected at `098f010` / integration `573d7be` adds frozen read-only active-member search and immutable staged preview. | S08 consumes only `RniUniverseReadService`; no FMP or activation access. |
-| CR-SURFACE-06 | `OPEN` | **Current behaviour:** frozen contracts expose `RniAiRoute` only as the resolved route on an immutable run and expose no route/model setting read or audited future-run update command. **Requested change:** add a frozen setting read model and an auditable command boundary that changes the selected Direct/Gateway route (and its resolved model) for future RNI runs only. **Justification:** S09 must display the current choice and make the contract-required Direct/Gateway future-run setting without inventing a fixture-only mutation or bypassing ENGINE ownership. **Affected lanes:** SURFACE, ENGINE, INTEGRATION. **Compatibility:** additive; historical runs and their persisted `aiRoute` remain immutable. **Recommended acceptance test:** set a future route through the command, read the changed current setting, then prove existing runs retain their original resolved route/model while a newly created run receives the selected route. | S09 cannot begin until the coordinator freezes the read/write setting boundary and assigns live composition ownership. |
+| CR-SURFACE-06 | `ACCEPTED` | D-RNI-20 freezes `RniAiRouteSettingsService`: a credential-free active-setting read plus intent-only idempotent future-config command. The service resolves task models server-side, exposes both route availability states, creates successor config versions only for future runs, and preserves historical run/model lineage. | S09 may consume the service through its fixture; I08/I10 retain authenticated API and live routing composition. |
 
 ## Test evidence
 
@@ -70,6 +70,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | S07 component/contract        | `PASSED`      | `apps/web/node_modules/.bin/tsc --noEmit`; `apps/web/node_modules/.bin/eslint fixtures/rni-ui/read-service.ts src/rni/ui/ManualRefreshControls.tsx src/rni/ui/ManualRefreshFixtureHarness.tsx src/rni/ui/renderFixtureOnly.ts 'app/(rni)/rni/refresh/page.tsx' 'app/(rni)/rni/refresh/fixture/page.tsx' tests/e2e/rni/read-service.spec.ts tests/e2e/rni/manual-refresh.spec.ts tests/e2e/rni/manual-refresh-fixture-guard.spec.ts`; `apps/web/node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism` | Typecheck and focused lint passed; frozen RNI contract suite passed (14/14). |
 | S07 build/browser             | `PASSED`      | `apps/web/node_modules/.bin/next build`; `E2E_BASE_URL=http://127.0.0.1:3008 apps/web/node_modules/.bin/playwright test tests/e2e/rni/manual-refresh-fixture-guard.spec.ts --project=chromium`; `E2E_BASE_URL=http://127.0.0.1:3008 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/manual-refresh.spec.ts --project=chromium` (run twice) | The guarded fixture page is dynamic; fixture/live guard coverage passed, and both fixture-mode Chromium runs passed 4/4 with deferred pending-state release, pre-submit previews, exact replay, distinct later intent/run, 501 preview, native status semantics, and 375px no-overflow. |
 | S08 correction | `PASSED` | `tsc --noEmit`; scoped eslint; contracts; build; diff check; focused Chromium | Contracts 15/15; Chromium 3/3 includes keyboard search, staged impact, responsive fit, and legacy active presentation. |
+| S09 route/model settings | `PASSED` | `node_modules/.bin/tsc --noEmit`; focused eslint; `node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism`; `node_modules/.bin/next build`; `E2E_BASE_URL=http://127.0.0.1:3011 node_modules/.bin/playwright test tests/e2e/rni/ai-route-settings.spec.ts --project=chromium` | Typecheck and lint passed; frozen contract suite passed 17/17; production build passed; Chromium passed 3/3 including future-only successor, exact replay/crossed-key rejection, unavailable Gateway failure, accessible controls, and 375px fit. |
 | repository required gate      | `NOT_STARTED` | —                                                                                                                                                                                                                                                                                                                                                                                                        | —                                                                                                                                                                    |
 
 ## Review findings
@@ -95,7 +96,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | 2026-09-05 | `RESOLVED` | S07 needed a typed idempotent refresh command, which frozen reads could not express.                            | INTEGRATION / SURFACE          | D-RNI-17 (`fec8c46`) froze the additive command boundary; S07 fixture tests cover exact replay and crossed-key rejection. | Coordinator review of S07 |
 | 2026-09-05 | `RESOLVED` | Static citation anchors did not provide citation → source → evidence provenance.                               | SURFACE                        | S04 renders platform-labelled evidence drawers from the frozen citation and evidence reads.        | Coordinator review of S04                |
 | 2026-09-05 | `RESOLVED` | S03 needed four per-platform dimension assignments, which the previous frozen `RniReadService` could not read. | DATA / ENGINE / INTEGRATION    | D-RNI-14 added `getSecurityDetail`; S03 uses it without direct repository access.                  | Coordinator review of S03                |
-| 2026-09-05 | `BLOCKED` | S09 needs a frozen AI route/model setting read and future-run mutation boundary. | ENGINE / INTEGRATION / SURFACE | Inspected frozen contracts: `RniAiRoute` is run metadata only; no setting service or command exists. | Coordinator disposition of CR-SURFACE-06 |
+| 2026-09-05 | `RESOLVED` | S09 needed a frozen AI route/model setting read and future-run mutation boundary. | ENGINE / INTEGRATION / SURFACE | D-RNI-20 supplies `RniAiRouteSettingsService`; fixture and browser tests prove future-only successor, availability and idempotency semantics. | Coordinator review of S09 |
 
 ## Commits
 
@@ -112,6 +113,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | `f7e481e` | S07 final refresh controls | typecheck; lint; contract 14; build; Chromium Playwright 4 |
 | `e12472d` | S08 universe settings feature | typecheck; lint; contract 15; build; Chromium 2 |
 | `CURRENT` | S08 universe settings correction | typecheck; lint; contract 15; build; Chromium 3 |
+| `CURRENT` | S09 future-run AI route settings | typecheck; lint; contract 17; build; Chromium 3 |
 
 ## S01 delivery record
 
@@ -179,24 +181,24 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 
 ## S09 delivery record
 
-- **Files changed:** this lane tracker only.
-- **Result:** implementation stopped before any SURFACE UI or fixture mutation work. The frozen contract records `aiRoute` on historical runs but exposes no current route/model setting read or audited future-run update command.
-- **Verification:** contract-boundary inspection of `apps/web/src/rni/contracts/index.ts`, reference fixtures, and D-RNI-05 in `docs/MEMORY.md`; no code or browser tests apply while the shared boundary is absent.
-- **Risk:** a client-side or fixture-local toggle would misrepresent a durable future-run setting and violate ENGINE/INTEGRATION ownership.
-- **Handoff:** CR-SURFACE-06 is ready for coordinator disposition. Do not start S10 while S09 remains blocked.
+- **Files changed:** `apps/web/fixtures/rni-ui/read-service.ts`, `apps/web/app/(rni)/rni/settings/ai-route/page.tsx`, `apps/web/src/rni/ui/AiRouteSettings.tsx`, `apps/web/src/rni/ui/AiRouteSettingsFixtureHarness.tsx`, `apps/web/tests/e2e/rni/ai-route-settings.spec.ts`, and this lane tracker.
+- **Result:** `/rni/settings/ai-route` server-reads only the frozen `RniAiRouteSettingsService`, displays the selected Direct/Gateway route, both availability states, active config/effective time, and server-resolved task provider/model/revision/prompt identities without credentials. Its fixture harness sends only a fresh idempotency key, selected route, and bounded reason; a successful update displays the successor config and makes clear that existing run/model lineage does not change.
+- **Verification:** typecheck, focused lint, frozen contract tests (17/17), production build, and focused Chromium (3/3) passed. The fixture test proves Direct → Gateway successor creation, resolved Gateway models, exact duplicate replay, crossed-key rejection, historical Direct run immutability, and unavailable Gateway rejection. The browser test verifies accessible radio/label/status semantics, the future-only confirmation, and 375px no-overflow.
+- **Risk:** fixture composition only. I08 owns authenticated Settings API composition and I10 owns capability checks, model mapping, and live execution; SURFACE does not expose credentials or client-selected models.
+- **Handoff:** ready for coordinator review. S10 remains `NOT_STARTED`.
 
 ## Handoff
 
 ```text
 RNI LANE     SURFACE
 BRANCH       feat/rni-surface-demo
-BASE SHA     82ed8de
-STATUS       S01–S08 ready for merge; S09 blocked on CR-SURFACE-06; S10 not started
-TASKS        S01–S08 ready for merge; S09 blocked on CR-SURFACE-06; S10 not started
-TESTS        typecheck: pass; focused lint: pass; RNI contract: 15 pass; production build: pass; Chromium: S07 4 pass twice; S08 3 pass
-CONTRACT     CR-SURFACE-01–05 accepted; CR-SURFACE-05 resolved by D-RNI-18; CR-SURFACE-06 open
-RISKS        Fixture-only composition; I08 owns live universe repository/FMP composition and activation; I09 owns live refresh command composition; S09 requires frozen setting boundary
-FILES        apps/web/fixtures/rni-ui/read-service.ts; apps/web/app/(rni)/rni/settings/universe/page.tsx; apps/web/src/rni/ui/UniverseSettings.tsx; apps/web/tests/e2e/rni/universe-settings.spec.ts; apps/web/app/(rni)/rni/refresh/page.tsx; apps/web/src/rni/ui/ManualRefreshControls.tsx; docs/rni/progress/SURFACE.md
-COMMITS      S07 401d2f7, 63d42d8, fb58989, f7e481e; S08 e12472d, CURRENT
-DEMO PROOF   `/rni/settings/universe` shows NVDA default, keyboard active-member search, source/retrieval, and immutable staged PLTR impact without activation access
+BASE SHA     bdb23ce
+STATUS       S01–S08 ready for merge; S09 ready for review; S10 not started
+TASKS        S01–S08 ready for merge; S09 ready for review; S10 not started
+TESTS        typecheck: pass; focused lint: pass; RNI contract: 17 pass; production build: pass; Chromium: S07 4 pass twice; S08 3 pass; S09 3 pass
+CONTRACT     CR-SURFACE-01–06 accepted; CR-SURFACE-05 resolved by D-RNI-18; CR-SURFACE-06 resolved by D-RNI-20
+RISKS        Fixture-only composition; I08 owns live universe/API composition and I09 owns live refresh composition; I10 owns live AI route capability/model execution
+FILES        apps/web/fixtures/rni-ui/read-service.ts; apps/web/app/(rni)/rni/settings/ai-route/page.tsx; apps/web/src/rni/ui/AiRouteSettings.tsx; apps/web/src/rni/ui/AiRouteSettingsFixtureHarness.tsx; apps/web/tests/e2e/rni/ai-route-settings.spec.ts; docs/rni/progress/SURFACE.md
+COMMITS      S07 401d2f7, 63d42d8, fb58989, f7e481e; S08 e12472d; S09 CURRENT
+DEMO PROOF   `/rni/settings/ai-route` shows Direct default and resolved models, then an accessible Gateway intent creates fixture-config-v2 for future runs while existing lineage remains immutable
 ```
