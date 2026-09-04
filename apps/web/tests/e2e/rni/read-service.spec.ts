@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
 import {
+  FixtureRniCommandService,
+  RniFixtureCommandConflictError,
   RniFixtureNotFoundError,
+  RniFixtureUnsupportedTickerError,
   createFixtureRniReadService,
   rniUiFixtureCatalogue,
 } from '../../../fixtures/rni-ui/read-service';
@@ -136,5 +139,51 @@ test.describe('RNI fixture read service', () => {
     await expect(service.getCitation('00000000-0000-4000-8000-000000000099')).rejects.toEqual(
       new RniFixtureNotFoundError('citation', '00000000-0000-4000-8000-000000000099'),
     );
+  });
+
+  test('replays exact manual refresh keys and fails closed for crossed scopes', async () => {
+    const service = new FixtureRniCommandService();
+    const tickerRequest = {
+      idempotencyKey: 'fixture-command-nvda',
+      scope: { kind: 'ticker' as const, ticker: 'NVDA' },
+    };
+
+    const [first, second] = await Promise.all([
+      service.requestManualRefresh(tickerRequest),
+      service.requestManualRefresh(tickerRequest),
+    ]);
+    const accepted = first.disposition === 'accepted' ? first : second;
+    const duplicate = first.disposition === 'duplicate' ? first : second;
+    expect([first.disposition, second.disposition].sort()).toEqual(['accepted', 'duplicate']);
+    expect(duplicate).toEqual({ ...accepted, disposition: 'duplicate' });
+    expect(service.executionCount).toBe(1);
+    expect(accepted.scopePreview).toMatchObject({
+      kind: 'ticker',
+      ticker: 'NVDA',
+      companyName: 'NVIDIA Corporation',
+      exchange: 'NASDAQ',
+    });
+
+    await expect(
+      service.requestManualRefresh({
+        idempotencyKey: tickerRequest.idempotencyKey,
+        scope: { kind: 'full_universe' },
+      }),
+    ).rejects.toEqual(new RniFixtureCommandConflictError(tickerRequest.idempotencyKey));
+
+    const fullUniverse = await service.requestManualRefresh({
+      idempotencyKey: 'fixture-command-full',
+      scope: { kind: 'full_universe' },
+    });
+    expect(fullUniverse).toMatchObject({
+      disposition: 'accepted',
+      scopePreview: { kind: 'full_universe', securityCount: 501 },
+    });
+    await expect(
+      service.requestManualRefresh({
+        idempotencyKey: 'fixture-command-unsupported',
+        scope: { kind: 'ticker', ticker: 'AMD' },
+      }),
+    ).rejects.toEqual(new RniFixtureUnsupportedTickerError('AMD'));
   });
 });

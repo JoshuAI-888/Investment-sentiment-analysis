@@ -1,11 +1,14 @@
 import type {
   RniCitation,
+  RniCommandService,
   RniCombinedStatus,
   RniCombinedSummary,
   RniPlatformSlice,
   RniRadarPage,
   RniRadarQuery,
   RniReadService,
+  RniManualRefreshRequest,
+  RniManualRefreshResult,
   RniRun,
   RniRunStatus,
   RniSecurityDetail,
@@ -63,6 +66,20 @@ export class RniFixtureNotFoundError extends Error {
   ) {
     super(`RNI fixture ${resource} was not found: ${id}`);
     this.name = 'RniFixtureNotFoundError';
+  }
+}
+
+export class RniFixtureCommandConflictError extends Error {
+  constructor(readonly idempotencyKey: string) {
+    super(`RNI fixture idempotency key ${idempotencyKey} was reused for a different scope`);
+    this.name = 'RniFixtureCommandConflictError';
+  }
+}
+
+export class RniFixtureUnsupportedTickerError extends Error {
+  constructor(readonly ticker: string) {
+    super(`RNI fixture does not include ticker: ${ticker}`);
+    this.name = 'RniFixtureUnsupportedTickerError';
   }
 }
 
@@ -435,4 +452,74 @@ export class FixtureRniReadService implements RniReadService {
 
 export function createFixtureRniReadService(state: RniUiFixtureState = 'complete'): RniReadService {
   return new FixtureRniReadService(rniUiFixtureCatalogue[state]);
+}
+
+export class FixtureRniCommandService implements RniCommandService {
+  private readonly requests = new Map<
+    string,
+    Readonly<{
+      scope: RniManualRefreshRequest['scope'];
+      acceptedResult: Promise<RniManualRefreshResult>;
+    }>
+  >();
+  private executions = 0;
+
+  get executionCount(): number {
+    return this.executions;
+  }
+
+  async requestManualRefresh(request: RniManualRefreshRequest): Promise<RniManualRefreshResult> {
+    const existing = this.requests.get(request.idempotencyKey);
+    if (existing) {
+      if (
+        existing.scope.kind !== request.scope.kind ||
+        (existing.scope.kind === 'ticker' &&
+          request.scope.kind === 'ticker' &&
+          existing.scope.ticker !== request.scope.ticker)
+      )
+        throw new RniFixtureCommandConflictError(request.idempotencyKey);
+      const acceptedResult = await existing.acceptedResult;
+      return { ...acceptedResult, disposition: 'duplicate' };
+    }
+    if (request.scope.kind === 'ticker' && request.scope.ticker !== 'NVDA') {
+      throw new RniFixtureUnsupportedTickerError(request.scope.ticker);
+    }
+
+    const acceptedResult = this.accept(request);
+    this.requests.set(request.idempotencyKey, { scope: request.scope, acceptedResult });
+    return { ...(await acceptedResult) };
+  }
+
+  private async accept(request: RniManualRefreshRequest): Promise<RniManualRefreshResult> {
+    this.executions += 1;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    const scopePreview =
+      request.scope.kind === 'ticker'
+        ? {
+            kind: 'ticker' as const,
+            securityId: rniFixtureIds.nvda,
+            ticker: 'NVDA',
+            companyName: 'NVIDIA Corporation',
+            exchange: 'NASDAQ',
+            universeVersion: 'rni-universe-fixture-v1',
+          }
+        : {
+            kind: 'full_universe' as const,
+            universeVersion: 'rni-universe-fixture-v1',
+            securityCount: 501,
+          };
+    return {
+      disposition: 'accepted',
+      runId:
+        request.scope.kind === 'ticker'
+          ? '00000000-0000-4000-8000-000000000031'
+          : '00000000-0000-4000-8000-000000000032',
+      idempotencyKey: request.idempotencyKey,
+      scopePreview,
+    };
+  }
+}
+
+export function createFixtureRniCommandService(): RniCommandService {
+  return new FixtureRniCommandService();
 }
