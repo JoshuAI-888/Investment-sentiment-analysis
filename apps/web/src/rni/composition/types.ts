@@ -1,4 +1,6 @@
 import type { RniPersistedClassificationResult } from '../observations';
+import type { RniPlatformAnalyticsArtifact } from '../analytics';
+import type { RniConvergenceArtifact } from '../convergence';
 
 export type RniSemanticCommitRequest = {
   /** Durable run selected by server-side orchestration. */
@@ -22,4 +24,18 @@ export type RniSemanticCommitResult = {
  */
 export interface RniSemanticPersistencePort {
   commitClassification(input: RniSemanticCommitRequest): Promise<RniSemanticCommitResult>;
+}
+
+export type RniArtifactCommitResult = {
+  readonly disposition: 'inserted' | 'duplicate';
+  /** SHA-256 identity of the complete canonical artifact, not merely its result payload. */
+  readonly artifactHash: string;
+};
+
+/** D-RNI-19 lineage boundary between deterministic E06/E07 artifacts and durable storage. */
+export interface RniAnalyticsArtifactPersistencePort {
+  commitPlatformAnalytics(
+    artifact: RniPlatformAnalyticsArtifact,
+  ): Promise<RniArtifactCommitResult>;
+  commitConvergence(artifact: RniConvergenceArtifact): Promise<RniArtifactCommitResult>;
 }

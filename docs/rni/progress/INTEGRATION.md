@@ -378,6 +378,7 @@
 | `CURRENT` | Start I07 DATA/ENGINE composition | all three lanes merged in required order; resolve CR-DATA-002 only from the concrete E05 consumer and prove the smallest durable boundary with integration contracts |
 | `CURRENT` | Freeze I07 semantic composition as D-RNI-22 | SQL-free complete-E05-result port plus persist-after-all-security wrapper; focused integration 3/3, typecheck and scoped lint pass; DATA transaction adapter remains |
 | `CURRENT` | Add D-RNI-22 semantic storage to migration 0024 | nullable historical-compatible claim dimension, immutable run/observation membership and exact E05 quality sidecar; clean/forward disposable PostgreSQL migration gate 5/5 |
+| `CURRENT` | Compose E06/E07 artifact persistence boundary | Reddit/X artifacts commit independently; convergence binds their exact complete-artifact hashes and rejects crossed storage identity; focused composition 5/5, typecheck/scoped lint pass |
 
 ## I07A handoff
 
@@ -397,6 +398,22 @@
   run membership and noise-quality sidecar, with exact replay and crossed-content rejection. I07
   must separately complete D-RNI-19 analytics, invocation, assessment and sentence-citation
   persistence; I10 still owns active model and rights-policy resolution.
+
+## I07B handoff
+
+- **Status:** `COMPLETE`; I07 remains `IN_PROGRESS` for concrete artifact and cited-publication
+  persistence.
+- **Files changed:** `apps/web/src/rni/composition/{artifacts,index,types}.ts`,
+  `apps/web/tests/integration/rni/composition/artifact-composition.test.ts` and coordinator
+  trackers.
+- **Behaviour:** deterministic E06 results are persisted as separate Reddit and X artifacts before
+  E07 composition. E07 receives the canonical hash returned by storage for each complete artifact;
+  the wrapper rejects any storage identity that does not equal the bytes it submitted.
+- **Verification:** complete focused I07 composition 5/5, typecheck, scoped ESLint and
+  `git diff --check` pass.
+- **Risks/handoff:** the port has no SQL adapter yet. Migration 0024 and the eventual adapter must
+  enforce run/security/platform/slice identity and exact replay. D-RNI-19 cited-synthesis inputs,
+  invocation lifecycle, assessments and ordered publication trace remain the next I07 slice.
 
 ## Coordinator notes
 
