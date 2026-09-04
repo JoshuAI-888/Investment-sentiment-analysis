@@ -2,17 +2,17 @@
 
 **Writer:** coordinator/integrator only  
 **Branch:** `feat/rni-integration-demo`  
-**Status:** `CONTRACT_PR_PENDING`
+**Status:** `READY_FOR_LANES`
 
 ## Tasks
 
 | ID | Task | Status | Acceptance evidence |
 |---|---|---|---|
-| I00 | Refresh `main`, inspect dirty state and repeat pinned clean gate | `LOCAL_PASS_CI_PENDING` | Base `e4570e3` merged at `353021d`; local gates rerun |
+| I00 | Refresh `main`, inspect dirty state and repeat pinned clean gate | `PASSED` | PR #5 CI and Vercel preview green on merged base |
 | I01 | Review and merge `fix/require-ai-model-routes-live-mode` | `MERGED` | PR #2, `09ad439` |
-| I02 | Freeze RNI contracts, fixtures, routes and migration allocation | `PASS_ON_MERGE` | Contract source SHA `9908eda` |
-| I03 | Expand CI path filters for RNI prompts/agents/evals | `PASS_ON_MERGE` | `.github/workflows/ci.yml` includes actual `tests/eval/rni` path |
-| I04 | Pin/verify pnpm 10.33.0 and build-script policy | `LOCAL_PASS_CI_PENDING` | Clean frozen install, lint, typecheck, test and build passed |
+| I02 | Freeze RNI contracts, fixtures, routes and migration allocation | `MERGED` | PR #5 merge `dd28ea2`; source SHA `9908eda` |
+| I03 | Expand CI path filters for RNI prompts/agents/evals | `MERGED` | PR #5; actual `tests/eval/rni` path triggered and passed |
+| I04 | Pin/verify pnpm 10.33.0 and build-script policy | `PASSED` | Clean frozen install and PR #5 web/scorer CI passed |
 | I05 | Add forward universe migration and 600-member ceiling | `NOT_STARTED` | Forward/clean migration tests |
 | I06 | Build FMP sync composition and minimal Settings route wiring | `NOT_STARTED` | >500 fixture + invalid-response tests |
 | I07 | Compose DATA repositories and ENGINE services | `NOT_STARTED` | Integration contract tests |
@@ -91,10 +91,11 @@
 | `f8a54c1` | Full RNI specification pack, ownership, fixture, copy/CI convergence | lint; full tests; build; copy and calculation checks |
 | `9908eda` | Frozen typed contract additions and contract cases | typecheck; contract (77 passed, 22 database-dependent skipped locally) |
 | `353021d` | Merge concurrent password-auth PR #4 while preserving both decision logs | lint; typecheck; contract; production build |
+| `dd28ea2` | PR #5 contract-freeze merge to `main` | GitHub web/scorer/eval and Vercel preview green |
 
 ## Coordinator notes
 
 - Never make another lane's code change to “save time”; return findings to that lane while its context is warm.
 - Merge sequentially even though building is parallel.
 - Update master progress after each merge or gate transition.
-- DATA/ENGINE/SURFACE must not branch until the contract source SHA is visible on `main` with green CI.
+- DATA/ENGINE/SURFACE may now branch from `dd28ea2`; the contract source SHA is on `main` with green CI.
