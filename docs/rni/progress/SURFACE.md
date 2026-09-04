@@ -72,6 +72,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | S08 correction | `PASSED` | `tsc --noEmit`; scoped eslint; contracts; build; diff check; focused Chromium | Contracts 15/15; Chromium 3/3 includes keyboard search, staged impact, responsive fit, and legacy active presentation. |
 | S09 route/model settings | `PASSED` | `node_modules/.bin/tsc --noEmit`; focused eslint; `node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism`; `node_modules/.bin/next build`; `E2E_BASE_URL=http://127.0.0.1:3011 node_modules/.bin/playwright test tests/e2e/rni/ai-route-settings.spec.ts --project=chromium` | Typecheck and lint passed; frozen contract suite passed 17/17; production build passed; Chromium passed 3/3 including future-only successor, exact replay/crossed-key rejection, unavailable Gateway failure, accessible controls, and 375px fit. |
 | S10 full SURFACE audit | `PASSED` | `node_modules/.bin/tsc --noEmit`; focused eslint; `node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism`; `node_modules/.bin/next build`; `E2E_BASE_URL=http://127.0.0.1:3013 node_modules/.bin/playwright test tests/e2e/rni --project=chromium` | Typecheck and lint passed; frozen contract suite passed 17/17; production build passed; complete RNI Chromium suite passed 22/22. Seven SURFACE routes have one H1, no scoped axe violations, and no 375px overflow; guarded unavailable Gateway is disabled with its labelled reason. |
+| final merge-order rebase | `PASSED` | rebased on integration `01a088c`; `git diff --check`; ownership path review; `node_modules/.bin/tsc --noEmit`; focused eslint; `node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism`; `node_modules/.bin/next build`; `E2E_BASE_URL=http://127.0.0.1:3014 node_modules/.bin/playwright test tests/e2e/rni --project=chromium` | All lane paths remain SURFACE-owned; frozen contract suite passed 17/17; production build passed; complete RNI Chromium suite passed 22/22. |
 | repository required gate      | `NOT_STARTED` | —                                                                                                                                                                                                                                                                                                                                                                                                        | —                                                                                                                                                                    |
 
 ## Review findings
@@ -196,20 +197,20 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 - **Result:** all seven SURFACE routes—Radar, Security Detail, Raw Data Explorer, State Matrix, Manual Refresh, Universe Settings, and AI Route Settings—have one primary heading, no scoped axe violations, and no document overflow at 375px. The audit corrected Security Detail’s H1 → H3 hierarchy to H1 → H2 → H3. A dynamic, runtime-guarded fixture route verifies that an unavailable Gateway radio is disabled and describes its unavailable reason; it cannot render outside fixture mode.
 - **Verification:** typecheck, focused lint, frozen contract tests (17/17), production build, and the complete RNI Chromium suite (22/22) passed. The browser audit covers scoped axe, headings, responsive fit, and the unavailable-Gateway label; existing focused flows continue to cover citations, source separation, state honesty, idempotency, and Settings mutation semantics.
 - **Risk:** UI remains fixture-composed until I08 supplies authenticated API/CSRF composition and I10 supplies live capability checks, all five task mappings, and budget enforcement. D-RNI-21 model mappings remain server-resolved; SURFACE displays only the frozen resolved identities.
-- **Handoff:** coordinator accepted S10 at `c68980b`; the SURFACE lane is ready for merge and remains unmerged. No S10 shared contract, API, migration, navigation, or deployment files changed.
+- **Handoff:** coordinator accepted S10 at `c68980b`; final merge-order rebase on `01a088c` reran all checks successfully. The SURFACE lane is ready for merge and remains unmerged. No S10 shared contract, API, migration, navigation, or deployment files changed.
 
 ## Handoff
 
 ```text
 RNI LANE     SURFACE
 BRANCH       feat/rni-surface-demo
-BASE SHA     87742d0
+BASE SHA     01a088c
 STATUS       READY_FOR_MERGE; S01–S10 accepted, unmerged
 TASKS        S01–S10 accepted; await DATA → ENGINE → SURFACE merge order
 TESTS        typecheck: pass; focused lint: pass; RNI contract: 17 pass; production build: pass; complete RNI Chromium: 22 pass
 CONTRACT     CR-SURFACE-01–06 accepted; CR-SURFACE-05 resolved by D-RNI-18; CR-SURFACE-06 resolved by D-RNI-20
 RISKS        Fixture-only composition; I08 owns live universe/API composition and I09 owns live refresh composition; I10 owns live AI route capability/model execution, all five mappings, and budget enforcement
 FILES        apps/web/fixtures/rni-ui/read-service.ts; apps/web/app/(rni)/rni/settings/ai-route/page.tsx; apps/web/app/(rni)/rni/settings/ai-route/fixture/page.tsx; apps/web/src/rni/ui/AiRouteSettings.tsx; apps/web/src/rni/ui/AiRouteSettingsFixtureHarness.tsx; apps/web/src/rni/ui/SecurityDetail.tsx; apps/web/tests/e2e/rni/ai-route-settings.spec.ts; apps/web/tests/e2e/rni/surface-audit.spec.ts; docs/rni/progress/SURFACE.md
-COMMITS      S07 401d2f7, 63d42d8, fb58989, f7e481e; S08 e12472d; S09 8d1d943; S10 c68980b; merge-state CURRENT
+COMMITS      accepted S07 401d2f7, 63d42d8, fb58989, f7e481e; S08 e12472d; S09 8d1d943; S10 c68980b; final rebased code c224c78; tracker CURRENT
 DEMO PROOF   `/rni/settings/ai-route` shows Direct default and resolved models, then an accessible Gateway intent creates fixture-config-v2 for future runs while existing lineage remains immutable; fixture-only unavailable Gateway states why the radio is disabled
 ```
