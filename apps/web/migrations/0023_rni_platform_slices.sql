@@ -104,3 +104,58 @@ create trigger rni_platform_slice_content_immutable
 
 comment on table rni_platform_slice is
   'Exactly one Reddit and one X slice per run. Lifecycle, counts and freshness change independently; content identity and coverage disclosure remain immutable.';
+
+create or replace function rni_summary_sections_valid(sections jsonb) returns boolean
+language sql immutable strict as $$
+  select
+    jsonb_typeof(sections) = 'array'
+    and jsonb_array_length(sections) = 3
+    and (
+      select
+        count(distinct section ->> 'heading') = 3
+        and bool_and(
+          jsonb_typeof(section) = 'object'
+          and section ->> 'heading' in ('Reddit sentiment', 'X sentiment', 'Combined summary')
+          and section ->> 'status' in ('complete', 'partial', 'insufficient')
+          and jsonb_typeof(section -> 'text') = 'string'
+          and length(section ->> 'text') > 0
+          and jsonb_typeof(section -> 'citationIds') = 'array'
+        )
+      from jsonb_array_elements(sections) as section
+    )
+$$;
+
+create table rni_combined_summary (
+  id                       uuid        primary key default gen_random_uuid(),
+  run_id                   uuid        not null references rni_run (id),
+  security_id              uuid        not null references security (id),
+  reddit_platform          text        not null default 'reddit',
+  reddit_platform_slice_id uuid        not null,
+  x_platform               text        not null default 'x',
+  x_platform_slice_id      uuid        not null,
+  status                   text        not null,
+  sections                 jsonb       not null,
+  created_at               timestamptz not null,
+
+  constraint rni_combined_summary_run_security_unique unique (run_id, security_id),
+  constraint rni_combined_summary_reddit_platform_check check (reddit_platform = 'reddit'),
+  constraint rni_combined_summary_x_platform_check check (x_platform = 'x'),
+  constraint rni_combined_summary_distinct_slices_check
+    check (reddit_platform_slice_id <> x_platform_slice_id),
+  constraint rni_combined_summary_reddit_slice_fk
+    foreign key (reddit_platform_slice_id, run_id, reddit_platform)
+    references rni_platform_slice (id, run_id, platform),
+  constraint rni_combined_summary_x_slice_fk
+    foreign key (x_platform_slice_id, run_id, x_platform)
+    references rni_platform_slice (id, run_id, platform),
+  constraint rni_combined_summary_status_check
+    check (status in ('complete', 'partial', 'insufficient')),
+  constraint rni_combined_summary_sections_check check (rni_summary_sections_valid(sections))
+);
+
+create trigger rni_combined_summary_append_only
+  before update or delete on rni_combined_summary
+  for each row execute function reject_mutation();
+
+comment on table rni_combined_summary is
+  'Immutable cross-source summary referencing one Reddit and one X slice. Component slice facts are never copied over or mutated.';
