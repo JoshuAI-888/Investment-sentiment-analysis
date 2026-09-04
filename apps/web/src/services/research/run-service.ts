@@ -33,7 +33,9 @@ import {
   findResearchRun,
   listResearchEvents,
   listClaimLedgerForRun,
+  sumCostEventForResearchRun,
   retractResearchRun as retractResearchRunRepo,
+  RunNotRetractableError,
   type NewResearchRun,
 } from '@/repositories/research';
 import type { ResearchRun, ResearchEvent, ClaimLedgerEntry } from '@/contracts/research';
@@ -177,10 +179,18 @@ function outcomeToPersisted(outcome: RunOutcome): {
   }
 }
 
-export async function startResearchRun(input: StartResearchRunInput): Promise<StartResearchRunResult> {
+/**
+ * Phase 1: creates the `queued` run row and nothing else. Split out from `executeResearchRun`
+ * so a route handler can respond with the run id immediately (Tier A1: "first progress event
+ * < 1 s") and hand the actual execution to `next/server`'s `after()` — see
+ * `app/api/research/route.ts`. `startResearchRun` below composes both phases synchronously for
+ * callers (tests, fixture-mode scripts) that want the whole thing to finish before it returns.
+ */
+export async function createQueuedResearchRun(
+  input: Pick<StartResearchRunInput, 'userId' | 'securityId' | 'question' | 'db' | 'clock'>,
+): Promise<{ readonly run: ResearchRun; readonly security: Security }> {
   const db = input.db ?? getPool();
   const clock = input.clock ?? (() => new Date());
-  const budgets = input.budgets ?? DEFAULT_STAGE_BUDGETS_MS;
 
   const security = await findSecurityById(input.securityId, db);
   if (security === null) {
@@ -198,6 +208,18 @@ export async function startResearchRun(input: StartResearchRunInput): Promise<St
     toolManifest: { classify: true, synthesis: true, verify: true },
   };
   const run = await insertResearchRun(newRun, db);
+  return { run, security };
+}
+
+/** Phase 2: drives the state machine for an already-`queued` run and persists every outcome. */
+export async function executeResearchRun(
+  run: ResearchRun,
+  security: Security,
+  input: StartResearchRunInput,
+): Promise<StartResearchRunResult> {
+  const db = input.db ?? getPool();
+  const clock = input.clock ?? (() => new Date());
+  const budgets = input.budgets ?? DEFAULT_STAGE_BUDGETS_MS;
 
   let sequence = 0;
   const emit = async (event: { readonly eventType: string; readonly label: string; readonly payload: unknown }): Promise<void> => {
@@ -256,12 +278,14 @@ export async function startResearchRun(input: StartResearchRunInput): Promise<St
   return { run: finalRun, outcome };
 }
 
+/** Both phases, synchronously — for tests and any caller that wants to await the full run. */
+export async function startResearchRun(input: StartResearchRunInput): Promise<StartResearchRunResult> {
+  const { run, security } = await createQueuedResearchRun(input);
+  return executeResearchRun(run, security, input);
+}
+
 async function totalSpendForRun(runId: string, db: Queryable): Promise<string> {
-  const { rows } = await db.query<{ total: string | null }>(
-    `select coalesce(sum(cost_usd), 0)::text as total from cost_event where research_run_id = $1`,
-    [runId],
-  );
-  const total = rows[0]?.total ?? '0';
+  const total = await sumCostEventForResearchRun(runId, db);
   return new D(total).toFixed(6);
 }
 
@@ -287,4 +311,18 @@ export type RetractResearchRunInput = { readonly runId: string; readonly reason:
 /** Thin wrapper naming the F-20 step this is — "record" — the repository does identify/retract/record atomically; "notify" is every future read (`reloadResearchRun`) surfacing the retracted status. */
 export async function retractResearchRun(input: RetractResearchRunInput): Promise<ResearchRun> {
   return retractResearchRunRepo({ id: input.runId, reason: input.reason, actorId: input.actorId });
+}
+
+/** Re-exported so `app/` (which may not import `repositories/` directly, `02-ARCHITECTURE-CONTRACTS.md` §3) can distinguish "not retractable" from any other error. */
+export { RunNotRetractableError };
+
+// ── Live event tail (for the SSE route — `app/` may not import `repositories/` directly) ────────
+
+export async function listRunEventsSince(
+  runId: string,
+  afterSequence: number,
+  db: Queryable = getPool(),
+): Promise<readonly ResearchEvent[]> {
+  const all = await listResearchEvents(runId, db);
+  return all.filter((event) => event.sequence > afterSequence);
 }

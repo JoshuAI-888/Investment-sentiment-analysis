@@ -307,3 +307,27 @@ export async function listClaimLedgerForRun(
   );
   return rows.map((row) => claimLedgerEntry.parse(camelizeRow(row as Row)));
 }
+
+// ── cost_event, read only ────────────────────────────────────────────────────────────────────
+
+/**
+ * Total recorded spend for one run, summed off `cost_event.research_run_id`
+ * (`repositories/cost.ts` — SPINE-owned — has no run-scoped sum today; `insertCostEvent`/
+ * `spendInWindow` are the only exports and neither answers "how much did *this* run cost", so
+ * `services/research/run-service.ts` needs this and cannot reach `cost_event` itself —
+ * `no-sql-outside-repositories` forbids SQL outside `repositories/` regardless of which table it
+ * touches). Kept here rather than in `cost.ts` for the identical reason the rest of this file
+ * exists: this feature does not edit another lane's repository file. Read-only; nothing here
+ * writes `cost_event` — that stays `researchCostSinkOverCostEvent` (`services/research/
+ * model-deps.ts`) calling the existing `insertCostEvent`.
+ */
+export async function sumCostEventForResearchRun(
+  runId: string,
+  db: Queryable = getPool(),
+): Promise<string> {
+  const { rows } = await db.query<{ total: string | null }>(
+    `select coalesce(sum(cost_usd), 0)::text as total from cost_event where research_run_id = $1`,
+    [runId],
+  );
+  return rows[0]?.total ?? '0';
+}
