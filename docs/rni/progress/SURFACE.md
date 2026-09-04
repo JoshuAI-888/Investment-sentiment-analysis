@@ -3,7 +3,7 @@
 **Writer:** SURFACE builder only  
 **Branch:** `feat/rni-surface-demo`  
 **Depends on:** merged RNI contract-freeze SHA; fixture-backed `RniReadService`  
-**Status:** `IN_PROGRESS` — S02 Retail Radar ready for coordinator review; S03–S10 not started
+**Status:** `IN_PROGRESS` — S03 security detail blocked on a frozen read-boundary addition
 
 ## Owned paths
 
@@ -11,18 +11,18 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 
 ## Tasks
 
-| ID  | Task                                                             | Status             | Acceptance evidence                        |
-| --- | ---------------------------------------------------------------- | ------------------ | ------------------------------------------ |
-| S01 | Typed fixture `RniReadService` and state catalogue               | `READY_FOR_MERGE`  | Citation resolution contract tests         |
-| S02 | Retail Radar with Reddit/X/combined columns                      | `READY_FOR_REVIEW` | Desktop/narrow/keyboard tests              |
-| S03 | Security detail and four dimensions per platform                 | `NOT_STARTED`      | NVDA and divergence fixtures               |
-| S04 | Evidence drawer with platform-labelled canonical citations       | `NOT_STARTED`      | Citation navigation e2e                    |
-| S05 | Raw data/lineage explorer                                        | `NOT_STARTED`      | Summary-to-source traversal e2e            |
-| S06 | Per-platform freshness, run progress and partial/failure states  | `NOT_STARTED`      | State-matrix visual/e2e tests              |
-| S07 | Manual ticker/full refresh controls and double-submit prevention | `NOT_STARTED`      | Idempotency UI test                        |
-| S08 | S&P 500 search, NVDA default and universe Settings components    | `NOT_STARTED`      | Any-member search + staged preview fixture |
-| S09 | Route/model display and Direct/Gateway future-run setting        | `NOT_STARTED`      | Setting/history immutability test          |
-| S10 | Accessibility, responsive and full SURFACE handoff               | `NOT_STARTED`      | Required audits and lane report            |
+| ID  | Task                                                             | Status            | Acceptance evidence                        |
+| --- | ---------------------------------------------------------------- | ----------------- | ------------------------------------------ |
+| S01 | Typed fixture `RniReadService` and state catalogue               | `READY_FOR_MERGE` | Citation resolution contract tests         |
+| S02 | Retail Radar with Reddit/X/combined columns                      | `READY_FOR_MERGE` | Coordinator accepted `c4899b8`             |
+| S03 | Security detail and four dimensions per platform                 | `IN_PROGRESS`     | NVDA and divergence fixtures               |
+| S04 | Evidence drawer with platform-labelled canonical citations       | `NOT_STARTED`     | Citation navigation e2e                    |
+| S05 | Raw data/lineage explorer                                        | `NOT_STARTED`     | Summary-to-source traversal e2e            |
+| S06 | Per-platform freshness, run progress and partial/failure states  | `NOT_STARTED`     | State-matrix visual/e2e tests              |
+| S07 | Manual ticker/full refresh controls and double-submit prevention | `NOT_STARTED`     | Idempotency UI test                        |
+| S08 | S&P 500 search, NVDA default and universe Settings components    | `NOT_STARTED`     | Any-member search + staged preview fixture |
+| S09 | Route/model display and Direct/Gateway future-run setting        | `NOT_STARTED`     | Setting/history immutability test          |
+| S10 | Accessibility, responsive and full SURFACE handoff               | `NOT_STARTED`     | Required audits and lane report            |
 
 ## Required invariants
 
@@ -39,10 +39,11 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 
 ## Contract requests
 
-| ID            | Status     | Request                                                                                                                                                                                                                         | Impact                                                                            |
-| ------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| CR-SURFACE-01 | `ACCEPTED` | I02B / D-RNI-12 (`264ea9c`) adds `getCitation(citationId)` returning frozen `RniCitation`. Consumers must resolve citation ID → citation source ID → bounded evidence, never equate citation and source IDs.                    | S01 must implement the additive method; this unblocks S04’s evidence-drawer flow. |
-| CR-SURFACE-02 | `ACCEPTED` | D-RNI-13 / `84dca87` adds frozen `getRadarPage` query/page schemas and `referenceRadarPage`. The page has canonical ticker/company/exchange identity plus separate Reddit, X and combined cells; no pooled source count exists. | S02 may use only this frozen response shape and fixture.                          |
+| ID            | Status     | Request                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Impact                                                                            |
+| ------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| CR-SURFACE-01 | `ACCEPTED` | I02B / D-RNI-12 (`264ea9c`) adds `getCitation(citationId)` returning frozen `RniCitation`. Consumers must resolve citation ID → citation source ID → bounded evidence, never equate citation and source IDs.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | S01 must implement the additive method; this unblocks S04’s evidence-drawer flow. |
+| CR-SURFACE-02 | `ACCEPTED` | D-RNI-13 / `84dca87` adds frozen `getRadarPage` query/page schemas and `referenceRadarPage`. The page has canonical ticker/company/exchange identity plus separate Reddit, X and combined cells; no pooled source count exists.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | S02 may use only this frozen response shape and fixture.                          |
+| CR-SURFACE-03 | `OPEN`     | **Current behaviour:** frozen `RniReadService` exposes Radar cells and a three-section combined summary, but no per-security/per-platform `RniDimensionAssignment` read. **Requested change:** add a bounded security-detail read returning canonical security identity, separate Reddit and X dimension assignments for the four required keys, per-platform status/freshness/coverage/confidence, and citation IDs. **Justification:** S03 cannot truthfully render four dimensions per platform from the current read boundary. **Affected lanes:** SURFACE, DATA, ENGINE, INTEGRATION. **Compatibility:** additive read method/schema only; keep Radar unchanged. **Recommended acceptance:** NVDA fixture returns all four dimensions separately for Reddit and X, preserving divergent stances and citation IDs, and rejects missing/pooled platform data. | Blocks S03’s dimension detail while leaving S04–S10 unchanged.                    |
 
 ## Test evidence
 
@@ -67,9 +68,10 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 
 ## Open risks/blockers
 
-| Since      | Status | Blocker                                                                                                                                        | Owner                 | Attempted mitigation                                                                | Next check                           |
-| ---------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------- | ------------------------------------ |
-| 2026-09-05 | `OPEN` | Fixture-only `/rni` composition and static citation anchors require the integration read service and S04 evidence drawer before live-data use. | INTEGRATION / SURFACE | S02 uses only frozen `RniReadService.getRadarPage` and keeps every source distinct. | S04 / integration composition review |
+| Since      | Status    | Blocker                                                                                                                                        | Owner                       | Attempted mitigation                                                                     | Next check                               |
+| ---------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------- |
+| 2026-09-05 | `OPEN`    | Fixture-only `/rni` composition and static citation anchors require the integration read service and S04 evidence drawer before live-data use. | INTEGRATION / SURFACE       | S02 uses only frozen `RniReadService.getRadarPage` and keeps every source distinct.      | S04 / integration composition review     |
+| 2026-09-05 | `BLOCKED` | S03 needs four per-platform dimension assignments, which the frozen `RniReadService` cannot read.                                              | DATA / ENGINE / INTEGRATION | Recorded CR-SURFACE-03; no out-of-contract UI fixture or direct repository access added. | Coordinator disposition of CR-SURFACE-03 |
 
 ## Commits
 
@@ -93,7 +95,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 - **Result:** `/rni` reads only frozen `getRadarPage` fixture data and renders ticker, company, exchange, individually labelled Reddit/X cells, and the derived combined cell. NVDA makes Reddit/X divergence explicit; AMD makes X unavailability and combined partial status explicit. No source counts are pooled or substituted.
 - **Verification:** typecheck, focused lint, frozen contract tests (11/11), and production build passed. Chromium passed the exact focused command above (4/4), including desktop identity/divergence and 375px keyboard/no-overflow checks.
 - **Risk:** the route remains fixture-composed until integration injects a live `RniReadService`; citation anchors provide source-labelled links but S04 must add citation → source → evidence navigation.
-- **Handoff:** ready for coordinator review. S03 remains `NOT_STARTED`.
+- **Handoff:** coordinator accepted S02 at `c4899b8`; S03 is now `IN_PROGRESS` pending CR-SURFACE-03.
 
 ## Handoff
 
@@ -101,11 +103,11 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 RNI LANE     SURFACE
 BRANCH       feat/rni-surface-demo
 BASE SHA     4ab744e
-STATUS       PARTIAL
-TASKS        S01 ready for merge; S02 ready for coordinator review; S03–S10 not started
+STATUS       BLOCKED
+TASKS        S01 and S02 ready for merge; S03 in progress but blocked on CR-SURFACE-03; S04–S10 not started
 TESTS        typecheck: pass; focused lint: pass; RNI contract: 11 pass; production build: pass; Chromium Playwright: 4 pass
-CONTRACT     CR-SURFACE-01 accepted at 264ea9c; CR-SURFACE-02 accepted at 84dca87
-RISKS        S04 must replace static citation anchors with citation → source → evidence navigation; integration must inject the live read service
+CONTRACT     CR-SURFACE-01 accepted at 264ea9c; CR-SURFACE-02 accepted at 84dca87; CR-SURFACE-03 open
+RISKS        S03 needs an additive detail read for four per-platform dimensions; S04 must replace static citation anchors with citation → source → evidence navigation; integration must inject the live read service
 FILES        apps/web/fixtures/rni-ui/read-service.ts; apps/web/app/(rni)/rni/page.tsx; apps/web/src/rni/ui/RetailRadar.tsx; apps/web/tests/e2e/rni/read-service.spec.ts; apps/web/tests/e2e/rni/radar.spec.ts; docs/rni/progress/SURFACE.md
 COMMITS      52652e3; f73a17a; CURRENT (S02 task commit; see branch HEAD)
 DEMO PROOF   `/rni` fixture Radar shows NVDA — NVIDIA Corporation with Reddit bullish / X bearish / divergent and AMD — Advanced Micro Devices with X unavailable / combined partial; 375px cards and keyboard citation focus pass
