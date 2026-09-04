@@ -222,7 +222,7 @@
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
 | ENGINE | `E09_CHANGES_REQUESTED` | yes at `bdb23ce`; corrected E09 handoff `c4668b3` | coordinator typecheck/lint, focused router 17/17 and E08 regression 46/46; independent correction review returned ER-15–18 | yes | E01–E08 accepted; ER-14 closed, but E09 must preserve exact historical prompt bytes, make delimiters unspoofable, unify classifier/dispatched hashes and retain failed-call telemetry; E10 not started |
-| SURFACE | `S09_UNBLOCKED` | yes at `82ed8de`; must rebase I02H | coordinator I02H typecheck/lint, RNI contract 17/17 and full contract 87/22 skipped | yes | CR-SURFACE-06 accepted as D-RNI-20; S01–S08 accepted; S09 may resume after rebase |
+| SURFACE | `S09_ACCEPTED` | yes at `bdb23ce`; rebase current integration before S10 | coordinator typecheck/lint, RNI contract 17/17, production build and Chromium 3/3; independent review PASS | yes | S01–S09 accepted; S09 is future-only and D-RNI-21-compatible; S10 not started |
 
 ## Live/deployment gates
 
@@ -358,6 +358,7 @@
 | `CURRENT` | Review ENGINE E09 model routing and prompt registry | `a6177d3` descends `f4f7318`; typecheck; scoped lint; focused router plus E08 regression 57/57; branch diff check; independent adversarial review CHANGES REQUESTED on ER-14–17 |
 | `CURRENT` | Lock owner-approved RNI model and AI-spend baseline as D-RNI-21 | Direct default; Terra/low discovery/relationship/classification; Sol/low verifier/challenger; Gateway parity without silent fallback; USD 2/25/50 hard and USD 300 warning/500 monthly stop; documentation validation |
 | `CURRENT` | Re-review corrected ENGINE E09 routing | `c4668b3` descends `bdb23ce`; coordinator focused router 17/17, E08 regression 46/46, typecheck/scoped lint/diff pass; ER-14 closed, independent adversarial review CHANGES REQUESTED on ER-15–18 |
+| `CURRENT` | Accept SURFACE S09 future-run AI route settings | `8d1d943` descends `bdb23ce`; coordinator typecheck/lint, RNI contract 17/17, production build and Chromium 3/3; independent adversarial review PASS; S10 remains |
 
 ## Coordinator notes
 
@@ -429,6 +430,11 @@
   for unknown/unready evidence, and replays from canonical snapshots. Focused 21/21 plus
   typecheck, scoped lint and branch diff check pass; E08 may begin after rebasing this coordinator
   record.
+- SURFACE S09 is accepted at `8d1d943`: the fixture-backed Settings route displays server-resolved
+  task lineage, exposes Direct/Gateway availability, and creates only a future successor config
+  while preserving historical run lineage. Coordinator and independent review found no actionable
+  issue; Chromium passes 3/3. The lane must remove its uncommitted `pnpm-workspace.yaml` mutation,
+  rebase current integration and complete S10 before the SURFACE merge gate.
 
 ## I02F handoff
 
