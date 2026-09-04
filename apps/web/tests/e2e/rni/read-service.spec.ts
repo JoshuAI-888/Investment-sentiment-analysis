@@ -9,6 +9,7 @@ import {
   rniCombinedSummary,
   rniPlatformSlice,
   rniRun,
+  rniSecurityDetail,
   rniSourceItem,
 } from '@/rni/contracts';
 import { comparativeSource, rniFixtureIds } from '@/rni/testing/reference-fixtures';
@@ -73,6 +74,32 @@ test.describe('RNI fixture read service', () => {
     });
     expect(firstRadarPage.rows.map((row) => row.security.ticker)).toEqual(['NVDA']);
     expect(secondRadarPage.rows.map((row) => row.security.ticker)).toEqual(['AMD']);
+
+    const detail = await partialService.getSecurityDetail(rniFixtureIds.run, rniFixtureIds.nvda);
+    expect(rniSecurityDetail.parse(detail)).toEqual(
+      rniUiFixtureCatalogue.partial.securityDetailsBySecurityId[rniFixtureIds.nvda],
+    );
+    expect(detail.reddit.dimensions.map((dimension) => dimension.dimension)).toEqual([
+      'company_fundamentals',
+      'market_trading',
+      'catalyst_event',
+      'retail_narrative',
+    ]);
+    expect(detail.x.dimensions.map((dimension) => dimension.dimension)).toEqual(
+      detail.reddit.dimensions.map((dimension) => dimension.dimension),
+    );
+    expect(
+      detail.reddit.dimensions.find((dimension) => dimension.dimension === 'market_trading')
+        ?.stance,
+    ).toBe('bullish');
+    expect(
+      detail.x.dimensions.find((dimension) => dimension.dimension === 'market_trading')?.stance,
+    ).toBe('bearish');
+    for (const platform of [detail.reddit, detail.x]) {
+      for (const citationId of platform.dimensions.flatMap((dimension) => dimension.citationIds)) {
+        expect((await partialService.getCitation(citationId)).platform).toBe(platform.platform);
+      }
+    }
   });
 
   test('returns defensive copies through only the frozen read service methods', async () => {
@@ -82,8 +109,24 @@ test.describe('RNI fixture read service', () => {
     const second = await service.getEvidence(comparativeSource.id);
 
     expect(second.title).toBe(comparativeSource.title);
+    const partialService = createFixtureRniReadService('partial');
+    const firstDetail = await partialService.getSecurityDetail(
+      rniFixtureIds.run,
+      rniFixtureIds.nvda,
+    );
+    firstDetail.reddit.dimensions[0]!.rationale = 'Mutated in a component';
+    const secondDetail = await partialService.getSecurityDetail(
+      rniFixtureIds.run,
+      rniFixtureIds.nvda,
+    );
+    expect(secondDetail.reddit.dimensions[0]!.rationale).not.toBe('Mutated in a component');
     await expect(service.getRun('00000000-0000-4000-8000-000000000099')).rejects.toEqual(
       new RniFixtureNotFoundError('run', '00000000-0000-4000-8000-000000000099'),
+    );
+    await expect(
+      service.getSecurityDetail(rniFixtureIds.run, '00000000-0000-4000-8000-000000000099'),
+    ).rejects.toEqual(
+      new RniFixtureNotFoundError('security detail', '00000000-0000-4000-8000-000000000099'),
     );
     await expect(
       service.getSecuritySummary(rniFixtureIds.run, '00000000-0000-4000-8000-000000000099'),
