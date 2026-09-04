@@ -1,0 +1,392 @@
+/**
+ * F11 §4.5 / `05-TEST-STRATEGY.md` §6 — the eight deterministic verifier checks.
+ *
+ * "These run on every research answer in production, not just in tests. Each has unit tests."
+ * Every check here is a pure function over already-fetched data (the evidence pack, the
+ * metrics available to the run, and the run's own declared window) — no I/O, no model call, no
+ * clock read beyond what is passed in. That is what makes them fast enough to run on every
+ * answer, and what makes "each running on every production answer" true rather than aspirational
+ * (F11 §6 DoD item 4).
+ *
+ * A failure of *any* check means the run's prose is withheld (`orchestrator.ts` maps this to
+ * `verification_failed`) — never a partial publish. See the module's own docs for why a caught
+ * violation is treated identically to a verifier error/timeout for that purpose.
+ */
+import type { SocialAxis } from '@/contracts/primitives';
+import type { EvidencePack } from '@/contracts/evidence-pack';
+import type { FlatClaim } from '../synthesis';
+import type { MetricRef } from '../ports';
+
+export type VerifierCheckId =
+  | 'numeric_matches_metric'
+  | 'citation_resolves'
+  | 'citation_within_window'
+  | 'no_banned_vocabulary'
+  | 'stance_sample_floor'
+  | 'ticker_in_subject_set'
+  | 'date_consistency'
+  | 'freshness_matches_oldest';
+
+export type VerifierCheckResult = {
+  id: VerifierCheckId;
+  passed: boolean;
+  /** Empty when `passed`. One entry per violation found, human-readable. */
+  failures: readonly string[];
+};
+
+export type VerifierContext = {
+  pack: EvidencePack;
+  metrics: readonly MetricRef[];
+  runWindow: { from: Date; to: Date };
+  /** Upper-cased ticker symbols this run is allowed to talk about (check 6). */
+  subjectSymbols: ReadonlySet<string>;
+  /** F10 §4.5's per-axis "used" counts — what check 5's `n` reads. */
+  sampleSizeByAxis: Readonly<Record<SocialAxis, number>>;
+  /** F11 §4.5 check 5: "no stance asserted where n < 5." */
+  minStanceSample: number;
+  /** The synthesis output's own `statedFreshnessAsOf`, already parsed (check 8). */
+  statedFreshnessAsOf: Date;
+};
+
+// ── Shared text scanning helpers ──────────────────────────────────────────────────────────────
+
+const ISO_DATE = /\b\d{4}-\d{2}-\d{2}\b/g;
+const NUMERIC_TOKEN = /[+-]?\$?\d[\d,]*(?:\.\d+)?%?/g;
+const CASHTAG = /\$([A-Z]{1,5})\b/g;
+/** 2–5 uppercase letters — a ticker is at least two characters (`security.symbol`'s own convention). */
+const BARE_TICKER_TOKEN = /\b[A-Z]{2,5}\b/g;
+
+/**
+ * Near-universal non-ticker acronyms, excluded from bare-token ticker detection (check 6,
+ * lane-review finding 6) so ordinary market prose ("the CEO announced...", "in Q3...") does not
+ * fail verification on every answer. Deliberately **not** excluding `AI`/`ON`/`IT`/`ALL` —
+ * `05-TEST-STRATEGY.md` §4 names these as the system's own ambiguous-ticker test fixtures
+ * precisely because they are real, collision-prone tickers in this universe; special-casing them
+ * away here would undo the exact scrutiny those fixtures exist to exercise.
+ */
+const COMMON_NON_TICKER_ACRONYMS: ReadonlySet<string> = new Set([
+  'CEO', 'CFO', 'CTO', 'COO', 'IPO', 'GDP', 'EPS', 'ETF', 'SEC', 'GAAP',
+  'API', 'US', 'UK', 'EU', 'Q1', 'Q2', 'Q3', 'Q4', 'YOY', 'QOQ',
+]);
+
+/** Strips currency/thousands formatting only — `%`, sign and decimal places are load-bearing for an exact match. */
+function normalizeNumeric(token: string): string {
+  return token.replace(/[$,]/g, '');
+}
+
+/** Replaces every ISO date with a placeholder so its digits are never re-read as a bare number (check 1). */
+function maskDates(text: string): string {
+  return text.replace(ISO_DATE, ' DATEMASK ');
+}
+
+function extractNumericTokens(text: string): readonly string[] {
+  const masked = maskDates(text);
+  return [...masked.matchAll(NUMERIC_TOKEN)].map((match) => match[0]);
+}
+
+function extractDates(text: string): readonly string[] {
+  return [...text.matchAll(ISO_DATE)].map((match) => match[0]);
+}
+
+function extractCashtags(text: string): readonly string[] {
+  return [...text.matchAll(CASHTAG)].map((match) => (match[1] as string).toUpperCase());
+}
+
+/**
+ * Bare, non-`$`-prefixed ticker-shaped tokens — check 6 (lane-review finding 6: the synthesis
+ * prompt never asks for cashtag formatting, so "AMD's guidance dragged NVDA down" passed
+ * unconditionally). Cashtag matches are excluded here so a `$NVDA` is not double-reported as
+ * both a cashtag and a bare token.
+ */
+function extractBareTickerTokens(text: string): readonly string[] {
+  const cashtagged = new Set(extractCashtags(text));
+  return [...text.matchAll(BARE_TICKER_TOKEN)]
+    .map((match) => match[0])
+    .filter((token) => !cashtagged.has(token) && !COMMON_NON_TICKER_ACRONYMS.has(token));
+}
+
+function sameUtcDay(a: Date, b: Date): boolean {
+  return a.toISOString().slice(0, 10) === b.toISOString().slice(0, 10);
+}
+
+/**
+ * Independent, text-based backstop for check 5 (lane-review finding 5): the model's own
+ * `assertsStanceForAxis` field is self-reported by the exact system being checked, and nothing
+ * forces it to be set — "the observed Reddit sample leans clearly bullish" with
+ * `assertsStanceForAxis: null` previously sailed through unexamined. An axis is treated as
+ * stance-asserted when its name is mentioned **and** the claim uses stance vocabulary in the
+ * same sentence; `bullish`/`bearish` are `contracts/primitives.ts`'s own `stanceLabel` words,
+ * so a model asserting a directional stance is using this exact vocabulary by construction.
+ */
+const AXIS_MENTION: Readonly<Record<SocialAxis, RegExp>> = {
+  reddit: /\breddit\b|\bsubreddit\b/i,
+  x: /\b(on x|x sample|x posts?|x users?|twitter)\b/i,
+  substack: /\bsubstack\b/i,
+};
+const STANCE_LANGUAGE = /\b(bullish|bearish|neutral sentiment|positive sentiment|negative sentiment|mixed sentiment)\b/i;
+
+function detectedStanceAxes(text: string): readonly SocialAxis[] {
+  const axes: SocialAxis[] = [];
+  if (!STANCE_LANGUAGE.test(text)) return axes;
+  for (const axis of ['reddit', 'x', 'substack'] as const) {
+    if (AXIS_MENTION[axis].test(text)) axes.push(axis);
+  }
+  return axes;
+}
+
+// ── Check 1 — numeric tokens string-match a stored metric at display rounding ─────────────────
+
+export function checkNumericMatchesMetric(claims: readonly FlatClaim[], ctx: VerifierContext): VerifierCheckResult {
+  const displayValues = new Set(ctx.metrics.map((metric) => normalizeNumeric(metric.displayValue)));
+  const failures: string[] = [];
+
+  for (const claim of claims) {
+    for (const token of extractNumericTokens(claim.text)) {
+      if (!displayValues.has(normalizeNumeric(token))) {
+        failures.push(`[${claim.section}] numeric token "${token}" matches no stored metric's display value`);
+      }
+    }
+  }
+
+  return { id: 'numeric_matches_metric', passed: failures.length === 0, failures };
+}
+
+// ── Check 2 — every citation marker resolves to an evidence_item in this run's pack ───────────
+
+export function checkCitationResolves(claims: readonly FlatClaim[], ctx: VerifierContext): VerifierCheckResult {
+  const knownIds = new Set(ctx.pack.items.map((item) => item.item.id));
+  const failures: string[] = [];
+
+  for (const claim of claims) {
+    for (const evidenceId of claim.evidenceIds) {
+      if (!knownIds.has(evidenceId)) {
+        failures.push(`[${claim.section}] cites evidence id ${evidenceId}, not present in this run's pack`);
+      }
+    }
+  }
+
+  return { id: 'citation_resolves', passed: failures.length === 0, failures };
+}
+
+// ── Check 3 — every cited item's ingestedAt is inside the run's declared window ───────────────
+// (the merged `evidenceItem` shape has no `retrievedAt` field — F10 §4.4/D-42 supersede the
+//  older ARCH §4.4 sketch that named one; `ingestedAt`, "when we learned it", is what this
+//  check reads: 02-ARCHITECTURE-CONTRACTS.md §5's bitemporal convention.)
+
+export function checkCitationWithinWindow(claims: readonly FlatClaim[], ctx: VerifierContext): VerifierCheckResult {
+  const itemById = new Map(ctx.pack.items.map((item) => [item.item.id, item.item]));
+  const failures: string[] = [];
+
+  for (const claim of claims) {
+    for (const evidenceId of claim.evidenceIds) {
+      const item = itemById.get(evidenceId);
+      if (item === undefined) continue; // reported by check 2
+      const ingestedAt = item.ingestedAt.getTime();
+      if (ingestedAt < ctx.runWindow.from.getTime() || ingestedAt > ctx.runWindow.to.getTime()) {
+        failures.push(
+          `[${claim.section}] evidence ${evidenceId} was ingested at ${item.ingestedAt.toISOString()}, outside the run's declared window`,
+        );
+      }
+    }
+  }
+
+  return { id: 'citation_within_window', passed: failures.length === 0, failures };
+}
+
+// ── Check 4 — no banned vocabulary ─────────────────────────────────────────────────────────────
+
+/**
+ * F11 §4.4's hard constraints ("no recommendations... no probability language") plus this
+ * package's own banned list (`04-BUILD-LOOP.md` §5's self-review checklist: "signal", "strong
+ * buy", "risk-on", "consensus", "Reddit sentiment"). Phrases, not single common words — "hold"
+ * or "buy" alone appear constantly in ordinary market description ("holders", "buying
+ * pressure") and a bare-word ban would cry wolf on its first real answer.
+ */
+/**
+ * Widened per lane-review finding 7: the original set of exact `\b`-anchored phrases missed
+ * plural, hyphenated and irregularly-spaced variants a real model reaches for constantly —
+ * "price target**s**", "**signal**s", "Reddit **sentiment**s", "**strong-buy**" (hyphen, not a
+ * space), "**risk on**" (space, not a hyphen), "a 90 **% chance**" (space before `%`) all passed
+ * unconditionally before this fix. Each pattern below now tolerates the specific variant found,
+ * rather than adding a second exact phrase per variant — the failure mode was "one fixed string
+ * per concept," and the fix is patterns that match the concept's plausible surface forms.
+ * `likely` is banned bare, matching `synthesis.ts`'s own prompt text ("no probability or
+ * certainty language ('will', 'likely', 'guaranteed', '% chance')") — the prompt and this check
+ * previously disagreed on the one word a model is most likely to reach for.
+ */
+const BANNED_PATTERNS: ReadonlyArray<{ label: string; pattern: RegExp }> = [
+  { label: 'recommendation verb', pattern: /\b(we recommend|you should buy|you should sell|strong[\s-]buys?|buy ratings?|sell ratings?|outperform ratings?)\b/i },
+  { label: 'price target', pattern: /\bprice targets?\b/i },
+  { label: 'probability language', pattern: /\b(guaranteed|sure thing|can'?t lose|\d+\s*%\s*chance|probability of|likely|will (rise|fall|surge|crash))\b/i },
+  { label: 'certainty/signal language', pattern: /\b(signals?|strong[\s-]buys?|risk[\s-]on|consensus|reddit sentiments?)\b/i },
+];
+
+export function checkNoBannedVocabulary(claims: readonly FlatClaim[]): VerifierCheckResult {
+  const failures: string[] = [];
+
+  for (const claim of claims) {
+    for (const { label, pattern } of BANNED_PATTERNS) {
+      const match = pattern.exec(claim.text);
+      if (match !== null) {
+        failures.push(`[${claim.section}] banned vocabulary (${label}): "${match[0]}"`);
+      }
+    }
+  }
+
+  return { id: 'no_banned_vocabulary', passed: failures.length === 0, failures };
+}
+
+// ── Check 5 — no stance asserted where n < 5 ───────────────────────────────────────────────────
+
+export function checkStanceSampleFloor(claims: readonly FlatClaim[], ctx: VerifierContext): VerifierCheckResult {
+  const failures: string[] = [];
+
+  for (const claim of claims) {
+    // The union of the model's own declaration and the independent text-based detection
+    // (lane-review finding 5) — either source alone is enough to trigger the floor; trusting
+    // only the self-report is exactly the gap this check exists to close.
+    const assertedAxes = new Set<SocialAxis>([
+      ...(claim.assertsStanceForAxis === null ? [] : [claim.assertsStanceForAxis]),
+      ...detectedStanceAxes(claim.text),
+    ]);
+
+    for (const axis of assertedAxes) {
+      const n = ctx.sampleSizeByAxis[axis] ?? 0;
+      if (n < ctx.minStanceSample) {
+        failures.push(
+          `[${claim.section}] asserts a ${axis} stance on a sample of ${String(n)}, below the floor of ${String(ctx.minStanceSample)}`,
+        );
+      }
+    }
+  }
+
+  return { id: 'stance_sample_floor', passed: failures.length === 0, failures };
+}
+
+// ── Check 6 — no claim references a ticker outside the subject set ────────────────────────────
+
+export function checkTickerInSubjectSet(claims: readonly FlatClaim[], ctx: VerifierContext): VerifierCheckResult {
+  const failures: string[] = [];
+
+  for (const claim of claims) {
+    for (const symbol of extractCashtags(claim.text)) {
+      if (!ctx.subjectSymbols.has(symbol)) {
+        failures.push(`[${claim.section}] references $${symbol}, outside this run's subject set`);
+      }
+    }
+    for (const symbol of extractBareTickerTokens(claim.text)) {
+      if (!ctx.subjectSymbols.has(symbol)) {
+        failures.push(`[${claim.section}] references ${symbol} (no $ prefix), outside this run's subject set`);
+      }
+    }
+  }
+
+  return { id: 'ticker_in_subject_set', passed: failures.length === 0, failures };
+}
+
+// ── Check 7 — date claims are consistent with cited evidence timestamps ───────────────────────
+
+export function checkDateConsistency(claims: readonly FlatClaim[], ctx: VerifierContext): VerifierCheckResult {
+  const itemById = new Map(ctx.pack.items.map((item) => [item.item.id, item.item]));
+  const failures: string[] = [];
+
+  for (const claim of claims) {
+    const dates = extractDates(claim.text);
+    if (dates.length === 0) continue;
+
+    const citedDates = claim.evidenceIds
+      .map((id) => itemById.get(id))
+      .filter((item): item is NonNullable<typeof item> => item !== undefined)
+      .flatMap((item) => [item.publishedAt, item.availableAt])
+      .filter((at): at is Date => at !== null);
+
+    for (const dateText of dates) {
+      const claimed = new Date(`${dateText}T00:00:00.000Z`);
+      const matchesSomeCitedItem = citedDates.some((at) => sameUtcDay(at, claimed));
+      if (!matchesSomeCitedItem) {
+        failures.push(
+          `[${claim.section}] states date ${dateText}, which matches none of its cited evidence's timestamps`,
+        );
+      }
+    }
+  }
+
+  return { id: 'date_consistency', passed: failures.length === 0, failures };
+}
+
+// ── Check 8 — stated freshness matches the oldest input's observed_at ─────────────────────────
+
+/** F10 §4.5's used items only — an excluded item's staleness says nothing about what was actually used. */
+export function oldestUsedObservedAt(pack: EvidencePack): Date | null {
+  const used = pack.items.filter((item) => item.relevant);
+  const dates = used
+    .map((item) => item.item.availableAt)
+    .filter((at): at is Date => at !== null);
+  if (dates.length === 0) return null;
+  return dates.reduce((oldest, at) => (at.getTime() < oldest.getTime() ? at : oldest));
+}
+
+export function checkFreshnessMatchesOldest(ctx: VerifierContext): VerifierCheckResult {
+  const oldest = oldestUsedObservedAt(ctx.pack);
+  if (oldest === null) {
+    return {
+      id: 'freshness_matches_oldest',
+      passed: false,
+      failures: ['no used evidence item carries an availableAt to compare the stated freshness against'],
+    };
+  }
+
+  const passed = sameUtcDay(oldest, ctx.statedFreshnessAsOf);
+  return {
+    id: 'freshness_matches_oldest',
+    passed,
+    failures: passed
+      ? []
+      : [
+          `stated freshness ${ctx.statedFreshnessAsOf.toISOString()} does not match the oldest used input's observed_at ${oldest.toISOString()}`,
+        ],
+  };
+}
+
+/**
+ * The same eight checks (minus check 8, which has no per-claim meaning — freshness is a
+ * property of the whole pack, not of one claim), scoped to a single claim. `claim-ledger.ts`
+ * uses this to decide one claim's own `verificationStatus` rather than only the run-wide
+ * pass/fail `runDeterministicChecks` reports.
+ */
+export function runPerClaimDeterministicChecks(
+  claim: FlatClaim,
+  ctx: VerifierContext,
+): { passed: boolean; failures: readonly string[] } {
+  const results = [
+    checkNumericMatchesMetric([claim], ctx),
+    checkCitationResolves([claim], ctx),
+    checkCitationWithinWindow([claim], ctx),
+    checkNoBannedVocabulary([claim]),
+    checkStanceSampleFloor([claim], ctx),
+    checkTickerInSubjectSet([claim], ctx),
+    checkDateConsistency([claim], ctx),
+  ];
+  const failures = results.flatMap((result) => result.failures);
+  return { passed: failures.length === 0, failures };
+}
+
+// ── Aggregator ──────────────────────────────────────────────────────────────────────────────────
+
+export function runDeterministicChecks(
+  claims: readonly FlatClaim[],
+  ctx: VerifierContext,
+): { allPassed: boolean; results: readonly VerifierCheckResult[] } {
+  const results: VerifierCheckResult[] = [
+    checkNumericMatchesMetric(claims, ctx),
+    checkCitationResolves(claims, ctx),
+    checkCitationWithinWindow(claims, ctx),
+    checkNoBannedVocabulary(claims),
+    checkStanceSampleFloor(claims, ctx),
+    checkTickerInSubjectSet(claims, ctx),
+    checkDateConsistency(claims, ctx),
+    checkFreshnessMatchesOldest(ctx),
+  ];
+
+  return { allPassed: results.every((result) => result.passed), results };
+}
