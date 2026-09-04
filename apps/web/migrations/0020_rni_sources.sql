@@ -159,3 +159,47 @@ comment on table rni_source_retrieval is
 
 comment on table rni_source_content_version is
   'Append-only bounded evidence revisions. Different content hashes create linked versions; full webpage HTML is prohibited.';
+
+create table rni_event_outbox (
+  id                    uuid        primary key default gen_random_uuid(),
+  event_key             text        not null unique,
+  event_type            text        not null,
+  source_item_id        uuid        not null references rni_source_item (id),
+  source_retrieval_id   uuid        not null,
+  content_version_id    uuid        not null,
+  payload_json          jsonb       not null,
+  publish_attempts      integer     not null default 0,
+  published_at          timestamptz null,
+  last_error            text        null,
+  created_at            timestamptz not null default now(),
+
+  constraint rni_event_outbox_retrieval_fk
+    foreign key (source_retrieval_id, source_item_id)
+    references rni_source_retrieval (id, source_item_id),
+  constraint rni_event_outbox_content_fk
+    foreign key (content_version_id, source_item_id)
+    references rni_source_content_version (id, source_item_id),
+  constraint rni_event_outbox_type_check check (event_type = 'rni.source_persisted.v1'),
+  constraint rni_event_outbox_payload_object_check check (jsonb_typeof(payload_json) = 'object'),
+  constraint rni_event_outbox_payload_source_check
+    check (payload_json ->> 'sourceItemId' = source_item_id::text),
+  constraint rni_event_outbox_payload_retrieval_check
+    check (payload_json ->> 'retrievalId' = source_retrieval_id::text),
+  constraint rni_event_outbox_payload_content_check
+    check (payload_json ->> 'contentVersionId' = content_version_id::text),
+  constraint rni_event_outbox_publish_attempts_check check (publish_attempts >= 0),
+  constraint rni_event_outbox_content_event_unique unique (event_type, content_version_id)
+);
+
+create index rni_event_outbox_pending_idx
+  on rni_event_outbox (created_at, id)
+  where published_at is null;
+
+create trigger rni_event_outbox_content_immutable
+  before update or delete on rni_event_outbox
+  for each row execute function reject_content_mutation(
+    'publish_attempts', 'published_at', 'last_error'
+  );
+
+comment on table rni_event_outbox is
+  'Transactional source-persisted events containing IDs only. Queue relays cannot observe an event without its committed source/retrieval/content lineage.';

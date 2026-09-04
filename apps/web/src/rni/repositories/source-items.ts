@@ -68,6 +68,8 @@ export type RniSourcePersistenceResult = {
   readonly retrievalInserted: boolean;
   readonly contentVersionId: string;
   readonly contentVersionInserted: boolean;
+  readonly outboxEventId: string;
+  readonly outboxInserted: boolean;
 };
 
 async function findByIdentity(source: RniSourceItem, db: Queryable): Promise<SourceRow> {
@@ -222,6 +224,44 @@ async function insertOrReadContentVersion(
   return { id: existing.id, inserted: false };
 }
 
+async function insertOrReadOutboxEvent(
+  sourceId: string,
+  retrievalId: string,
+  contentVersionId: string,
+  createdAt: string,
+  db: Queryable,
+): Promise<{ readonly id: string; readonly inserted: boolean }> {
+  const eventType = 'rni.source_persisted.v1';
+  const eventKey = `${eventType}:${contentVersionId}`;
+  const payload = { sourceItemId: sourceId, retrievalId, contentVersionId };
+  const { rows } = await db.query<{ id: string }>(
+    `insert into rni_event_outbox (
+       event_key, event_type, source_item_id, source_retrieval_id, content_version_id,
+       payload_json, created_at
+     ) values ($1, $2, $3, $4, $5, $6::jsonb, $7)
+     on conflict (event_type, content_version_id) do nothing returning id`,
+    [
+      eventKey,
+      eventType,
+      sourceId,
+      retrievalId,
+      contentVersionId,
+      JSON.stringify(payload),
+      createdAt,
+    ],
+  );
+  const inserted = rows[0];
+  if (inserted !== undefined) return { id: inserted.id, inserted: true };
+
+  const { rows: existingRows } = await db.query<{ id: string }>(
+    'select id from rni_event_outbox where event_type = $1 and content_version_id = $2',
+    [eventType, contentVersionId],
+  );
+  const existing = existingRows[0];
+  if (existing === undefined) throw new Error('RNI outbox upsert could not read its conflict');
+  return { id: existing.id, inserted: false };
+}
+
 /**
  * Commits canonical source identity, discovery provenance, and bounded content in one transaction.
  * The returned source ID is not observable until all three writes have committed successfully.
@@ -240,6 +280,13 @@ export async function persistRniSource(
       source,
       tx,
     );
+    const outbox = await insertOrReadOutboxEvent(
+      persistedSource.row.id,
+      retrieval.id,
+      content.id,
+      source.createdAt,
+      tx,
+    );
     return {
       source: sourceFromRow(persistedSource.row),
       sourceInserted: persistedSource.inserted,
@@ -247,8 +294,51 @@ export async function persistRniSource(
       retrievalInserted: retrieval.inserted,
       contentVersionId: content.id,
       contentVersionInserted: content.inserted,
+      outboxEventId: outbox.id,
+      outboxInserted: outbox.inserted,
     };
   }, pool);
+}
+
+export type RniPendingOutboxEvent = {
+  readonly id: string;
+  readonly eventType: 'rni.source_persisted.v1';
+  readonly sourceItemId: string;
+  readonly retrievalId: string;
+  readonly contentVersionId: string;
+  readonly createdAt: string;
+};
+
+export async function pendingRniOutboxEvents(
+  limit: number,
+  db: Queryable = getPool(),
+): Promise<readonly RniPendingOutboxEvent[]> {
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw new Error('RNI outbox limit must be an integer from 1 to 100');
+  }
+  const { rows } = await db.query<{
+    id: string;
+    event_type: 'rni.source_persisted.v1';
+    source_item_id: string;
+    source_retrieval_id: string;
+    content_version_id: string;
+    created_at: Date | string;
+  }>(
+    `select id, event_type, source_item_id, source_retrieval_id, content_version_id, created_at
+       from rni_event_outbox
+      where published_at is null
+      order by created_at, id
+      limit $1`,
+    [limit],
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    eventType: row.event_type,
+    sourceItemId: row.source_item_id,
+    retrievalId: row.source_retrieval_id,
+    contentVersionId: row.content_version_id,
+    createdAt: iso(row.created_at),
+  }));
 }
 
 export async function getRniSourceById(

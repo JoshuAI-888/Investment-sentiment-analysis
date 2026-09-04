@@ -18,7 +18,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | D03 | Claims, citations, themes, narratives and relationships | `BLOCKED` | Relational lineage 4/4 pass; pgvector and frozen ports await CR-DATA-002/003 |
 | D04 | Independent Reddit/X `run_source_slice` persistence | `READY_FOR_REVIEW` | Migration `0023`; exactly-two platform isolation 4/4 pass |
 | D05 | Cross-source summary persistence without component mutation | `READY_FOR_REVIEW` | Divergence/partial repository tests 4/4 pass |
-| D06 | Idempotent/concurrent inserts and transactional outbox | `NOT_STARTED` | Concurrent upsert + crash test |
+| D06 | Idempotent/concurrent inserts and transactional outbox | `READY_FOR_REVIEW` | 8-way concurrent upsert and outbox rollback 3/3 pass |
 | D07 | Bounded-content, tombstone and rejected-discovery states | `NOT_STARTED` | HTML rejection and tombstone tests |
 | D08 | FMP >500-member fixture support for integration migration   | `NOT_STARTED` | Valid/invalid atomic activation fixtures |
 | D09 | Full DATA lane verification and handoff | `NOT_STARTED` | Report contract completed |
@@ -106,6 +106,22 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 - **Handoff:** INTEGRATION can bind `getRniCombinedSummary` to the frozen read service without
   inventing combined numeric metrics.
 
+### D06 — Concurrent idempotency and transactional outbox
+
+- **Status:** `READY_FOR_REVIEW`
+- **Files:** outbox extension in `apps/web/migrations/0020_rni_sources.sql`, outbox integration in
+  `apps/web/src/rni/repositories/source-items.ts`,
+  `apps/web/tests/integration/rni-persistence/outbox-idempotency.test.ts`, and this progress file.
+- **Tests:** TypeScript; targeted ESLint; D06 PostgreSQL integration (`3/3`); cumulative DATA
+  persistence PostgreSQL regression (`27/27`); `git diff --check`.
+- **Result:** eight concurrent duplicate deliveries converge on one source/retrieval/content/event;
+  the event payload contains IDs only; a forced outbox failure rolls the entire source transaction
+  back, so downstream work cannot observe uncommitted evidence.
+- **Risk:** relay/queue publication is ENGINE/INTEGRATION orchestration scope; DATA exposes only
+  committed pending events and immutable payload identity.
+- **Handoff:** the persisted-source event is `rni.source_persisted.v1`; coordinator should include
+  its return shape when resolving CR-DATA-001.
+
 ## Required invariants
 
 - One external source row, many security links and observations.
@@ -185,7 +201,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | migration forward apply | `NOT_STARTED` | — | D09 lane gate |
 | repository unit | `READY_FOR_REVIEW` | typecheck + targeted ESLint | No errors |
 | database integration | `READY_FOR_REVIEW` | DATA persistence Vitest | 24/24 D01-D05 tests pass against PostgreSQL |
-| concurrency/idempotency | `NOT_STARTED` | — | D06 owns concurrent/outbox cases |
+| concurrency/idempotency | `READY_FOR_REVIEW` | D06 PostgreSQL Vitest | 8 concurrent deliveries + forced rollback; 3/3 pass |
 | repository required gate | `NOT_STARTED` | — | D09 lane gate |
 
 ## Review findings
@@ -209,7 +225,8 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | bae4e9f | D02 multi-security links and observations | Typecheck, targeted lint, PostgreSQL 12/12 |
 | 2757f5c | D03 relational claim/citation/narrative slice | Typecheck, targeted lint, PostgreSQL 16/16; vector blocked |
 | adb91a4 | D04 independent run/platform slices | Typecheck, targeted lint, PostgreSQL 20/20 |
-| this commit | D05 immutable cross-source summaries | Typecheck, targeted lint, PostgreSQL 24/24 |
+| ca9ca72 | D05 immutable cross-source summaries | Typecheck, targeted lint, PostgreSQL 24/24 |
+| this commit | D06 concurrent source upsert and transactional outbox | Typecheck, targeted lint, PostgreSQL 27/27 |
 
 ## Handoff
 
@@ -218,11 +235,11 @@ RNI LANE     DATA
 BRANCH       feat/rni-data-source-first
 BASE SHA     86ec5b4757f45cbe96c651f413e8ff1109fef279
 STATUS       PARTIAL
-TASKS        4/9; D03 blocked, D06-D09 incomplete
-TESTS        D01-D05 PostgreSQL integration 24/24; typecheck/lint pass
+TASKS        5/9; D03 blocked, D07-D09 incomplete
+TESTS        D01-D06 PostgreSQL integration 27/27; typecheck/lint pass
 CONTRACT     CR-DATA-001, CR-DATA-002, CR-DATA-003
-RISKS        D03 pgvector/port blocked; concurrency/outbox deferred to D06
+RISKS        D03 pgvector/ports blocked; outbox relay remains integration scope
 FILES        migrations 0020-0022; source/observation/claim repositories; D01-D03 tests; DATA.md
-COMMITS      3c0cc56 (D01); bae4e9f (D02); 2757f5c (D03 relational); adb91a4 (D04); this commit (D05)
+COMMITS      3c0cc56 (D01); bae4e9f (D02); 2757f5c (D03 relational); adb91a4 (D04); ca9ca72 (D05); this commit (D06)
 DEMO PROOF   one comparative source persists distinct bullish NVDA and bearish AMD observations
 ```
