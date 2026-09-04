@@ -51,7 +51,13 @@ const xPost: XPost = {
 const clock = { now: () => new Date(observedAt) };
 
 function port(result: ProviderResult<XPost[]>): XAdapterPort {
-  return { search: async () => result };
+  return {
+    search: async () => ({
+      providerResult: result,
+      responseCompleteness: 'complete',
+      contractViolations: [],
+    }),
+  };
 }
 
 describe('RNI E02 X source-slice frozen contracts', () => {
@@ -59,7 +65,7 @@ describe('RNI E02 X source-slice frozen contracts', () => {
     const result = await runXSourceSlice(
       request,
       port({ ok: true, data: [xPost], meta: providerMeta }),
-      clock,
+      { clock },
     );
     const candidate = result.candidates[0];
     expect(candidate).toBeDefined();
@@ -108,7 +114,7 @@ describe('RNI E02 X source-slice frozen contracts', () => {
         error: { kind: 'entitlement', endpoint: 'search_recent', status: 403 },
         meta: { ...providerMeta, costUsd: null },
       }),
-      clock,
+      { clock },
     );
 
     const slice = rniPlatformSlice.parse(result.slice);

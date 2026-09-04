@@ -14,7 +14,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 | ID | Task | Status | Acceptance evidence |
 |---|---|---|---|
 | E01 | Reddit OpenAI Web Search discovery and canonical candidate normalization | `COMPLETE` | 16 focused tests: exact source/evidence binding, URL-only abstention, complete action lineage, half-open windows, dedup, frozen-source compatibility; coordinator accepted `b3e8220` |
-| E02 | Existing X adapter port and independent terminal source slice | `READY_FOR_REVIEW` | 16 focused success/failure, isolation, lineage, versioning and half-open-window tests |
+| E02 | Existing X adapter port and independent terminal source slice | `READY_FOR_REVIEW` | 20 focused tests: partial-success propagation, isolation, tenant-safe identity, retrieval/version lineage, A→B→A latest selection, half-open windows |
 | E03 | Persist-first workflow, retry, checkpoint and budget logic | `NOT_STARTED` | Crash/redelivery tests |
 | E04 | Security resolver and multi-security relationships | `NOT_STARTED` | NVDA/AMD comparative fixture |
 | E05 | Four-dimension classifier, themes, claims and noise labels | `NOT_STARTED` | Gold/schema/injection tests |
@@ -47,7 +47,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 | Suite | Status | Command/run link | Notes |
 |---|---|---|---|
 | discovery/adapter contract | `READY_FOR_REVIEW` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/discovery/openai-web-search.test.ts tests/contract/rni/discovery.test.ts --no-file-parallelism` | 2 files, 16 tests passed after coordinator fixes |
-| X adapter/source slice | `READY_FOR_REVIEW` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/sources/x-source-slice.test.ts tests/contract/rni/x-source-slice.test.ts --no-file-parallelism` | 2 files, 16 tests passed; read-only review found no remaining P1/P2 issues |
+| X adapter/source slice | `READY_FOR_REVIEW` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/sources/x-source-slice.test.ts tests/contract/rni/x-source-slice.test.ts --no-file-parallelism` | 2 files, 20 tests passed after coordinator fixes; read-only review found no remaining P1/P2 issues |
 | workflow/idempotency | `NOT_STARTED` | — | — |
 | semantic gold set | `NOT_STARTED` | — | — |
 | analytics golden/replay | `NOT_STARTED` | — | — |
@@ -63,6 +63,9 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 | E01-R1-01 | P1 | `CLOSED` | Canonical URL membership did not bind model excerpt/time to the exact consulted source | Exact provider URL plus full-value-covering field-scoped URL-citation annotations are required; partial/overlapping spans fail closed, and otherwise the provider URL is emitted URL-only and interpretation-ineligible |
 | E01-R1-02 | P1 | `CLOSED` | Malformed or source-less calls could be skipped, yielding an incomplete consulted-source trace | Every call now validates; search requires a sources array, supported non-search actions are traced, and unknown/malformed actions fail closed |
 | E01-R1-03 | P2 | `CLOSED` | Injection test covered post-generation output handling, not model resistance before generation | Test and evidence now explicitly claim only output-handling/tool-configuration coverage; pre-generation model resistance remains E10 eval scope |
+| E02-R1-01 | P1 | `READY_FOR_REVIEW` | Existing adapter partial-success contract violations were erased by the RNI port | The composition port now intercepts and forwards each call's violations, carries explicit response completeness, and forces usable partial responses to X `partial` |
+| E02-R1-02 | P1 | `READY_FOR_REVIEW` | Unsalted mutable usernames were directly hashed as author identity | Default identity is omitted; an optional tenant-approved hasher receives only stable provider author ID, must return a valid lowercase SHA-256 digest, and never retains the raw ID/username |
+| E02-R1-03 | P1 | `READY_FOR_REVIEW` | Content-version candidates did not expose exactly one latest interpretation version and mishandled A→B→A | `candidates` now has exactly one latest version per external ID, `persistenceVersions` keeps every distinct byte version, and ordered transitions preserve A→B→A reversion lineage |
 
 ## Open risks/blockers
 
@@ -106,25 +109,28 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 ### E02 — Existing X adapter port and independent terminal source slice
 
-- **Status:** `READY_FOR_REVIEW`
+- **Status:** `READY_FOR_REVIEW` after coordinator changes requested
 - **Slice:** Added a composition port around the existing authorised X recent-search adapter and
   an X-only terminal source-slice runner. A governed query set is invoked without Reddit inputs;
   each returned post is deterministically filtered to the exact half-open UTC window, normalized
   to a stable X status URL, content-hashed, and carried with complete per-query retrieval rank,
-  requested-at time, provider metadata/payload reference, and capture metadata. Same-content
-  rediscovery updates mutable metadata while retaining every retrieval snapshot; changed bytes
-  create a separately returned candidate linked by the prior content hash for E03 persistence.
+  requested-at time, provider metadata/payload reference, capture metadata, and explicit provider
+  response completeness. Same-content rediscovery updates mutable metadata while retaining every
+  retrieval snapshot. All changed byte versions and ordered transitions go to E03 persistence,
+  while exactly one latest version per external ID is eligible for interpretation. Author identity
+  is omitted unless an injected tenant-approved policy hashes the stable provider author ID.
 - **Files changed:** `apps/web/src/rni/sources/{index,types,x}.ts`,
   `apps/web/tests/unit/rni/sources/x-source-slice.test.ts`,
   `apps/web/tests/contract/rni/x-source-slice.test.ts`, and this tracker.
-- **Tests/results:** focused unit + contract 16/16 passed; repository unit 1,200/1,200 passed;
+- **Tests/results:** focused unit + contract 20/20 passed; repository unit 1,204/1,204 passed;
   repository contract 80 passed and 22 pre-existing skips; `typecheck`, focused ESLint, full
   ESLint, and `git diff --check` passed. A read-only review found and closed content-version,
   retrieval-lineage, calculation-freshness, and mutable-metadata issues, then returned READY with
   no remaining P1/P2 findings.
 - **Models/prompts/formulas:** no model or prompt is used or changed. Deterministic behavior is
-  limited to SHA-256 content/handle hashing, half-open timestamp filtering, identity/content
-  deduplication, version linkage, latest-metadata selection, and terminal status mapping.
+  limited to SHA-256 content hashing, half-open timestamp filtering, identity/content
+  deduplication, ordered version transitions, latest-metadata selection, completeness propagation,
+  and terminal status mapping. Author hashing is supplied only by an injected approved policy.
 - **Token/latency evidence:** no model tokens are consumed. The provider fixture carries 41 ms
   adapter latency as contract metadata; it is not a live performance measurement.
 - **Risks/handoff:** the existing adapter exposes post IDs rather than native status URLs or a
@@ -140,7 +146,8 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 | `a181461` | E01 Web Search discovery and canonical candidate normalization | focused 10/10; unit 1,180/1,180; contract 78 passed/22 skipped; typecheck/lint passed |
 | `58e5828` | E01 exact evidence binding and complete action lineage | focused 15/15; unit 1,185/1,185; contract 78 passed/22 skipped; typecheck/lint passed |
 | `b3e8220` | E01 full citation-span coverage; coordinator accepted | focused 16/16; unit 1,186/1,186; contract 78 passed/22 skipped; typecheck/lint passed |
-| this task commit | E02 independent X adapter/source slice | focused 16/16; unit 1,200/1,200; contract 80 passed/22 skipped; typecheck/lint passed |
+| `3b73f25` | E02 independent X adapter/source slice | focused 16/16; unit 1,200/1,200; contract 80 passed/22 skipped; typecheck/lint passed |
+| this correction commit | E02 partial signal, tenant-safe identity and explicit latest/version lineage | focused 20/20; unit 1,204/1,204; contract 80 passed/22 skipped; typecheck/lint passed |
 
 ## Handoff
 
@@ -150,10 +157,10 @@ BRANCH       feat/rni-engine-live-slice
 BASE SHA     86ec5b4757f45cbe96c651f413e8ff1109fef279
 STATUS       PARTIAL
 TASKS        2/10; E03-E10 incomplete
-TESTS        E01 focused 16/16; E02 focused 16/16; unit 1,200/1,200; contract 80 passed/22 skipped; typecheck/lint pass
+TESTS        E01 focused 16/16; E02 focused 20/20; unit 1,204/1,204; contract 80 passed/22 skipped; typecheck/lint pass
 CONTRACT     none
 RISKS        live Web Search and X adapter smokes pending coordinator because approved credentials were unavailable
 FILES        src/rni/{discovery,sources}/**; tests/unit/rni/{discovery,sources}/**; tests/contract/rni/{discovery,x-source-slice}.test.ts; docs/rni/progress/ENGINE.md
-COMMITS      a181461, 58e5828, b3e8220, plus E02 task commit
+COMMITS      a181461, 58e5828, b3e8220, 3b73f25, plus E02 correction commit
 DEMO PROOF   Reddit citation-bound fixture plus independent X complete/partial/unavailable/failed fixtures; no fallback or cross-platform pooling
 ```

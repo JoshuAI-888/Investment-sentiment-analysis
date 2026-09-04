@@ -22,13 +22,35 @@ export type XAdapterSearchRequest = {
   maxResults?: number;
 };
 
+export type XAdapterContractViolation = {
+  provider: 'x';
+  endpoint: string;
+  issues: readonly string[];
+  payloadRef: string | null;
+};
+
+export type XAdapterSearchOutcome = {
+  providerResult: ProviderResult<XPost[]>;
+  responseCompleteness: 'complete' | 'partial';
+  contractViolations: readonly XAdapterContractViolation[];
+};
+
 export interface XAdapterPort {
-  search(request: XAdapterSearchRequest): Promise<ProviderResult<XPost[]>>;
+  search(request: XAdapterSearchRequest): Promise<XAdapterSearchOutcome>;
 }
 
 export interface XSourceClock {
   now(): Date;
 }
+
+export interface XAuthorIdentityHasher {
+  hashStableAuthorId(authorId: string): string;
+}
+
+export type XSourceSliceDependencies = {
+  clock?: XSourceClock;
+  authorIdentityHasher?: XAuthorIdentityHasher;
+};
 
 export type XSourceRetrieval = {
   queryId: string;
@@ -86,11 +108,25 @@ export type XQueryTrace = {
   returnedPostCount: number;
   providerMeta: ProviderMeta | null;
   errorKind: ProviderError['kind'] | 'unexpected_throw' | null;
+  responseCompleteness: 'complete' | 'partial' | null;
+  contractViolations: readonly XAdapterContractViolation[];
+};
+
+export type XContentTransition = {
+  externalId: string;
+  fromContentSha256: string | null;
+  toContentSha256: string;
+  queryId: string;
+  retrievedAt: string;
 };
 
 export type XSourceSliceResult = {
   slice: RniPlatformSlice;
+  /** Exactly one latest, interpretation-eligible candidate per external ID. */
   candidates: readonly XSourceCandidate[];
+  /** Every distinct content version, including superseded and later-reverted versions. */
+  persistenceVersions: readonly XSourceCandidate[];
+  contentTransitions: readonly XContentTransition[];
   rejectedPosts: readonly RejectedXPost[];
   duplicatePostCount: number;
   changedContentVersionCount: number;
