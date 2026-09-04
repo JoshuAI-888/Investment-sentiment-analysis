@@ -121,7 +121,7 @@
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
 | ENGINE | `E03_APPROVED` | yes through I02D (`ce80424`) | builder serialized unit 1,223 + contract 88/22 skipped; coordinator focused E03 17/17 and typecheck pass | yes | E01–E03 accepted through `1597eea`; E04 active; lane remains held |
-| SURFACE | `S04_APPROVED` | yes through I02D (`ce80424`) | builder typecheck/lint/contract/build/Chromium 9/9; coordinator repeated typecheck/lint/contract 13/13 and Chromium 9/9 | yes | S01–S04 accepted through `6c0df68`; S05 active; lane remains held |
+| SURFACE | `S05_APPROVED` | yes through I02D (`ce80424`) | builder typecheck/lint/contract/build/Chromium 10/10; coordinator repeated typecheck/lint/contract 13/13 and Chromium 10/10 | yes | S01–S05 accepted through `d4c1a09`; S06 active; lane remains held |
 
 ## Live/deployment gates
 
@@ -215,6 +215,7 @@
 | `58eef41` | Close I06R3 command lifecycle and atomicity findings | focused 42; unit 1,179; contract 83/22 skipped; fresh PostgreSQL affected 22; full integration 429/433 then failed-file 71/72 and isolated timing case pass |
 | `5950b53` | Close I06R4 provider-lineage and rollback-evidence findings | typecheck; focused lint; focused 26/26; fresh PostgreSQL affected 23/23; independent READY |
 | `CURRENT` | Accept SURFACE S04 evidence drawer and keyboard correction | typecheck; focused lint; RNI contract 13/13; Chromium 9/9; ownership/base/diff review |
+| `CURRENT` | Accept SURFACE S05 bounded lineage explorer | typecheck; focused lint; RNI contract 13/13; Chromium 10/10; ownership/base/diff review |
 
 ## Coordinator notes
 
