@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "body": {
+    "modelId": "anthropic/claude-haiku-synthetic",
+    "tokensIn": 205,
+    "tokensOut": 40,
+    "costUsd": "0.000212",
+    "content": "{\"itemId\":\"fixture-item\",\"token\":\"IT\",\"confirmed\":false,\"corroboration\":\"none\",\"reason\":\"The text is about an IT department's helpdesk ticket queue, not the company Gartner trades as IT.\"}"
+  }
+}

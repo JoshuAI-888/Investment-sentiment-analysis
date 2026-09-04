@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "body": {
+    "modelId": "anthropic/claude-haiku-synthetic",
+    "tokensIn": 165,
+    "tokensOut": 38,
+    "costUsd": "0.000198",
+    "content": "{\"itemId\":\"fixture-item\",\"relevant\":false,\"relevanceScore\":0.05,\"reason\":\"The text uses the company name only as a common-noun metaphor, not about the business.\"}"
+  }
+}

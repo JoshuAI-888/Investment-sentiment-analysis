@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "body": {
+    "modelId": "anthropic/claude-haiku-synthetic",
+    "tokensIn": 210,
+    "tokensOut": 45,
+    "costUsd": "0.000225",
+    "content": "{\"itemId\":\"fixture-item\",\"token\":\"AI\",\"confirmed\":true,\"corroboration\":\"context\",\"reason\":\"The surrounding text discusses quarterly earnings and a stock price target, not artificial intelligence generally.\"}"
+  }
+}

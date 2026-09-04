@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "body": {
+    "modelId": "anthropic/claude-haiku-synthetic",
+    "tokensIn": 190,
+    "tokensOut": 10,
+    "costUsd": "0.000080",
+    "content": "probably the company, hard to say"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "body": {
+    "modelId": "anthropic/claude-haiku-synthetic",
+    "tokensIn": 210,
+    "tokensOut": 15,
+    "costUsd": "0.000102",
+    "content": "Apologies, still not JSON: this text is relevant."
+  }
+}

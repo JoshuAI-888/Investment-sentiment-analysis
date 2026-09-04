@@ -1,0 +1,10 @@
+{
+  "status": 503,
+  "body": {
+    "modelId": "anthropic/claude-haiku-synthetic",
+    "tokensIn": null,
+    "tokensOut": null,
+    "costUsd": null,
+    "content": ""
+  }
+}
