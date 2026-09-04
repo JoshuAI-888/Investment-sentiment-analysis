@@ -44,8 +44,8 @@ describe('templateFollowups', () => {
   it('offers one axis-detail follow-up per frame in the pack', () => {
     const withFrames = templateFollowups(
       pack([
-        { axis: 'reddit', frameStatement: 's', window: { from: new Date(), to: new Date() }, retrievedCount: 1, usedCount: 1 },
-        { axis: 'x', frameStatement: 's', window: { from: new Date(), to: new Date() }, retrievedCount: 1, usedCount: 1 },
+        { axis: 'reddit', frameStatement: 's', window: { from: new Date(), to: new Date() }, retrievedCount: 1, usedCount: 1, truncated: false },
+        { axis: 'x', frameStatement: 's', window: { from: new Date(), to: new Date() }, retrievedCount: 1, usedCount: 1, truncated: false },
       ]),
       output(),
     );

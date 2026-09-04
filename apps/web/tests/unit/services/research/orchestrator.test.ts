@@ -71,8 +71,8 @@ function fullPack(): EvidencePack {
       },
     ],
     frames: [
-      { axis: 'reddit', frameStatement: 's', window: { from: new Date('2026-08-19T00:00:00Z'), to: new Date('2026-08-27T00:00:00Z') }, retrievedCount: 10, usedCount: 2 },
-      { axis: 'x', frameStatement: 's', window: { from: new Date('2026-08-19T00:00:00Z'), to: new Date('2026-08-27T00:00:00Z') }, retrievedCount: 5, usedCount: 1 },
+      { axis: 'reddit', frameStatement: 's', window: { from: new Date('2026-08-19T00:00:00Z'), to: new Date('2026-08-27T00:00:00Z') }, retrievedCount: 10, usedCount: 2, truncated: false },
+      { axis: 'x', frameStatement: 's', window: { from: new Date('2026-08-19T00:00:00Z'), to: new Date('2026-08-27T00:00:00Z') }, retrievedCount: 5, usedCount: 1, truncated: false },
     ],
     createdAt: new Date('2026-08-27T00:00:00Z'),
   } as EvidencePack;

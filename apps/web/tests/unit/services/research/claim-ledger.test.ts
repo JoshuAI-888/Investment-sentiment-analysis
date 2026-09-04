@@ -53,6 +53,7 @@ function pack(): EvidencePack {
         window: { from: new Date('2026-08-20T00:00:00Z'), to: new Date('2026-08-27T00:00:00Z') },
         retrievedCount: 10,
         usedCount: 8,
+        truncated: false,
       },
     ],
     createdAt: new Date('2026-08-27T00:00:00Z'),
