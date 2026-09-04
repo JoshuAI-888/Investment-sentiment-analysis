@@ -100,10 +100,13 @@ test.describe('F09 — ticker detail: signed-in states', () => {
     await expect(page.locator('[data-axis="news"]')).toBeVisible();
     await expect(page.locator('[data-axis="price"]')).toBeVisible();
 
-    // Three per-frame stance disclosures (D-14).
+    // Per-frame stance disclosures (D-14). X is F18 §4.4's own DoD item — "hidden by default,
+    // not greyed" (`FEATURE_X` defaults `false`, `env.ts`) — so this e2e run (the real built app,
+    // default env) sees Reddit and Substack only; the X frame is absent from the DOM entirely,
+    // never a disabled/greyed placeholder.
     await expect(page.locator('[data-stance-frame="reddit"]')).toBeVisible();
-    await expect(page.locator('[data-stance-frame="x"]')).toBeVisible();
     await expect(page.locator('[data-stance-frame="substack"]')).toBeVisible();
+    await expect(page.locator('[data-stance-frame="x"]')).toHaveCount(0);
     await expect(page.locator('[data-selection-bias-note]').first()).toBeVisible();
 
     // Every rendered InspectableMetric has a real calculationId and an Inspector link.

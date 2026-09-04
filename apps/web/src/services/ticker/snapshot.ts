@@ -21,6 +21,7 @@
  * into a scheduled job is F16's, not this lane's, to build.
  */
 import { randomUUID } from 'node:crypto';
+import { env } from '@/env';
 import type { CalculationArtifact, CalculationInputValue } from '@/calc/artifact';
 import { D } from '@/calc/decimal';
 import { DIVERGENCE_DISCLOSURE_LINE, DIVERGENCE_STATE_BY_CODE, DIVERGENCE_STATE_INTERPRETATION } from '@/calc/divergence';
@@ -241,10 +242,20 @@ export async function assembleTickerSnapshot(
   }
 
   // ── Sampled stance — three frames (§4.2, D-14) ────────────────────────────────────────────────
+  // F18 §4.4: X is disabled by default and **hidden**, not greyed — a greyed control implies a
+  // capability this deployment does not have. `env.FEATURE_X` (already declared, `env.ts`; false
+  // by default) gates the frame out of the loop entirely when off, so an operator who has not
+  // enabled X never sees an "X" card at all, not an empty/disabled one. Stocktwits and Congress
+  // carry the identical default-off flags (`FEATURE_STOCKTWITS`, `FEATURE_CONGRESS`) but have no
+  // UI surface anywhere in this codebase to gate — nothing renders them unconditionally, so
+  // nothing here needs to hide them.
   const socialItems = evidenceResult.items.filter((item) => item.evidenceType === 'social_result');
   const stance: StanceFrame[] = [];
   const stanceArtifacts = new Map<'reddit' | 'x' | 'substack', CalculationArtifact>();
-  for (const axis of ['reddit', 'x', 'substack'] as const) {
+  const socialAxes: readonly ('reddit' | 'x' | 'substack')[] = env.FEATURE_X
+    ? ['reddit', 'x', 'substack']
+    : ['reddit', 'substack'];
+  for (const axis of socialAxes) {
     const providers = SOCIAL_AXIS_PROVIDERS[axis];
     const forAxis = socialItems.filter((item) => providers.includes(item.provider.toLowerCase()));
     const classified = forAxis.filter(isClassified);

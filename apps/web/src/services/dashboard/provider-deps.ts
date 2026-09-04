@@ -36,6 +36,7 @@ import type { WrapperDeps } from '@/adapters/wrapper';
 import type { ProviderId } from '@/contracts/provider';
 import { insertCostEvent } from '@/repositories/cost';
 import { getPool, type Queryable } from '@/repositories/client';
+import { budgetGateFor } from '@/services/budget/policy';
 import type { RedisClient } from './redis';
 import { KEYS } from './redis';
 
@@ -77,14 +78,29 @@ function inMemoryRateLimiter() {
 }
 
 /**
- * The finer-grained per-provider budget gate. Always allows: the coarse global-ceiling check
- * (`budget.ts`) already ran once, before the refresh's internal job was ever dispatched, and
- * per-provider budget *policy* (as opposed to the pre-dispatch hook) is F18's scope, not F07's —
- * `02-ARCHITECTURE-CONTRACTS.md` §4.1 documents the hook existing ahead of the policy that
- * governs it for exactly this reason.
+ * FMP's daily bars are core dashboard content (market/sector composites read directly off it)
+ * and, like `services/market/provider-deps.ts`'s own poll gate, must keep running even under
+ * budget stress — the coarse global-ceiling check (`budget.ts`) already ran once, before the
+ * refresh's internal job was ever dispatched, and FMP is never priced in this codebase
+ * (`costUsd: null` unconditionally — `docs/DEPLOY.md`'s provider table, D-31). Always allows.
  */
 function permissiveBudgetGate(): BudgetGate {
   return { check: async () => ({ allowed: true }) };
+}
+
+/**
+ * F18 §4.1/§4.3: Marketaux news is named "non-essential... background enrichment" in the
+ * degraded-state catalogue (🟢 — "composite renormalizes without it") — exactly the category
+ * D-32's `'reduce'` tier ($320) is written to stop. `budgetGateFor('optional', ...)` is F18's
+ * real policy (`services/budget/policy.ts`), reused here rather than reimplemented — this
+ * replaces what used to be a permanently-permissive stub with the real pre-dispatch hook F04's
+ * wrapper (`adapters/wrapper.ts` stage 1) was always built to call. A refusal here surfaces as
+ * an ordinary adapter failure; `services/dashboard/refresh.ts` already adds `'marketaux'` to its
+ * `degraded` set for any failed call, budget-denied included — no new degraded-rendering code
+ * needed on this path.
+ */
+function optionalBudgetGate(db?: Queryable): BudgetGate {
+  return budgetGateFor('optional', db);
 }
 
 function costSinkOverCostEvent(db: Queryable = getPool()): CostSink {
@@ -175,7 +191,7 @@ export function marketauxWrapperDeps(options: ProviderDepsOptions): Omit<Wrapper
     clock: systemClock,
     cache: inMemoryCache(),
     quota: marketauxQuota(options.redis),
-    budget: permissiveBudgetGate(),
+    budget: optionalBudgetGate(options.db),
     breaker: inMemoryBreaker(),
     rateLimiter: inMemoryRateLimiter(),
     callLog: noopCallLog,

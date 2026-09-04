@@ -2,10 +2,14 @@
  * The global budget check F07 §4.6 requires before every refresh dispatch.
  *
  * D-20's ceiling is $350/month; D-32 starts the run rate near $200/month with the X line
- * unfunded. F18 (Wave 5) will make this operator-editable and give it its own home; until then
- * this is the one place a number this load-bearing is allowed to live, named plainly rather
- * than folded into a magic literal at the call site.
+ * unfunded. `GLOBAL_BUDGET_CEILING_USD` below is the safety-net default this function falls
+ * back to; F18 (`services/budget/policy.ts`) is now built and is where the ceiling becomes
+ * operator-editable and live — `app/api/dashboard/refresh/route.ts` resolves the live figure
+ * (`resolveBudgetThresholds().hardUsd`) and passes it in explicitly as `ceilingUsd` rather than
+ * this module reaching into settings itself, so this function's signature, its one DB query
+ * shape, and every existing caller/test stay exactly as they were.
  */
+import { dec } from '@/calc/decimal';
 import { spendInWindow } from '@/repositories/cost';
 import { getPool, type Queryable } from '@/repositories/client';
 
@@ -27,7 +31,11 @@ export type BudgetCheckResult =
   | { readonly allowed: true; readonly spentUsd: string; readonly ceilingUsd: string }
   | { readonly allowed: false; readonly spentUsd: string; readonly ceilingUsd: string; readonly message: string };
 
-function monthWindow(now: Date): { from: Date; to: Date } {
+/**
+ * Exported for `services/budget/policy.ts` (F18), which evaluates the same calendar-month
+ * window at the D-32 warn/reduce/hard tiers — one definition of "this month," not two.
+ */
+export function monthWindow(now: Date): { from: Date; to: Date } {
   const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
   return { from, to };
@@ -48,10 +56,10 @@ export async function checkGlobalBudget(
   const { from, to } = monthWindow(now);
   const { totalUsd } = await spendInWindow(from, to, db);
 
-  const spent = Number(totalUsd);
-  const ceiling = Number(ceilingUsd);
-
-  if (Number.isFinite(spent) && Number.isFinite(ceiling) && spent >= ceiling) {
+  // F18 build discipline: decimal-safe, not `Number()` — a raw JS number in a budget threshold
+  // comparison is a named review failure. `dec()` throws on a non-decimal string rather than
+  // silently coercing to `NaN`, which is what `Number.isFinite` used to guard against here.
+  if (dec(totalUsd).greaterThanOrEqualTo(dec(ceilingUsd))) {
     return {
       allowed: false,
       spentUsd: totalUsd,

@@ -7,6 +7,7 @@ import { insertMarketSnapshot, insertPriceReturnSnapshot } from '../../src/repos
 import { insertAttentionSnapshot } from '../../src/repositories/attention';
 import { insertEvidenceItem, type NewEvidenceItem } from '../../src/repositories/evidence';
 import { assembleTickerSnapshot } from '../../src/services/ticker/snapshot';
+import { env } from '../../src/env';
 
 const url = databaseUrl();
 const AUDIT = { actorId: 'owner', actorRole: 'admin', reason: 'test', requestId: 'req-1', correlationId: 'corr-1' };
@@ -41,11 +42,19 @@ const FRESH_ASOF = new Date('2026-09-02T04:00:00.000Z');
  */
 describe.skipIf(url === undefined)('F09 — assembleTickerSnapshot', () => {
   let pool: pg.Pool;
+  // F18 §4.4: `FEATURE_X` is `false` by default (`env.ts`) and this suite predates that flag —
+  // its own assertions (below) genuinely exercise the X stance frame's real abstention/eligible
+  // behaviour, which is real coverage worth keeping. Rather than editing every one of those
+  // assertions, the flag is switched on for this file's own duration only and restored after —
+  // `tests/integration/ticker-snapshot-feature-flag.test.ts` (this feature, new) is the dedicated
+  // test for the *default* (off) behaviour this file no longer exercises on its own.
+  const originalFeatureX = env.FEATURE_X;
 
   beforeAll(async () => {
     pool = makePool();
     await resetSchema(pool);
     getPool(url);
+    env.FEATURE_X = true;
   }, 60_000);
 
   beforeEach(async () => {
@@ -53,6 +62,7 @@ describe.skipIf(url === undefined)('F09 — assembleTickerSnapshot', () => {
   });
 
   afterAll(async () => {
+    env.FEATURE_X = originalFeatureX;
     await closePool();
     await pool?.end();
   });
