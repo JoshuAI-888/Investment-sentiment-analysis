@@ -51,7 +51,7 @@ describe.skipIf(url === undefined)('RNI D09 migration verification', () => {
     const legacySecurityId = rows[0]!.id;
 
     const outcome = await migrate(pool);
-    expect(outcome.applied).toEqual(RNI_MIGRATIONS);
+    for (const filename of RNI_MIGRATIONS) expect(outcome.applied).toContain(filename);
     const { rows: legacyRows } = await pool.query<{ symbol: string; name: string }>(
       'select symbol, name from security where id = $1',
       [legacySecurityId],

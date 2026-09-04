@@ -3,7 +3,7 @@
 **Writer:** DATA builder only  
 **Branch:** `feat/rni-data-source-first`  
 **Depends on:** merged RNI contract-freeze SHA  
-**Status:** `IN_PROGRESS`
+**Status:** `READY_FOR_REVIEW`
 
 ## Owned paths
 
@@ -15,13 +15,13 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | --- | ----------------------------------------------------------- | ------------------ | ---------------------------------------------------------------------------- |
 | D01 | Canonical `rni_source_item` and retrieval/content tables    | `READY_FOR_REVIEW` | Frozen port implemented; crossed natural-key conflict fails closed; 9/9 pass |
 | D02 | Source-security links and four-dimension observations       | `READY_FOR_REVIEW` | Migration `0021`; multi-ticker and four-dimension tests pass                 |
-| D03 | Claims, citations, themes, narratives and relationships     | `IN_PROGRESS`      | Re-review: enforce null-safe claim/narrative security identity               |
+| D03 | Claims, citations, themes, narratives and relationships     | `READY_FOR_REVIEW` | Null-safe claim/narrative security identity enforced; 6/6 pass               |
 | D04 | Independent Reddit/X `run_source_slice` persistence         | `READY_FOR_REVIEW` | Runs foreign-key immutable config/universe version IDs; 5/5 pass             |
 | D05 | Cross-source summary persistence without component mutation | `READY_FOR_REVIEW` | Divergence/partial repository tests 4/4 pass                                 |
 | D06 | Idempotent/concurrent inserts and transactional outbox      | `READY_FOR_REVIEW` | 8-way concurrent upsert and outbox rollback 3/3 pass                         |
 | D07 | Bounded-content, tombstone and rejected-discovery states    | `READY_FOR_REVIEW` | Terminal status, timestamp, and reason are immutable; 3/3 pass               |
 | D08 | FMP >500-member fixture support for integration migration   | `READY_FOR_REVIEW` | 501-member and six invalid activation fixtures 4/4 pass                      |
-| D09 | Full DATA lane verification and handoff                     | `IN_PROGRESS`      | Rebase and focused gate rerun pending after final D03 fix                    |
+| D09 | Full DATA lane verification and handoff                     | `READY_FOR_REVIEW` | Rebased RNI 41/41; lint/type/contract 101/101 green                          |
 
 ## Task evidence
 
@@ -31,7 +31,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 - **Files:** `apps/web/migrations/0020_rni_sources.sql`,
   `apps/web/src/rni/repositories/source-items.ts`,
   `apps/web/tests/integration/rni-persistence/source-items.test.ts`, and this progress file.
-- **Tests:** TypeScript; targeted ESLint; PostgreSQL D01 (`9/9`); full DATA (`40/40`);
+- **Tests:** TypeScript; targeted ESLint; PostgreSQL D01 (`9/9`); full DATA (`41/41`);
   `git diff --check`.
 - **Result:** canonical source identity is unique by platform/external ID and platform/URL;
   original URLs are retained; retrievals and changed bounded content are append-only; invalid
@@ -61,11 +61,13 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 - **Files:** `apps/web/migrations/0022_rni_claims_narratives.sql`,
   `apps/web/src/rni/repositories/claims-narratives.ts`,
   `apps/web/tests/integration/rni-persistence/claims-narratives.test.ts`, and this progress file.
-- **Tests:** TypeScript; targeted ESLint; D03 PostgreSQL integration (`5/5`); full DATA (`40/40`);
+- **Tests:** TypeScript; targeted ESLint; D03 PostgreSQL integration (`6/6`); full DATA (`41/41`);
   `git diff --check`.
 - **Result:** claims, citations, themes, narrative memberships, and comparative relationships are
   append-only and foreign-keyed to persisted source/observation lineage; dangling and mismatched
   citations/claims fail closed, including a claim for source A cited through persisted source B.
+  Membership security is null-safe: a security-specific narrative accepts only claims for that
+  security, while a global narrative accepts only global (`security_id is null`) claims.
 - **Decision:** CR-DATA-002 is deferred to I07 composition until ENGINE E05 has a concrete
   consumer. CR-DATA-003 is resolved: no vector extension or placeholder column is required.
 
@@ -76,7 +78,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
   `apps/web/src/rni/repositories/runs.ts`,
   `apps/web/tests/integration/rni-persistence/platform-slices.test.ts`, the D03 narrative FK
   regression, and this progress file.
-- **Tests:** TypeScript; targeted ESLint; D04 PostgreSQL integration (`5/5`); full DATA (`40/40`);
+- **Tests:** TypeScript; targeted ESLint; D04 PostgreSQL integration (`5/5`); full DATA (`41/41`);
   `git diff --check`.
 - **Result:** run creation is idempotent and atomic with exactly one Reddit plus one X slice;
   independent success/unavailable states round-trip unchanged; missing, duplicate, or cross-run
@@ -155,8 +157,9 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 - **Status:** `READY_FOR_REVIEW`
 - **Files:** `apps/web/tests/integration/rni-persistence/migration-apply.test.ts` and this progress
   file.
-- **Tests:** clean and forward migrations `0020-0023` (`2/2`); full ESLint and TypeScript pass;
-  unit `1171/1171`; contract with PostgreSQL `100/100`; DATA lane `40/40`.
+- **Tests:** post-rebase clean and forward migrations `0020-0023` (`2/2`); full ESLint and
+  TypeScript pass; contract with PostgreSQL `101/101`; DATA lane `41/41`. The prior corrective
+  full gate also had unit `1171/1171`.
 - **Repository gate:** full integration `396/397`. The only failure is the known non-RNI
   `attention-pipeline.test.ts:675` clock race: expected computed `0`, received `1`.
   `market.test.ts` passed (`18/18`) in this full run; every RNI integration test passed.
@@ -178,15 +181,16 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 
 | ID          | Status     | Request                                                                                                | Impact                                                                                     |
 | ----------- | ---------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
-| CR-DATA-001 | `ACCEPTED` | Source-persistence port frozen by coordinator commit `6b67657`; imported here as `af3cd49`.            | Concrete PostgreSQL adapter implements the accepted committed-ID/duplicate-flags boundary. |
+| CR-DATA-001 | `ACCEPTED` | Source-persistence port frozen by coordinator commit `6b67657`, now present in the rebased base.       | Concrete PostgreSQL adapter implements the accepted committed-ID/duplicate-flags boundary. |
 | CR-DATA-002 | `DEFERRED` | Keep claim/theme/narrative write shapes DATA-private until ENGINE E05 gives I07 a concrete consumer.   | Relational storage is reviewable; no premature broad frozen port.                          |
 | CR-DATA-003 | `RESOLVED` | Pgvector remains explicitly deferred for this vertical slice.                                          | Migration `0022` requires neither the vector extension nor a placeholder column.           |
 | CR-DATA-004 | `RESOLVED` | I06/e535624 owns duplicate/count/NVDA/ambiguous/unresolved validation in the integration synchronizer. | No frozen universe candidate-schema change is required.                                    |
 
 ### CR-DATA-001 — Source-persistence repository port
 
-- **Resolution (2026-09-05):** accepted as D-RNI-08 in coordinator commit `6b67657` and imported
-  without coordinator-owned documentation as `af3cd49`. The concrete DATA adapter implements it.
+- **Resolution (2026-09-05):** accepted as D-RNI-08 in coordinator commit `6b67657`. The
+  equivalent DATA cherry-pick was skipped during rebase because the coordinator patch is now in
+  the integration base. The concrete DATA adapter implements it.
 
 - **Original behaviour:** `apps/web/src/rni/contracts/index.ts` froze `RniSourceItem` and
   `RniReadService.getEvidence`, but exposes no write/persistence interface for the ENGINE lane's
@@ -265,14 +269,14 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 
 ## Test evidence
 
-| Suite                    | Status             | Command/run link                  | Notes                                                                                           |
-| ------------------------ | ------------------ | --------------------------------- | ----------------------------------------------------------------------------------------------- |
-| migration clean apply    | `READY_FOR_REVIEW` | D09 migration Vitest              | Clean apply through `0023`; pass                                                                |
-| migration forward apply  | `READY_FOR_REVIEW` | D09 migration Vitest              | Populated legacy schema preserved; pass                                                         |
-| repository unit          | `READY_FOR_REVIEW` | full ESLint + TypeScript + unit   | No errors; 1171/1171                                                                            |
-| database integration     | `READY_FOR_REVIEW` | DATA persistence + fixture Vitest | 40/40 D01-D09 tests pass                                                                        |
-| concurrency/idempotency  | `READY_FOR_REVIEW` | D06 PostgreSQL Vitest             | 8 concurrent deliveries + forced rollback; 3/3 pass                                             |
-| repository required gate | `READY_FOR_REVIEW` | full unit/contract/integration    | Unit 1171/1171, contract 100/100; integration 396/397 with one known non-RNI clock-race failure |
+| Suite                    | Status             | Command/run link                  | Notes                                                                                          |
+| ------------------------ | ------------------ | --------------------------------- | ---------------------------------------------------------------------------------------------- |
+| migration clean apply    | `READY_FOR_REVIEW` | D09 migration Vitest              | Clean apply through `0023`; pass                                                               |
+| migration forward apply  | `READY_FOR_REVIEW` | D09 migration Vitest              | Populated legacy schema preserved; pass                                                        |
+| repository unit          | `READY_FOR_REVIEW` | full ESLint + TypeScript + unit   | No errors; 1171/1171                                                                           |
+| database integration     | `READY_FOR_REVIEW` | DATA persistence + fixture Vitest | Post-rebase 41/41 D01-D09 tests pass                                                           |
+| concurrency/idempotency  | `READY_FOR_REVIEW` | D06 PostgreSQL Vitest             | 8 concurrent deliveries + forced rollback; 3/3 pass                                            |
+| repository required gate | `READY_FOR_REVIEW` | full unit/contract/integration    | Post-rebase lint/type and contract 101/101 pass; prior full gate 396/397 with known clock race |
 
 ## Review findings
 
@@ -282,6 +286,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | DATA-R2 | P1       | `FIXED` | Claim citations could reference a different persisted source | Composite `(claim_id, source_item_id)` FK rejects the mismatch                   |
 | DATA-R3 | P1       | `FIXED` | Runs accepted nonexistent text version labels                | Bigint FKs pin existing immutable config/universe versions; negative tests pass  |
 | DATA-R4 | P2       | `FIXED` | Same-status SQL could rewrite tombstone metadata             | Terminal status, timestamp, and reason are immutable after transition            |
+| DATA-R5 | P1       | `FIXED` | Opposing-security claim could join a security narrative      | Null-safe DB trigger requires identical claim/narrative security identity        |
 
 ## Open risks/blockers
 
@@ -294,31 +299,31 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 
 | SHA         | Summary                                               | Tests                                                             |
 | ----------- | ----------------------------------------------------- | ----------------------------------------------------------------- |
-| 3c0cc56     | D01 canonical source-first schema and repository      | Typecheck, targeted lint, PostgreSQL 7/7                          |
-| bae4e9f     | D02 multi-security links and observations             | Typecheck, targeted lint, PostgreSQL 12/12                        |
-| 2757f5c     | D03 relational claim/citation/narrative slice         | Typecheck, targeted lint, PostgreSQL 16/16; vector blocked        |
-| adb91a4     | D04 independent run/platform slices                   | Typecheck, targeted lint, PostgreSQL 20/20                        |
-| ca9ca72     | D05 immutable cross-source summaries                  | Typecheck, targeted lint, PostgreSQL 24/24                        |
-| 2cc02d7     | D06 concurrent source upsert and transactional outbox | Typecheck, targeted lint, PostgreSQL 27/27                        |
-| e75a0af     | D07 source tombstones and rejected discoveries        | Typecheck, targeted lint, PostgreSQL 30/30                        |
-| d8a83c0     | D08 >500-member FMP universe fixture support          | Typecheck, targeted lint, DATA 34/34                              |
-| 5362337     | D09 migration rehearsal and initial handoff           | Lint/type/unit/contract/DATA pass; legacy integration race        |
-| af3cd49     | Import accepted CR-DATA-001 contract code and tests   | Frozen port and fixture contract tests                            |
-| cb60846     | First coordinator review fixes and renewed handoff    | DATA 40/40; unit 1171/1171; contract 100/100; integration 396/397 |
-| this commit | Null-safe narrative membership integrity correction   | D03 PostgreSQL 6/6; TypeScript pass                               |
+| 608a669     | D01 canonical source-first schema and repository      | Typecheck, targeted lint, PostgreSQL 7/7                          |
+| 9369b40     | D02 multi-security links and observations             | Typecheck, targeted lint, PostgreSQL 12/12                        |
+| 298dfae     | D03 relational claim/citation/narrative slice         | Typecheck, targeted lint, PostgreSQL 16/16                        |
+| 359c318     | D04 independent run/platform slices                   | Typecheck, targeted lint, PostgreSQL 20/20                        |
+| 7ce7dca     | D05 immutable cross-source summaries                  | Typecheck, targeted lint, PostgreSQL 24/24                        |
+| 6d00a5d     | D06 concurrent source upsert and transactional outbox | Typecheck, targeted lint, PostgreSQL 27/27                        |
+| 8e109da     | D07 source tombstones and rejected discoveries        | Typecheck, targeted lint, PostgreSQL 30/30                        |
+| 8bb6d02     | D08 >500-member FMP universe fixture support          | Typecheck, targeted lint, DATA 34/34                              |
+| 531f9e3     | D09 migration rehearsal and initial handoff           | Lint/type/unit/contract/DATA pass; legacy integration race        |
+| 208ce81     | First coordinator review fixes and renewed handoff    | DATA 40/40; unit 1171/1171; contract 100/100; integration 396/397 |
+| 766b23e     | Null-safe narrative membership integrity correction   | D03 PostgreSQL 6/6; TypeScript pass                               |
+| this commit | Post-rebase migration rehearsal compatibility         | DATA 41/41; lint/type; contract 101/101                           |
 
 ## Handoff
 
 ```text
 RNI LANE     DATA
 BRANCH       feat/rni-data-source-first
-BASE SHA     86ec5b4757f45cbe96c651f413e8ff1109fef279
+BASE SHA     c570e8913dfe638aa03e5443cbd86896bce3d78e (current integration base)
 STATUS       READY_FOR_REVIEW
 TASKS        9/9 ready for coordinator re-review
-TESTS        lint/type pass; unit 1171/1171; contract 100/100; DATA 40/40; integration 396/397 (known non-RNI clock race only)
+TESTS        post-rebase lint/type pass; contract 101/101; DATA 41/41; prior full integration 396/397 (known non-RNI clock race only)
 CONTRACT     CR-DATA-001 accepted; CR-DATA-002 deferred to I07; CR-DATA-003 and 004 resolved
 RISKS        broader D03 write port deferred; one known non-RNI integration clock race
 FILES        migrations 0020-0023; DATA repositories; RNI persistence tests/fixtures; accepted source-port contract files; DATA.md
-COMMITS      3c0cc56 (D01); bae4e9f (D02); 2757f5c (D03); adb91a4 (D04); ca9ca72 (D05); 2cc02d7 (D06); e75a0af (D07); d8a83c0 (D08); 5362337 (D09); af3cd49 (accepted port); cb60846 (first review fixes); this commit (membership fix)
+COMMITS      608a669 (D01); 9369b40 (D02); 298dfae (D03); 359c318 (D04); 7ce7dca (D05); 6d00a5d (D06); 8e109da (D07); 8bb6d02 (D08); 531f9e3 (D09); 208ce81 (first review fixes); 766b23e (membership fix); this commit (rebase rehearsal)
 DEMO PROOF   one comparative source persists distinct bullish NVDA and bearish AMD observations
 ```
