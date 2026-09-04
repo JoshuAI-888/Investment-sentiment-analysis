@@ -97,14 +97,27 @@ below 640px the top bar wraps and stat tiles go two-up.
 ┌ fixture-mode banner (amber, only when PROVIDER_MODE=fixture) ─────────────┐
 ├ top bar: wordmark · env badge · nav (grouped) · ⌘K search · freshness · role/avatar ┤
 ├ context bar: window · compare · scope · universe · methodology · data-through · refresh ┤
-├ main content ─────────────────────────────────────┬ research pane (optional, 420px) ┤
+├ main content (full width) ─────────────────────────────────────────────── ┤
 └ footer: product disclaimer + methodology/limitations/legal links ─────────┘
+                                              ⌕ research bubble, floating, bottom-right, every page
 ```
 
-Each region is placed on its own explicit grid row and column
-(`grid-template-rows:auto auto auto 1fr`); do not rely on source-order auto-placement once a
-sibling column (the research pane) exists, or a wide element will be placed into the wrong row.
-The research pane is `position:sticky` under the top bar and independently scrollable.
+Each region is placed on its own explicit grid row (`grid-template-rows:auto auto auto 1fr`); do
+not rely on source-order auto-placement, or a wide element will be placed into the wrong row. Main
+content spans the full width — the research surface is not a docked column (see below), so it
+never has to be subtracted from it.
+
+**The research surface is global, floating and collapsed by default** — a small circular button
+fixed at the bottom-right corner of the viewport, present on every page, that expands into a panel
+on click rather than occupying permanent layout space. This replaced an earlier always-visible
+420px sidebar column: docking a pane by default cost every page real width for a feature most
+views of the product don't need open, and — because the panel is a fixed-position overlay, not a
+grid track — a user always has the full page to read, with the assistant one click away. The
+button and panel are siblings of the page content, not children of any one page, so they survive
+client-side navigation untouched: only a small "scope" label in the panel's header updates to name
+the page currently being viewed; the question, the answer and which of its tabs was selected carry
+over exactly as they were. See §4 for the interaction and animation spec, and §9 for the
+disclosure-widget accessibility pattern it uses instead of a plain `display:none` toggle.
 
 **Navigation is grouped**, not flat, once a product has more than about six top-level surfaces
 (RNI's own IA already asks for three groups — Research / Evidence / Governance): a `<span
@@ -129,6 +142,7 @@ overrides a shipped component's props.
 
 | Mockup pattern | Shipped (`apps/web/src/ui/`) | F23 should add |
 |---|---|---|
+| `.research-fab` + `.rp.open` | — | `ResearchLauncher` (see below) |
 | `.stat` tile | — | `StatTile` |
 | `.card`, `.card.hover` | — | `Card` |
 | `[data-inspect]`, drawer | `InspectableMetric.tsx`, `CalculationInspector.tsx` | wire `InspectableMetric` to open `CalculationInspector` as a drawer, not only a page |
@@ -146,6 +160,35 @@ overrides a shipped component's props.
 | `.mock` controls widget | — | dev-only, not shipped |
 | architecture SVG, step controls | — | `ArchitectureFlowDiagram`, `ArchitectureStepController` (F17) |
 | `.slider`, `.stepper` (draft→activate) | — | `AssumptionSlider`, `VersionStepper` (F15) |
+
+### `ResearchLauncher` — the global research bubble and panel
+
+The one persistent-assistant pattern in the product, and the only UI element that appears
+identically on every page regardless of what that page is about.
+
+- **Trigger.** A 56px circle, fixed bottom-right, the same gradient mark as the wordmark so it
+  reads as part of the same system rather than a bolted-on chat widget. Carries a small badge dot
+  when a research session has content and the panel is currently collapsed; the badge clears the
+  moment the panel opens, since the content it was pointing at is now visible. The icon itself
+  swaps between an "ask" glyph and a close ("×") glyph depending on state — one control, not two
+  overlapping ones.
+- **Panel.** Opens anchored to the same corner, `transform-origin: bottom right`, animating scale
+  and opacity together (not a plain fade) so it visibly grows out of the button it came from.
+  Reverses faster on close than it opens — closing should never feel like it's making the user
+  wait. Below the point where a floating card would feel cramped, it becomes a full-width bottom
+  sheet instead, sliding up from the screen edge with its own drag handle, per §9's drawer/sheet
+  rule.
+- **Session persistence is structural, not implemented.** Because the trigger and panel are
+  siblings of the page content — never nested inside any one page's markup — switching pages
+  never unmounts them. A future React implementation should keep this property literally: render
+  `ResearchLauncher` once, above the router's page outlet, not per-route. Only the label that says
+  which page you're currently viewing should change on navigation; the question, the answer, the
+  selected tab and the evidence list must not.
+- **Never let a page redirect to "go ask your question."** The previous iteration of this pattern
+  had exactly that bug: a research question asked while the panel was hidden would navigate the
+  user to a different page's dedicated composer instead of answering in place. The fix generalises
+  — asking a question opens the panel over whatever the user is currently looking at; it never
+  changes what page they're on.
 
 ## 5. State matrix
 
@@ -288,6 +331,13 @@ than showing a broken chart — `mockup-v1.html`'s `draw()` function does this b
   pulse; both remain usable via the step controls without the animation.
 - A drawer on desktop is a bottom sheet on narrow viewports, not a full-screen takeover with no
   way back to context.
+- **A collapsible disclosure panel** (the research launcher; any future one like it) is governed
+  by `aria-hidden` and `pointer-events:none` while closed, not `display:none` — the transition
+  needs the element to stay in the layout while it animates, and `display:none` cannot animate.
+  Opening moves focus into the panel's first control; closing returns it to the button that opened
+  it, so a keyboard user's position in the page is never lost. A pending "move focus in" timer must
+  be cancelled if the panel closes before it fires — an early close-then-reopen can otherwise leave
+  focus stranded back inside a panel the user just closed.
 
 ## 10. Responsive rules
 

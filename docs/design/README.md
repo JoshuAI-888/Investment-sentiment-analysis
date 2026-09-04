@@ -28,9 +28,20 @@ Use the floating **Mockup controls** panel (bottom left):
 - **Data state** — *Mature (day 45)*, *Cold start (day 3)*, *Degraded (X and scorer down)*,
   *Stale (refresh failed)*. Every page re-renders its honest state: hidden z-scores, `Partial —
   X unavailable`, `No stance — scorer unavailable since 04:10`, "as of 02:42".
-- **Persistent research pane** — variant A (always-visible right-hand pane, from the owner's
-  mockup) on or off. Variant B is the F11 composer on *Security → Research*, with the eight named
-  progress steps and the *complete / running / degraded / abstained / retracted* preview.
+- **Clear research session** — resets the floating research panel back to its empty state, so you
+  can see both the pre-loaded example and the "nothing asked yet" placeholder.
+
+**Research is global, not a page feature.** Click the circular ⌕ bubble, bottom-right, on any
+page — it expands into the same panel (Response / Evidence / Process tabs, the composer) with an
+animation, and a small badge shows on the collapsed bubble whenever there's a session to return
+to. The question, the answer and which tab you were on all carry over as you navigate between
+pages; only the small "scope" label in the panel's header updates to say what page you're
+currently looking at. Escape, or the panel's own × button, collapses it back to just the bubble.
+On narrow viewports it opens as a bottom sheet instead of a floating card. A second, page-specific
+research affordance still exists on *Security → Research*: the F11 composer, with its eight named
+progress steps and the *complete / running / degraded / abstained / retracted* preview — that one
+is deliberately not global, since it represents a security-scoped deep-dive rather than the
+ambient "ask about what you're looking at" assistant.
 
 Click any number to open the **Calculation Inspector** drawer; any numbered citation chip to open
 the **evidence modal**; any Explorer row to open the **source record** with its six tabs; any
@@ -61,7 +72,7 @@ the **evidence modal**; any Explorer row to open the **source record** with its 
 | Dimension labels **Stock · Company · Trading intent · Theme** | Every prose doc uses them; the frozen enum (`company_fundamentals`, `market_trading`, `catalyst_event`, `retail_narrative`) does not match and needs reconciling | radar, source cards |
 | Freshness vocabulary **Current / Delayed / Stale / Refreshing / Failed / Partial** | UI_SPEC §8.1; the data model's `FRESH/AGING/STALE` and the slice statuses are internal | pill, runs |
 | Claim type `FORECAST` rendered as **FUTURE_CLAIM** | "forecast" is predictive vocabulary under `check:copy`; the enum needs a display label | source record → claims |
-| Two research variants shown | Owner asked to compare | controls panel |
+| Research is a global floating bubble, not a docked pane | Owner decision, follow-up round: available on every page, collapsed by default, session persists across navigation | bottom-right FAB + expandable panel, every page |
 | One universe badge (S&P 500 — FMP) with the ApeWisdom top-100 as a second versioned list | D-30 and D-RNI-06 define different universes; the mockup asks whether they merge | Settings → Universe |
 | Plotly for charts, each with a table equivalent | Owner approved Plotly; a11y rule needs the table | every chart |
 

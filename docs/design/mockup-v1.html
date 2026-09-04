@@ -25,8 +25,7 @@ a{color:var(--royal);text-decoration:none}
 button{font:inherit;cursor:pointer}
 :focus-visible{outline:3px solid var(--royal);outline-offset:2px;border-radius:6px}
 .sr{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
-.app{display:grid;grid-template-columns:minmax(0,1fr) 0px;grid-template-rows:auto auto auto 1fr;min-height:100vh;transition:grid-template-columns .25s}
-body.rp-on .app{grid-template-columns:minmax(0,1fr) 420px}
+.app{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto 1fr;min-height:100vh}
 /* fixture banner */
 .fix{grid-row:1;grid-column:1/-1;background:#FFF6DF;border-bottom:1px solid #F5E1A6;color:#7A5A08;font-size:12px;text-align:center;padding:5px 12px}
 /* TOP */
@@ -214,11 +213,23 @@ details.alt table{margin-top:6px;font-size:12px}
 .fu button{text-align:left;border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 12px;color:var(--ink);font-size:13px;transition:all .15s}
 .fu button small{display:block;color:var(--royal);font-weight:800;font-size:10.5px;letter-spacing:.04em}
 .fu button:hover{border-color:var(--royal);background:var(--royal-tint);transform:translateX(3px)}
-/* research pane */
-.rp{grid-row:4;grid-column:2;align-self:start;background:#fff;border-left:1px solid var(--line);display:none;flex-direction:column;min-height:0;position:sticky;top:64px;height:calc(100vh - 64px)}
-body.rp-on .rp{display:flex}
+/* research: floating trigger + expandable panel, global and page-agnostic */
+.research-fab{position:fixed;right:24px;bottom:24px;z-index:56;width:56px;height:56px;border-radius:50%;border:0;background:linear-gradient(135deg,var(--royal),#7B86FF);box-shadow:var(--sh2);display:flex;align-items:center;justify-content:center;transition:transform .18s}
+.research-fab:hover{transform:translateY(-2px)}
+.research-fab svg{width:24px;height:24px;transition:transform .2s}
+.research-fab .fab-close{display:none}
+body.research-open .research-fab .fab-ask{display:none}
+body.research-open .research-fab .fab-close{display:block}
+.research-badge{position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;background:var(--rise);border:2px solid #fff;display:none}
+.research-badge.on{display:block;animation:pulse 2s infinite}
+body.research-open .research-badge{display:none}
+.rp{position:fixed;right:24px;bottom:96px;z-index:56;width:400px;max-width:calc(100vw - 32px);max-height:min(640px,calc(100vh - 140px));background:#fff;border:1px solid var(--line);border-radius:var(--r2);box-shadow:var(--sh2);display:flex;flex-direction:column;min-height:0;transform-origin:bottom right;transform:scale(.9) translateY(12px);opacity:0;pointer-events:none;transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .22s cubic-bezier(.2,.8,.2,1);overflow:hidden}
+body.research-open .rp{transform:scale(1) translateY(0);opacity:1;pointer-events:auto}
+.rp .drag-handle{display:none}
 .rp .hd{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
 .rp .hd b{font-weight:800}.rp .hd small{color:var(--ink-3);margin-left:auto}
+.rp .hd .rp-close{margin-left:8px;flex:none;background:var(--line-2);border:0;width:26px;height:26px;border-radius:50%;font-size:14px;color:var(--ink-3);display:none}
+@media (max-width:640px){.rp .hd .rp-close{display:block}}
 .rtabs{display:flex;gap:4px;padding:10px 14px;border-bottom:1px solid var(--line)}
 .rtabs button{flex:1;background:var(--line-2);border:0;padding:7px;border-radius:999px;color:var(--ink-2);font-weight:600;font-size:12px}
 .rtabs button.on{background:var(--royal);color:#fff}
@@ -302,7 +313,7 @@ input[type=range]{width:100%;accent-color:var(--royal)}
 .flow{stroke:var(--royal);stroke-width:2;fill:none;stroke-dasharray:7 7;animation:dash 1.1s linear infinite;opacity:.8}.flow.e{stroke:var(--rise)}
 @keyframes dash{to{stroke-dashoffset:-28}}
 body.paused .flow{animation-play-state:paused}
-@media (prefers-reduced-motion:reduce){.flow,.fresh i{animation:none}.page,.tab,.rtab,.spage{animation:none}}
+@media (prefers-reduced-motion:reduce){.flow,.fresh i{animation:none}.page,.tab,.rtab,.spage{animation:none}.rp,.research-fab svg{transition:none}}
 .archpop{position:absolute;display:none;width:300px;background:var(--ink);color:#fff;font-size:12px;line-height:1.45;padding:12px 14px;border-radius:12px;z-index:10;pointer-events:none;box-shadow:var(--sh2)}
 .archpop b{display:block;margin-bottom:3px}
 .ctl{display:flex;gap:6px;margin:10px 0;align-items:center;flex-wrap:wrap}
@@ -327,8 +338,8 @@ body[data-st="cold"] .not-cold{display:none!important}
 body[data-st="degraded"] .not-degraded{display:none!important}
 body[data-st="stale"] .not-stale{display:none!important}
 /* responsive */
-@media (max-width:1240px){body.rp-on .app{grid-template-columns:1fr}.rp{display:none!important}.stats{grid-template-columns:repeat(3,1fr)}.signals,.feat,.src3,.cases{grid-template-columns:1fr}.c3,.c4,.c5,.c6,.c7,.c8{grid-column:span 12}.sowhat{grid-template-columns:1fr}.nav{display:none}.steps{grid-template-columns:repeat(4,1fr)}.settings{grid-template-columns:1fr}.snav{display:flex;flex-wrap:wrap;gap:4px}.snav .grp{width:100%}}
-@media (max-width:640px){.top{flex-wrap:wrap;height:auto;padding:8px 12px;gap:8px}.brand{font-size:15px}.fresh{font-size:11px;padding:6px 10px;white-space:normal}.ctx{padding:8px 12px}.ctx .sel{font-size:11px}.foot{padding:12px}.stats{grid-template-columns:1fr 1fr}.main{padding:18px 14px 140px}h1{font-size:26px}.omni{display:none}.role{display:none}.kv2{grid-template-columns:1fr 1fr}.tl .band{grid-template-columns:1fr}.tl small{text-align:left}.ev{grid-template-columns:1fr}.steps{grid-template-columns:1fr 1fr}.mock{min-width:0;left:8px;bottom:8px}}
+@media (max-width:1240px){.stats{grid-template-columns:repeat(3,1fr)}.signals,.feat,.src3,.cases{grid-template-columns:1fr}.c3,.c4,.c5,.c6,.c7,.c8{grid-column:span 12}.sowhat{grid-template-columns:1fr}.nav{display:none}.steps{grid-template-columns:repeat(4,1fr)}.settings{grid-template-columns:1fr}.snav{display:flex;flex-wrap:wrap;gap:4px}.snav .grp{width:100%}}
+@media (max-width:640px){.top{flex-wrap:wrap;height:auto;padding:8px 12px;gap:8px}.brand{font-size:15px}.fresh{font-size:11px;padding:6px 10px;white-space:normal}.ctx{padding:8px 12px}.ctx .sel{font-size:11px}.foot{padding:12px}.stats{grid-template-columns:1fr 1fr}.main{padding:18px 14px 140px}h1{font-size:26px}.omni{display:none}.role{display:none}.kv2{grid-template-columns:1fr 1fr}.tl .band{grid-template-columns:1fr}.tl small{text-align:left}.ev{grid-template-columns:1fr}.steps{grid-template-columns:1fr 1fr}.mock{min-width:0;left:8px;bottom:8px}.research-fab{width:48px;height:48px;right:16px;bottom:16px}.rp{left:0;right:0;bottom:0;top:auto;width:auto;max-width:none;max-height:80vh;border-radius:24px 24px 0 0;transform:translateY(100%);transform-origin:bottom center}body.research-open .rp{transform:translateY(0)}body.research-open .research-fab{display:none}.rp .drag-handle{display:block;width:36px;height:4px;border-radius:2px;background:var(--line);margin:8px auto 0}}
 </style>
 </head>
 <body data-st="mature" class="rp-on">
@@ -763,9 +774,15 @@ body[data-st="stale"] .not-stale{display:none!important}
   </section>
 
   </main>
-  <!-- ============ RESEARCH PANE (variant A: persistent) ============ -->
-  <aside class="rp" id="rp" aria-label="Research pane">
-    <div class="hd"><b>Research</b><small id="scope">Radar · 24h · S&amp;P 500</small></div>
+  <!-- ============ RESEARCH: floating trigger + panel, present on every page, session persists across navigation ============ -->
+  <button class="research-fab" id="research-fab" aria-label="Open research" aria-expanded="false" aria-controls="rp">
+    <svg class="fab-ask" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4 4v-4H6a2 2 0 0 1-2-2V6z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 8.2v.1M9.6 10.4 12 9.3l2.4 1.1-1-2.5 1-2.5-2.4 1.1-2.4-1.1 1 2.5-1 2.5z" stroke="#fff" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/></svg>
+    <svg class="fab-close" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+    <span class="research-badge" id="research-badge"></span>
+  </button>
+  <aside class="rp" id="rp" aria-label="Research" aria-hidden="true">
+    <div class="drag-handle"></div>
+    <div class="hd"><b>Research</b><small id="scope">Radar · 24h · S&amp;P 500</small><button class="rp-close" aria-label="Close research" id="rp-close-btn">×</button></div>
     <div class="rtabs" role="tablist"><button class="on" data-r="ans">Response</button><button data-r="evd">Evidence</button><button data-r="proc">Process</button></div>
     <div class="rbody">
       <div class="rtab on" id="r-ans">
@@ -875,8 +892,8 @@ body[data-st="stale"] .not-stale{display:none!important}
 
 <div class="mock" id="mock"><b style="cursor:pointer" id="mock-min">Mockup controls ▾</b>
   <label>Data state <select id="st" aria-label="Data state"><option value="mature">Mature · day 45</option><option value="cold">Cold start · day 3</option><option value="degraded">Degraded · X + scorer down</option><option value="stale">Stale · refresh failed</option></select></label>
-  <label><input type="checkbox" id="rp-toggle" checked> Persistent research pane (variant A)</label>
-  <span>Variant B lives on Security → Research. Nothing here is observed data.</span></div>
+  <button class="btn ghost sm" id="rp-clear" style="justify-self:start">Clear research session</button>
+  <span>Research is global — click the ⌕ bubble, bottom-right, on any page. Variant B lives on Security → Research. Nothing here is observed data.</span></div>
 
 <script>
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
@@ -894,13 +911,13 @@ $$('.mtabs button').forEach(b=>b.onclick=()=>{$$('.mtabs button').forEach(x=>x.c
 // research state preview (variant B)
 $$('#rstate button').forEach(b=>b.onclick=()=>{$$('#rstate button').forEach(x=>x.classList.toggle('on',x===b));$$('.rsv').forEach(x=>x.style.display=x.id==='r-'+b.dataset.rs?'':'none');
  const st=b.dataset.rs,steps=$$('#steps .step');steps.forEach((s,i)=>{s.className='step '+(st==='running'?(i<4?'done':i===4?'run':''):st==='degraded'?(i<5?'done':i===5?'fail':''):st==='abstained'?(i<3?'done':i===3?'fail':''):'done')})});
-function ask(q){$('#lastq').textContent=q;$('#qin').value='';$$('.rtabs button')[0].click();toast('Research running: '+q);$('.rbody').scrollTop=0;$('#omni').classList.remove('open');if(!document.body.classList.contains('rp-on')){go('security');$$('#lens button')[2].click()}}
+function ask(q){$('#lastq').textContent=q;$('#qin').value='';$$('.rtabs button')[0].click();toast('Research running: '+q);$('.rbody').scrollTop=0;$('#omni').classList.remove('open');openResearch()}
 document.addEventListener('click',e=>{const a=e.target.closest('[data-ask]');if(a&&!e.target.closest('.cite')){e.preventDefault();e.stopPropagation();ask(a.dataset.ask)}});
 $('#ask').onclick=()=>{if($('#qin').value)ask($('#qin').value)};
 $('#qin').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.value)ask(e.target.value)});
 $('#rq-go').onclick=()=>{const v=$('#rq').value;if(v){ask(v);$$('#rstate button')[1].click();setTimeout(()=>$$('#rstate button')[0].click(),1800)}};
 const om=$('#omni'),oq=$('#omniq');oq.addEventListener('focus',()=>om.classList.add('open'));document.addEventListener('click',e=>{if(!om.contains(e.target))om.classList.remove('open')});
-document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();oq.focus()}if(e.key==='Escape'){om.classList.remove('open');$$('.modal.on,.drawer.on').forEach(m=>m.classList.remove('on'))}});
+document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();oq.focus()}if(e.key==='Escape'){om.classList.remove('open');$$('.modal.on,.drawer.on').forEach(m=>m.classList.remove('on'));closeResearch()}});
 oq.addEventListener('keydown',e=>{if(e.key==='Enter'&&oq.value){if(/^[A-Z.]{1,6}$/.test(oq.value.trim()))go('security');else ask(oq.value);oq.value=''}});
 // modals + drawers
 function openM(id){$('#'+id).classList.add('on');const f=$('#'+id).querySelector('button,[href],input');if(f)f.focus()}
@@ -917,7 +934,15 @@ $('#dr-go').onclick=()=>{const b=$('#dr-go');b.textContent='Running · run_01J9P
 // data-state switcher
 const FRESH={mature:['ok','Current · data through 06:30'],cold:['ok','Current · day 3 · through 06:30'],degraded:['warn','Partial — X unavailable since 04:10'],stale:['bad','Stale — last healthy run 02:42']};
 $('#st').onchange=e=>{const v=e.target.value;document.body.dataset.st=v;const [c,t]=FRESH[v];$('#freshpill').className='fresh '+c;$('#freshtxt').textContent=t;$('#ctxthrough').textContent=v==='stale'?'3 Sep 02:42 NZST (stale)':'3 Sep 06:30 NZST (18:30 UTC)';Object.keys(drawn).forEach(k=>delete drawn[k]);setTimeout(draw,60)};
-$('#rp-toggle').onchange=e=>{document.body.classList.toggle('rp-on',e.target.checked);setTimeout(draw,120)};
+const researchFab=$('#research-fab');
+function setResearchBadge(on){$('#research-badge').classList.toggle('on',on)}
+let researchFocusTimer=null;
+function openResearch(){document.body.classList.add('research-open');researchFab.setAttribute('aria-expanded','true');researchFab.setAttribute('aria-label','Close research');$('#rp').setAttribute('aria-hidden','false');setResearchBadge(false);clearTimeout(researchFocusTimer);researchFocusTimer=setTimeout(()=>{if(document.body.classList.contains('research-open'))$('#qin').focus()},240)}
+function closeResearch(){if(!document.body.classList.contains('research-open'))return;clearTimeout(researchFocusTimer);document.body.classList.remove('research-open');researchFab.setAttribute('aria-expanded','false');researchFab.setAttribute('aria-label','Open research');$('#rp').setAttribute('aria-hidden','true');researchFab.focus()}
+researchFab.onclick=()=>{document.body.classList.contains('research-open')?closeResearch():openResearch()};
+$('#rp-close-btn').onclick=closeResearch;
+$('#rp-clear').onclick=()=>{$('#lastq').textContent='Ask a question about what you\'re looking at';$('#gauge3').innerHTML='';drawn.gauge3=0;toast('Research session cleared');setResearchBadge(false)};
+setResearchBadge(true);
 $('#mock-min').onclick=()=>$('#mock').classList.toggle('min');
 // architecture: hover popovers, step controls, PoV/Target
 const ap=$('#archpop'),arch=$('#arch');$$('.node').forEach(n=>{n.addEventListener('mousemove',e=>{const [t,d]=n.dataset.pop.split('|');ap.innerHTML='<b>'+t+'</b>'+d;ap.style.display='block';const r=arch.getBoundingClientRect();ap.style.left=Math.min(e.clientX-r.left+14,r.width-320)+'px';ap.style.top=(e.clientY-r.top+14)+'px'});n.addEventListener('mouseleave',()=>ap.style.display='none')});
