@@ -51,6 +51,24 @@ function evidenceById(pack: EvidencePack): ReadonlyMap<string, EvidencePack['ite
   return new Map(pack.items.map((item) => [item.stableId, item]));
 }
 
+/**
+ * F11 §6 DoD: "themes with one source are labelled `single-source`." The schema
+ * (`schema.ts#synthesisTheme`) asks the model for its own `singleSource` guess so the Inspector
+ * can eventually show the two side by side, but nothing downstream trusts that guess — this
+ * recomputes it from the actual, distinct `evidenceIds` cited across a theme's claims and
+ * **overwrites** whatever the model said, the same "code decides, the model only drafts"
+ * discipline every deterministic check in this file already applies. Called once, right after
+ * synthesis returns and before verification runs, so the verifier judges the corrected output —
+ * not a second draft the model never saw.
+ */
+export function withDeterministicSingleSourceLabels(output: SynthesisOutput): SynthesisOutput {
+  const themes = output.themes.map((theme) => {
+    const distinctEvidence = new Set(theme.claims.flatMap((claim) => claim.evidenceIds));
+    return { ...theme, singleSource: distinctEvidence.size < 2 };
+  });
+  return { ...output, themes };
+}
+
 function metricById(metrics: readonly MetricFact[]): ReadonlyMap<string, MetricFact> {
   return new Map(metrics.map((metric) => [metric.metricId, metric]));
 }

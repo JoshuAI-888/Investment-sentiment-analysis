@@ -9,6 +9,7 @@ import {
   checkDateClaimsConsistent,
   checkStatedFreshnessMatchesOldestInput,
   runDeterministicChecks,
+  withDeterministicSingleSourceLabels,
   type VerifyContext,
 } from '@/services/research/deterministic-checks';
 import { AAPL, makeClaim, makeIncludedItem, makeMetric, makePack, makeSynthesisOutput, makeTheme } from './fixtures';
@@ -231,5 +232,29 @@ describe('runDeterministicChecks — a genuinely clean answer passes all eight',
     const result = runDeterministicChecks(ctx);
     expect(result.ok).toBe(true);
     expect(result.violations).toEqual([]);
+  });
+});
+
+describe('withDeterministicSingleSourceLabels', () => {
+  it('overrides a model-claimed singleSource: false to true when the theme really cites only one distinct evidenceId', () => {
+    const claim = makeClaim({ evidenceIds: ['e1'] });
+    const output = makeSynthesisOutput({ themes: [makeTheme([claim], { singleSource: false })] });
+    const result = withDeterministicSingleSourceLabels(output);
+    expect(result.themes[0]?.singleSource).toBe(true);
+  });
+
+  it('overrides a model-claimed singleSource: true to false when two distinct evidenceIds are actually cited across the theme\'s claims', () => {
+    const claimA = makeClaim({ evidenceIds: ['e1'] });
+    const claimB = makeClaim({ evidenceIds: ['e2'] });
+    const output = makeSynthesisOutput({ themes: [makeTheme([claimA, claimB], { singleSource: true })] });
+    const result = withDeterministicSingleSourceLabels(output);
+    expect(result.themes[0]?.singleSource).toBe(false);
+  });
+
+  it('a theme with zero evidenceIds (metric-only) is still labelled single-source, not left as the model said', () => {
+    const claim = makeClaim({ evidenceIds: [], metricIds: ['attention.rank_change'] });
+    const output = makeSynthesisOutput({ themes: [makeTheme([claim], { singleSource: false })] });
+    const result = withDeterministicSingleSourceLabels(output);
+    expect(result.themes[0]?.singleSource).toBe(true);
   });
 });

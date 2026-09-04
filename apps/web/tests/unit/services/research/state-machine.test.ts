@@ -123,6 +123,15 @@ function verifyClientContradicting(): ResearchModelClient {
     }),
   };
 }
+/** F11 §7 PR review step 2: "Force a verifier timeout; confirm verification_failed and that numbers still render." */
+function delayedVerifyClient(delayMs: number): ResearchModelClient {
+  return {
+    run: async <T,>(): Promise<ResearchModelResult<T>> => {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      return verifyClientSupportingAll().run<T>({ task: 'verify', promptVersion: 'v', system: 's', prompt: 'p', maxOutputTokens: 1 }, undefined as never);
+    },
+  };
+}
 
 function baseDeps(overrides: Record<string, unknown> = {}) {
   const events: RunEvent[] = [];
@@ -211,6 +220,25 @@ describe('runResearchStateMachine', () => {
     expect(labelsOf(events)).toContain('verification_failed');
     if (outcome.kind === 'verification_failed') {
       expect(outcome.claims[0]?.verificationStatus).toBe('withheld');
+    }
+  });
+
+  it('a verifier timeout lands on verification_failed with prose withheld — and the metrics that were already computed still render (F11 §7 PR review step 2)', async () => {
+    evidenceForSecurityMock.mockResolvedValueOnce({ items: [], scannedCount: 0, distinctCount: 0, truncated: false });
+    const events: RunEvent[] = [];
+    const deps = baseDeps({
+      verifyModelClient: delayedVerifyClient(50),
+      budgets: { ...DEFAULT_STAGE_BUDGETS_MS, verification: 5 },
+      emit: async (e: RunEvent) => events.push(e),
+    });
+
+    const outcome = await runResearchStateMachine(deps);
+
+    expect(outcome.kind).toBe('verification_failed');
+    expect(labelsOf(events)).toContain('verification_failed');
+    if (outcome.kind === 'verification_failed') {
+      expect(outcome.metrics).toEqual([oneMetric]);
+      expect(outcome.claims.every((claim) => claim.verificationStatus === 'withheld')).toBe(true);
     }
   });
 

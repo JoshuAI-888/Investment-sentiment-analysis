@@ -33,7 +33,7 @@ import type { MetricsGatherer, MetricFact } from './metrics';
 import type { ResearchModelClient } from './model-tasks';
 import { synthesisOutput, type SynthesisOutput } from './schema';
 import { synthesisSystemPrompt, SYNTHESIS_PROMPT_VERSION } from './prompts';
-import { runDeterministicChecks, type VerifyContext } from './deterministic-checks';
+import { runDeterministicChecks, withDeterministicSingleSourceLabels, type VerifyContext } from './deterministic-checks';
 import { resolveVerification, runModelVerification, type ModelVerificationResult, type VerificationOutcome } from './verify';
 import { templateFollowups, rewriteFollowups, type FollowupQuestion } from './followups';
 import type { NewClaimLedgerEntry } from '@/repositories/research';
@@ -284,7 +284,10 @@ export async function runResearchStateMachine(deps: StateMachineDeps): Promise<R
     };
   }
 
-  const output = synthesisOutcome.data;
+  // F11 §6 DoD: "themes with one source are labelled single-source" — recomputed from the
+  // actual cited evidenceIds, never trusted from the model's own guess (see the function's own
+  // docstring). Applied before verification so the verifier judges the corrected output.
+  const output = withDeterministicSingleSourceLabels(synthesisOutcome.data);
 
   if (remaining() <= 0) {
     await deps.emit({ eventType: 'state', label: 'degraded', payload: { reason: 'wall clock exhausted before verification' } });
