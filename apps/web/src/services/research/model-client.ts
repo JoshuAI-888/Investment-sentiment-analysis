@@ -9,14 +9,28 @@
  * **No live call is ever made in a test.** `createFixtureModelClient` is a pure function of a
  * caller-supplied responder; `createGatewayModelClient` is exercised only by construction in
  * `route.ts` behind `PROVIDER_MODE === 'live'`, never invoked in `PROVIDER_MODE=fixture`.
+ *
+ * **`onUsage` (lane-review finding 2).** Both clients accept an optional `onUsage` callback,
+ * fired once per completed call with the task, the model id actually used, and a token usage
+ * figure (or `null` when none is knowable). `services/research/composition.ts` wires this to
+ * `cost.ts#recordModelCost` so every synthesis/verification call actually reaches `cost_event` —
+ * before this, F11 recorded nothing, so D-20's global ceiling could never see a dollar of
+ * research spend no matter how many runs executed. Kept as a constructor-level callback rather
+ * than widening `ModelClient`'s per-call return type, because that return type (`Promise<T>`,
+ * `02-ARCHITECTURE-CONTRACTS.md` §4.6) is the one piece of this ad-hoc interface most likely to
+ * matter if F10/F12 ever converge on a shared `ModelClient` — narrowing the blast radius of a
+ * lane-local addition to this file alone.
  */
 import type { z } from 'zod';
 import type { ClassifyInput, ModelClient, SynthInput, VerifyInput } from './ports';
+import type { ModelUsage } from './cost';
 
 export type FixtureResponder = (
   task: 'stance' | 'synthesis' | 'followup' | 'verify',
   input: ClassifyInput | SynthInput | VerifyInput,
 ) => unknown;
+
+export type ModelUsageListener = (info: { task: string; model: string; usage: ModelUsage | null }) => void;
 
 export class ModelClientSchemaError extends Error {
   constructor(task: string, issues: string[]) {
@@ -26,24 +40,50 @@ export class ModelClientSchemaError extends Error {
 }
 
 /**
+ * Thrown instead of letting `JSON.parse`'s own `SyntaxError` propagate (lane-review finding 9:
+ * a `SyntaxError` message embeds a snippet of the exact text that failed to parse — which is
+ * exactly the malformed-model-output case a `degraded` run exists to withhold, and that message
+ * was reaching `research_run.error` and being served back on `GET /:runId` verbatim). This
+ * carries no fragment of the offending text, on either client.
+ */
+export class ModelResponseParseError extends Error {
+  constructor(task: string) {
+    super(`ModelClient response for task "${task}" was not valid JSON.`);
+    this.name = 'ModelResponseParseError';
+  }
+}
+
+/** A rough, deterministic token estimate for the fixture path — never a real spend, only enough to exercise cost recording in tests/dev. */
+function estimateFixtureUsage(input: unknown, output: unknown): ModelUsage {
+  const charsToTokens = (value: unknown) => Math.ceil(JSON.stringify(value).length / 4);
+  return { promptTokens: charsToTokens(input), completionTokens: charsToTokens(output) };
+}
+
+/**
  * Deterministic, no network, no timers. `responder` is a plain function so a test can encode
  * "the model returns X for this exact call" without a fixture file when the shape under test is
  * about orchestration rather than a specific frozen payload; tests that want a committed
  * fixture file read it themselves and hand it to this same responder shape.
  */
-export function createFixtureModelClient(responder: FixtureResponder): ModelClient {
-  function parseOrThrow<T>(task: string, schema: z.ZodType<T>, raw: unknown): T {
+export function createFixtureModelClient(responder: FixtureResponder, onUsage?: ModelUsageListener): ModelClient {
+  function parseOrThrow<T>(
+    task: 'stance' | 'synthesis' | 'followup' | 'verify',
+    schema: z.ZodType<T>,
+    input: ClassifyInput | SynthInput | VerifyInput,
+  ): T {
+    const raw = responder(task, input);
     const result = schema.safeParse(raw);
     if (!result.success) {
       throw new ModelClientSchemaError(task, result.error.issues.map((issue) => issue.message));
     }
+    onUsage?.({ task, model: 'fixture', usage: estimateFixtureUsage(input, raw) });
     return result.data;
   }
 
   return {
-    classify: async (task, input, schema) => parseOrThrow(task, schema, responder(task, input)),
-    synthesize: async (task, input, schema) => parseOrThrow(task, schema, responder(task, input)),
-    verify: async (task, input, schema) => parseOrThrow(task, schema, responder(task, input)),
+    classify: async (task, input, schema) => parseOrThrow(task, schema, input),
+    synthesize: async (task, input, schema) => parseOrThrow(task, schema, input),
+    verify: async (task, input, schema) => parseOrThrow(task, schema, input),
   };
 }
 
@@ -54,7 +94,17 @@ export type GatewayModelClientConfig = {
   fastModel: string;
   baseUrl?: string;
   fetcher?: typeof fetch;
+  onUsage?: ModelUsageListener;
 };
+
+type GatewayUsage = { prompt_tokens?: number; completion_tokens?: number };
+
+function toModelUsage(usage: GatewayUsage | undefined): ModelUsage | null {
+  if (usage === undefined || usage.prompt_tokens === undefined || usage.completion_tokens === undefined) {
+    return null;
+  }
+  return { promptTokens: usage.prompt_tokens, completionTokens: usage.completion_tokens };
+}
 
 /**
  * D-34: closes MT-06's transport half. One integration (Vercel AI Gateway), unified spend
@@ -89,6 +139,7 @@ export function createGatewayModelClient(config: GatewayModelClientConfig): Mode
     prompt: string,
     schema: z.ZodType<T>,
   ): Promise<T> {
+    const model = modelFor(task);
     const response = await fetchImpl(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -96,7 +147,7 @@ export function createGatewayModelClient(config: GatewayModelClientConfig): Mode
         authorization: `Bearer ${config.apiKey}`,
       },
       body: JSON.stringify({
-        model: modelFor(task),
+        model,
         temperature: 0,
         messages: [{ role: 'user', content: prompt }],
         response_format: { type: 'json_object' },
@@ -107,17 +158,31 @@ export function createGatewayModelClient(config: GatewayModelClientConfig): Mode
       throw new Error(`ModelClient gateway call for task "${task}" failed with status ${String(response.status)}`);
     }
 
-    const body = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const body = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+      usage?: GatewayUsage;
+    };
     const content = body.choices?.[0]?.message?.content;
     if (content === undefined) {
       throw new Error(`ModelClient gateway call for task "${task}" returned no content`);
     }
 
-    const parsed: unknown = JSON.parse(content);
+    // Never let a malformed response's own text reach an error message (lane-review finding 9)
+    // — `JSON.parse`'s `SyntaxError` embeds a snippet of exactly the untrusted text this branch
+    // exists to keep out of `research_run.error`.
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      throw new ModelResponseParseError(task);
+    }
+
     const result = schema.safeParse(parsed);
     if (!result.success) {
       throw new ModelClientSchemaError(task, result.error.issues.map((issue) => issue.message));
     }
+
+    config.onUsage?.({ task, model, usage: toModelUsage(body.usage) });
     return result.data;
   }
 

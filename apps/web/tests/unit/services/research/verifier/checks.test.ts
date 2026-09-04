@@ -181,6 +181,21 @@ describe('check 4 — no banned vocabulary', () => {
     const result = checkNoBannedVocabulary([claim({ text })]);
     expect(result.passed).toBe(false);
   });
+
+  // Lane-review finding 7: plural, hyphenated and irregularly-spaced variants that the original
+  // exact-phrase regexes missed.
+  it.each([
+    'Our price targets for the quarter look reasonable.',
+    'These signals are strengthening.',
+    'Reddit sentiments are mixed this week.',
+    'This looks like a strong-buy candidate.',
+    'Risk on positioning returned this week.',
+    'There is a 90 % chance this rallies.',
+    'This is highly likely to rise.',
+  ])('fails on the previously-missed variant: %s', (text) => {
+    const result = checkNoBannedVocabulary([claim({ text })]);
+    expect(result.passed).toBe(false);
+  });
 });
 
 describe('check 5 — no stance asserted where n < 5', () => {
@@ -198,6 +213,24 @@ describe('check 5 — no stance asserted where n < 5', () => {
     const result = checkStanceSampleFloor([claim({ assertsStanceForAxis: null })], ctx({ sampleSizeByAxis: { reddit: 0, x: 0, substack: 0 } }));
     expect(result.passed).toBe(true);
   });
+
+  it('fails on a self-reported-null claim whose own text asserts a thin-sample stance (lane-review finding 5)', () => {
+    // The exact scenario the finding names: the model never sets `assertsStanceForAxis`, but the
+    // claim text itself asserts a directional stance about a named axis.
+    const result = checkStanceSampleFloor(
+      [claim({ assertsStanceForAxis: null, text: 'The observed Reddit sample leans clearly bullish.' })],
+      ctx({ sampleSizeByAxis: { reddit: 1, x: 0, substack: 0 } }),
+    );
+    expect(result.passed).toBe(false);
+  });
+
+  it('passes the same text-derived stance once the sample meets the floor', () => {
+    const result = checkStanceSampleFloor(
+      [claim({ assertsStanceForAxis: null, text: 'The observed Reddit sample leans clearly bullish.' })],
+      ctx({ sampleSizeByAxis: { reddit: 5, x: 0, substack: 0 } }),
+    );
+    expect(result.passed).toBe(true);
+  });
 });
 
 describe('check 6 — no claim references a ticker outside the subject set', () => {
@@ -209,6 +242,20 @@ describe('check 6 — no claim references a ticker outside the subject set', () 
     const result = checkTickerInSubjectSet([claim({ text: '$AMD is also mentioned.' })], ctx({ subjectSymbols: new Set(['NVDA']) }));
     expect(result.passed).toBe(false);
     expect(result.failures[0]).toContain('AMD');
+  });
+
+  it('fails on a bare, non-cashtag ticker outside the subject set (lane-review finding 6)', () => {
+    const result = checkTickerInSubjectSet([claim({ text: "AMD's guidance dragged NVDA down." })], ctx({ subjectSymbols: new Set(['NVDA']) }));
+    expect(result.passed).toBe(false);
+    expect(result.failures[0]).toContain('AMD');
+  });
+
+  it('does not flag common non-ticker acronyms as bare tickers', () => {
+    const result = checkTickerInSubjectSet(
+      [claim({ text: 'The CEO discussed Q3 guidance and US demand trends.' })],
+      ctx({ subjectSymbols: new Set(['NVDA']) }),
+    );
+    expect(result.passed).toBe(true);
   });
 });
 

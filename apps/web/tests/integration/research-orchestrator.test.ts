@@ -19,6 +19,7 @@ import {
   createFakeClock,
   createFixtureEvidencePort,
   createFixtureMetricsPort,
+  createInMemoryAuditLog,
   createInMemoryResearchRepository,
 } from '../../src/services/research/testing';
 import { createFixtureModelClient } from '../../src/services/research/model-client';
@@ -130,7 +131,7 @@ function baseDeps(overrides: Partial<RunResearchDeps> = {}): RunResearchDeps {
     repo: createInMemoryResearchRepository(),
     evidence: createFixtureEvidencePort(() => ({ pack: fullPack(), fanOutTimedOut: false, classificationTimedOut: false, classifiedCount: 3 })),
     metrics: createFixtureMetricsPort([METRIC]),
-    model: createFixtureModelClient((task) => (task === 'synthesis' ? goodSynthesisOutput() : allSupportedVerdict(6))),
+    model: createFixtureModelClient((task) => (task === 'synthesis' ? goodSynthesisOutput() : allSupportedVerdict(7))),
     clock: createFakeClock(new Date('2026-08-27T00:00:00Z')),
     checkBudget: () => Promise.resolve({ allowed: true, spentUsd: '0', ceilingUsd: '350' }),
     ...overrides,
@@ -139,7 +140,16 @@ function baseDeps(overrides: Partial<RunResearchDeps> = {}): RunResearchDeps {
 
 const INPUT = { userId: 'user-1', securityId: SECURITY_ID, securitySymbol: 'NVDA', question: 'What is happening with NVDA?' };
 
-describe('a run persists and replays from events after a simulated reload', () => {
+/**
+ * **Naming correction (lane-review finding 3).** This does not prove "a run survives reload" in
+ * the production sense — it reads back from the *same* in-memory repository instance within one
+ * process, so it proves `replayStreamEvents` reconstructs order from stored rows correctly, not
+ * that the data outlives a process restart (two consecutive requests on a real deploy can land on
+ * different serverless instances entirely). That claim is DEFERRED in this lane's build report,
+ * gated on `src/repositories/research.ts` existing — this suite is one layer down from it:
+ * ordering/replay correctness, which the real repository will still need once it exists.
+ */
+describe('replayed events reconstruct a run\'s full stage sequence (not a claim that a run survives a real process restart — see this block\'s own comment)', () => {
   it('reconstructs the full stage sequence from persisted events alone, independent of the run object', async () => {
     const deps = baseDeps();
     const outcome = await runResearch(INPUT, deps);
@@ -163,9 +173,8 @@ describe('a run persists and replays from events after a simulated reload', () =
     expect(persistedEvents.map((event) => event.sequence)).toEqual(persistedEvents.map((_, index) => index));
     expect(replayed.map((event) => event.sequence)).toEqual(persistedEvents.map((event) => event.sequence));
 
-    // The run row itself is independently readable after "reload" too — reload recovers from
-    // whichever of the two a caller reaches first, per F11 §4.1: "a run survives reload because
-    // the events are the source of truth, not the stream."
+    // The run row itself is independently readable through the same repository instance too —
+    // within this process, a caller reaches the identical state whichever of the two it reads.
     const reloadedRun = await deps.repo.getRun(outcome.run.id);
     expect(reloadedRun?.status).toBe('complete');
   });
@@ -223,7 +232,12 @@ describe('retraction propagates to every render surface this lane owns', () => {
     const claimsBefore = await deps.repo.listClaims(outcome.run.id);
     const eventsBefore = await deps.repo.listEvents(outcome.run.id);
 
-    await retractRun(deps.repo, deps.clock, { runId: outcome.run.id, reason: 'contained a stale figure', actor: 'admin-1' });
+    await retractRun(deps.repo, deps.clock, createInMemoryAuditLog(), {
+      runId: outcome.run.id,
+      reason: 'contained a stale figure',
+      actor: 'admin-1',
+      expectedStatus: outcome.run.status,
+    });
 
     // "Every render surface" this lane owns is `repo.getRun` — the one read every route and any
     // future UI this feature grows must go through, so a retraction here is a retraction

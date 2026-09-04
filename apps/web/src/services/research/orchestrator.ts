@@ -33,6 +33,7 @@ import { runDeterministicChecks, type VerifierContext } from './verifier/checks'
 import { runModelVerificationPass, type ModelVerificationVerdict } from './verifier/model-pass';
 import { buildClaimLedger, validateLedgerShape } from './claim-ledger';
 import { templateFollowups, type FollowupTemplate } from './followups';
+import { ModelClientSchemaError, ModelResponseParseError } from './model-client';
 import type { SocialAxis } from '@/contracts/primitives';
 
 /**
@@ -56,6 +57,13 @@ export type RunResearchInput = {
   question: string;
   /** Defaults to `[securitySymbol]` — a caller naming explicit comparables widens check 6's allow-list. */
   subjectSymbols?: readonly string[];
+  /**
+   * Defaults to a fresh uuid. Exposed so a caller (`route.ts`) can mint the id **before**
+   * building `RunResearchDeps` — the `ModelClient`'s cost-recording `onUsage` hook needs the
+   * run id at construction time to attribute a `cost_event` correctly, and this run's id would
+   * otherwise not exist until after the deps it needs to be threaded through already do.
+   */
+  runId?: string;
 };
 
 export type RunResearchDeps = {
@@ -72,6 +80,15 @@ export type RunResearchDeps = {
    * purely a fan-out of what was already persisted, never a substitute for it.
    */
   onEvent?: (event: NewResearchEvent) => void;
+  /**
+   * `research_run.cost_usd` is a non-nullable decimal — there is no "unpriced" state available
+   * on that field the way there is on `cost_event.cost_usd` (lane-review finding 2). When
+   * provided, this is read once at persist time instead of a hardcoded `'0'`; `composition.ts`
+   * wires it to the running total of every priced model call this run made. Optional so a test
+   * that does not care about cost accounting may omit it — the fallback is still `'0'`, not a
+   * behaviour change for existing callers.
+   */
+  getAccumulatedCostUsd?: () => string;
 };
 
 export type RunResearchOutcome =
@@ -100,6 +117,24 @@ function evidenceSummaryFor(pack: { items: ReadonlyArray<{ item: { id: string; t
     .join('\n');
 }
 
+/**
+ * Never persists or serves raw text from an external call (lane-review finding 9). A malformed
+ * model response's own `SyntaxError`/`Error.message` can embed a snippet of exactly the
+ * untrusted text a `degraded`/`verification_failed`/`failed` run exists to withhold — and this
+ * `error` field is served verbatim by `GET /api/research/:runId`. Only two sources are trusted
+ * as already-safe: a string (one of this file's own controlled literals, e.g. "synthesis
+ * exceeded its 10s budget") and this lane's own error classes, whose messages are constructed
+ * by this codebase and never interpolate untrusted content (`model-client.ts`). Everything else
+ * — a raw `Error`, a network failure, an exception from a future real evidence port — is
+ * reduced to its constructor name only, never its message.
+ */
+function sanitizeError(error: unknown, fallback: string): string {
+  if (typeof error === 'string') return error;
+  if (error instanceof ModelClientSchemaError || error instanceof ModelResponseParseError) return error.message;
+  if (error instanceof Error) return `${fallback} (${error.name})`;
+  return fallback;
+}
+
 function metricsSummaryFor(metrics: readonly MetricRef[]): string {
   if (metrics.length === 0) return '(none)';
   return metrics.map((metric) => `- ${metric.metricId} (${metric.methodId}): ${metric.displayValue} ${metric.unit}`).join('\n');
@@ -123,7 +158,7 @@ export async function runResearch(input: RunResearchInput, deps: RunResearchDeps
     return { outcome: 'refused', reason: 'budget', message: budget.message };
   }
 
-  const runId = crypto.randomUUID();
+  const runId = input.runId ?? crypto.randomUUID();
   const subjectSymbols = new Set((input.subjectSymbols ?? [input.securitySymbol]).map((symbol) => symbol.toUpperCase()));
   const sequence = createSequenceCounter();
 
@@ -169,9 +204,9 @@ export async function runResearch(input: RunResearchInput, deps: RunResearchDeps
     return deps.repo.updateRun(runId, {
       status: dbStatusFor(stage),
       completedAt,
-      costUsd: '0',
+      costUsd: deps.getAccumulatedCostUsd?.() ?? '0',
       result,
-      error: error === null || error === undefined ? null : { message: String(error) },
+      error: error === null || error === undefined ? null : { message: sanitizeError(error, `${stage} failed`) },
     });
   }
 

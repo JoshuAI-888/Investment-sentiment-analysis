@@ -115,7 +115,7 @@ function baseDeps(overrides: Partial<RunResearchDeps> = {}): RunResearchDeps {
     repo: createInMemoryResearchRepository(),
     evidence: createFixtureEvidencePort(() => ({ pack: fullPack(), fanOutTimedOut: false, classificationTimedOut: false, classifiedCount: 3 })),
     metrics: createFixtureMetricsPort([METRIC]),
-    model: createFixtureModelClient((task) => (task === 'synthesis' ? goodSynthesisOutput() : allSupportedVerdict(6))),
+    model: createFixtureModelClient((task) => (task === 'synthesis' ? goodSynthesisOutput() : allSupportedVerdict(7))),
     clock: createFakeClock(new Date('2026-08-27T00:00:00Z')),
     checkBudget: () => Promise.resolve({ allowed: true, spentUsd: '0', ceilingUsd: '350' }),
     ...overrides,
@@ -238,7 +238,7 @@ describe('runResearch — verification_failed', () => {
       ...goodSynthesisOutput(),
       whatToMonitor: [{ text: 'Also watch $AMD closely.', kind: 'hypothesis', evidenceIds: [ID_3], metricIds: [], assertsStanceForAxis: null }],
     };
-    const deps = baseDeps({ model: createFixtureModelClient((task) => (task === 'synthesis' ? badOutput : allSupportedVerdict(6))) });
+    const deps = baseDeps({ model: createFixtureModelClient((task) => (task === 'synthesis' ? badOutput : allSupportedVerdict(7))) });
     const outcome = await runResearch(INPUT, deps);
     if (outcome.outcome !== 'ok') throw new Error('expected ok');
     expect(outcome.run.status).toBe('verification_failed');
@@ -253,7 +253,7 @@ describe('runResearch — verification_failed', () => {
     const deps = baseDeps({
       model: createFixtureModelClient((task) => {
         if (task !== 'verify') return goodSynthesisOutput();
-        const verdict = allSupportedVerdict(6);
+        const verdict = allSupportedVerdict(7);
         verdict.verdicts[0] = { claimIndex: 0, supported: false, rationale: 'does not follow' };
         return verdict;
       }),

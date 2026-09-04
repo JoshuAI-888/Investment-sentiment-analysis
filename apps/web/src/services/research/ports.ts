@@ -73,6 +73,14 @@ export type RetractionInput = {
   reason: string;
   actor: string;
   at: Date;
+  /**
+   * ARCH §8: "every mutation is ... subject to ... an optimistic-concurrency check." The caller
+   * states the status it read the run at; the repository refuses (`RetractionError`) if the
+   * run's actual current status no longer matches — e.g. a second operator already retracted it,
+   * or it somehow changed underneath the first request. `research_run` carries no separate
+   * version counter, so `status` itself is the concurrency token here.
+   */
+  expectedStatus: ResearchRunStatus;
 };
 
 export interface ResearchRepositoryPort {
@@ -85,7 +93,11 @@ export interface ResearchRepositoryPort {
   /** Append-only (§5): the claim ledger has no update path — a retraction adds a new fact, never edits one. */
   insertClaims(entries: readonly NewClaimLedgerEntry[]): Promise<readonly ClaimLedgerEntry[]>;
   listClaims(runId: string): Promise<readonly ClaimLedgerEntry[]>;
-  /** F-20 / R-18. Refuses (throws `RetractionError`) unless the run is `complete` or `degraded`. */
+  /**
+   * F-20 / R-18. Refuses (throws `RetractionError`) unless the run is `complete` or `degraded`
+   * **and** its current status still matches `input.expectedStatus` (the optimistic-concurrency
+   * check).
+   */
   retractRun(input: RetractionInput): Promise<ResearchRun>;
 }
 
@@ -94,6 +106,33 @@ export class RetractionError extends Error {
     super(message);
     this.name = 'RetractionError';
   }
+}
+
+// ── Audit (ARCH §8: every mutation writes an audit_event) ────────────────────────────────────
+
+/**
+ * No `audit_event` writer exists for this table today — `src/repositories/artifacts.ts`'s
+ * `insertReplayAuditEvent` is the closest precedent (SQL, in `repositories/`, per F03 DoD item
+ * 9), and there is no equivalent for `research_run` yet. Reported under this build's `CONTRACTS`
+ * section rather than written here, exactly like `ResearchRepositoryPort` above. `testing.ts`
+ * provides an in-memory implementation for tests; `composition.ts` wires a structured
+ * `console.error`-based stand-in until a real one lands (lane-review finding 8).
+ */
+export type AuditEntry = {
+  actorId: string;
+  actorRole: 'user' | 'admin';
+  action: string;
+  objectType: string;
+  objectId: string;
+  reason: string;
+  result: 'success' | 'failure' | 'rejected';
+  beforeValue: unknown;
+  afterValue: unknown;
+  occurredAt: Date;
+};
+
+export interface AuditPort {
+  record(entry: AuditEntry): Promise<void>;
 }
 
 // ── Evidence gathering (F10's service, consumed only through the frozen contract) ────────────

@@ -12,6 +12,8 @@
 import type { ClaimLedgerEntry, ResearchEvent, ResearchRun } from '@/contracts/research';
 import { researchRun } from '@/contracts/research';
 import type {
+  AuditEntry,
+  AuditPort,
   EvidenceGatheringBudgets,
   EvidenceGatheringPort,
   EvidenceGatheringResult,
@@ -27,6 +29,18 @@ import type {
 } from './ports';
 import { RetractionError } from './ports';
 import { RETRACTABLE_STATUSES } from './state-machine';
+
+/** Records every entry in order — tests assert on it directly rather than trusting a side effect happened. */
+export function createInMemoryAuditLog(): AuditPort & { readonly entries: readonly AuditEntry[] } {
+  const entries: AuditEntry[] = [];
+  return {
+    entries,
+    record(entry: AuditEntry): Promise<void> {
+      entries.push(entry);
+      return Promise.resolve();
+    },
+  };
+}
 
 export function createInMemoryResearchRepository(): ResearchRepositoryPort {
   const runs = new Map<string, ResearchRun>();
@@ -126,6 +140,11 @@ export function createInMemoryResearchRepository(): ResearchRepositoryPort {
       }
       if (!RETRACTABLE_STATUSES.has(existing.status)) {
         throw new RetractionError(`research_run ${input.runId} is "${existing.status}", not retractable`);
+      }
+      if (existing.status !== input.expectedStatus) {
+        throw new RetractionError(
+          `research_run ${input.runId} is now "${existing.status}", not the "${input.expectedStatus}" this request expected (optimistic-concurrency check)`,
+        );
       }
       const updated: ResearchRun = {
         ...existing,

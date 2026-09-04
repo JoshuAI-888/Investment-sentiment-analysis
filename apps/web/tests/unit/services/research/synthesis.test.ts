@@ -91,9 +91,15 @@ describe('flattenSynthesis', () => {
   it('tags every claim with a section label and preserves total count', () => {
     const output = validOutput();
     const flat = flattenSynthesis(output);
-    // summary(1) + theme claims(2) + bullish(1) + bearish(1) + whatChanged(1) + whatToMonitor(1)
-    expect(flat).toHaveLength(7);
+    // summary(1) + theme title(1) + theme claims(2) + bullish(1) + bearish(1) + whatChanged(1) + whatToMonitor(1)
+    expect(flat).toHaveLength(8);
     expect(flat.every((claim) => claim.section.length > 0)).toBe(true);
+  });
+
+  it('folds each theme title into a synthetic claim, so it is covered by the same checks as any other claim (lane-review finding 4)', () => {
+    const output = validOutput();
+    const flat = flattenSynthesis(output);
+    expect(flat.some((claim) => claim.text === 'Rising attention')).toBe(true);
   });
 });
 

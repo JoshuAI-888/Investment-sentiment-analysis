@@ -44,7 +44,11 @@ export async function POST(request: Request) {
   }
 
   const encoder = new TextEncoder();
-  const deps = createResearchDeps();
+  // Minted here, not inside `runResearch` — the model client's cost-recording hook
+  // (`composition.ts`) needs the run id at construction time, before the run row that id
+  // belongs to has even been created.
+  const runId = crypto.randomUUID();
+  const deps = createResearchDeps({ runId, userId: session.userId });
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -63,6 +67,7 @@ export async function POST(request: Request) {
       try {
         const outcome = await runResearch(
           {
+            runId,
             userId: session.userId,
             securityId: parsed.data.securityId,
             securitySymbol,

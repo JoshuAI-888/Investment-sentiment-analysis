@@ -133,9 +133,9 @@ function devFixtureSynthesisOutput(): SynthesisOutput {
 }
 
 /** `verify` always reports the placeholder claims as supported — there is nothing substantive to contradict. */
-export function createDevFixtureModelClient(): ModelClient {
+export function createDevFixtureModelClient(onUsage?: Parameters<typeof createFixtureModelClient>[1]): ModelClient {
   return createFixtureModelClient((task) => {
     if (task === 'synthesis') return devFixtureSynthesisOutput();
     return { verdicts: [{ claimIndex: 0, supported: true, rationale: 'placeholder' }] };
-  });
+  }, onUsage);
 }

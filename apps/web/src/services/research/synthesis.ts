@@ -73,12 +73,28 @@ export type SynthesisOutput = z.infer<typeof synthesisOutput>;
 /** Every claim across every section, tagged with which section it came from (for diagnostics). */
 export type FlatClaim = SynthesisClaim & { section: string };
 
+/**
+ * A theme's `title` renders verbatim in `complete` prose (and streams as part of the `stage`
+ * label) but is not itself a `SynthesisClaim` — before this fix, none of the eight deterministic
+ * checks ever saw it, since every check iterates `claims` (lane-review finding 4: a title like
+ * "Strong buy signal: 40% surge ahead" over one clean, correctly-cited claim sailed straight to
+ * `complete`). Folded into a synthetic claim instead of exempted or checked ad hoc — this is the
+ * "fold title into a claim" option named in that finding, and it is what makes "unverified prose
+ * can reach a user by no code path" true of this field too, at the cost of running the
+ * evidence/date checks against a claim that (correctly) cites nothing: a title date-checked
+ * against zero cited items always fails check 7, which is the conservative, safe direction for
+ * text this codebase renders without ever asking the model to cite it.
+ */
+function titleClaim(theme: SynthesisTheme): SynthesisClaim {
+  return { text: theme.title, kind: 'interpretation', evidenceIds: [], metricIds: [], assertsStanceForAxis: null };
+}
+
 export function flattenSynthesis(output: SynthesisOutput): readonly FlatClaim[] {
   const sections: Array<[string, readonly SynthesisClaim[]]> = [
     ['summary', output.summary],
     ...output.themes.map((theme, index): [string, readonly SynthesisClaim[]] => [
       `theme[${String(index)}] ${theme.title}`,
-      theme.claims,
+      [titleClaim(theme), ...theme.claims],
     ]),
     ['bullishCase', output.bullishCase],
     ['bearishCase', output.bearishCase],
