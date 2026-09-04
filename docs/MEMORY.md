@@ -851,6 +851,18 @@ summary citation to source identity, platform, URL and bounded supporting text, 
 `getEvidence(sourceItemId)`. It never treats citation and source IDs as interchangeable or joins
 DATA-private tables directly.
 
+### D-RNI-13 — Retail Radar reads are cursor-paginated and non-poolable
+
+**Accepts CR-SURFACE-02, 2026-09-05.** `RniReadService.getRadarPage` returns the immutable run
+lineage and a cursor page of canonical security identities paired with ticker, company name and
+exchange. Every row has fixed `reddit`, `x` and `combined` cells. Reddit and X each carry their
+own state, stance, sample count, coverage disclosure, confidence, freshness and citation IDs;
+the shape has no shared source-count field. Combined state is explicitly pending, aligned,
+divergent, partial or insufficient and cannot claim alignment/divergence while a platform is
+non-terminal, missing or insufficient. This additive read model unblocks SURFACE without
+exposing DATA repositories, inventing a second security catalogue or permitting one platform
+to stand in for the other.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

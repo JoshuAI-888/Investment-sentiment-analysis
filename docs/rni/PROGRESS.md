@@ -25,9 +25,9 @@
 | G0 repository preflight | `PASSED` | coordinator | PR #5 web/scorer CI, database integration, E2E, eval and Vercel preview green |
 | G1 model-route branch merged | `PASSED` | coordinator | PR #2, main commit `09ad439` |
 | G2 RNI contract frozen | `PASSED` | coordinator | PR #5 merged at `dd28ea2`; typed source contract at `9908eda` |
-| G3 DATA accepted | `CHANGES_REQUESTED` | DATA + reviewer | `5362337` handoff held on source/citation/version lineage and frozen-port conformance |
-| G4 ENGINE accepted | `CHANGES_REQUESTED` | ENGINE + reviewer | `a181461` held on Web Search source/content binding and complete consulted-source trace |
-| G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01 `6992706` approved; lane incomplete and held behind merge order |
+| G3 DATA accepted | `CHANGES_REQUESTED` | DATA + reviewer | `cb60846` closes the initial findings; held on same-security narrative membership and current rebase |
+| G4 ENGINE accepted | `IN_PROGRESS` | ENGINE + reviewer | E01 accepted at `b3e8220` after focused 16-test coordinator rerun; E02–E10 remain |
+| G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01 accepted at `71010bd`; CR-SURFACE-02 accepted as D-RNI-13 and S02 unblocked |
 | G6 integrated preview | `NOT_STARTED` | coordinator | Depends G3–G5 |
 | G7 live Reddit/X/FMP gates | `NOT_STARTED` | coordinator + joshuai | Depends G6 and configured credentials |
 | G8 production approval | `NOT_STARTED` | joshuai | Depends all prior gates |
@@ -37,9 +37,9 @@
 | Workstream | Branch | Status | Progress file | Latest accepted commit |
 |---|---|---|---|---|
 | DATA | `feat/rni-data-source-first` | `CHANGES_REQUESTED` | `DATA.md` | — |
-| ENGINE | `feat/rni-engine-live-slice` | `CHANGES_REQUESTED` | `ENGINE.md` | — |
-| SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01 approved | `SURFACE.md` | task `6992706`, awaiting lane completion/order |
-| INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | local coordinator contract `264ea9c` |
+| ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01 accepted | `ENGINE.md` | `b3e8220`, awaiting lane completion/order |
+| SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01 accepted | `SURFACE.md` | `71010bd`, awaiting lane completion/order |
+| INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I02C Radar contract, pending commit |
 
 ## Confirmed product decisions
 
@@ -70,12 +70,12 @@ The canonical matrix is [`INTEGRATION_PLAN.md`](INTEGRATION_PLAN.md) §10. Coord
 | Risk group | Status | Evidence |
 |---|---|---|
 | Scope and branch isolation | `PASSED` | `RNI-00-CONTRACT.md`, path ownership and scoped legacy banners; PR #5 |
-| Source identity/persist-first/idempotency | `CHANGES_REQUESTED` | DATA handoff proves concurrency/outbox ordering; crossed natural-key conflict and frozen-port conformance remain open |
-| Reddit/X separation and combined honesty | `NOT_STARTED` | — |
+| Source identity/persist-first/idempotency | `READY_FOR_REVIEW` | DATA `cb60846` closes crossed-key and frozen-port findings; final lane acceptance awaits DR-05/rebase |
+| Reddit/X separation and combined honesty | `IN_PROGRESS` | ENGINE E01 source binding accepted; D-RNI-13 freezes source-separated Radar cells; remaining pipeline/UI tasks open |
 | S&P 500/FMP universe migration | `READY_FOR_REVIEW` | integration commits `a7b13b6`, `e535624`; local PostgreSQL 501-member stage/replay and 600/601 gates pass |
 | Model route and CI | `PASSED` | PR #2 route validation; PR #5 RNI path filter and green eval |
 | Toolchain reproducibility | `PASSED` | pinned pnpm 10.33 clean install plus PR #5 independent CI |
-| Retention and citation safety | `CHANGES_REQUESTED` | bounded-content/database guards pass; DATA claim/source composite FK and ENGINE source/content binding remain open |
+| Retention and citation safety | `READY_FOR_REVIEW` | DATA claim/source composite FK and ENGINE source/content binding findings resolved; full publication gate remains later work |
 | Cost and 500+ symbol workload | `NOT_STARTED` | — |
 | Authentication/deployment | `READY` | — |
 
@@ -94,3 +94,4 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — merged concurrent password-auth PR #4 (`e4570e3`) into the contract branch, preserved D-37/D-38 and all D-RNI decisions, then reran lint, typecheck, contract and production build successfully.
 - 2026-09-05 — PR #5 merged at `dd28ea2`; G0–G2 passed and DATA/ENGINE/SURFACE may branch from this common base.
 - 2026-09-05 — reviewed DATA `5362337`, ENGINE `a181461`, and SURFACE `6992706`; returned DATA/ENGINE P1 lineage findings, approved fixture-only SURFACE S01, resolved CR-DATA-001–004 and CR-SURFACE-01 through coordinator commits `6b67657`/`264ea9c`, and held all lane merges in the prescribed order.
+- 2026-09-05 — accepted ENGINE E01 at `b3e8220`, closed its three initial findings, returned one same-security narrative-membership P1 to DATA, accepted SURFACE S01 at `71010bd`, and resolved CR-SURFACE-02 as D-RNI-13 with a cursor-paginated non-poolable Radar contract.

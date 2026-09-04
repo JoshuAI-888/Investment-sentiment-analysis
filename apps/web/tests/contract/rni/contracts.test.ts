@@ -4,6 +4,8 @@ import {
   rniComparativeRelation,
   rniCitation,
   rniPlatformSlice,
+  rniRadarPage,
+  rniRadarQuery,
   rniRunRequest,
   rniSecurityMention,
   rniSecurityObservation,
@@ -21,6 +23,7 @@ import {
   comparativeSource,
   independentPlatformSlices,
   partialCombinedSummary,
+  referenceRadarPage,
   comparativeSourceCommit,
   comparativeSourceDuplicateCommit,
   rniFixtureIds,
@@ -78,8 +81,13 @@ describe('RNI frozen contracts', () => {
 
   it('resolves summary citation IDs before reading their persisted source evidence', async () => {
     const fake: RniReadService = {
-      getRun: async () => { throw new Error('not used'); },
-      getPlatformSlices: async () => { throw new Error('not used'); },
+      getRadarPage: async () => referenceRadarPage,
+      getRun: async () => {
+        throw new Error('not used');
+      },
+      getPlatformSlices: async () => {
+        throw new Error('not used');
+      },
       getSecuritySummary: async () => partialCombinedSummary,
       getCitation: async (citationId) => {
         if (citationId !== comparativeCitation.id) throw new Error('citation not found');
@@ -98,6 +106,52 @@ describe('RNI frozen contracts', () => {
     expect(citation.platform).toBe('reddit');
     expect(citation.url).toBe(evidence.originalUrl);
     expect(evidence.boundedContent).toContain(citation.evidenceText);
+  });
+
+  it('keeps cursor-paginated Radar results security-aware and source-separated', async () => {
+    const query = rniRadarQuery.parse({ runId: rniFixtureIds.run });
+    const fake: RniReadService = {
+      getRadarPage: async () => rniRadarPage.parse(referenceRadarPage),
+      getRun: async () => referenceRadarPage.run,
+      getPlatformSlices: async () => independentPlatformSlices,
+      getSecuritySummary: async () => partialCombinedSummary,
+      getCitation: async () => comparativeCitation,
+      getEvidence: async () => comparativeSource,
+    };
+
+    const page = await fake.getRadarPage(query);
+    expect(query.limit).toBe(50);
+    expect(page.rows.map((row) => `${row.security.ticker} — ${row.security.companyName}`)).toEqual([
+      'NVDA — NVIDIA Corporation',
+      'AMD — Advanced Micro Devices, Inc.',
+    ]);
+    expect(page.rows[0]?.reddit.eligibleSourceCount).toBe(2);
+    expect(page.rows[0]?.x.eligibleSourceCount).toBe(5);
+    expect(page.rows[0]?.combined.state).toBe('divergent');
+    expect(page.rows[1]?.x.stance).toBe('insufficient');
+    expect(page.rows[1]?.combined.state).toBe('partial');
+  });
+
+  it('rejects relabelled, pooled, or fallback Radar cells', () => {
+    const row = referenceRadarPage.rows[1]!;
+    expect(() =>
+      rniRadarPage.parse({
+        ...referenceRadarPage,
+        rows: [{ ...row, x: { ...row.x, platform: 'reddit' } }],
+      }),
+    ).toThrow(/X cell/u);
+    expect(() =>
+      rniRadarPage.parse({
+        ...referenceRadarPage,
+        rows: [{ ...row, eligibleSourceCount: 1 }],
+      }),
+    ).toThrow();
+    expect(() =>
+      rniRadarPage.parse({
+        ...referenceRadarPage,
+        rows: [{ ...row, combined: { ...row.combined, state: 'aligned' } }],
+      }),
+    ).toThrow(/missing platform/u);
   });
 
   it('requires decimal strings for semantic scores so calculation inputs round-trip exactly', () => {

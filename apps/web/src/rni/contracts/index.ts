@@ -352,7 +352,157 @@ export const rniCombinedSummary = z
   );
 export type RniCombinedSummary = z.infer<typeof rniCombinedSummary>;
 
+export const rniRadarQuery = z
+  .object({
+    runId: z.string().uuid(),
+    cursor: z.string().min(1).nullable().optional(),
+    limit: z.number().int().min(1).max(100).default(50),
+  })
+  .strict();
+export type RniRadarQuery = z.input<typeof rniRadarQuery>;
+
+export const rniRadarSecurity = z
+  .object({
+    id: z.string().uuid(),
+    ticker: z.string().regex(/^[A-Z][A-Z0-9.-]{0,9}$/u),
+    companyName: z.string().min(1),
+    exchange: z.string().min(1),
+  })
+  .strict();
+export type RniRadarSecurity = z.infer<typeof rniRadarSecurity>;
+
+export const rniRadarPlatformCell = z
+  .object({
+    platform: rniPlatform,
+    status: rniSliceStatus,
+    stance: rniStance,
+    summary: z.string().min(1),
+    eligibleSourceCount: z.number().int().nonnegative(),
+    coverageDisclosure: z.string().min(1),
+    confidence: rniUnitDecimal.nullable(),
+    lastSuccessfulRefreshAt: rniIsoTimestamp.nullable(),
+    dataThroughAt: rniIsoTimestamp.nullable(),
+    computedAt: rniIsoTimestamp.nullable(),
+    citationIds: z.array(z.string().uuid()),
+  })
+  .strict()
+  .superRefine((cell, context) => {
+    if (
+      ['pending', 'running', 'failed', 'unavailable'].includes(cell.status) &&
+      cell.stance !== 'insufficient'
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['stance'],
+        message: 'A non-publishable platform state must remain insufficient, never neutral',
+      });
+    }
+  });
+export type RniRadarPlatformCell = z.infer<typeof rniRadarPlatformCell>;
+
+export const rniRadarCombinedState = z.enum([
+  'pending',
+  'aligned',
+  'divergent',
+  'partial',
+  'insufficient',
+]);
+export type RniRadarCombinedState = z.infer<typeof rniRadarCombinedState>;
+
+export const rniRadarCombinedCell = z
+  .object({
+    state: rniRadarCombinedState,
+    summary: z.string().min(1),
+    citationIds: z.array(z.string().uuid()),
+  })
+  .strict();
+export type RniRadarCombinedCell = z.infer<typeof rniRadarCombinedCell>;
+
+export const rniRadarRow = z
+  .object({
+    security: rniRadarSecurity,
+    reddit: rniRadarPlatformCell,
+    x: rniRadarPlatformCell,
+    combined: rniRadarCombinedCell,
+  })
+  .strict()
+  .superRefine((row, context) => {
+    if (row.reddit.platform !== 'reddit') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['reddit', 'platform'],
+        message: 'The Reddit cell must contain only Reddit results',
+      });
+    }
+    if (row.x.platform !== 'x') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['x', 'platform'],
+        message: 'The X cell must contain only X results',
+      });
+    }
+
+    const nonTerminal = new Set<RniSliceStatus>(['pending', 'running']);
+    const missing = new Set<RniSliceStatus>(['failed', 'unavailable']);
+    const hasNonTerminal = nonTerminal.has(row.reddit.status) || nonTerminal.has(row.x.status);
+    const hasMissing = missing.has(row.reddit.status) || missing.has(row.x.status);
+    const hasInsufficientPlatform =
+      row.reddit.stance === 'insufficient' || row.x.stance === 'insufficient';
+    if (hasNonTerminal && row.combined.state !== 'pending') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['combined', 'state'],
+        message: 'Cross-source synthesis remains pending until both platform cells are terminal',
+      });
+    }
+    if (!hasNonTerminal && row.combined.state === 'pending') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['combined', 'state'],
+        message: 'A terminal pair cannot remain in the pending cross-source state',
+      });
+    }
+    if (hasMissing && (row.combined.state === 'aligned' || row.combined.state === 'divergent')) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['combined', 'state'],
+        message: 'A missing platform cannot produce aligned or divergent cross-source synthesis',
+      });
+    }
+    if (
+      hasInsufficientPlatform &&
+      (row.combined.state === 'aligned' || row.combined.state === 'divergent')
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['combined', 'state'],
+        message: 'An insufficient platform cannot produce aligned or divergent synthesis',
+      });
+    }
+  });
+export type RniRadarRow = z.infer<typeof rniRadarRow>;
+
+export const rniRadarPage = z
+  .object({
+    run: rniRun,
+    rows: z.array(rniRadarRow).max(100),
+    nextCursor: z.string().min(1).nullable(),
+  })
+  .strict()
+  .superRefine((page, context) => {
+    const securityIds = page.rows.map((row) => row.security.id);
+    if (new Set(securityIds).size !== securityIds.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['rows'],
+        message: 'A Radar page cannot repeat a security',
+      });
+    }
+  });
+export type RniRadarPage = z.infer<typeof rniRadarPage>;
+
 export interface RniReadService {
+  getRadarPage(query: RniRadarQuery): Promise<RniRadarPage>;
   getRun(runId: string): Promise<RniRun>;
   getPlatformSlices(runId: string): Promise<readonly RniPlatformSlice[]>;
   getSecuritySummary(runId: string, securityId: string): Promise<RniCombinedSummary>;

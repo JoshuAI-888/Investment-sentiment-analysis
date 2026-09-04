@@ -194,6 +194,15 @@ identity, platform, canonical citation URL and bounded supporting text. Consumer
 `getEvidence(sourceItemId)`; they must not guess that a citation ID is a source ID or bypass the
 read service to join storage-private tables.
 
+`RniReadService.getRadarPage(query)` is the cursor-paginated cross-lane boundary for the Retail
+Radar. Each row carries the canonical security ID together with ticker, company name and
+exchange, plus structurally separate `reddit`, `x` and `combined` cells. Platform cells own
+their sample count, coverage, confidence, freshness, stance, explanation and citation IDs;
+there is no row-level pooled source count. A combined cell may be aligned or divergent only
+when both independently labelled platform cells are terminal and publishable. Pending,
+unavailable, failed or insufficient platform states remain explicit and cannot be relabelled as
+cross-source agreement.
+
 ## 11. Publication and test gates
 
 A claim publishes only when every claim citation resolves to a persisted source item, belongs to

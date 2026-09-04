@@ -13,6 +13,7 @@
 | I02 | Freeze RNI contracts, fixtures, routes and migration allocation | `MERGED` | PR #5 merge `dd28ea2`; source SHA `9908eda` |
 | I02A | Resolve CR-DATA-001 source-persistence port | `READY_FOR_REVIEW` | `6b67657`; additive frozen contract; fake-port duplicate delivery returns the committed identity |
 | I02B | Resolve DATA/SURFACE contract requests | `READY_FOR_REVIEW` | `264ea9c`; D-RNI-09–12; narrow citation lookup plus explicit storage, pgvector, and universe-validation ownership decisions; contract 79 pass |
+| I02C | Resolve CR-SURFACE-02 Radar read shape | `READY_FOR_REVIEW` | D-RNI-13; additive cursor page with security identity and non-poolable Reddit/X/combined cells; contract 81 pass |
 | I03 | Expand CI path filters for RNI prompts/agents/evals | `MERGED` | PR #5; actual `tests/eval/rni` path triggered and passed |
 | I04 | Pin/verify pnpm 10.33.0 and build-script policy | `PASSED` | Clean frozen install and PR #5 web/scorer CI passed |
 | I05 | Add forward universe migration and 600-member ceiling | `READY_FOR_REVIEW` | Clean + forward PostgreSQL migration tests pass; 600 accepted and 601 rejected in DB and Zod |
@@ -48,6 +49,7 @@
 | CR-DATA-003 | DATA | `RESOLVED_NO_CHANGE` | pgvector remains deferred for this vertical slice; relational claim/narrative storage proceeds without an extension or placeholder | DATA, ENGINE, INTEGRATION | `264ea9c` |
 | CR-DATA-004 | DATA | `RESOLVED_NO_CHANGE` | I06 synchronizer owns duplicate, completeness, NVDA, ambiguous, and unresolved validation; transport schema remains structural | DATA, INTEGRATION | `e535624` + `264ea9c` |
 | CR-SURFACE-01 | SURFACE | `ACCEPTED` | Add `RniReadService.getCitation(citationId)` returning frozen `RniCitation`; evidence remains a second source-ID read | DATA, SURFACE, INTEGRATION | `264ea9c` |
+| CR-SURFACE-02 | SURFACE | `ACCEPTED` | Add a cursor-paginated Radar page with run lineage, security identity, two non-poolable platform-labelled cells, and explicit pending/aligned/divergent/partial/insufficient cross-source state | DATA, ENGINE, SURFACE, INTEGRATION | I02C / D-RNI-13 |
 
 ### CR-DATA-001 decision
 
@@ -76,13 +78,27 @@
 - **CR-SURFACE-01:** accept one additive citation lookup. A consumer resolves citation ID to the
   frozen citation record and then source ID to bounded evidence, without repository access.
 
+### CR-SURFACE-02 decision
+
+- **Current behaviour:** the frozen service could read one summary by opaque security ID but
+  could not enumerate Radar rows or render ticker, company and exchange identity.
+- **Decision:** accept an additive `getRadarPage` cursor boundary. Each row owns canonical
+  security identity, fixed Reddit/X platform cells and one explicit cross-source cell.
+- **Compatibility:** existing read methods are unchanged. There is no shared source-count field;
+  missing, pending and insufficient platforms cannot be relabelled as aligned/divergent output.
+- **Affected lanes:** SURFACE implements the fixture/UI consumer; DATA and ENGINE eventually
+  produce the storage/service projection; INTEGRATION composes the authenticated route at I08.
+- **Acceptance:** the frozen NVDA/AMD page preserves a Reddit/X divergence, a one-platform
+  partial result, independent sample counts and cursor semantics; fallback, relabelled and pooled
+  shapes fail contract parsing.
+
 ## Lane intake
 
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
-| DATA | `CHANGES_REQUESTED` | no | local lane gates green; full integration legacy race reported | yes | held on DR-01–04 and CR-DATA-001 conformance |
-| ENGINE | `CHANGES_REQUESTED` | no | focused 10, unit 1,180, contract 78, lint/type pass | yes | held on ER-01–03 source-lineage findings |
-| SURFACE | `S01_APPROVED` | no | contract 7 + fixture Playwright 2 pass | yes | held for merge order and I02B rebase; S02 may proceed |
+| DATA | `CHANGES_REQUESTED` | no | corrective lane gates green; full integration legacy race reported | yes | DR-01–04 closed at `cb60846`; held on same-security narrative membership and current rebase |
+| ENGINE | `E01_ACCEPTED` | no | coordinator rerun: focused unit/contract 16 pass | yes | `b3e8220` accepted; lane proceeds with E02 and remains held for completion/order |
+| SURFACE | `S01_APPROVED` | yes through I02B | contract 9 + fixture Playwright 2 pass | yes | S01 `71010bd` approved; S02 unblocked by I02C and remains held for lane completion/order |
 
 ## Live/deployment gates
 
@@ -113,18 +129,21 @@
 | `apps/web/app/(admin)/admin/settings/universe/page.tsx` | Identify the FMP-current preset and preserve separate human-approved activation on the existing Settings route | `e535624` | `check:copy`; production build route manifest |
 | `apps/web/src/rni/contracts/index.ts`, `src/rni/testing/reference-fixtures.ts` | Resolve CR-SURFACE-01 with citation-ID lookup through the frozen read service | `264ea9c` | RNI contract 9 pass; full contract 79 pass/22 DB-skipped |
 | `docs/features/RNI-00-CONTRACT.md`, `docs/MEMORY.md` | Record CR-DATA-002–004 and CR-SURFACE-01 outcomes as D-RNI-09–12 | `264ea9c` | contract/doc review |
+| `apps/web/src/rni/contracts/index.ts`, `src/rni/testing/reference-fixtures.ts` | Resolve CR-SURFACE-02 with cursor-paginated, source-separated Radar reads | I02C | typecheck; RNI contract 11 pass; full contract 81 pass/22 DB-skipped |
+| `docs/features/RNI-00-CONTRACT.md`, `docs/MEMORY.md` | Record the non-poolable Radar read rule as D-RNI-13 | I02C | contract/doc review |
 
 ## Review findings
 
 | ID | Priority | Status | Finding | Resolution |
 |---|---|---|---|---|
-| DR-01 | P1 | `OPEN` | Conflicting source external ID and canonical URL can resolve to different rows but the repository silently chooses one | Returned to DATA; require crossed-natural-key failure test |
-| DR-02 | P1 | `OPEN` | Citation FK does not require the cited source to equal its claim source | Returned to DATA; require composite claim/source FK and mismatch test |
-| DR-03 | P1 | `OPEN` | Concrete runs accept nonexistent config/universe version strings | Returned to DATA; require existing-version FKs and rejection test |
-| DR-04 | P2 | `OPEN` | Terminal tombstone timestamp/reason remain directly mutable at the database boundary | Returned to DATA; make terminal metadata immutable after transition |
-| ER-01 | P1 | `OPEN` | Model-supplied excerpt/time is not bound to the exact consulted Web Search source | Returned to ENGINE; require exact provenance or URL-only abstention |
-| ER-02 | P1 | `OPEN` | A multi-call response can omit one action's source trace and still succeed | Returned to ENGINE; validate every Web Search action fail-closed |
-| ER-03 | P2 | `OPEN` | Prompt-injection fixture starts after provider generation but was described as an end-to-end guard | Returned to ENGINE; add pre-generation eval or narrow claim |
+| DR-01 | P1 | `RESOLVED` | Conflicting source external ID and canonical URL can resolve to different rows but the repository silently chooses one | `cb60846` rejects crossed natural keys and proves no retrieval is attached |
+| DR-02 | P1 | `RESOLVED` | Citation FK does not require the cited source to equal its claim source | `cb60846` adds the composite claim/source FK and mismatch test |
+| DR-03 | P1 | `RESOLVED` | Concrete runs accept nonexistent config/universe version strings | `cb60846` uses bigint version FKs and seeds real version lineage in tests |
+| DR-04 | P2 | `RESOLVED` | Terminal tombstone timestamp/reason remain directly mutable at the database boundary | `cb60846` makes all terminal tombstone fields immutable and tests direct SQL rejection |
+| DR-05 | P1 | `OPEN` | Narrative membership can attach a claim for one security to a narrative for another security | Returned to DATA; require same-security DB enforcement, explicit null/global rule and negative integration test |
+| ER-01 | P1 | `RESOLVED` | Model-supplied excerpt/time is not bound to the exact consulted Web Search source | `58e5828` requires exact consulted URL and full field-scoped citations; `b3e8220` closes partial-span overlap |
+| ER-02 | P1 | `RESOLVED` | A multi-call response can omit one action's source trace and still succeed | `58e5828` validates every action and fails closed on malformed/incomplete traces |
+| ER-03 | P2 | `RESOLVED` | Prompt-injection fixture starts after provider generation but was described as an end-to-end guard | Claim narrowed to tool/output handling; pre-generation model resistance is explicitly E10 eval scope |
 
 ## Open risks/blockers
 
@@ -145,6 +164,7 @@
 | `6b67657` | Accept CR-DATA-001 and freeze the commit-returning persistence port | lint; typecheck; RNI contract 8 pass; full contract 78 pass/22 DB-skipped |
 | `e535624` | Stage validated current FMP S&P 500 snapshots without activating them | lint; typecheck; unit 1,175; contract 78 pass/22 DB-skipped; RNI service/route 16 pass; PostgreSQL universe 4 pass + versions 9 pass; `check:copy`; production build |
 | `264ea9c` | Resolve remaining initial lane contract requests and freeze citation lookup | lint; typecheck; RNI contract 9 pass; full contract 79 pass/22 DB-skipped |
+| I02C | Accept CR-SURFACE-02 and freeze non-poolable Radar pagination | typecheck; focused lint; RNI contract 11 pass; full contract 81 pass/22 DB-skipped |
 
 ## Coordinator notes
 
@@ -165,6 +185,9 @@
 - DATA and ENGINE handoffs were reviewed against the frozen contract and returned with open P1
   lineage findings; neither branch is merged. SURFACE S01 is approved as a fixture-only slice,
   but waits behind merge order and must consume I02B before citation work.
+- ENGINE E01 is accepted at `b3e8220` after an independent 16-test rerun; E02 is unblocked.
+- CR-SURFACE-02 is accepted as D-RNI-13. SURFACE may consume I02C and start S02 without importing
+  DATA repositories or inventing a local Radar response shape.
 
 ## I05 handoff
 
