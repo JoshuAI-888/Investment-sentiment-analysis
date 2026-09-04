@@ -17,7 +17,7 @@
 | I02D | Resolve CR-SURFACE-03 security-detail dimension read | `PASSED` | D-RNI-14; additive complete/cited per-platform dimension shape; focused 13 pass, full contract 83 pass/22 DB-skipped |
 | I02E | Resolve CR-SURFACE-04 idempotent manual-refresh command boundary | `PASSED` | D-RNI-17; additive intent-only request and server-resolved accepted/duplicate result; contract 14/14 |
 | I02F | Resolve CR-SURFACE-05 active-universe and staged-preview reads | `PASSED` | D-RNI-18; separate read-only service, bounded search and count-reconciled immutable impact; RNI 15/15, full contract 85/22 skipped |
-| I02F1 | Close universe-read contract review findings | `PASSED` | Legacy/FMP active union, 501-member FMP floor, impossible complete-impact rejection; focused and full contract pass |
+| I02F1 | Close universe-read contract review findings | `PASSED` | Independent re-review READY at `098f010`; legacy/FMP union, FMP floor and impossible-impact rejection; focused 15/15, full contract 85/22 skipped |
 | I03 | Expand CI path filters for RNI prompts/agents/evals | `MERGED` | PR #5; actual `tests/eval/rni` path triggered and passed |
 | I04 | Pin/verify pnpm 10.33.0 and build-script policy | `PASSED` | Clean frozen install and PR #5 web/scorer CI passed |
 | I05 | Add forward universe migration and 600-member ceiling | `PASSED` | Independent re-review passed IR-01/03/05/06; focused validation 9 and fresh PostgreSQL activation/version gates 14 pass |
@@ -266,7 +266,7 @@
 | `CURRENT` | Accept SURFACE S07 idempotent manual-refresh controls | typecheck; focused lint; RNI contract 14/14; guard 1/1; deterministic Chromium 4/4 twice |
 | `CURRENT` | Resolve CR-SURFACE-05 with read-only universe selection boundary | typecheck; focused lint; RNI contract 15/15; full contract 85/22 skipped |
 | `CURRENT` | Review ENGINE E06 platform analytics | typecheck; focused lint; focused unit/contract/eval 17/17; ER-07 returned |
-| `CURRENT` | Close I02F universe-read P1 review findings | typecheck; focused lint; RNI contract 15/15; full contract 85/22 skipped; independent re-review pending |
+| `CURRENT` | Close I02F universe-read P1 review findings | typecheck; focused lint; RNI contract 15/15; full contract 85/22 skipped; independent re-review READY at `098f010` |
 
 ## Coordinator notes
 
@@ -338,7 +338,7 @@
   whose complete possible add/remove sets reconcile its 501–600 count. It exposes no provider or
   mutation operation.
 - **Verification:** typecheck and focused lint pass; RNI contract 15/15; full contract 85 pass with
-  22 database-only skips.
+  22 database-only skips; independent ICR-01/02 re-review returned READY at `098f010`.
 - **Risk/handoff:** I08 must project these reads from the active/staged repository state, retain
   version binding and verify added/removed identities against both stored memberships. SURFACE owns
   fixture/UI/browser coverage after rebasing onto the I02F1 correction.
