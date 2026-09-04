@@ -1,13 +1,24 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { createFixtureRniAiRouteSettingsService } from '../../../fixtures/rni-ui/read-service';
+import {
+  FixtureRniAiRouteSettingsService,
+  type FixtureRniAiRouteSettingsServiceOptions,
+} from '../../../fixtures/rni-ui/read-service';
 import type { RniAiRoute, RniAiRouteSetting, RniAiRouteSettingUpdateResult } from '@/rni/contracts';
 import { AiRouteSettings } from './AiRouteSettings';
 
 /** Fixture composition keeps the client limited to the frozen intent-only settings service. */
-export function AiRouteSettingsFixtureHarness({ initialSetting }: { initialSetting: RniAiRouteSetting }) {
-  const [service] = useState(createFixtureRniAiRouteSettingsService);
+export function AiRouteSettingsFixtureHarness({
+  initialSetting,
+  gatewayAvailable = true,
+}: {
+  initialSetting: RniAiRouteSetting;
+  gatewayAvailable?: FixtureRniAiRouteSettingsServiceOptions['gatewayAvailable'];
+}) {
+  const [service] = useState(
+    () => new FixtureRniAiRouteSettingsService({ gatewayAvailable }),
+  );
   const [setting, setSetting] = useState(initialSetting);
   const [selectedRoute, setSelectedRoute] = useState<RniAiRoute>(initialSetting.aiRoute);
   const [isSubmitting, setIsSubmitting] = useState(false);

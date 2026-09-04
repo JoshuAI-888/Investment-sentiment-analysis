@@ -36,7 +36,7 @@ function Dimension({
 }>) {
   return (
     <li data-rni-dimension={dimension.dimension} className="space-y-1 border-t pt-3">
-      <h4 className="font-medium">{label(dimension.dimension)}</h4>
+      <h3 className="font-medium">{label(dimension.dimension)}</h3>
       <p>
         {label(dimension.stance)} · Score: {dimension.score ?? 'Insufficient evidence'}
       </p>
@@ -60,7 +60,7 @@ function PlatformDimensions({
 }>) {
   return (
     <section data-rni-detail-platform={platform.platform} className="space-y-3 border p-4">
-      <h3 className="text-xl font-semibold">{heading}</h3>
+      <h2 className="text-xl font-semibold">{heading}</h2>
       <p>
         {label(platform.status)} · {platform.eligibleSourceCount} eligible sources
       </p>

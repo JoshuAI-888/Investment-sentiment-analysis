@@ -3,7 +3,7 @@
 **Writer:** SURFACE builder only  
 **Branch:** `feat/rni-surface-demo`  
 **Depends on:** merged RNI contract-freeze SHA; fixture-backed `RniReadService`  
-**Status:** `IN_PROGRESS` — S01–S08 ready for merge; S09 ready for coordinator review; S10 not started
+**Status:** `READY_FOR_REVIEW` — S01–S09 ready for merge; S10 ready for coordinator review
 
 ## Owned paths
 
@@ -21,8 +21,8 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | S06 | Per-platform freshness, run progress and partial/failure states  | `READY_FOR_MERGE` | Coordinator accepted `ffd5119`             |
 | S07 | Manual ticker/full refresh controls and double-submit prevention | `READY_FOR_MERGE` | Coordinator accepted through `babd940` |
 | S08 | S&P 500 search, NVDA default and universe Settings components    | `READY_FOR_MERGE` | Coordinator accepted                         |
-| S09 | Route/model display and Direct/Gateway future-run setting        | `READY_FOR_REVIEW` | D-RNI-20 fixture, contract and Chromium proof |
-| S10 | Accessibility, responsive and full SURFACE handoff               | `NOT_STARTED`     | Required audits and lane report            |
+| S09 | Route/model display and Direct/Gateway future-run setting        | `READY_FOR_MERGE` | Coordinator accepted `8d1d943`             |
+| S10 | Accessibility, responsive and full SURFACE handoff               | `READY_FOR_REVIEW` | Full RNI Chromium 22/22; scoped axe clean  |
 
 ## Required invariants
 
@@ -71,6 +71,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | S07 build/browser             | `PASSED`      | `apps/web/node_modules/.bin/next build`; `E2E_BASE_URL=http://127.0.0.1:3008 apps/web/node_modules/.bin/playwright test tests/e2e/rni/manual-refresh-fixture-guard.spec.ts --project=chromium`; `E2E_BASE_URL=http://127.0.0.1:3008 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/manual-refresh.spec.ts --project=chromium` (run twice) | The guarded fixture page is dynamic; fixture/live guard coverage passed, and both fixture-mode Chromium runs passed 4/4 with deferred pending-state release, pre-submit previews, exact replay, distinct later intent/run, 501 preview, native status semantics, and 375px no-overflow. |
 | S08 correction | `PASSED` | `tsc --noEmit`; scoped eslint; contracts; build; diff check; focused Chromium | Contracts 15/15; Chromium 3/3 includes keyboard search, staged impact, responsive fit, and legacy active presentation. |
 | S09 route/model settings | `PASSED` | `node_modules/.bin/tsc --noEmit`; focused eslint; `node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism`; `node_modules/.bin/next build`; `E2E_BASE_URL=http://127.0.0.1:3011 node_modules/.bin/playwright test tests/e2e/rni/ai-route-settings.spec.ts --project=chromium` | Typecheck and lint passed; frozen contract suite passed 17/17; production build passed; Chromium passed 3/3 including future-only successor, exact replay/crossed-key rejection, unavailable Gateway failure, accessible controls, and 375px fit. |
+| S10 full SURFACE audit | `PASSED` | `node_modules/.bin/tsc --noEmit`; focused eslint; `node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism`; `node_modules/.bin/next build`; `E2E_BASE_URL=http://127.0.0.1:3013 node_modules/.bin/playwright test tests/e2e/rni --project=chromium` | Typecheck and lint passed; frozen contract suite passed 17/17; production build passed; complete RNI Chromium suite passed 22/22. Seven SURFACE routes have one H1, no scoped axe violations, and no 375px overflow; guarded unavailable Gateway is disabled with its labelled reason. |
 | repository required gate      | `NOT_STARTED` | —                                                                                                                                                                                                                                                                                                                                                                                                        | —                                                                                                                                                                    |
 
 ## Review findings
@@ -86,6 +87,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | SR-08 | P1       | `RESOLVED` | The deferred browser harness was exposed by an unguarded production App Router page. | The fixture page is forced dynamic and checks validated `env.PROVIDER_MODE` at request time; the fixture-only renderer rejects live mode and the page maps that rejection to `notFound()` before the client harness renders. |
 | SR-09–SR-13 | P1/P2 | `RESOLVED` | S08 client fixture composition, non-generic search, incomplete staged impact, stale tracker, and no keyboard/live result status. | Server page composes frozen reads; UI is props-only; fixture search parses/bounds generic active members; staged identities/empty states, status, keyboard Chromium, and tracker evidence are complete. |
 | SR-14 | P2 | `RESOLVED` | Legacy active-universe presentation was untested. | `presentActiveUniverseVersion` drives rendered source/retrieval copy and direct test covers the legacy/null-retrieval branch. |
+| SR-15 | P1 | `RESOLVED` | The S10 axe audit found Security Detail jumped from the page H1 directly to platform H3 headings. | Platform headings are now H2 and their dimension headings H3; the complete seven-route scoped axe sweep passes. |
 
 ## Open risks/blockers
 
@@ -114,6 +116,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | `e12472d` | S08 universe settings feature | typecheck; lint; contract 15; build; Chromium 2 |
 | `CURRENT` | S08 universe settings correction | typecheck; lint; contract 15; build; Chromium 3 |
 | `CURRENT` | S09 future-run AI route settings | typecheck; lint; contract 17; build; Chromium 3 |
+| `CURRENT` | S10 full SURFACE accessibility/responsive audit | typecheck; lint; contract 17; build; Chromium 22 |
 
 ## S01 delivery record
 
@@ -177,7 +180,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 - **Result:** server composition uses only frozen `RniUniverseReadService`; the UI is presentation-only. Active NVDA default, parsed bounded case-insensitive search, source/retrieval, staged version impact identities, and explicit empty removals are displayed.
 - **Verification:** coordinator independently passed typecheck, scoped lint, contracts 15/15, build, diff check, and focused Chromium 3/3 including Tab → type → submit, live search status, MSFT, PLTR, 375px fit, and legacy active presentation.
 - **Risk:** fixture composition only; I08 owns live repository/FMP composition and activation remains outside SURFACE.
-- **Handoff:** coordinator accepted S08; it is ready for merge. S09 is blocked on CR-SURFACE-06.
+- **Handoff:** coordinator accepted S08; it is ready for merge. S09 is also accepted; S10 is ready for review.
 
 ## S09 delivery record
 
@@ -185,20 +188,28 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 - **Result:** `/rni/settings/ai-route` server-reads only the frozen `RniAiRouteSettingsService`, displays the selected Direct/Gateway route, both availability states, active config/effective time, and server-resolved task provider/model/revision/prompt identities without credentials. Its fixture harness sends only a fresh idempotency key, selected route, and bounded reason; a successful update displays the successor config and makes clear that existing run/model lineage does not change.
 - **Verification:** typecheck, focused lint, frozen contract tests (17/17), production build, and focused Chromium (3/3) passed. The fixture test proves Direct → Gateway successor creation, resolved Gateway models, exact duplicate replay, crossed-key rejection, historical Direct run immutability, and unavailable Gateway rejection. The browser test verifies accessible radio/label/status semantics, the future-only confirmation, and 375px no-overflow.
 - **Risk:** fixture composition only. I08 owns authenticated Settings API composition and I10 owns capability checks, model mapping, and live execution; SURFACE does not expose credentials or client-selected models.
-- **Handoff:** ready for coordinator review. S10 remains `NOT_STARTED`.
+- **Handoff:** coordinator accepted S09; it is ready for merge. S10 is ready for review.
+
+## S10 delivery record
+
+- **Files changed:** `apps/web/src/rni/ui/SecurityDetail.tsx`, `apps/web/src/rni/ui/AiRouteSettingsFixtureHarness.tsx`, `apps/web/app/(rni)/rni/settings/ai-route/fixture/page.tsx`, `apps/web/tests/e2e/rni/surface-audit.spec.ts`, and this lane tracker.
+- **Result:** all seven SURFACE routes—Radar, Security Detail, Raw Data Explorer, State Matrix, Manual Refresh, Universe Settings, and AI Route Settings—have one primary heading, no scoped axe violations, and no document overflow at 375px. The audit corrected Security Detail’s H1 → H3 hierarchy to H1 → H2 → H3. A dynamic, runtime-guarded fixture route verifies that an unavailable Gateway radio is disabled and describes its unavailable reason; it cannot render outside fixture mode.
+- **Verification:** typecheck, focused lint, frozen contract tests (17/17), production build, and the complete RNI Chromium suite (22/22) passed. The browser audit covers scoped axe, headings, responsive fit, and the unavailable-Gateway label; existing focused flows continue to cover citations, source separation, state honesty, idempotency, and Settings mutation semantics.
+- **Risk:** UI remains fixture-composed until I08 supplies authenticated API/CSRF composition and I10 supplies live capability checks, all five task mappings, and budget enforcement. D-RNI-21 model mappings remain server-resolved; SURFACE displays only the frozen resolved identities.
+- **Handoff:** ready for coordinator review. No S10 shared contract, API, migration, navigation, or deployment files changed.
 
 ## Handoff
 
 ```text
 RNI LANE     SURFACE
 BRANCH       feat/rni-surface-demo
-BASE SHA     bdb23ce
-STATUS       S01–S08 ready for merge; S09 ready for review; S10 not started
-TASKS        S01–S08 ready for merge; S09 ready for review; S10 not started
-TESTS        typecheck: pass; focused lint: pass; RNI contract: 17 pass; production build: pass; Chromium: S07 4 pass twice; S08 3 pass; S09 3 pass
+BASE SHA     87742d0
+STATUS       S01–S09 ready for merge; S10 ready for review
+TASKS        S01–S09 ready for merge; S10 ready for review
+TESTS        typecheck: pass; focused lint: pass; RNI contract: 17 pass; production build: pass; complete RNI Chromium: 22 pass
 CONTRACT     CR-SURFACE-01–06 accepted; CR-SURFACE-05 resolved by D-RNI-18; CR-SURFACE-06 resolved by D-RNI-20
-RISKS        Fixture-only composition; I08 owns live universe/API composition and I09 owns live refresh composition; I10 owns live AI route capability/model execution
-FILES        apps/web/fixtures/rni-ui/read-service.ts; apps/web/app/(rni)/rni/settings/ai-route/page.tsx; apps/web/src/rni/ui/AiRouteSettings.tsx; apps/web/src/rni/ui/AiRouteSettingsFixtureHarness.tsx; apps/web/tests/e2e/rni/ai-route-settings.spec.ts; docs/rni/progress/SURFACE.md
-COMMITS      S07 401d2f7, 63d42d8, fb58989, f7e481e; S08 e12472d; S09 CURRENT
-DEMO PROOF   `/rni/settings/ai-route` shows Direct default and resolved models, then an accessible Gateway intent creates fixture-config-v2 for future runs while existing lineage remains immutable
+RISKS        Fixture-only composition; I08 owns live universe/API composition and I09 owns live refresh composition; I10 owns live AI route capability/model execution, all five mappings, and budget enforcement
+FILES        apps/web/fixtures/rni-ui/read-service.ts; apps/web/app/(rni)/rni/settings/ai-route/page.tsx; apps/web/app/(rni)/rni/settings/ai-route/fixture/page.tsx; apps/web/src/rni/ui/AiRouteSettings.tsx; apps/web/src/rni/ui/AiRouteSettingsFixtureHarness.tsx; apps/web/src/rni/ui/SecurityDetail.tsx; apps/web/tests/e2e/rni/ai-route-settings.spec.ts; apps/web/tests/e2e/rni/surface-audit.spec.ts; docs/rni/progress/SURFACE.md
+COMMITS      S07 401d2f7, 63d42d8, fb58989, f7e481e; S08 e12472d; S09 8d1d943; S10 CURRENT
+DEMO PROOF   `/rni/settings/ai-route` shows Direct default and resolved models, then an accessible Gateway intent creates fixture-config-v2 for future runs while existing lineage remains immutable; fixture-only unavailable Gateway states why the radio is disabled
 ```
