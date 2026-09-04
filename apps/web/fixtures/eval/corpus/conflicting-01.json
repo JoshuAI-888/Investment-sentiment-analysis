@@ -1,0 +1,289 @@
+{
+  "id": "conflicting-01",
+  "bucket": "conflicting_source",
+  "pack": {
+    "id": "09dfd7da-d6e6-4fe3-939b-05c3b7e3450b",
+    "securityId": "fd2748a7-64b6-43a1-b5d8-b8945c57f70b",
+    "retrievalQuery": "security_id = fd2748a7-64b6-43a1-b5d8-b8945c57f70b, axes = [reddit, substack]",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-08T00:00:00.000Z"
+    },
+    "items": [
+      {
+        "item": {
+          "id": "823316c3-c13b-4065-8e3d-bc66396a9bb8",
+          "securityId": "fd2748a7-64b6-43a1-b5d8-b8945c57f70b",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "AAPL bull case",
+          "snippet": "AAPL growth numbers looked solid this quarter, staying long.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.70",
+          "relevanceScore": "0.85",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "7b6e3684a0da4a25b6f239092baee0d400000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.6",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "3f26c2fb-c06f-4113-bd2e-fa2919831acb",
+          "securityId": "fd2748a7-64b6-43a1-b5d8-b8945c57f70b",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Added more AAPL",
+          "snippet": "Bought the dip on AAPL, still like the story here.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.66",
+          "relevanceScore": "0.82",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "5cfcc7f115ac4f458378d6c1ccd46fd700000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.6",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "4ba7f4e1-a5bc-4cb1-ae24-1c387a8adb11",
+          "securityId": "fd2748a7-64b6-43a1-b5d8-b8945c57f70b",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "AAPL thread: still bullish",
+          "snippet": "AAPL product pipeline looks strong into next year.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.63",
+          "relevanceScore": "0.80",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "69f6116dc6aa4b0fa5b949647fd8d0f200000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.6",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "c18afdcc-609a-45ea-8957-4a10e1f1621a",
+          "securityId": "fd2748a7-64b6-43a1-b5d8-b8945c57f70b",
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "Why we are cautious on AAPL",
+          "snippet": "AAPL's margin trajectory looks worse than the headline growth number suggests.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bearish",
+          "stanceScore": "0.65",
+          "relevanceScore": "0.83",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "4a455c6f04a143589831f0a2b8944b9100000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.55",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "6fa0c2d9-2fd9-4df8-9a11-21400e8b5bf5",
+          "securityId": "fd2748a7-64b6-43a1-b5d8-b8945c57f70b",
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "AAPL: the bear case, updated",
+          "snippet": "Competitive pressure on AAPL is intensifying faster than guidance implies.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bearish",
+          "stanceScore": "0.61",
+          "relevanceScore": "0.81",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "dcc91b4796d647d692059046f8d2810500000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.55",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "d45cc9e5-aab6-4344-88a1-7e09ea66552d",
+          "securityId": "fd2748a7-64b6-43a1-b5d8-b8945c57f70b",
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "AAPL valuation note",
+          "snippet": "We trimmed AAPL on valuation even though the quarter was fine.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bearish",
+          "stanceScore": "0.58",
+          "relevanceScore": "0.79",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "f441ed1e5f2f4a97be3c619447bb7cf700000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.55",
+        "flags": [],
+        "excludedReason": null
+      }
+    ],
+    "frames": [
+      {
+        "axis": "reddit",
+        "frameStatement": "observed sample of comments from the subreddits polled — not a sample of retail investors.",
+        "window": {
+          "from": "2026-08-01T00:00:00.000Z",
+          "to": "2026-08-08T00:00:00.000Z"
+        },
+        "retrievedCount": 5,
+        "usedCount": 3,
+        "subredditsPolled": [
+          "stocks"
+        ],
+        "treeComplete": true
+      },
+      {
+        "axis": "substack",
+        "frameStatement": "curated publication set, selected on the basis recorded in config version substack-publications-v1.",
+        "window": {
+          "from": "2026-08-01T00:00:00.000Z",
+          "to": "2026-08-08T00:00:00.000Z"
+        },
+        "retrievedCount": 4,
+        "usedCount": 3,
+        "publicationSetVersion": "substack-publications-v1",
+        "selectionBasis": "sector coverage (D-29)"
+      }
+    ],
+    "createdAt": "2026-08-08T00:00:00.000Z"
+  },
+  "labels": [
+    {
+      "itemId": "823316c3-c13b-4065-8e3d-bc66396a9bb8",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuine bullish reddit stance"
+    },
+    {
+      "itemId": "3f26c2fb-c06f-4113-bd2e-fa2919831acb",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuine bullish reddit stance"
+    },
+    {
+      "itemId": "4ba7f4e1-a5bc-4cb1-ae24-1c387a8adb11",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuine bullish reddit stance"
+    },
+    {
+      "itemId": "c18afdcc-609a-45ea-8957-4a10e1f1621a",
+      "expectedStance": "bearish",
+      "expectedRelevant": true,
+      "note": "genuine bearish substack stance"
+    },
+    {
+      "itemId": "6fa0c2d9-2fd9-4df8-9a11-21400e8b5bf5",
+      "expectedStance": "bearish",
+      "expectedRelevant": true,
+      "note": "genuine bearish substack stance"
+    },
+    {
+      "itemId": "d45cc9e5-aab6-4344-88a1-7e09ea66552d",
+      "expectedStance": "bearish",
+      "expectedRelevant": true,
+      "note": "genuine bearish substack stance"
+    }
+  ],
+  "expectedOutcome": "mixed_no_confident_direction",
+  "acceptableClaims": [
+    "Reddit-observed sample leans bullish on AAPL while the curated Substack publication set leans bearish over the same window — the two frames disagree and are reported separately, not blended into one confident direction."
+  ],
+  "requiredAbstentions": [
+    "stance.aapl.blended_composite"
+  ],
+  "storedMetrics": [
+    {
+      "metricId": "sentiment.reddit.shrunkScore",
+      "display": "0.41"
+    },
+    {
+      "metricId": "sentiment.substack.shrunkScore",
+      "display": "-0.39"
+    }
+  ],
+  "referenceAnswer": "Two sampling frames disagree this window. The Reddit-observed sample leans bullish on AAPL (shrunk score 0.41, n=3), while the curated Substack publication set leans bearish over the same window (shrunk score -0.39, n=3). The two are reported separately rather than blended, and no single confident direction is asserted from combining them.",
+  "labelledBy": "F12 lane-build starter corpus (hand-authored fixture for harness machinery, 04-BUILD-LOOP.md scoping note) — NOT the D-35 ≥30-pack production corpus",
+  "labelledAt": "2026-09-04T00:00:00.000Z",
+  "frozen": true
+}

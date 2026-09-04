@@ -1,0 +1,127 @@
+{
+  "id": "thin-02",
+  "bucket": "thin_evidence",
+  "pack": {
+    "id": "32361407-c219-4004-9739-1c8faafa3a64",
+    "securityId": "4a5331e8-7e43-498d-870f-a7138d91e53d",
+    "retrievalQuery": "security_id = 4a5331e8-7e43-498d-870f-a7138d91e53d, axes = [reddit]",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-08T00:00:00.000Z"
+    },
+    "items": [
+      {
+        "item": {
+          "id": "cb65ae4b-9a96-4e19-9b6c-75dd7fb095b9",
+          "securityId": "4a5331e8-7e43-498d-870f-a7138d91e53d",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "FUBO mention 1",
+          "snippet": "One of the very few comments mentioning FUBO this window.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "neutral",
+          "stanceScore": "0.05",
+          "relevanceScore": "0.70",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "2073d6dfab204bf48c50a86b9b52adca00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.3",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "d2973243-832a-4fe5-84c6-3446ecf0eb54",
+          "securityId": "4a5331e8-7e43-498d-870f-a7138d91e53d",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "unrelated market chatter",
+          "snippet": "Nothing here is actually about FUBO.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.10",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "4b6d7dce051942ac98cdef7be6e6e31600000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": false,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": null,
+        "flags": [
+          "off_topic"
+        ],
+        "excludedReason": "no company-specific content"
+      }
+    ],
+    "frames": [
+      {
+        "axis": "reddit",
+        "frameStatement": "observed sample of comments from the subreddits polled — not a sample of retail investors.",
+        "window": {
+          "from": "2026-08-01T00:00:00.000Z",
+          "to": "2026-08-08T00:00:00.000Z"
+        },
+        "retrievedCount": 2,
+        "usedCount": 1,
+        "subredditsPolled": [
+          "smallcaps"
+        ],
+        "treeComplete": true
+      }
+    ],
+    "createdAt": "2026-08-08T00:00:00.000Z"
+  },
+  "labels": [
+    {
+      "itemId": "cb65ae4b-9a96-4e19-9b6c-75dd7fb095b9",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "genuinely about the ticker, but the sample is too small to score"
+    },
+    {
+      "itemId": "d2973243-832a-4fe5-84c6-3446ecf0eb54",
+      "expectedStance": null,
+      "expectedRelevant": false,
+      "note": "not about the ticker at all"
+    }
+  ],
+  "expectedOutcome": "abstained",
+  "acceptableClaims": [
+    "Only 1 relevant item(s) were found for FUBO this window — below the n<5 threshold, so no stance score is reported (product invariant §6.3)."
+  ],
+  "requiredAbstentions": [
+    "stance.fubo.formal_score"
+  ],
+  "storedMetrics": [
+    {
+      "metricId": "sentiment.reddit.sampleAdequacy",
+      "display": "0.00"
+    }
+  ],
+  "referenceAnswer": "Only 1 relevant Reddit-observed comment(s) were found for FUBO over the 2026-08-01 to 2026-08-08 window. That is below the five-item threshold, so no stance score is reported for this window — this is a stated abstention, not a smaller number.",
+  "labelledBy": "F12 lane-build starter corpus (hand-authored fixture for harness machinery, 04-BUILD-LOOP.md scoping note) — NOT the D-35 ≥30-pack production corpus",
+  "labelledAt": "2026-09-04T00:00:00.000Z",
+  "frozen": true
+}
