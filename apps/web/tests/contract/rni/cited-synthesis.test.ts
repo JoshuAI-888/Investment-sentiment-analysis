@@ -27,6 +27,8 @@ describe('RNI cited synthesis contract', () => {
       'RNI_CITED_SYNTHESIS_CODE_VERSION',
       'createRniCitedSynthesisInferencePorts',
       'createRniModelRouter',
+      'createRniObservationInferencePorts',
+      'createRniRoutedRedditDiscovery',
       'replayCitedSynthesis',
       'synthesizeCitedNarrative',
     ]);

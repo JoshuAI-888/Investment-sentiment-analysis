@@ -89,7 +89,7 @@ const noiseProposal = z
     message: 'Noise support end must be greater than support start',
   });
 
-const classifierOutput = z
+export const rniClassifierModelOutput = z
   .object({
     stance: rniStance,
     stanceScore: rniSignedDecimal.nullable(),
@@ -123,6 +123,9 @@ const classificationPolicy = z
     binaryLabelThreshold: rniUnitDecimal,
   })
   .strict();
+
+export const rniClassifierPolicyInput = classificationPolicy;
+export const rniClassifierTaxonomyCategoryInput = taxonomyCategory;
 
 const requestSchema = z
   .object({
@@ -170,7 +173,7 @@ const requestSchema = z
   .strict();
 
 type ParsedRequest = z.infer<typeof requestSchema>;
-type ParsedOutput = z.infer<typeof classifierOutput>;
+type ParsedOutput = z.infer<typeof rniClassifierModelOutput>;
 type ParsedSupport = { readonly supportStart: number; readonly supportEnd: number };
 
 function decimalParts(value: string): { whole: string; fraction: string } {
@@ -283,7 +286,15 @@ function validateNoise(
 }
 
 function stableInputHash(input: Parameters<RniClassifierInferencePort['infer']>[0]): string {
-  return createHash('sha256').update(JSON.stringify(input)).digest('hex');
+  const { modelRunId: _routingIdentity, ...modelVisibleInput } = input;
+  return createHash('sha256').update(JSON.stringify(modelVisibleInput)).digest('hex');
+}
+
+function classifierCallId(batchId: string, sourceItemId: string, securityId: string): string {
+  const digest = createHash('sha256')
+    .update(`${batchId}:${sourceItemId}:${securityId}`, 'utf8')
+    .digest('hex');
+  return `${digest.slice(0, 8)}-${digest.slice(8, 12)}-5${digest.slice(13, 16)}-a${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
 }
 
 function validateAndBuildTarget(input: {
@@ -294,6 +305,7 @@ function validateAndBuildTarget(input: {
   targetMentions: ParsedRequest['mentions'];
   inputHash: string;
   observationId: string;
+  classifierRunId: string;
 }): {
   observation: z.infer<typeof rniSecurityObservation>;
   claims: RniClassifiedClaim[];
@@ -464,7 +476,7 @@ function validateAndBuildTarget(input: {
       ({ supportStart: _supportStart, supportEnd: _supportEnd, ...dimension }) =>
         rniDimensionAssignment.parse(dimension),
     ),
-    classifierRunId: request.classifierRunId,
+    classifierRunId: input.classifierRunId,
     promptVersion: request.promptVersion,
     modelId: request.modelId,
     inputHash: input.inputHash,
@@ -559,7 +571,9 @@ export async function classifyPersistedSecurityObservations(
     securityIds.map(async (securityId, occurrence) => {
       const targetMentions = mentions.filter((mention) => mention.securityId === securityId);
       const contextMentions = mentions.filter((mention) => mention.securityId !== securityId);
+      const modelRunId = classifierCallId(parsedRequest.classifierRunId, source.id, securityId);
       const modelInput: Parameters<RniClassifierInferencePort['infer']>[0] = {
+        modelRunId,
         policy: Object.freeze({
           sourceContentTreatment: 'untrusted_data' as const,
           allowedTools: Object.freeze([]) as readonly [],
@@ -576,7 +590,7 @@ export async function classifyPersistedSecurityObservations(
         taxonomy: enabledTaxonomy,
       };
       const inputHash = stableInputHash(modelInput);
-      const output = classifierOutput.parse(
+      const output = rniClassifierModelOutput.parse(
         await deps.inference.infer(modelInput),
       );
       return validateAndBuildTarget({
@@ -586,10 +600,11 @@ export async function classifyPersistedSecurityObservations(
         securityId,
         targetMentions,
         inputHash,
+        classifierRunId: modelRunId,
         observationId: deps.observationIdFactory({
           sourceItemId: source.id,
           securityId,
-          classifierRunId: parsedRequest.classifierRunId,
+          classifierRunId: modelRunId,
           occurrence,
         }),
       });

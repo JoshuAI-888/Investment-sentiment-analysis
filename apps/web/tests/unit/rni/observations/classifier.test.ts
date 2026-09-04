@@ -271,6 +271,10 @@ describe('persisted RNI semantic classification', () => {
     });
 
     expect(model.infer).toHaveBeenCalledTimes(2);
+    const recordedModelRunIds = vi
+      .mocked(model.infer)
+      .mock.calls.map(([input]) => input.modelRunId);
+    expect(new Set(recordedModelRunIds).size).toBe(2);
     expect(model.infer).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
@@ -294,6 +298,7 @@ describe('persisted RNI semantic classification', () => {
       expect(observation.dimensions).toHaveLength(4);
       expect(new Set(observation.dimensions.map(({ dimension }) => dimension)).size).toBe(4);
       expect(observation.inputHash).toBe(result.inputHashesBySecurity[observation.securityId]);
+      expect(recordedModelRunIds).toContain(observation.classifierRunId);
     }
     expect(result.claims).toHaveLength(2);
     expect(result.themes).toMatchObject([

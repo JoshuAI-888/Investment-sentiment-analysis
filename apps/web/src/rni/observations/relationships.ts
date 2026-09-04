@@ -25,7 +25,7 @@ const proposal = z
     path: ['objectSecurityId'],
   });
 
-const inferenceOutput = z
+export const rniRelationshipModelOutput = z
   .object({ relationships: z.array(proposal).max(20) })
   .strict();
 
@@ -75,7 +75,7 @@ export async function inferComparativeRelations(input: {
   const activeCandidates = input.candidates.filter(
     (candidate) => candidate.active && resolvedIds.has(candidate.id),
   );
-  const parsed = inferenceOutput.parse(
+  const parsed = rniRelationshipModelOutput.parse(
     await input.inference.infer({
       sourceItemId,
       boundedContent: content,

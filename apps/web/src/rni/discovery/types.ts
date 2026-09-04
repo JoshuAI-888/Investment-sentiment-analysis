@@ -96,7 +96,7 @@ export type RedditDiscoveryResult = {
   queryId: string;
   providerRequestId: string;
   resolvedModel: string;
-  promptVersion: 'rni-discovery-v2';
+  promptVersion: string;
   candidates: readonly RedditDiscoveryCandidate[];
   urlOnlyCandidates: readonly RedditDiscoveryUrlCandidate[];
   consultedSources: readonly ConsultedSource[];

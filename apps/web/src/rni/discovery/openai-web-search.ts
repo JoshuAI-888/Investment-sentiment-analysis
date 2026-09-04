@@ -25,8 +25,24 @@ export const RNI_DISCOVERY_SYSTEM_PROMPT = [
   'Cite every excerpt and exact publication timestamp to the exact candidate URL so provider URL-citation annotations bind each field; otherwise return null.',
   'When an exact publication instant is unavailable, return null. State sampling or verification limits explicitly.',
 ].join('\n');
+export const RNI_DISCOVERY_FINAL_INSTRUCTION =
+  'Return sampled Reddit candidates with exact provider source citations.';
+const DYNAMIC_INPUT_START = '<rni_dynamic_input version="1">';
+const DYNAMIC_INPUT_END = '</rni_dynamic_input>';
+const DISCOVERY_TOOLS = [
+  { type: 'web_search' as const, filters: { allowed_domains: ['reddit.com'] as const } },
+] as const;
 
-const discoveryRequest = z
+type DiscoveryPromptGovernance = {
+  readonly promptVersion: string;
+  readonly systemPolicy: string;
+  readonly finalInstruction: string;
+  readonly outputSchema: Readonly<Record<string, unknown>>;
+  readonly parseOutput: (output: unknown) => unknown;
+  readonly tools: typeof DISCOVERY_TOOLS;
+};
+
+export const rniDiscoveryModelInput = z
   .object({
     queryId: z.string().uuid(),
     mode: z.enum(['scheduled_community', 'on_demand_security']),
@@ -79,7 +95,7 @@ const candidateSchema = z
   })
   .strict();
 
-const discoveryOutput = z
+export const rniDiscoveryModelOutput = z
   .object({
     candidates: z.array(candidateSchema).max(100),
     limitations: z.array(z.string().min(1).max(500)).max(20),
@@ -166,7 +182,7 @@ const messageSchema = z
   .object({ type: z.literal('message'), content: z.array(z.unknown()) })
   .passthrough();
 
-const OUTPUT_JSON_SCHEMA: Readonly<Record<string, unknown>> = {
+export const RNI_DISCOVERY_OUTPUT_JSON_SCHEMA: Readonly<Record<string, unknown>> = {
   type: 'object',
   additionalProperties: false,
   required: ['candidates', 'limitations'],
@@ -198,20 +214,13 @@ export class DiscoveryResponseError extends Error {
   }
 }
 
-export function buildOpenAiWebSearchRequest(
+export function serializeRniDiscoveryModelInput(
   value: RedditDiscoveryRequest,
-  config: { model: string; maxOutputTokens: number; maxToolCalls: number },
-): OpenAiWebSearchRequest {
-  const request = discoveryRequest.parse(value);
-  if (config.model.trim() === '') throw new Error('A configured discovery model is required');
-  if (!Number.isInteger(config.maxOutputTokens) || config.maxOutputTokens < 1) {
-    throw new Error('maxOutputTokens must be a positive integer');
-  }
-  if (!Number.isInteger(config.maxToolCalls) || config.maxToolCalls < 1) {
-    throw new Error('maxToolCalls must be a positive integer');
-  }
-
+  finalInstruction = RNI_DISCOVERY_FINAL_INSTRUCTION,
+): string {
+  const request = rniDiscoveryModelInput.parse(value);
   const dynamicInput = {
+    query_id: request.queryId,
     coverage: 'REDDIT_SAMPLED_WEB_DISCOVERY',
     mode: request.mode,
     half_open_utc_window: {
@@ -223,12 +232,35 @@ export function buildOpenAiWebSearchRequest(
     max_candidates: request.maxCandidates,
     task: 'Find candidate Reddit posts or individually addressable comments. Return sampled evidence, not a completeness claim.',
   };
+  return `${DYNAMIC_INPUT_START}\n${JSON.stringify(dynamicInput)}\n${DYNAMIC_INPUT_END}\n${finalInstruction}`;
+}
+
+export function buildOpenAiWebSearchRequest(
+  value: RedditDiscoveryRequest,
+  config: {
+    model: string;
+    maxOutputTokens: number;
+    maxToolCalls: number;
+    governance?: DiscoveryPromptGovernance;
+  },
+): OpenAiWebSearchRequest {
+  const request = rniDiscoveryModelInput.parse(value);
+  if (config.model.trim() === '') throw new Error('A configured discovery model is required');
+  if (!Number.isInteger(config.maxOutputTokens) || config.maxOutputTokens < 1) {
+    throw new Error('maxOutputTokens must be a positive integer');
+  }
+  if (!Number.isInteger(config.maxToolCalls) || config.maxToolCalls < 1) {
+    throw new Error('maxToolCalls must be a positive integer');
+  }
 
   return {
     model: config.model,
-    instructions: RNI_DISCOVERY_SYSTEM_PROMPT,
-    input: JSON.stringify(dynamicInput),
-    tools: [{ type: 'web_search', filters: { allowed_domains: ['reddit.com'] } }],
+    instructions: config.governance?.systemPolicy ?? RNI_DISCOVERY_SYSTEM_PROMPT,
+    input: serializeRniDiscoveryModelInput(
+      request,
+      config.governance?.finalInstruction ?? RNI_DISCOVERY_FINAL_INSTRUCTION,
+    ),
+    tools: config.governance?.tools ?? DISCOVERY_TOOLS,
     tool_choice: 'required',
     include: ['web_search_call.action.sources'],
     text: {
@@ -236,7 +268,7 @@ export function buildOpenAiWebSearchRequest(
         type: 'json_schema',
         name: 'rni_reddit_discovery_v1',
         strict: true,
-        schema: OUTPUT_JSON_SCHEMA,
+        schema: config.governance?.outputSchema ?? RNI_DISCOVERY_OUTPUT_JSON_SCHEMA,
       },
     },
     max_output_tokens: config.maxOutputTokens,
@@ -415,9 +447,9 @@ function candidateFieldIsSourceBound(
 }
 
 function normalizeCandidates(
-  output: z.infer<typeof discoveryOutput>,
+  output: z.infer<typeof rniDiscoveryModelOutput>,
   boundOutput: BoundOutputText,
-  request: z.infer<typeof discoveryRequest>,
+  request: z.infer<typeof rniDiscoveryModelInput>,
   consultedSources: readonly ConsultedSource[],
 ): {
   candidates: RedditDiscoveryCandidate[];
@@ -572,11 +604,12 @@ export class OpenAiRedditDiscovery {
       maxOutputTokens: number;
       maxToolCalls: number;
       nowMs?: () => number;
+      governance?: DiscoveryPromptGovernance;
     },
   ) {}
 
   async discover(value: RedditDiscoveryRequest): Promise<RedditDiscoveryResult> {
-    const request = discoveryRequest.parse(value);
+    const request = rniDiscoveryModelInput.parse(value);
     const payload = buildOpenAiWebSearchRequest(request, this.config);
     const nowMs = this.config.nowMs ?? Date.now;
     const startedAt = nowMs();
@@ -601,13 +634,18 @@ export class OpenAiRedditDiscovery {
       if (error instanceof DiscoveryResponseError) throw error;
       throw new DiscoveryResponseError('Structured discovery output was not valid JSON');
     }
-    const output = discoveryOutput.safeParse(decoded);
-    if (!output.success) {
-      throw new DiscoveryResponseError(`Structured discovery output violated schema: ${output.error.message}`);
+    let output: z.infer<typeof rniDiscoveryModelOutput>;
+    try {
+      output = rniDiscoveryModelOutput.parse(
+        this.config.governance?.parseOutput(decoded) ?? rniDiscoveryModelOutput.parse(decoded),
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown schema violation';
+      throw new DiscoveryResponseError(`Structured discovery output violated schema: ${message}`);
     }
 
     const normalized = normalizeCandidates(
-      output.data,
+      output,
       boundOutput,
       request,
       trace.consultedSources,
@@ -616,13 +654,13 @@ export class OpenAiRedditDiscovery {
       queryId: request.queryId,
       providerRequestId: response.data.id,
       resolvedModel: response.data.model,
-      promptVersion: RNI_DISCOVERY_PROMPT_VERSION,
+      promptVersion: this.config.governance?.promptVersion ?? RNI_DISCOVERY_PROMPT_VERSION,
       candidates: normalized.candidates,
       urlOnlyCandidates: normalized.urlOnlyCandidates,
       consultedSources: trace.consultedSources,
       webSearchActions: trace.actions,
       rejectedCandidates: normalized.rejected,
-      limitations: output.data.limitations,
+      limitations: output.limitations,
       usage: usageFrom(response.data),
       latencyMs,
     };

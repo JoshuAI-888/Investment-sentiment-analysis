@@ -189,6 +189,8 @@ export type RniClassifierEvidenceReader = Pick<RniReadService, 'getEvidence'>;
 
 export interface RniClassifierInferencePort {
   infer(input: {
+    /** Exact durable model-call identity preallocated for this classification batch. */
+    readonly modelRunId: string;
     readonly policy: {
       readonly sourceContentTreatment: 'untrusted_data';
       readonly allowedTools: readonly [];
