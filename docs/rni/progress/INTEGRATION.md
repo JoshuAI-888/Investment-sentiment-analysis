@@ -97,7 +97,7 @@
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
-| ENGINE | `E01_ACCEPTED` | no | coordinator rerun: focused unit/contract 16 pass | yes | `b3e8220` accepted; lane proceeds with E02 and remains held for completion/order |
+| ENGINE | `E02_CHANGES_REQUESTED` | no | builder focused 16, unit 1,200, contract 80/22 skipped; coordinator semantic review pending corrections | yes | E01 `b3e8220` accepted; E02 `3b73f25` held on ER-04–06 |
 | SURFACE | `S01_APPROVED` | yes through I02B | contract 9 + fixture Playwright 2 pass | yes | S01 `71010bd` approved; S02 unblocked by I02C and remains held for lane completion/order |
 
 ## Live/deployment gates
@@ -144,6 +144,9 @@
 | ER-01 | P1 | `RESOLVED` | Model-supplied excerpt/time is not bound to the exact consulted Web Search source | `58e5828` requires exact consulted URL and full field-scoped citations; `b3e8220` closes partial-span overlap |
 | ER-02 | P1 | `RESOLVED` | A multi-call response can omit one action's source trace and still succeed | `58e5828` validates every action and fails closed on malformed/incomplete traces |
 | ER-03 | P2 | `RESOLVED` | Prompt-injection fixture starts after provider generation but was described as an end-to-end guard | Claim narrowed to tool/output handling; pre-generation model resistance is explicitly E10 eval scope |
+| ER-04 | P1 | `OPEN` | Existing X adapter reports usable partial responses out-of-band, but the RNI port erases that signal and may label the slice complete | Return to ENGINE; preserve and forward partial completeness through the port and test a usable partial payload |
+| ER-05 | P1 | `OPEN` | X authors are unsalted SHA-256 hashes of mutable usernames rather than tenant-scoped hashes of stable identity | Return to ENGINE; inject approved stable-ID hashing or omit the hash; add tenant/rename privacy tests |
+| ER-06 | P1 | `OPEN` | X content-version candidates do not identify exactly one latest interpretation version and A→B→A leaves B latest | Return to ENGINE; separate persistence history from latest candidates and test reversion semantics |
 
 ## Open risks/blockers
 
@@ -193,6 +196,9 @@
   is clean, and the merged state passes typecheck, the full contract suite and all 41 DATA tests
   against a fresh disposable PostgreSQL cluster. CR-DATA-002 remains deliberately deferred until
   I07 has ENGINE E05's concrete consumer.
+- ENGINE E02 `3b73f25` is held on ER-04–06. The ordinary success/failure and source-isolation
+  tests pass, but integration must not erase partial provider coverage, violate the tenant-salted
+  author policy, or enqueue more than the final content version for interpretation.
 
 ## I05 handoff
 

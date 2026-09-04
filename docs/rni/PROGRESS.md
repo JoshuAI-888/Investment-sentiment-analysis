@@ -26,7 +26,7 @@
 | G1 model-route branch merged | `PASSED` | coordinator | PR #2, main commit `09ad439` |
 | G2 RNI contract frozen | `PASSED` | coordinator | PR #5 merged at `dd28ea2`; typed source contract at `9908eda` |
 | G3 DATA accepted | `PASSED` | DATA + reviewer | merged sequentially at `254fe45`; coordinator type/contract plus fresh PostgreSQL DATA 41/41 pass |
-| G4 ENGINE accepted | `IN_PROGRESS` | ENGINE + reviewer | E01 accepted at `b3e8220` after focused 16-test coordinator rerun; E02–E10 remain |
+| G4 ENGINE accepted | `CHANGES_REQUESTED` | ENGINE + reviewer | E01 accepted; E02 `3b73f25` held on partial-success, privacy hashing and latest-version semantics |
 | G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01 accepted at `71010bd`; CR-SURFACE-02 accepted as D-RNI-13 and S02 unblocked |
 | G6 integrated preview | `NOT_STARTED` | coordinator | Depends G3–G5 |
 | G7 live Reddit/X/FMP gates | `NOT_STARTED` | coordinator + joshuai | Depends G6 and configured credentials |
@@ -37,7 +37,7 @@
 | Workstream | Branch | Status | Progress file | Latest accepted commit |
 |---|---|---|---|---|
 | DATA | `feat/rni-data-source-first` | `MERGED_TO_INTEGRATION` | `DATA.md` | lane `5926601`; merge `254fe45` |
-| ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01 accepted | `ENGINE.md` | `b3e8220`, awaiting lane completion/order |
+| ENGINE | `feat/rni-engine-live-slice` | `CHANGES_REQUESTED`; E01 accepted | `ENGINE.md` | E02 `3b73f25` under correction |
 | SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01 accepted | `SURFACE.md` | `71010bd`, awaiting lane completion/order |
 | INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I02C Radar contract `84dca87` |
 
@@ -96,3 +96,4 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — reviewed DATA `5362337`, ENGINE `a181461`, and SURFACE `6992706`; returned DATA/ENGINE P1 lineage findings, approved fixture-only SURFACE S01, resolved CR-DATA-001–004 and CR-SURFACE-01 through coordinator commits `6b67657`/`264ea9c`, and held all lane merges in the prescribed order.
 - 2026-09-05 — accepted ENGINE E01 at `b3e8220`, closed its three initial findings, returned one same-security narrative-membership P1 to DATA, accepted SURFACE S01 at `71010bd`, and resolved CR-SURFACE-02 as D-RNI-13 with a cursor-paginated non-poolable Radar contract.
 - 2026-09-05 — accepted and sequentially merged DATA at `254fe45` after all five findings closed, latest integration rebase confirmed, typecheck/full contract passed, and a fresh disposable PostgreSQL run passed all 41 RNI persistence tests.
+- 2026-09-05 — reviewed ENGINE E02 `3b73f25`; held acceptance because usable partial X responses could be labelled complete, author identity hashing was unsalted/mutable, and content-version output did not identify exactly one latest interpretation candidate.
