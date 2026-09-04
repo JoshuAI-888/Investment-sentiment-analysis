@@ -3,7 +3,7 @@
 **Writer:** DATA builder only  
 **Branch:** `feat/rni-data-source-first`  
 **Depends on:** merged RNI contract-freeze SHA  
-**Status:** `IN_PROGRESS`
+**Status:** `BLOCKED`
 
 ## Owned paths
 
@@ -21,7 +21,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | D06 | Idempotent/concurrent inserts and transactional outbox | `READY_FOR_REVIEW` | 8-way concurrent upsert and outbox rollback 3/3 pass |
 | D07 | Bounded-content, tombstone and rejected-discovery states | `READY_FOR_REVIEW` | Tombstone/rejected-page tests 3/3 pass |
 | D08 | FMP >500-member fixture support for integration migration   | `READY_FOR_REVIEW` | 501-member and six invalid activation fixtures 4/4 pass |
-| D09 | Full DATA lane verification and handoff | `NOT_STARTED` | Report contract completed |
+| D09 | Full DATA lane verification and handoff | `BLOCKED` | DATA 36/36 green; full integration has one reproducible legacy failure |
 
 ## Task evidence
 
@@ -154,6 +154,22 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 - **Handoff:** use all seven fixtures against migration `0024` and the FMP synchronizer; invalid
   cases must leave the prior active universe unchanged.
 
+### D09 — Full verification and handoff
+
+- **Status:** `BLOCKED`
+- **Files:** `apps/web/tests/integration/rni-persistence/migration-apply.test.ts` and this progress
+  file.
+- **Tests:** clean and forward migrations `0020-0023` (`2/2`); full ESLint and TypeScript pass;
+  unit `1171/1171`; contract with PostgreSQL `99/99`; DATA lane `36/36`.
+- **Repository gate:** full integration `391/393` on the first run. Isolated retry made
+  `market.test.ts` pass but reproduced the non-RNI `attention-pipeline.test.ts` clock-race failure
+  (`71/72`, expected computed `0`, received `1`). No non-RNI source/test was edited.
+- **Blockers:** first observed 2026-09-05; D03 CR-DATA-002/003 remains unresolved and the required
+  repository integration gate is red outside DATA ownership.
+- **Owner / attempted mitigation / next check:** coordinator plus the non-RNI attention owner;
+  reran the two failed legacy files in isolation and narrowed the remaining failure to one case;
+  resolve/rebase and rerun the full integration gate before coordinator review.
+
 ## Required invariants
 
 - One external source row, many security links and observations.
@@ -246,12 +262,12 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 
 | Suite | Status | Command/run link | Notes |
 |---|---|---|---|
-| migration clean apply | `READY_FOR_REVIEW` | targeted D01 Vitest | Fresh schema applied through `0020`; 7/7 pass |
-| migration forward apply | `NOT_STARTED` | — | D09 lane gate |
-| repository unit | `READY_FOR_REVIEW` | typecheck + targeted ESLint | No errors |
-| database integration | `READY_FOR_REVIEW` | DATA persistence + fixture Vitest | 34/34 D01-D08 tests pass |
+| migration clean apply | `READY_FOR_REVIEW` | D09 migration Vitest | Clean apply through `0023`; pass |
+| migration forward apply | `READY_FOR_REVIEW` | D09 migration Vitest | Populated legacy schema preserved; pass |
+| repository unit | `READY_FOR_REVIEW` | full ESLint + TypeScript + unit | No errors; 1171/1171 |
+| database integration | `READY_FOR_REVIEW` | DATA persistence + fixture Vitest | 36/36 D01-D09 tests pass |
 | concurrency/idempotency | `READY_FOR_REVIEW` | D06 PostgreSQL Vitest | 8 concurrent deliveries + forced rollback; 3/3 pass |
-| repository required gate | `NOT_STARTED` | — | D09 lane gate |
+| repository required gate | `BLOCKED` | full unit/contract/integration | Unit 1171/1171, contract 99/99; integration 391/393 then isolated 71/72 with one legacy failure |
 
 ## Review findings
 
@@ -266,6 +282,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | 2026-09-05 | `READY` | CR-DATA-001: no frozen persistence repository port | coordinator | Concrete DATA adapter uses only frozen `RniSourceItem`; no contract edit made | Before ENGINE persistence binding |
 | 2026-09-05 | `BLOCKED` | CR-DATA-002/003: D03 types/port and pgvector deployment scope unresolved | coordinator | Completed relational lineage and tests without changing contracts or enabling vector | Before D03 embedding storage / ENGINE binding |
 | 2026-09-05 | `READY` | CR-DATA-004: duplicate/resolution universe validation absent from frozen schema | coordinator | Supplied explicit invalid fixtures; did not touch integration-owned migration/code | During migration 0024/FMP synchronizer review |
+| 2026-09-05 | `BLOCKED` | Legacy attention clock-race integration test fails outside DATA paths | coordinator / non-RNI owner | Full run; isolated rerun reproduced one failure; no cross-lane edit made | After legacy fix or accepted base-gate adjudication |
 
 ## Commits
 
@@ -278,7 +295,8 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | ca9ca72 | D05 immutable cross-source summaries | Typecheck, targeted lint, PostgreSQL 24/24 |
 | 2cc02d7 | D06 concurrent source upsert and transactional outbox | Typecheck, targeted lint, PostgreSQL 27/27 |
 | e75a0af | D07 source tombstones and rejected discoveries | Typecheck, targeted lint, PostgreSQL 30/30 |
-| this commit | D08 >500-member FMP universe fixture support | Typecheck, targeted lint, DATA 34/34 |
+| d8a83c0 | D08 >500-member FMP universe fixture support | Typecheck, targeted lint, DATA 34/34 |
+| this commit | D09 migration rehearsal and blocked handoff | Lint/type/unit/contract/DATA pass; full integration blocked |
 
 ## Handoff
 
@@ -286,12 +304,12 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 RNI LANE     DATA
 BRANCH       feat/rni-data-source-first
 BASE SHA     86ec5b4757f45cbe96c651f413e8ff1109fef279
-STATUS       PARTIAL
-TASKS        7/9; D03 blocked, D09 incomplete
-TESTS        D01-D08 DATA suite 34/34; typecheck/lint pass
+STATUS       BLOCKED
+TASKS        7/9; D03 and D09 blocked
+TESTS        lint/type pass; unit 1171/1171; contract 99/99; DATA 36/36; integration 391/393
 CONTRACT     CR-DATA-001, CR-DATA-002, CR-DATA-003, CR-DATA-004
-RISKS        D03 pgvector/ports blocked; universe validation gap handed to integration
+RISKS        D03 pgvector/ports blocked; universe validation gap; one legacy integration failure
 FILES        migrations 0020-0022; source/observation/claim repositories; D01-D03 tests; DATA.md
-COMMITS      3c0cc56 (D01); bae4e9f (D02); 2757f5c (D03 relational); adb91a4 (D04); ca9ca72 (D05); 2cc02d7 (D06); e75a0af (D07); this commit (D08)
+COMMITS      3c0cc56 (D01); bae4e9f (D02); 2757f5c (D03 relational); adb91a4 (D04); ca9ca72 (D05); 2cc02d7 (D06); e75a0af (D07); d8a83c0 (D08); this commit (D09)
 DEMO PROOF   one comparative source persists distinct bullish NVDA and bearish AMD observations
 ```
