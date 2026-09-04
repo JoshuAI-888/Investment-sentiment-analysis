@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "stance_on_thin_sample-03",
+    "packId": "thin-03",
+    "faultClass": "stance_on_thin_sample",
+    "faultyClaimId": "claim-83",
+    "cleanClaimIds": [
+      "claim-43"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "Tesla, Inc.'s tracked sample this window is too thin for a stance read; none is asserted.",
+    "statedFreshness": "2026-08-12",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-43",
+            "text": "Only one tracked item mentions Tesla, Inc. this window — too thin a sample for a stance read.",
+            "kind": "fact",
+            "evidenceIds": [
+              "a59951dc-a82d-4c00-bd1c-d5e6f2182b57"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "TSLA"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-83",
+            "text": "The window's stance reads positively for this security.",
+            "kind": "fact",
+            "evidenceIds": [],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "TSLA"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

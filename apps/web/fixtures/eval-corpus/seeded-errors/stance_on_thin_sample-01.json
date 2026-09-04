@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "stance_on_thin_sample-01",
+    "packId": "thin-01",
+    "faultClass": "stance_on_thin_sample",
+    "faultyClaimId": "claim-81",
+    "cleanClaimIds": [
+      "claim-41"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "Apple Inc.'s tracked sample this window is too thin for a stance read; none is asserted.",
+    "statedFreshness": "2026-08-10",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-41",
+            "text": "Only one tracked item mentions Apple Inc. this window — too thin a sample for a stance read.",
+            "kind": "fact",
+            "evidenceIds": [
+              "212ffd86-be2e-49ea-b571-9cf2a767e921"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "AAPL"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-81",
+            "text": "The window's stance reads positively for this security.",
+            "kind": "fact",
+            "evidenceIds": [],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "AAPL"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

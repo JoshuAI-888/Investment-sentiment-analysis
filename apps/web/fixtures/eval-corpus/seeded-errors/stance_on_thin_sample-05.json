@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "stance_on_thin_sample-05",
+    "packId": "thin-05",
+    "faultClass": "stance_on_thin_sample",
+    "faultyClaimId": "claim-85",
+    "cleanClaimIds": [
+      "claim-45"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "JPMorgan Chase & Co.'s tracked sample this window is too thin for a stance read; none is asserted.",
+    "statedFreshness": "2026-08-14",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-45",
+            "text": "Only one tracked item mentions JPMorgan Chase & Co. this window — too thin a sample for a stance read.",
+            "kind": "fact",
+            "evidenceIds": [
+              "971c7680-ef7e-4ba4-ba98-74b30b4deaf1"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "JPM"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-85",
+            "text": "The window's stance reads positively for this security.",
+            "kind": "fact",
+            "evidenceIds": [],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "JPM"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

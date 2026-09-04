@@ -96,6 +96,12 @@ const shape = {
   AI_MODEL_FAST: z.string().min(1).optional(),
   AI_MODEL_SYNTHESIS: z.string().min(1).optional(),
   AI_MODEL_VERIFY: z.string().min(1).optional(),
+  // F12 §4.3: the judge is "a different model from the synthesiser, on its own task route" — not
+  // a reuse of AI_MODEL_SYNTHESIS or AI_MODEL_VERIFY. Appended here following the exact pattern
+  // this file's own docstring documents ("F04, F20 and F18 append their own blocks as each
+  // lands") rather than reported as a gap, since it is additive, uses the identical shape as its
+  // three siblings, and is squarely this feature's own route to add.
+  AI_MODEL_JUDGE: z.string().min(1).optional(),
 
   // Scheduling (F16a)
   QSTASH_TOKEN: z.string().min(1).optional(),
@@ -137,6 +143,7 @@ const REQUIRED_IN_LIVE_MODE = [
   'AI_MODEL_FAST',
   'AI_MODEL_SYNTHESIS',
   'AI_MODEL_VERIFY',
+  'AI_MODEL_JUDGE',
 ] as const;
 
 /** The key each transport cannot operate without. */

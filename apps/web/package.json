@@ -21,7 +21,9 @@
     "migrate": "tsx scripts/migrate.ts",
     "seed:universe": "tsx scripts/seed-universe.ts",
     "check:storage": "tsx scripts/check-storage-projection.ts",
-    "measure:storage": "tsx scripts/measure-storage.ts"
+    "measure:storage": "tsx scripts/measure-storage.ts",
+    "gen:eval-corpus": "tsx scripts/eval/generate-corpus.ts",
+    "eval:sample-calibration": "tsx scripts/eval/sample-calibration.ts"
   },
   "dependencies": {
     "@upstash/qstash": "^2.11.3",

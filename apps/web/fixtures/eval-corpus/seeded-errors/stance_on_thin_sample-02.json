@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "stance_on_thin_sample-02",
+    "packId": "thin-02",
+    "faultClass": "stance_on_thin_sample",
+    "faultyClaimId": "claim-82",
+    "cleanClaimIds": [
+      "claim-42"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "Microsoft Corporation's tracked sample this window is too thin for a stance read; none is asserted.",
+    "statedFreshness": "2026-08-11",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-42",
+            "text": "Only one tracked item mentions Microsoft Corporation this window — too thin a sample for a stance read.",
+            "kind": "fact",
+            "evidenceIds": [
+              "500a29d3-6e63-42c4-a366-c7bf33690402"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "MSFT"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-82",
+            "text": "The window's stance reads positively for this security.",
+            "kind": "fact",
+            "evidenceIds": [],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "MSFT"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

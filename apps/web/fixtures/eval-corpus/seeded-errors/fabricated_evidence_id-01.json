@@ -1,0 +1,72 @@
+{
+  "meta": {
+    "id": "fabricated_evidence_id-01",
+    "packId": "conflict-02",
+    "faultClass": "fabricated_evidence_id",
+    "faultyClaimId": "claim-86",
+    "cleanClaimIds": [
+      "claim-33",
+      "claim-34"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "Microsoft Corporation's two tracked axes disagree this window: X reads more positively, Substack coverage reads more negatively.",
+    "statedFreshness": "2026-08-04",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-33",
+            "text": "The tracked X sample for Microsoft Corporation this window reads more positively.",
+            "kind": "fact",
+            "evidenceIds": [
+              "b1d1b3fa-fd7b-4d43-b5cc-0a7eda94124c"
+            ],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "MSFT"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-34",
+            "text": "A Substack publication's coverage of Microsoft Corporation over the same window reads more negatively — the two sources disagree.",
+            "kind": "fact",
+            "evidenceIds": [
+              "d9a3a70a-fa07-4a92-8a7d-49af764d3017"
+            ],
+            "metricIds": [
+              "social.stance_substack"
+            ],
+            "relatedTickers": [
+              "MSFT"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-86",
+            "text": "This claim cites an evidence item that does not actually exist in the run's pack.",
+            "kind": "fact",
+            "evidenceIds": [
+              "2d334482-e6b1-4db3-88f0-1be56442f15e"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "MSFT"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": false
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

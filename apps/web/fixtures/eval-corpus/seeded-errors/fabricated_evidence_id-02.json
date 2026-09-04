@@ -1,0 +1,72 @@
+{
+  "meta": {
+    "id": "fabricated_evidence_id-02",
+    "packId": "conflict-03",
+    "faultClass": "fabricated_evidence_id",
+    "faultyClaimId": "claim-87",
+    "cleanClaimIds": [
+      "claim-35",
+      "claim-36"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "Tesla, Inc.'s two tracked axes disagree this window: X reads more positively, Substack coverage reads more negatively.",
+    "statedFreshness": "2026-08-05",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-35",
+            "text": "The tracked X sample for Tesla, Inc. this window reads more positively.",
+            "kind": "fact",
+            "evidenceIds": [
+              "30f712b8-c281-49c3-ac9d-70a2d3044a58"
+            ],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "TSLA"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-36",
+            "text": "A Substack publication's coverage of Tesla, Inc. over the same window reads more negatively — the two sources disagree.",
+            "kind": "fact",
+            "evidenceIds": [
+              "18c74fcf-5f77-4945-9ebc-b68a4477b1ba"
+            ],
+            "metricIds": [
+              "social.stance_substack"
+            ],
+            "relatedTickers": [
+              "TSLA"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-87",
+            "text": "This claim cites an evidence item that does not actually exist in the run's pack.",
+            "kind": "fact",
+            "evidenceIds": [
+              "4fa252f1-63de-4ccc-8ccc-bf64f3acef1f"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "TSLA"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": false
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

@@ -1,0 +1,227 @@
+{
+  "meta": {
+    "id": "conflict-01",
+    "bucket": "conflicting_source",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "AAPL",
+    "metrics": [
+      {
+        "metricId": "social.stance_x",
+        "calculationId": "calc_734477aa-0e99-4c3e-a702-b1dc664cc744",
+        "label": "X stance (shrunk)",
+        "display": "0.150000",
+        "unit": "",
+        "n": 7,
+        "window": "7d",
+        "observedAt": "2026-08-03T12:00:00.000Z"
+      },
+      {
+        "metricId": "social.stance_substack",
+        "calculationId": "calc_a6326546-08d9-4bed-ade4-8e12c4b7b099",
+        "label": "Substack stance (shrunk)",
+        "display": "-0.120000",
+        "unit": "",
+        "n": 5,
+        "window": "7d",
+        "observedAt": "2026-08-09T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "5bb43599-18bb-4e34-8768-31fb9a5e7f1f",
+          "stance": "bullish",
+          "relevant": true
+        },
+        {
+          "itemId": "1a08ed46-3a41-40a9-9830-7917555284f2",
+          "stance": "bearish",
+          "relevant": true
+        }
+      ],
+      "expectedDirection": "mixed",
+      "expectedAbstain": false,
+      "requiredAbstentions": [
+        "No single confident direction — the two axes disagree and both are reported, unblended (D-14)."
+      ]
+    },
+    "goldOutput": {
+      "summary": "Apple Inc.'s two tracked axes disagree this window: X reads more positively, Substack coverage reads more negatively.",
+      "statedFreshness": "2026-08-03",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-31",
+              "text": "The tracked X sample for Apple Inc. this window reads more positively.",
+              "kind": "fact",
+              "evidenceIds": [
+                "5bb43599-18bb-4e34-8768-31fb9a5e7f1f"
+              ],
+              "metricIds": [
+                "social.stance_x"
+              ],
+              "relatedTickers": [
+                "AAPL"
+              ],
+              "assertedDate": null
+            },
+            {
+              "claimId": "claim-32",
+              "text": "A Substack publication's coverage of Apple Inc. over the same window reads more negatively — the two sources disagree.",
+              "kind": "fact",
+              "evidenceIds": [
+                "1a08ed46-3a41-40a9-9830-7917555284f2"
+              ],
+              "metricIds": [
+                "social.stance_substack"
+              ],
+              "relatedTickers": [
+                "AAPL"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": false
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "b31098e1-cd02-441f-8669-102d81fa0f32",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=b31098e1-cd02-441f-8669-102d81fa0f32 window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "5bb43599-18bb-4e34-8768-31fb9a5e7f1f",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Positive-leaning post about AAPL",
+          "snippet": "$AAPL commentary describing conditions as improving.",
+          "sourceUrl": "https://example.com/evidence/41",
+          "publisher": null,
+          "authorRef": "user_41",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-03T12:00:00.000Z",
+          "availableAt": "2026-08-03T12:00:00.000Z",
+          "ingestedAt": "2026-08-03T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "c74b03ec-46eb-4078-828f-51d0a940fa05",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.800000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "5bb43599-18bb-4e34-8768-31fb9a5e7f1f"
+      },
+      {
+        "kind": "included",
+        "item": {
+          "id": "1a08ed46-3a41-40a9-9830-7917555284f2",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "Negative-leaning coverage of Apple Inc.",
+          "snippet": "A newsletter piece on Apple Inc. describing conditions as deteriorating over the same window.",
+          "sourceUrl": "https://example.com/evidence/42",
+          "publisher": null,
+          "authorRef": "user_42",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-09T12:00:00.000Z",
+          "availableAt": "2026-08-09T12:00:00.000Z",
+          "ingestedAt": "2026-08-09T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "cd789c2c-852a-42f0-8769-69614ae01ab7",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevanceScore": "0.780000",
+        "matchedVia": "company_name",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "1a08ed46-3a41-40a9-9830-7917555284f2"
+      }
+    ],
+    "excluded": [],
+    "retrievedCount": 2,
+    "usedCount": 2,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

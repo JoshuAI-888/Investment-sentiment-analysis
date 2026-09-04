@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "stance_on_thin_sample-04",
+    "packId": "thin-04",
+    "faultClass": "stance_on_thin_sample",
+    "faultyClaimId": "claim-84",
+    "cleanClaimIds": [
+      "claim-44"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "NVIDIA Corporation's tracked sample this window is too thin for a stance read; none is asserted.",
+    "statedFreshness": "2026-08-13",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-44",
+            "text": "Only one tracked item mentions NVIDIA Corporation this window — too thin a sample for a stance read.",
+            "kind": "fact",
+            "evidenceIds": [
+              "cf87c150-d627-43bc-82b6-d5cd62925c53"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "NVDA"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-84",
+            "text": "The window's stance reads positively for this security.",
+            "kind": "fact",
+            "evidenceIds": [],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "NVDA"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

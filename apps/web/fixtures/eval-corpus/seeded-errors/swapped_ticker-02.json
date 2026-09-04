@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "id": "swapped_ticker-02",
+    "packId": "clear-05",
+    "faultClass": "swapped_ticker",
+    "faultyClaimId": "claim-52",
+    "cleanClaimIds": [
+      "claim-9",
+      "claim-10"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "JPMorgan Chase & Co. shows a holding steady read across the tracked social sample this window.",
+    "statedFreshness": "2026-08-07",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-9",
+            "text": "Watched-account commentary about JPMorgan Chase & Co. this window reads as holding steady, drawn from the tracked X sample.",
+            "kind": "fact",
+            "evidenceIds": [
+              "bc2388a1-80ac-44b1-9d42-03501353a049"
+            ],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "JPM"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-10",
+            "text": "A sector newsletter's coverage of JPMorgan Chase & Co. is consistent with the same holding steady read.",
+            "kind": "fact",
+            "evidenceIds": [
+              "fb43bef3-3248-48fd-a4b1-eac236df68c2"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "JPM"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-52",
+            "text": "This claim is framed about the subject security but is mistakenly tagged to an unrelated ticker.",
+            "kind": "fact",
+            "evidenceIds": [
+              "bc2388a1-80ac-44b1-9d42-03501353a049"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "SPY"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": false
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

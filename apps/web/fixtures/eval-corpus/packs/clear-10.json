@@ -1,0 +1,225 @@
+{
+  "meta": {
+    "id": "clear-10",
+    "bucket": "clear_stance",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "CAT",
+    "metrics": [
+      {
+        "metricId": "attention.mention_growth",
+        "calculationId": "calc_530d36aa-b61d-400d-bc77-0be8fc6a4354",
+        "label": "Mention growth",
+        "display": "12.50",
+        "unit": "%",
+        "n": null,
+        "window": "7d",
+        "observedAt": "2026-08-10T12:00:00.000Z"
+      },
+      {
+        "metricId": "social.stance_x",
+        "calculationId": "calc_cacae14e-5138-4c3f-b575-02c107368e24",
+        "label": "X stance (shrunk)",
+        "display": "0.400000",
+        "unit": "",
+        "n": 8,
+        "window": "7d",
+        "observedAt": "2026-08-07T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "4395ac12-f687-46c3-ac6a-03dcb6677273",
+          "stance": "neutral",
+          "relevant": true
+        },
+        {
+          "itemId": "d00217c1-a399-4da3-b67f-b33113c71715",
+          "stance": "neutral",
+          "relevant": true
+        }
+      ],
+      "expectedDirection": "neutral",
+      "expectedAbstain": false,
+      "requiredAbstentions": [
+        "No price target or buy/sell recommendation language."
+      ]
+    },
+    "goldOutput": {
+      "summary": "Caterpillar Inc. shows a holding steady read across the tracked social sample this window.",
+      "statedFreshness": "2026-08-07",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-19",
+              "text": "Watched-account commentary about Caterpillar Inc. this window reads as holding steady, drawn from the tracked X sample.",
+              "kind": "fact",
+              "evidenceIds": [
+                "4395ac12-f687-46c3-ac6a-03dcb6677273"
+              ],
+              "metricIds": [
+                "social.stance_x"
+              ],
+              "relatedTickers": [
+                "CAT"
+              ],
+              "assertedDate": null
+            },
+            {
+              "claimId": "claim-20",
+              "text": "A sector newsletter's coverage of Caterpillar Inc. is consistent with the same holding steady read.",
+              "kind": "fact",
+              "evidenceIds": [
+                "d00217c1-a399-4da3-b67f-b33113c71715"
+              ],
+              "metricIds": [],
+              "relatedTickers": [
+                "CAT"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": false
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "c6573f9d-b8f7-4870-b2f5-0bca900e8645",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=c6573f9d-b8f7-4870-b2f5-0bca900e8645 window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "4395ac12-f687-46c3-ac6a-03dcb6677273",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Watched-account post about CAT",
+          "snippet": "$CAT commentary describing conditions as holding steady this week.",
+          "sourceUrl": "https://example.com/evidence/19",
+          "publisher": null,
+          "authorRef": "user_19",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-07T12:00:00.000Z",
+          "availableAt": "2026-08-07T12:00:00.000Z",
+          "ingestedAt": "2026-08-07T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "ba8ed1e8-fb39-450e-a0f7-6aa7eed6a581",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.910000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "4395ac12-f687-46c3-ac6a-03dcb6677273"
+      },
+      {
+        "kind": "included",
+        "item": {
+          "id": "d00217c1-a399-4da3-b67f-b33113c71715",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "Sector newsletter mentions Caterpillar Inc.",
+          "snippet": "A curated publication notes Caterpillar Inc.'s recent activity as holding steady.",
+          "sourceUrl": "https://example.com/evidence/20",
+          "publisher": null,
+          "authorRef": "user_20",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-09T12:00:00.000Z",
+          "availableAt": "2026-08-09T12:00:00.000Z",
+          "ingestedAt": "2026-08-09T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "cd2558ae-0054-4bcd-a90c-4b746c670cb9",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevanceScore": "0.870000",
+        "matchedVia": "company_name",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "d00217c1-a399-4da3-b67f-b33113c71715"
+      }
+    ],
+    "excluded": [],
+    "retrievedCount": 2,
+    "usedCount": 2,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

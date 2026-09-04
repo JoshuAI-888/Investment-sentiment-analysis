@@ -1,0 +1,200 @@
+{
+  "meta": {
+    "id": "sarcasm-02",
+    "bucket": "sarcasm_ambiguity",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "MSFT",
+    "metrics": [
+      {
+        "metricId": "attention.mention_growth",
+        "calculationId": "calc_7e18d34c-b159-41f1-844e-13a863bd8433",
+        "label": "Mention growth",
+        "display": "4.00",
+        "unit": "%",
+        "n": null,
+        "window": "7d",
+        "observedAt": "2026-08-07T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "7af2cd11-9d77-4c10-a7e3-5715429793e9",
+          "stance": "unclear",
+          "relevant": true
+        },
+        {
+          "itemId": "a235a40e-9a81-4f37-9c6d-d2299086d17f",
+          "stance": "unclear",
+          "relevant": true
+        }
+      ],
+      "expectedDirection": "unclear",
+      "expectedAbstain": false,
+      "requiredAbstentions": [
+        "No stance direction asserted from tone that reads as sarcastic or ambiguous."
+      ]
+    },
+    "goldOutput": {
+      "summary": "The tone of this window's social mentions of Microsoft Corporation is ambiguous; no directional read is drawn from it.",
+      "statedFreshness": "2026-08-05",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-22",
+              "text": "The tracked X sample for Microsoft Corporation this window is ambiguous in tone — no confident direction is drawn from it.",
+              "kind": "fact",
+              "evidenceIds": [
+                "7af2cd11-9d77-4c10-a7e3-5715429793e9"
+              ],
+              "metricIds": [],
+              "relatedTickers": [
+                "MSFT"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": true
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "d2c2307a-16be-4603-b53b-a7a7db21a189",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=d2c2307a-16be-4603-b53b-a7a7db21a189 window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "7af2cd11-9d77-4c10-a7e3-5715429793e9",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Ambiguous post about MSFT",
+          "snippet": "\"Oh great, another MSFT conference call, exactly what I needed\" — tone reads as sarcastic, no clear direction.",
+          "sourceUrl": "https://example.com/evidence/23",
+          "publisher": null,
+          "authorRef": "user_23",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-05T12:00:00.000Z",
+          "availableAt": "2026-08-05T12:00:00.000Z",
+          "ingestedAt": "2026-08-05T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "d950adba-5afc-42db-8bcb-eab51c56a4f2",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.700000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "7af2cd11-9d77-4c10-a7e3-5715429793e9"
+      },
+      {
+        "kind": "included",
+        "item": {
+          "id": "a235a40e-9a81-4f37-9c6d-d2299086d17f",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "Mixed-tone mention of Microsoft Corporation",
+          "snippet": "A short aside about Microsoft Corporation that could read either way depending on delivery.",
+          "sourceUrl": "https://example.com/evidence/24",
+          "publisher": null,
+          "authorRef": "user_24",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-08T12:00:00.000Z",
+          "availableAt": "2026-08-08T12:00:00.000Z",
+          "ingestedAt": "2026-08-08T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "00f02323-8866-4754-973a-3a61ef951346",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevanceScore": "0.650000",
+        "matchedVia": "company_name",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "a235a40e-9a81-4f37-9c6d-d2299086d17f"
+      }
+    ],
+    "excluded": [],
+    "retrievedCount": 2,
+    "usedCount": 2,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "stale_date-02",
+    "packId": "sarcasm-01",
+    "faultClass": "stale_date",
+    "faultyClaimId": "claim-62",
+    "cleanClaimIds": [
+      "claim-21"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "The tone of this window's social mentions of Apple Inc. is ambiguous; no directional read is drawn from it.",
+    "statedFreshness": "2026-08-04",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-21",
+            "text": "The tracked X sample for Apple Inc. this window is ambiguous in tone — no confident direction is drawn from it.",
+            "kind": "fact",
+            "evidenceIds": [
+              "b819e229-2960-4a96-ab36-4cf65ae64753"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "AAPL"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-62",
+            "text": "This event is described as happening on a specific date, cited against evidence from a very different period.",
+            "kind": "fact",
+            "evidenceIds": [
+              "b819e229-2960-4a96-ab36-4cf65ae64753"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "AAPL"
+            ],
+            "assertedDate": "2026-01-01"
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

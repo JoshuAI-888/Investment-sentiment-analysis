@@ -1,0 +1,72 @@
+{
+  "meta": {
+    "id": "fabricated_evidence_id-04",
+    "packId": "conflict-05",
+    "faultClass": "fabricated_evidence_id",
+    "faultyClaimId": "claim-89",
+    "cleanClaimIds": [
+      "claim-39",
+      "claim-40"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "JPMorgan Chase & Co.'s two tracked axes disagree this window: X reads more positively, Substack coverage reads more negatively.",
+    "statedFreshness": "2026-08-07",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-39",
+            "text": "The tracked X sample for JPMorgan Chase & Co. this window reads more positively.",
+            "kind": "fact",
+            "evidenceIds": [
+              "33d105eb-bcdf-4769-9f3d-40170f9c1fe2"
+            ],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "JPM"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-40",
+            "text": "A Substack publication's coverage of JPMorgan Chase & Co. over the same window reads more negatively — the two sources disagree.",
+            "kind": "fact",
+            "evidenceIds": [
+              "9f786feb-5f7c-470d-aa31-875f15e69263"
+            ],
+            "metricIds": [
+              "social.stance_substack"
+            ],
+            "relatedTickers": [
+              "JPM"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-89",
+            "text": "This claim cites an evidence item that does not actually exist in the run's pack.",
+            "kind": "fact",
+            "evidenceIds": [
+              "03a4f7d3-a27e-4864-af8e-5ebf79313d1a"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "JPM"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": false
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

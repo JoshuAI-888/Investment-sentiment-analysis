@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "body": {
+    "modelId": "google/gemini-3-pro",
+    "tokensIn": 400,
+    "tokensOut": 120,
+    "costUsd": "0.002000",
+    "content": "{\"c1\":3,\"c2\":3,\"c3\":1,\"c4\":2,\"violations\":[\"recommendation language\"],\"rationale\":\"The claim recommends a position, which the product must never do.\"}"
+  }
+}

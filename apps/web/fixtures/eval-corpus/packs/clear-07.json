@@ -1,0 +1,225 @@
+{
+  "meta": {
+    "id": "clear-07",
+    "bucket": "clear_stance",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "PFE",
+    "metrics": [
+      {
+        "metricId": "attention.mention_growth",
+        "calculationId": "calc_bcc48f74-eb90-477e-aea6-8cf8d8cc2e65",
+        "label": "Mention growth",
+        "display": "12.50",
+        "unit": "%",
+        "n": null,
+        "window": "7d",
+        "observedAt": "2026-08-07T12:00:00.000Z"
+      },
+      {
+        "metricId": "social.stance_x",
+        "calculationId": "calc_682ed8b1-e81c-4f83-afe6-5299fa1c697f",
+        "label": "X stance (shrunk)",
+        "display": "0.400000",
+        "unit": "",
+        "n": 8,
+        "window": "7d",
+        "observedAt": "2026-08-04T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "e7c6ff4f-a233-499a-b70d-3062fe0874a2",
+          "stance": "bearish",
+          "relevant": true
+        },
+        {
+          "itemId": "5410f334-51f2-4ce3-b451-a38603a82807",
+          "stance": "bearish",
+          "relevant": true
+        }
+      ],
+      "expectedDirection": "bearish",
+      "expectedAbstain": false,
+      "requiredAbstentions": [
+        "No price target or buy/sell recommendation language."
+      ]
+    },
+    "goldOutput": {
+      "summary": "Pfizer Inc. shows a deteriorating read across the tracked social sample this window.",
+      "statedFreshness": "2026-08-04",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-13",
+              "text": "Watched-account commentary about Pfizer Inc. this window reads as deteriorating, drawn from the tracked X sample.",
+              "kind": "fact",
+              "evidenceIds": [
+                "e7c6ff4f-a233-499a-b70d-3062fe0874a2"
+              ],
+              "metricIds": [
+                "social.stance_x"
+              ],
+              "relatedTickers": [
+                "PFE"
+              ],
+              "assertedDate": null
+            },
+            {
+              "claimId": "claim-14",
+              "text": "A sector newsletter's coverage of Pfizer Inc. is consistent with the same deteriorating read.",
+              "kind": "fact",
+              "evidenceIds": [
+                "5410f334-51f2-4ce3-b451-a38603a82807"
+              ],
+              "metricIds": [],
+              "relatedTickers": [
+                "PFE"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": false
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "7b37afd5-c534-4ec0-817a-868e47cb1b29",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=7b37afd5-c534-4ec0-817a-868e47cb1b29 window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "e7c6ff4f-a233-499a-b70d-3062fe0874a2",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Watched-account post about PFE",
+          "snippet": "$PFE commentary describing conditions as deteriorating this week.",
+          "sourceUrl": "https://example.com/evidence/13",
+          "publisher": null,
+          "authorRef": "user_13",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-04T12:00:00.000Z",
+          "availableAt": "2026-08-04T12:00:00.000Z",
+          "ingestedAt": "2026-08-04T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "7fec7c8d-563f-4295-8552-2af1bef8eae0",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.910000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "e7c6ff4f-a233-499a-b70d-3062fe0874a2"
+      },
+      {
+        "kind": "included",
+        "item": {
+          "id": "5410f334-51f2-4ce3-b451-a38603a82807",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "Sector newsletter mentions Pfizer Inc.",
+          "snippet": "A curated publication notes Pfizer Inc.'s recent activity as deteriorating.",
+          "sourceUrl": "https://example.com/evidence/14",
+          "publisher": null,
+          "authorRef": "user_14",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-06T12:00:00.000Z",
+          "availableAt": "2026-08-06T12:00:00.000Z",
+          "ingestedAt": "2026-08-06T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "abeda54e-d451-41ee-9fca-8063478e4cb2",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevanceScore": "0.870000",
+        "matchedVia": "company_name",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "5410f334-51f2-4ce3-b451-a38603a82807"
+      }
+    ],
+    "excluded": [],
+    "retrievedCount": 2,
+    "usedCount": 2,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

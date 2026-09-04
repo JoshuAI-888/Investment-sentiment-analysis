@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "id": "unsupported_causal_claim-02",
+    "packId": "clear-08",
+    "faultClass": "unsupported_causal_claim",
+    "faultyClaimId": "claim-57",
+    "cleanClaimIds": [
+      "claim-15",
+      "claim-16"
+    ],
+    "deterministicallyCatchable": false
+  },
+  "output": {
+    "summary": "The Coca-Cola Company shows a improving read across the tracked social sample this window.",
+    "statedFreshness": "2026-08-05",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-15",
+            "text": "Watched-account commentary about The Coca-Cola Company this window reads as improving, drawn from the tracked X sample.",
+            "kind": "fact",
+            "evidenceIds": [
+              "129ac393-d408-4ae0-94fc-904cc1d5b550"
+            ],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "KO"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-16",
+            "text": "A sector newsletter's coverage of The Coca-Cola Company is consistent with the same improving read.",
+            "kind": "fact",
+            "evidenceIds": [
+              "d0402e10-57d7-4d5f-b407-da2621beaf3b"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "KO"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-57",
+            "text": "Sentiment shifted because the company announced a surprise leadership change — an assertion the cited item never actually makes.",
+            "kind": "fact",
+            "evidenceIds": [
+              "129ac393-d408-4ae0-94fc-904cc1d5b550"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "KO"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": false
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

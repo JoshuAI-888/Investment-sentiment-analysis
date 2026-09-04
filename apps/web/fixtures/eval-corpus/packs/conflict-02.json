@@ -1,0 +1,227 @@
+{
+  "meta": {
+    "id": "conflict-02",
+    "bucket": "conflicting_source",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "MSFT",
+    "metrics": [
+      {
+        "metricId": "social.stance_x",
+        "calculationId": "calc_8beaeb3a-f795-457c-b846-27f3f28f9cc1",
+        "label": "X stance (shrunk)",
+        "display": "0.150000",
+        "unit": "",
+        "n": 7,
+        "window": "7d",
+        "observedAt": "2026-08-04T12:00:00.000Z"
+      },
+      {
+        "metricId": "social.stance_substack",
+        "calculationId": "calc_15cbc32e-a8e1-42c0-b646-196fb640822a",
+        "label": "Substack stance (shrunk)",
+        "display": "-0.120000",
+        "unit": "",
+        "n": 5,
+        "window": "7d",
+        "observedAt": "2026-08-10T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "b1d1b3fa-fd7b-4d43-b5cc-0a7eda94124c",
+          "stance": "bullish",
+          "relevant": true
+        },
+        {
+          "itemId": "d9a3a70a-fa07-4a92-8a7d-49af764d3017",
+          "stance": "bearish",
+          "relevant": true
+        }
+      ],
+      "expectedDirection": "mixed",
+      "expectedAbstain": false,
+      "requiredAbstentions": [
+        "No single confident direction — the two axes disagree and both are reported, unblended (D-14)."
+      ]
+    },
+    "goldOutput": {
+      "summary": "Microsoft Corporation's two tracked axes disagree this window: X reads more positively, Substack coverage reads more negatively.",
+      "statedFreshness": "2026-08-04",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-33",
+              "text": "The tracked X sample for Microsoft Corporation this window reads more positively.",
+              "kind": "fact",
+              "evidenceIds": [
+                "b1d1b3fa-fd7b-4d43-b5cc-0a7eda94124c"
+              ],
+              "metricIds": [
+                "social.stance_x"
+              ],
+              "relatedTickers": [
+                "MSFT"
+              ],
+              "assertedDate": null
+            },
+            {
+              "claimId": "claim-34",
+              "text": "A Substack publication's coverage of Microsoft Corporation over the same window reads more negatively — the two sources disagree.",
+              "kind": "fact",
+              "evidenceIds": [
+                "d9a3a70a-fa07-4a92-8a7d-49af764d3017"
+              ],
+              "metricIds": [
+                "social.stance_substack"
+              ],
+              "relatedTickers": [
+                "MSFT"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": false
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "76d19d8e-78ad-4bc9-a555-f3ea7ea00e67",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=76d19d8e-78ad-4bc9-a555-f3ea7ea00e67 window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "b1d1b3fa-fd7b-4d43-b5cc-0a7eda94124c",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Positive-leaning post about MSFT",
+          "snippet": "$MSFT commentary describing conditions as improving.",
+          "sourceUrl": "https://example.com/evidence/43",
+          "publisher": null,
+          "authorRef": "user_43",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-04T12:00:00.000Z",
+          "availableAt": "2026-08-04T12:00:00.000Z",
+          "ingestedAt": "2026-08-04T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "2c8eb46d-76a6-4006-9be4-e391b82b4f09",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.800000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "b1d1b3fa-fd7b-4d43-b5cc-0a7eda94124c"
+      },
+      {
+        "kind": "included",
+        "item": {
+          "id": "d9a3a70a-fa07-4a92-8a7d-49af764d3017",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "Negative-leaning coverage of Microsoft Corporation",
+          "snippet": "A newsletter piece on Microsoft Corporation describing conditions as deteriorating over the same window.",
+          "sourceUrl": "https://example.com/evidence/44",
+          "publisher": null,
+          "authorRef": "user_44",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-10T12:00:00.000Z",
+          "availableAt": "2026-08-10T12:00:00.000Z",
+          "ingestedAt": "2026-08-10T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "445b2080-90c0-460e-885a-d1bff5821eed",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevanceScore": "0.780000",
+        "matchedVia": "company_name",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "d9a3a70a-fa07-4a92-8a7d-49af764d3017"
+      }
+    ],
+    "excluded": [],
+    "retrievedCount": 2,
+    "usedCount": 2,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

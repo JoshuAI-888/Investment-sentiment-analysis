@@ -1,0 +1,225 @@
+{
+  "meta": {
+    "id": "clear-01",
+    "bucket": "clear_stance",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "AAPL",
+    "metrics": [
+      {
+        "metricId": "attention.mention_growth",
+        "calculationId": "calc_91e0ff85-bcfb-4fac-8e1e-f6d6571f34d8",
+        "label": "Mention growth",
+        "display": "12.50",
+        "unit": "%",
+        "n": null,
+        "window": "7d",
+        "observedAt": "2026-08-06T12:00:00.000Z"
+      },
+      {
+        "metricId": "social.stance_x",
+        "calculationId": "calc_d408d694-643c-417d-94cc-331ff3654526",
+        "label": "X stance (shrunk)",
+        "display": "0.400000",
+        "unit": "",
+        "n": 8,
+        "window": "7d",
+        "observedAt": "2026-08-03T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "a4add868-d93a-4aec-9d46-0167dfa87791",
+          "stance": "bullish",
+          "relevant": true
+        },
+        {
+          "itemId": "6343a79e-fedb-463a-bbfb-8d374f3f2779",
+          "stance": "bullish",
+          "relevant": true
+        }
+      ],
+      "expectedDirection": "bullish",
+      "expectedAbstain": false,
+      "requiredAbstentions": [
+        "No price target or buy/sell recommendation language."
+      ]
+    },
+    "goldOutput": {
+      "summary": "Apple Inc. shows a improving read across the tracked social sample this window.",
+      "statedFreshness": "2026-08-03",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-1",
+              "text": "Watched-account commentary about Apple Inc. this window reads as improving, drawn from the tracked X sample.",
+              "kind": "fact",
+              "evidenceIds": [
+                "a4add868-d93a-4aec-9d46-0167dfa87791"
+              ],
+              "metricIds": [
+                "social.stance_x"
+              ],
+              "relatedTickers": [
+                "AAPL"
+              ],
+              "assertedDate": null
+            },
+            {
+              "claimId": "claim-2",
+              "text": "A sector newsletter's coverage of Apple Inc. is consistent with the same improving read.",
+              "kind": "fact",
+              "evidenceIds": [
+                "6343a79e-fedb-463a-bbfb-8d374f3f2779"
+              ],
+              "metricIds": [],
+              "relatedTickers": [
+                "AAPL"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": false
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "632110ba-2e1c-477c-9475-634b307162a7",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=632110ba-2e1c-477c-9475-634b307162a7 window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "a4add868-d93a-4aec-9d46-0167dfa87791",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Watched-account post about AAPL",
+          "snippet": "$AAPL commentary describing conditions as improving this week.",
+          "sourceUrl": "https://example.com/evidence/1",
+          "publisher": null,
+          "authorRef": "user_1",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-03T12:00:00.000Z",
+          "availableAt": "2026-08-03T12:00:00.000Z",
+          "ingestedAt": "2026-08-03T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "a0fded3d-37fa-4f8e-8085-0636d46c5a1d",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.910000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "a4add868-d93a-4aec-9d46-0167dfa87791"
+      },
+      {
+        "kind": "included",
+        "item": {
+          "id": "6343a79e-fedb-463a-bbfb-8d374f3f2779",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "Sector newsletter mentions Apple Inc.",
+          "snippet": "A curated publication notes Apple Inc.'s recent activity as improving.",
+          "sourceUrl": "https://example.com/evidence/2",
+          "publisher": null,
+          "authorRef": "user_2",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-05T12:00:00.000Z",
+          "availableAt": "2026-08-05T12:00:00.000Z",
+          "ingestedAt": "2026-08-05T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "5d8057f1-6015-4fd1-9fab-2d92d6e1df7b",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevanceScore": "0.870000",
+        "matchedVia": "company_name",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "6343a79e-fedb-463a-bbfb-8d374f3f2779"
+      }
+    ],
+    "excluded": [],
+    "retrievedCount": 2,
+    "usedCount": 2,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 1,
+        "usedCount": 1,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

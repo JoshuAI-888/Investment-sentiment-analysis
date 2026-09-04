@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "id": "wrong_number-02",
+    "packId": "clear-02",
+    "faultClass": "wrong_number",
+    "faultyClaimId": "claim-47",
+    "cleanClaimIds": [
+      "claim-3",
+      "claim-4"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "Microsoft Corporation shows a deteriorating read across the tracked social sample this window.",
+    "statedFreshness": "2026-08-04",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-3",
+            "text": "Watched-account commentary about Microsoft Corporation this window reads as deteriorating, drawn from the tracked X sample.",
+            "kind": "fact",
+            "evidenceIds": [
+              "a84d936c-b623-42f0-a9de-50a5ba742a41"
+            ],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "MSFT"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-4",
+            "text": "A sector newsletter's coverage of Microsoft Corporation is consistent with the same deteriorating read.",
+            "kind": "fact",
+            "evidenceIds": [
+              "65732a79-3a92-4680-9331-340be8e6714a"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "MSFT"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-47",
+            "text": "Mention growth for the window is 999.99%, well outside anything the stored metric shows.",
+            "kind": "fact",
+            "evidenceIds": [],
+            "metricIds": [
+              "attention.mention_growth"
+            ],
+            "relatedTickers": [
+              "MSFT"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": false
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

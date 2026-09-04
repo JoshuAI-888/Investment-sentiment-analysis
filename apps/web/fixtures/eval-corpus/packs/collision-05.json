@@ -1,0 +1,209 @@
+{
+  "meta": {
+    "id": "collision-05",
+    "bucket": "ticker_collision",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "JPM",
+    "metrics": [
+      {
+        "metricId": "attention.mention_growth",
+        "calculationId": "calc_8a9231de-9e87-4953-a22e-cc8b2258f963",
+        "label": "Mention growth",
+        "display": "6.00",
+        "unit": "%",
+        "n": null,
+        "window": "7d",
+        "observedAt": "2026-08-09T12:00:00.000Z"
+      },
+      {
+        "metricId": "social.stance_x",
+        "calculationId": "calc_1677c695-3e56-46de-96e6-3ee00a5a2710",
+        "label": "X stance (shrunk)",
+        "display": "0.300000",
+        "unit": "",
+        "n": 6,
+        "window": "7d",
+        "observedAt": "2026-08-08T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "f34c1dd3-07c3-47a9-9270-102b7aa167d8",
+          "stance": "neutral",
+          "relevant": true
+        },
+        {
+          "itemId": "bdd97ee8-9a71-4bed-8316-4f51ce808018",
+          "stance": "neutral",
+          "relevant": false
+        }
+      ],
+      "expectedDirection": "neutral",
+      "expectedAbstain": false,
+      "requiredAbstentions": [
+        "No stance drawn from the unconfirmed collided-ticker item; it must stay excluded."
+      ]
+    },
+    "goldOutput": {
+      "summary": "This window's confirmed evidence for JPMorgan Chase & Co. excludes one bare-token, unconfirmed collision.",
+      "statedFreshness": "2026-08-08",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-30",
+              "text": "The confirmed mentions of JPMorgan Chase & Co. this window are limited to the unambiguous cashtag usage; a same-letters bare-token post was excluded as unconfirmed.",
+              "kind": "fact",
+              "evidenceIds": [
+                "f34c1dd3-07c3-47a9-9270-102b7aa167d8"
+              ],
+              "metricIds": [],
+              "relatedTickers": [
+                "JPM"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": true
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "73b491da-fa7a-4c89-8b50-67fbdb12da81",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=73b491da-fa7a-4c89-8b50-67fbdb12da81 window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "f34c1dd3-07c3-47a9-9270-102b7aa167d8",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Confirmed post about JPM",
+          "snippet": "$JPM discussed alongside JPMorgan Chase & Co.'s own name, unambiguous.",
+          "sourceUrl": "https://example.com/evidence/39",
+          "publisher": null,
+          "authorRef": "user_39",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-08T12:00:00.000Z",
+          "availableAt": "2026-08-08T12:00:00.000Z",
+          "ingestedAt": "2026-08-08T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "8732c3b2-1960-4928-bc92-c541848aa6c4",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.880000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "f34c1dd3-07c3-47a9-9270-102b7aa167d8"
+      }
+    ],
+    "excluded": [
+      {
+        "kind": "excluded",
+        "item": {
+          "id": "bdd97ee8-9a71-4bed-8316-4f51ce808018",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Bare-token post using the same letters as JPM",
+          "snippet": "A post using the bare token 'JPM' in a sentence about something else entirely, with no corroborating context.",
+          "sourceUrl": "https://example.com/evidence/40",
+          "publisher": null,
+          "authorRef": "user_40",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-10T12:00:00.000Z",
+          "availableAt": "2026-08-10T12:00:00.000Z",
+          "ingestedAt": "2026-08-10T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "41a081ac-4933-4021-b1dc-43b81c072660",
+          "metadata": {}
+        },
+        "axis": "x",
+        "reason": "ticker_collision_unconfirmed",
+        "detail": "bare token 'JPM' with no deterministic corroboration; entity.collision_guard did not confirm it"
+      }
+    ],
+    "retrievedCount": 2,
+    "usedCount": 1,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 2,
+        "usedCount": 1,
+        "exclusions": [
+          {
+            "reason": "ticker_collision_unconfirmed",
+            "count": 1
+          }
+        ],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

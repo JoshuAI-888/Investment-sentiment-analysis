@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "stale_date-03",
+    "packId": "sarcasm-02",
+    "faultClass": "stale_date",
+    "faultyClaimId": "claim-63",
+    "cleanClaimIds": [
+      "claim-22"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "The tone of this window's social mentions of Microsoft Corporation is ambiguous; no directional read is drawn from it.",
+    "statedFreshness": "2026-08-05",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-22",
+            "text": "The tracked X sample for Microsoft Corporation this window is ambiguous in tone — no confident direction is drawn from it.",
+            "kind": "fact",
+            "evidenceIds": [
+              "7af2cd11-9d77-4c10-a7e3-5715429793e9"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "MSFT"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-63",
+            "text": "This event is described as happening on a specific date, cited against evidence from a very different period.",
+            "kind": "fact",
+            "evidenceIds": [
+              "7af2cd11-9d77-4c10-a7e3-5715429793e9"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "MSFT"
+            ],
+            "assertedDate": "2026-01-01"
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

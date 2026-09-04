@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "stale_date-04",
+    "packId": "sarcasm-03",
+    "faultClass": "stale_date",
+    "faultyClaimId": "claim-64",
+    "cleanClaimIds": [
+      "claim-23"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "The tone of this window's social mentions of Tesla, Inc. is ambiguous; no directional read is drawn from it.",
+    "statedFreshness": "2026-08-06",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-23",
+            "text": "The tracked X sample for Tesla, Inc. this window is ambiguous in tone — no confident direction is drawn from it.",
+            "kind": "fact",
+            "evidenceIds": [
+              "9ea6dea1-7adc-455d-8c30-3c62f6ac27df"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "TSLA"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-64",
+            "text": "This event is described as happening on a specific date, cited against evidence from a very different period.",
+            "kind": "fact",
+            "evidenceIds": [
+              "9ea6dea1-7adc-455d-8c30-3c62f6ac27df"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "TSLA"
+            ],
+            "assertedDate": "2026-01-01"
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

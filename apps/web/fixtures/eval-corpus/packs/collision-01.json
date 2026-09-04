@@ -1,0 +1,209 @@
+{
+  "meta": {
+    "id": "collision-01",
+    "bucket": "ticker_collision",
+    "labelSource": "llm_assisted_pending_human_audit",
+    "subjectSymbol": "AAPL",
+    "metrics": [
+      {
+        "metricId": "attention.mention_growth",
+        "calculationId": "calc_97645067-7be1-4ac6-a93f-b46b115cfc2b",
+        "label": "Mention growth",
+        "display": "6.00",
+        "unit": "%",
+        "n": null,
+        "window": "7d",
+        "observedAt": "2026-08-05T12:00:00.000Z"
+      },
+      {
+        "metricId": "social.stance_x",
+        "calculationId": "calc_b0f3efc1-03f0-412b-a752-f1dbee54d467",
+        "label": "X stance (shrunk)",
+        "display": "0.300000",
+        "unit": "",
+        "n": 6,
+        "window": "7d",
+        "observedAt": "2026-08-04T12:00:00.000Z"
+      }
+    ],
+    "labels": {
+      "perItem": [
+        {
+          "itemId": "a76fab28-305d-4e99-9fe0-55f672d7be26",
+          "stance": "neutral",
+          "relevant": true
+        },
+        {
+          "itemId": "4b5e6ed8-28c6-4ff1-abea-239f4d2a250a",
+          "stance": "neutral",
+          "relevant": false
+        }
+      ],
+      "expectedDirection": "neutral",
+      "expectedAbstain": false,
+      "requiredAbstentions": [
+        "No stance drawn from the unconfirmed collided-ticker item; it must stay excluded."
+      ]
+    },
+    "goldOutput": {
+      "summary": "This window's confirmed evidence for Apple Inc. excludes one bare-token, unconfirmed collision.",
+      "statedFreshness": "2026-08-04",
+      "themes": [
+        {
+          "title": "Observed evidence",
+          "claims": [
+            {
+              "claimId": "claim-26",
+              "text": "The confirmed mentions of Apple Inc. this window are limited to the unambiguous cashtag usage; a same-letters bare-token post was excluded as unconfirmed.",
+              "kind": "fact",
+              "evidenceIds": [
+                "a76fab28-305d-4e99-9fe0-55f672d7be26"
+              ],
+              "metricIds": [],
+              "relatedTickers": [
+                "AAPL"
+              ],
+              "assertedDate": null
+            }
+          ],
+          "singleSource": true
+        }
+      ],
+      "bullishCase": [],
+      "bearishCase": [],
+      "whatChanged": [],
+      "whatToMonitor": []
+    }
+  },
+  "pack": {
+    "securityId": "9f5432d4-6fa4-438a-9c44-b1b76db561cc",
+    "asOf": "2026-08-31T12:00:00.000Z",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-31T00:00:00.000Z"
+    },
+    "retrievalQuery": "security=9f5432d4-6fa4-438a-9c44-b1b76db561cc window=2026-08-01T00:00:00.000Z..2026-08-31T00:00:00.000Z asOf=2026-08-31T12:00:00.000Z",
+    "items": [
+      {
+        "kind": "included",
+        "item": {
+          "id": "a76fab28-305d-4e99-9fe0-55f672d7be26",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Confirmed post about AAPL",
+          "snippet": "$AAPL discussed alongside Apple Inc.'s own name, unambiguous.",
+          "sourceUrl": "https://example.com/evidence/31",
+          "publisher": null,
+          "authorRef": "user_31",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-04T12:00:00.000Z",
+          "availableAt": "2026-08-04T12:00:00.000Z",
+          "ingestedAt": "2026-08-04T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "1cb89ba1-d5c3-4a85-a078-6f3e7b005f1a",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevanceScore": "0.880000",
+        "matchedVia": "cashtag",
+        "methods": [
+          {
+            "methodId": "relevance.filter",
+            "methodVersion": "1.0.0"
+          }
+        ],
+        "stableId": "a76fab28-305d-4e99-9fe0-55f672d7be26"
+      }
+    ],
+    "excluded": [
+      {
+        "kind": "excluded",
+        "item": {
+          "id": "4b5e6ed8-28c6-4ff1-abea-239f4d2a250a",
+          "securityId": null,
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "Bare-token post using the same letters as AAPL",
+          "snippet": "A post using the bare token 'AAPL' in a sentence about something else entirely, with no corroborating context.",
+          "sourceUrl": "https://example.com/evidence/32",
+          "publisher": null,
+          "authorRef": "user_32",
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": null,
+          "publishedAt": "2026-08-06T12:00:00.000Z",
+          "availableAt": "2026-08-06T12:00:00.000Z",
+          "ingestedAt": "2026-08-06T12:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "own_collected",
+          "coverageClass": "standard",
+          "rawHash": "4b858466-9193-4dee-a485-cd39702f3539",
+          "metadata": {}
+        },
+        "axis": "x",
+        "reason": "ticker_collision_unconfirmed",
+        "detail": "bare token 'AAPL' with no deterministic corroboration; entity.collision_guard did not confirm it"
+      }
+    ],
+    "retrievedCount": 2,
+    "usedCount": 1,
+    "truncatedByScanWindow": false,
+    "disclosures": [
+      {
+        "axis": "reddit",
+        "statement": "Reddit is not a data source for this product. The legacy collector does not use the Reddit Data API (D-39) — there is no Reddit evidence to sample, and none is shown, rather than a quiet placeholder standing in for it.",
+        "windowFrom": null,
+        "windowTo": null,
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "reddit",
+          "collected": false,
+          "subredditsPolled": [],
+          "treeComplete": null
+        }
+      },
+      {
+        "axis": "x",
+        "statement": "Watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 2,
+        "usedCount": 1,
+        "exclusions": [
+          {
+            "reason": "ticker_collision_unconfirmed",
+            "count": 1
+          }
+        ],
+        "meta": {
+          "kind": "x",
+          "watchlistVersion": "v1",
+          "triggerEvent": null
+        }
+      },
+      {
+        "axis": "substack",
+        "statement": "Curated publication set, selected on the basis recorded in config version v1.",
+        "windowFrom": "2026-08-01T00:00:00.000Z",
+        "windowTo": "2026-08-31T00:00:00.000Z",
+        "retrievedCount": 0,
+        "usedCount": 0,
+        "exclusions": [],
+        "meta": {
+          "kind": "substack",
+          "publicationSetVersion": "v1",
+          "selectionBasis": "One to two Substack publications per GICS sector represented in the seed universe, selected for sector coverage rather than readership, personal familiarity, or citation frequency. Utilities has no dedicated pick — a disclosed gap, not an oversight (D-36)."
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "id": "unsupported_causal_claim-01",
+    "packId": "clear-07",
+    "faultClass": "unsupported_causal_claim",
+    "faultyClaimId": "claim-56",
+    "cleanClaimIds": [
+      "claim-13",
+      "claim-14"
+    ],
+    "deterministicallyCatchable": false
+  },
+  "output": {
+    "summary": "Pfizer Inc. shows a deteriorating read across the tracked social sample this window.",
+    "statedFreshness": "2026-08-04",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-13",
+            "text": "Watched-account commentary about Pfizer Inc. this window reads as deteriorating, drawn from the tracked X sample.",
+            "kind": "fact",
+            "evidenceIds": [
+              "e7c6ff4f-a233-499a-b70d-3062fe0874a2"
+            ],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "PFE"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-14",
+            "text": "A sector newsletter's coverage of Pfizer Inc. is consistent with the same deteriorating read.",
+            "kind": "fact",
+            "evidenceIds": [
+              "5410f334-51f2-4ce3-b451-a38603a82807"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "PFE"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-56",
+            "text": "Sentiment shifted because the company announced a surprise leadership change — an assertion the cited item never actually makes.",
+            "kind": "fact",
+            "evidenceIds": [
+              "e7c6ff4f-a233-499a-b70d-3062fe0874a2"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "PFE"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": false
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

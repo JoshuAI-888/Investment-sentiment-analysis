@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "unsupported_causal_claim-05",
+    "packId": "sarcasm-01",
+    "faultClass": "unsupported_causal_claim",
+    "faultyClaimId": "claim-60",
+    "cleanClaimIds": [
+      "claim-21"
+    ],
+    "deterministicallyCatchable": false
+  },
+  "output": {
+    "summary": "The tone of this window's social mentions of Apple Inc. is ambiguous; no directional read is drawn from it.",
+    "statedFreshness": "2026-08-04",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-21",
+            "text": "The tracked X sample for Apple Inc. this window is ambiguous in tone — no confident direction is drawn from it.",
+            "kind": "fact",
+            "evidenceIds": [
+              "b819e229-2960-4a96-ab36-4cf65ae64753"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "AAPL"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-60",
+            "text": "Sentiment shifted because the company announced a surprise leadership change — an assertion the cited item never actually makes.",
+            "kind": "fact",
+            "evidenceIds": [
+              "b819e229-2960-4a96-ab36-4cf65ae64753"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "AAPL"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

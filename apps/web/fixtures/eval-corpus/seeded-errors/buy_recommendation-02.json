@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "id": "buy_recommendation-02",
+    "packId": "sarcasm-04",
+    "faultClass": "buy_recommendation",
+    "faultyClaimId": "claim-67",
+    "cleanClaimIds": [
+      "claim-24"
+    ],
+    "deterministicallyCatchable": true
+  },
+  "output": {
+    "summary": "The tone of this window's social mentions of NVIDIA Corporation is ambiguous; no directional read is drawn from it.",
+    "statedFreshness": "2026-08-07",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-24",
+            "text": "The tracked X sample for NVIDIA Corporation this window is ambiguous in tone — no confident direction is drawn from it.",
+            "kind": "fact",
+            "evidenceIds": [
+              "0e33b4db-eaee-4396-9828-f26c924604e6"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "NVDA"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-67",
+            "text": "Given the evidence, the stock will outperform from here.",
+            "kind": "fact",
+            "evidenceIds": [
+              "0e33b4db-eaee-4396-9828-f26c924604e6"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "NVDA"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": true
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

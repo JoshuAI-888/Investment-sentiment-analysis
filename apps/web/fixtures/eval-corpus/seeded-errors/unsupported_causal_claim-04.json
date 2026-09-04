@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "id": "unsupported_causal_claim-04",
+    "packId": "clear-10",
+    "faultClass": "unsupported_causal_claim",
+    "faultyClaimId": "claim-59",
+    "cleanClaimIds": [
+      "claim-19",
+      "claim-20"
+    ],
+    "deterministicallyCatchable": false
+  },
+  "output": {
+    "summary": "Caterpillar Inc. shows a holding steady read across the tracked social sample this window.",
+    "statedFreshness": "2026-08-07",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-19",
+            "text": "Watched-account commentary about Caterpillar Inc. this window reads as holding steady, drawn from the tracked X sample.",
+            "kind": "fact",
+            "evidenceIds": [
+              "4395ac12-f687-46c3-ac6a-03dcb6677273"
+            ],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "CAT"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-20",
+            "text": "A sector newsletter's coverage of Caterpillar Inc. is consistent with the same holding steady read.",
+            "kind": "fact",
+            "evidenceIds": [
+              "d00217c1-a399-4da3-b67f-b33113c71715"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "CAT"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-59",
+            "text": "Sentiment shifted because the company announced a surprise leadership change — an assertion the cited item never actually makes.",
+            "kind": "fact",
+            "evidenceIds": [
+              "4395ac12-f687-46c3-ac6a-03dcb6677273"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "CAT"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": false
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}

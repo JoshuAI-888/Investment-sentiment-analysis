@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "id": "unsupported_causal_claim-03",
+    "packId": "clear-09",
+    "faultClass": "unsupported_causal_claim",
+    "faultyClaimId": "claim-58",
+    "cleanClaimIds": [
+      "claim-17",
+      "claim-18"
+    ],
+    "deterministicallyCatchable": false
+  },
+  "output": {
+    "summary": "The Walt Disney Company shows a deteriorating read across the tracked social sample this window.",
+    "statedFreshness": "2026-08-06",
+    "themes": [
+      {
+        "title": "Observed evidence",
+        "claims": [
+          {
+            "claimId": "claim-17",
+            "text": "Watched-account commentary about The Walt Disney Company this window reads as deteriorating, drawn from the tracked X sample.",
+            "kind": "fact",
+            "evidenceIds": [
+              "1832f1cd-8f90-4b85-a563-b17c44350030"
+            ],
+            "metricIds": [
+              "social.stance_x"
+            ],
+            "relatedTickers": [
+              "DIS"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-18",
+            "text": "A sector newsletter's coverage of The Walt Disney Company is consistent with the same deteriorating read.",
+            "kind": "fact",
+            "evidenceIds": [
+              "03ecd9c6-2448-483c-bef9-c07778e94728"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "DIS"
+            ],
+            "assertedDate": null
+          },
+          {
+            "claimId": "claim-58",
+            "text": "Sentiment shifted because the company announced a surprise leadership change — an assertion the cited item never actually makes.",
+            "kind": "fact",
+            "evidenceIds": [
+              "1832f1cd-8f90-4b85-a563-b17c44350030"
+            ],
+            "metricIds": [],
+            "relatedTickers": [
+              "DIS"
+            ],
+            "assertedDate": null
+          }
+        ],
+        "singleSource": false
+      }
+    ],
+    "bullishCase": [],
+    "bearishCase": [],
+    "whatChanged": [],
+    "whatToMonitor": []
+  }
+}
