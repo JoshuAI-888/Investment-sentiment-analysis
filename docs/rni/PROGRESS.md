@@ -25,7 +25,7 @@
 | G0 repository preflight | `PASSED` | coordinator | PR #5 web/scorer CI, database integration, E2E, eval and Vercel preview green |
 | G1 model-route branch merged | `PASSED` | coordinator | PR #2, main commit `09ad439` |
 | G2 RNI contract frozen | `PASSED` | coordinator | PR #5 merged at `dd28ea2`; typed source contract at `9908eda` |
-| G3 DATA accepted | `CHANGES_REQUESTED` | DATA + reviewer | `cb60846` closes the initial findings; held on same-security narrative membership and current rebase |
+| G3 DATA accepted | `PASSED` | DATA + reviewer | merged sequentially at `254fe45`; coordinator type/contract plus fresh PostgreSQL DATA 41/41 pass |
 | G4 ENGINE accepted | `IN_PROGRESS` | ENGINE + reviewer | E01 accepted at `b3e8220` after focused 16-test coordinator rerun; E02–E10 remain |
 | G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01 accepted at `71010bd`; CR-SURFACE-02 accepted as D-RNI-13 and S02 unblocked |
 | G6 integrated preview | `NOT_STARTED` | coordinator | Depends G3–G5 |
@@ -36,7 +36,7 @@
 
 | Workstream | Branch | Status | Progress file | Latest accepted commit |
 |---|---|---|---|---|
-| DATA | `feat/rni-data-source-first` | `CHANGES_REQUESTED` | `DATA.md` | — |
+| DATA | `feat/rni-data-source-first` | `MERGED_TO_INTEGRATION` | `DATA.md` | lane `5926601`; merge `254fe45` |
 | ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01 accepted | `ENGINE.md` | `b3e8220`, awaiting lane completion/order |
 | SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01 accepted | `SURFACE.md` | `71010bd`, awaiting lane completion/order |
 | INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I02C Radar contract `84dca87` |
@@ -70,12 +70,12 @@ The canonical matrix is [`INTEGRATION_PLAN.md`](INTEGRATION_PLAN.md) §10. Coord
 | Risk group | Status | Evidence |
 |---|---|---|
 | Scope and branch isolation | `PASSED` | `RNI-00-CONTRACT.md`, path ownership and scoped legacy banners; PR #5 |
-| Source identity/persist-first/idempotency | `READY_FOR_REVIEW` | DATA `cb60846` closes crossed-key and frozen-port findings; final lane acceptance awaits DR-05/rebase |
+| Source identity/persist-first/idempotency | `PASSED` | DATA merged at `254fe45`; crossed keys fail closed, source port returns committed IDs, concurrent outbox tests pass |
 | Reddit/X separation and combined honesty | `IN_PROGRESS` | ENGINE E01 source binding accepted; D-RNI-13 freezes source-separated Radar cells; remaining pipeline/UI tasks open |
 | S&P 500/FMP universe migration | `READY_FOR_REVIEW` | integration commits `a7b13b6`, `e535624`; local PostgreSQL 501-member stage/replay and 600/601 gates pass |
 | Model route and CI | `PASSED` | PR #2 route validation; PR #5 RNI path filter and green eval |
 | Toolchain reproducibility | `PASSED` | pinned pnpm 10.33 clean install plus PR #5 independent CI |
-| Retention and citation safety | `READY_FOR_REVIEW` | DATA claim/source composite FK and ENGINE source/content binding findings resolved; full publication gate remains later work |
+| Retention and citation safety | `IN_PROGRESS` | DATA claim/source FK and ENGINE source/content binding findings resolved; full publication gate remains later work |
 | Cost and 500+ symbol workload | `NOT_STARTED` | — |
 | Authentication/deployment | `READY` | — |
 
@@ -95,3 +95,4 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — PR #5 merged at `dd28ea2`; G0–G2 passed and DATA/ENGINE/SURFACE may branch from this common base.
 - 2026-09-05 — reviewed DATA `5362337`, ENGINE `a181461`, and SURFACE `6992706`; returned DATA/ENGINE P1 lineage findings, approved fixture-only SURFACE S01, resolved CR-DATA-001–004 and CR-SURFACE-01 through coordinator commits `6b67657`/`264ea9c`, and held all lane merges in the prescribed order.
 - 2026-09-05 — accepted ENGINE E01 at `b3e8220`, closed its three initial findings, returned one same-security narrative-membership P1 to DATA, accepted SURFACE S01 at `71010bd`, and resolved CR-SURFACE-02 as D-RNI-13 with a cursor-paginated non-poolable Radar contract.
+- 2026-09-05 — accepted and sequentially merged DATA at `254fe45` after all five findings closed, latest integration rebase confirmed, typecheck/full contract passed, and a fresh disposable PostgreSQL run passed all 41 RNI persistence tests.

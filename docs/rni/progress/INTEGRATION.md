@@ -96,7 +96,7 @@
 
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
-| DATA | `CHANGES_REQUESTED` | no | corrective lane gates green; full integration legacy race reported | yes | DR-01–04 closed at `cb60846`; held on same-security narrative membership and current rebase |
+| DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
 | ENGINE | `E01_ACCEPTED` | no | coordinator rerun: focused unit/contract 16 pass | yes | `b3e8220` accepted; lane proceeds with E02 and remains held for completion/order |
 | SURFACE | `S01_APPROVED` | yes through I02B | contract 9 + fixture Playwright 2 pass | yes | S01 `71010bd` approved; S02 unblocked by I02C and remains held for lane completion/order |
 
@@ -165,6 +165,7 @@
 | `e535624` | Stage validated current FMP S&P 500 snapshots without activating them | lint; typecheck; unit 1,175; contract 78 pass/22 DB-skipped; RNI service/route 16 pass; PostgreSQL universe 4 pass + versions 9 pass; `check:copy`; production build |
 | `264ea9c` | Resolve remaining initial lane contract requests and freeze citation lookup | lint; typecheck; RNI contract 9 pass; full contract 79 pass/22 DB-skipped |
 | `84dca87` | Accept CR-SURFACE-02 and freeze non-poolable Radar pagination | typecheck; focused/full lint; RNI contract 11 pass; full contract 81 pass/22 DB-skipped |
+| `254fe45` | Merge accepted DATA lane into integration | coordinator typecheck; full contract 81 pass/22 DB-skipped; fresh PostgreSQL DATA 41/41 |
 
 ## Coordinator notes
 
@@ -188,6 +189,10 @@
 - ENGINE E01 is accepted at `b3e8220` after an independent 16-test rerun; E02 is unblocked.
 - CR-SURFACE-02 is accepted as D-RNI-13. SURFACE may consume I02C and start S02 without importing
   DATA repositories or inventing a local Radar response shape.
+- DATA is accepted and merged at `254fe45`. All five coordinator findings are closed, ownership
+  is clean, and the merged state passes typecheck, the full contract suite and all 41 DATA tests
+  against a fresh disposable PostgreSQL cluster. CR-DATA-002 remains deliberately deferred until
+  I07 has ENGINE E05's concrete consumer.
 
 ## I05 handoff
 
