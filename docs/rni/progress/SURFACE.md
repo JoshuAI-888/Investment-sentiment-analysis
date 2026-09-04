@@ -3,7 +3,7 @@
 **Writer:** SURFACE builder only  
 **Branch:** `feat/rni-surface-demo`  
 **Depends on:** merged RNI contract-freeze SHA; fixture-backed `RniReadService`  
-**Status:** `IN_PROGRESS` — S04 evidence drawer ready for coordinator re-review; S05–S10 not started
+**Status:** `IN_PROGRESS` — S05 raw-data and lineage explorer ready for coordinator review; S06–S10 not started
 
 ## Owned paths
 
@@ -16,8 +16,8 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | S01 | Typed fixture `RniReadService` and state catalogue               | `READY_FOR_MERGE`  | Citation resolution contract tests         |
 | S02 | Retail Radar with Reddit/X/combined columns                      | `READY_FOR_MERGE`  | Coordinator accepted `c4899b8`             |
 | S03 | Security detail and four dimensions per platform                 | `READY_FOR_MERGE`  | Coordinator accepted `b85d9c7`             |
-| S04 | Evidence drawer with platform-labelled canonical citations       | `READY_FOR_REVIEW` | Citation provenance and SR-04 keyboard e2e |
-| S05 | Raw data/lineage explorer                                        | `NOT_STARTED`      | Summary-to-source traversal e2e            |
+| S04 | Evidence drawer with platform-labelled canonical citations       | `READY_FOR_MERGE`  | Coordinator accepted `6c0df68`             |
+| S05 | Raw data/lineage explorer                                        | `READY_FOR_REVIEW` | Summary-to-source traversal e2e            |
 | S06 | Per-platform freshness, run progress and partial/failure states  | `NOT_STARTED`      | State-matrix visual/e2e tests              |
 | S07 | Manual ticker/full refresh controls and double-submit prevention | `NOT_STARTED`      | Idempotency UI test                        |
 | S08 | S&P 500 search, NVDA default and universe Settings components    | `NOT_STARTED`      | Any-member search + staged preview fixture |
@@ -60,6 +60,8 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | S03 browser/accessibility     | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:3002 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts tests/e2e/rni/security-detail.spec.ts --project=chromium`                                                                                                                                                                                                  | Chromium passed 6/6: each platform has four dimensions, NVDA market-trading divergence, platform-labelled citations, 375px no overflow, and keyboard citation focus. |
 | S04 component/contract        | `PASSED`      | `apps/web/node_modules/.bin/tsc --noEmit`; `apps/web/node_modules/.bin/eslint src/rni/ui/EvidenceCitation.tsx src/rni/ui/evidence.ts src/rni/ui/RetailRadar.tsx src/rni/ui/SecurityDetail.tsx 'app/(rni)/rni/page.tsx' 'app/(rni)/rni/security/nvda/page.tsx' tests/e2e/rni/evidence-drawer.spec.ts`; `apps/web/node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism` | Typecheck and focused lint passed; frozen RNI contract suite passed (13/13).                                                                                         |
 | S04 browser/provenance        | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:3004 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts tests/e2e/rni/security-detail.spec.ts tests/e2e/rni/evidence-drawer.spec.ts --project=chromium`                                                                                                                                                            | Chromium passed 9/9: provenance plus unique repeated-citation controls, focus entry, Tab/Shift+Tab containment, Escape dismissal, and trigger-focus restoration.     |
+| S05 component/contract        | `PASSED`      | `apps/web/node_modules/.bin/tsc --noEmit`; `apps/web/node_modules/.bin/eslint src/rni/ui/RawDataExplorer.tsx 'app/(rni)/rni/explorer/nvda/page.tsx' tests/e2e/rni/raw-data-explorer.spec.ts`; `apps/web/node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism`                                                                                                         | Typecheck and focused lint passed; frozen RNI contract suite passed (13/13).                                                                                         |
+| S05 browser/lineage           | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:3005 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts tests/e2e/rni/security-detail.spec.ts tests/e2e/rni/evidence-drawer.spec.ts tests/e2e/rni/raw-data-explorer.spec.ts --project=chromium`                                                                                                                    | Chromium passed 10/10: the Reddit summary link reaches its bounded source record; unavailable X remains explicitly uncited.                                          |
 | repository required gate      | `NOT_STARTED` | —                                                                                                                                                                                                                                                                                                                                                                                                        | —                                                                                                                                                                    |
 
 ## Review findings
@@ -81,14 +83,15 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 
 ## Commits
 
-| SHA       | Summary                                               | Tests                                                      |
-| --------- | ----------------------------------------------------- | ---------------------------------------------------------- |
-| `98a1064` | S01 fixture service rebased onto I02B                 | typecheck; contract 7; fixture Playwright 2                |
-| `903a9da` | S01 citation-read compatibility                       | typecheck; contract 9; fixture Playwright 2                |
-| `ec80ba1` | S02 source-separated Retail Radar                     | typecheck; lint; contract 11; build; Chromium Playwright 4 |
-| `b85d9c7` | S03 platform-bound security detail                    | typecheck; lint; contract 13; build; Chromium Playwright 6 |
-| `8bedac8` | S04 citation evidence drawer                          | typecheck; lint; contract 13; build; Chromium Playwright 8 |
-| `CURRENT` | S04 dialog accessibility correction (see branch HEAD) | typecheck; lint; contract 13; build; Chromium Playwright 9 |
+| SHA       | Summary                                             | Tests                                                       |
+| --------- | --------------------------------------------------- | ----------------------------------------------------------- |
+| `98a1064` | S01 fixture service rebased onto I02B               | typecheck; contract 7; fixture Playwright 2                 |
+| `903a9da` | S01 citation-read compatibility                     | typecheck; contract 9; fixture Playwright 2                 |
+| `ec80ba1` | S02 source-separated Retail Radar                   | typecheck; lint; contract 11; build; Chromium Playwright 4  |
+| `b85d9c7` | S03 platform-bound security detail                  | typecheck; lint; contract 13; build; Chromium Playwright 6  |
+| `8bedac8` | S04 citation evidence drawer                        | typecheck; lint; contract 13; build; Chromium Playwright 8  |
+| `6c0df68` | S04 dialog accessibility correction                 | typecheck; lint; contract 13; build; Chromium Playwright 9  |
+| `CURRENT` | S05 raw-data and lineage explorer (see branch HEAD) | typecheck; lint; contract 13; build; Chromium Playwright 10 |
 
 ## S01 delivery record
 
@@ -120,7 +123,15 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 - **Result:** every Radar, combined-summary, platform-summary, and dimension citation opens a platform-labelled evidence drawer. Routes resolve `citationId → citation.sourceItemId → getEvidence(sourceItemId)` before rendering. The drawer presents only the frozen citation passage, canonical source URL, and bounded source evidence; it rejects a platform, URL, or bounded-text mismatch instead of treating a citation ID as a source ID.
 - **Verification:** typecheck, focused lint, frozen contract tests (13/13), and production build passed. Chromium passed the exact S04 browser command above (9/9), including X Radar and Reddit dimension provenance navigation plus unique dialog controls and complete keyboard focus behavior.
 - **Risk:** the route remains fixture-composed until integration injects a live `RniReadService`; no direct DATA repository access was added.
-- **Handoff:** SR-04 is resolved and S04 is ready for coordinator re-review. S05 remains `NOT_STARTED`.
+- **Handoff:** coordinator accepted S04 at `6c0df68`; S05 is ready for coordinator review.
+
+## S05 delivery record
+
+- **Files changed:** `apps/web/app/(rni)/rni/explorer/nvda/page.tsx`, `apps/web/src/rni/ui/RawDataExplorer.tsx`, `apps/web/tests/e2e/rni/raw-data-explorer.spec.ts`, and this lane tracker.
+- **Result:** `/rni/explorer/nvda` reads the frozen Radar and summary boundaries, resolves only the summary’s persisted citation IDs through the frozen citation → source chain, and renders bounded source records with original URLs. A summary link traverses to its source record; an uncited, unavailable X summary is labelled as having no publishable source record.
+- **Verification:** typecheck, focused lint, frozen contract tests (13/13), and production build passed. Chromium passed the exact S05 browser command above (10/10), including summary-to-source traversal.
+- **Risk:** the explorer is fixture-composed until integration injects a live `RniReadService`; it intentionally exposes only the frozen bounded source content, not provider payloads or storage-private records.
+- **Handoff:** ready for coordinator review. S06 remains `NOT_STARTED`.
 
 ## Handoff
 
@@ -129,11 +140,11 @@ RNI LANE     SURFACE
 BRANCH       feat/rni-surface-demo
 BASE SHA     ce80424
 STATUS       PARTIAL
-TASKS        S01–S03 ready for merge; S04 ready for coordinator review; S05–S10 not started
-TESTS        typecheck: pass; focused lint: pass; RNI contract: 13 pass; production build: pass; Chromium Playwright: 9 pass
+TASKS        S01–S04 ready for merge; S05 ready for coordinator review; S06–S10 not started
+TESTS        typecheck: pass; focused lint: pass; RNI contract: 13 pass; production build: pass; Chromium Playwright: 10 pass
 CONTRACT     CR-SURFACE-01 accepted at 264ea9c; CR-SURFACE-02 accepted at 84dca87; CR-SURFACE-03 accepted as D-RNI-14 at ce80424
-RISKS        Integration must inject the live read service; S05 will add raw-data/lineage exploration without exposing unbounded content
-FILES        apps/web/fixtures/rni-ui/read-service.ts; apps/web/app/(rni)/rni/page.tsx; apps/web/src/rni/ui/RetailRadar.tsx; apps/web/app/(rni)/rni/security/nvda/page.tsx; apps/web/src/rni/ui/SecurityDetail.tsx; apps/web/src/rni/ui/EvidenceCitation.tsx; apps/web/src/rni/ui/evidence.ts; apps/web/tests/e2e/rni/read-service.spec.ts; apps/web/tests/e2e/rni/radar.spec.ts; apps/web/tests/e2e/rni/security-detail.spec.ts; apps/web/tests/e2e/rni/evidence-drawer.spec.ts; docs/rni/progress/SURFACE.md
-COMMITS      98a1064; 903a9da; ec80ba1; b85d9c7; 8bedac8; CURRENT (S04 SR-04 correction; see branch HEAD)
-DEMO PROOF   `/rni` and `/rni/security/nvda` citations open platform-labelled drawers that expose each citation’s canonical URL and bounded source evidence; the X fixture citation resolves to source item `…024` rather than its citation ID `…016`
+RISKS        Integration must inject the live read service; the explorer intentionally excludes unbounded content and storage-private records
+FILES        apps/web/fixtures/rni-ui/read-service.ts; apps/web/app/(rni)/rni/page.tsx; apps/web/src/rni/ui/RetailRadar.tsx; apps/web/app/(rni)/rni/security/nvda/page.tsx; apps/web/src/rni/ui/SecurityDetail.tsx; apps/web/app/(rni)/rni/explorer/nvda/page.tsx; apps/web/src/rni/ui/RawDataExplorer.tsx; apps/web/src/rni/ui/EvidenceCitation.tsx; apps/web/src/rni/ui/evidence.ts; apps/web/tests/e2e/rni/read-service.spec.ts; apps/web/tests/e2e/rni/radar.spec.ts; apps/web/tests/e2e/rni/security-detail.spec.ts; apps/web/tests/e2e/rni/evidence-drawer.spec.ts; apps/web/tests/e2e/rni/raw-data-explorer.spec.ts; docs/rni/progress/SURFACE.md
+COMMITS      98a1064; 903a9da; ec80ba1; b85d9c7; 8bedac8; 6c0df68; CURRENT (S05 task commit; see branch HEAD)
+DEMO PROOF   `/rni/explorer/nvda` traverses the Reddit summary through citation `…014` to its distinct source record `…002`, shows the original URL and bounded content, and keeps unavailable X explicitly uncited
 ```
