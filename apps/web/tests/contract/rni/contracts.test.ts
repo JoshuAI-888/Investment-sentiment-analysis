@@ -6,8 +6,10 @@ import {
   rniRunRequest,
   rniSecurityMention,
   rniSecurityObservation,
+  rniSourceCommitResult,
   rniSourceItem,
   rniUniverseSnapshotCandidate,
+  type RniSourcePersistencePort,
 } from '@/rni/contracts';
 import {
   comparativeMentions,
@@ -16,6 +18,8 @@ import {
   comparativeSource,
   independentPlatformSlices,
   partialCombinedSummary,
+  comparativeSourceCommit,
+  comparativeSourceDuplicateCommit,
   rniFixtureIds,
 } from '@/rni/testing/reference-fixtures';
 
@@ -43,6 +47,30 @@ describe('RNI frozen contracts', () => {
     expect(() =>
       rniSourceItem.parse({ ...comparativeSource, boundedContent: '<!doctype html><html></html>' }),
     ).toThrow(/Whole-page HTML/u);
+  });
+
+  it('freezes a commit-before-interpret persistence port with explicit idempotency outcomes', async () => {
+    let committed = false;
+    const fake: RniSourcePersistencePort = {
+      async commitSource(source) {
+        rniSourceItem.parse(source);
+        const result = committed ? comparativeSourceDuplicateCommit : comparativeSourceCommit;
+        committed = true;
+        return rniSourceCommitResult.parse(result);
+      },
+    };
+
+    const first = await fake.commitSource(comparativeSource);
+    const duplicate = await fake.commitSource(comparativeSource);
+
+    expect(first).toEqual(comparativeSourceCommit);
+    expect(duplicate).toEqual(comparativeSourceDuplicateCommit);
+    expect(duplicate.sourceItemId).toBe(first.sourceItemId);
+    expect(duplicate).toMatchObject({
+      sourceInserted: false,
+      retrievalInserted: false,
+      contentVersionInserted: false,
+    });
   });
 
   it('requires decimal strings for semantic scores so calculation inputs round-trip exactly', () => {

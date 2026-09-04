@@ -127,6 +127,26 @@ export const rniSourceItem = z
   });
 export type RniSourceItem = z.infer<typeof rniSourceItem>;
 
+export const rniSourceCommitResult = z
+  .object({
+    sourceItemId: z.string().uuid(),
+    sourceInserted: z.boolean(),
+    retrievalInserted: z.boolean(),
+    contentVersionInserted: z.boolean(),
+  })
+  .strict();
+export type RniSourceCommitResult = z.infer<typeof rniSourceCommitResult>;
+
+/**
+ * The DATA implementation resolves only after its source/retrieval/content transaction commits.
+ * ENGINE must not enqueue interpretation from the caller-proposed `source.id`; it may use only
+ * the committed identity returned here. A duplicate returns the existing durable identity and
+ * explicit false flags rather than masquerading as a new write.
+ */
+export interface RniSourcePersistencePort {
+  commitSource(source: RniSourceItem): Promise<RniSourceCommitResult>;
+}
+
 export const rniSecurityMention = z
   .object({
     id: z.string().uuid(),

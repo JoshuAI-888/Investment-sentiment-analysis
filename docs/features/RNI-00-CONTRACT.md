@@ -89,6 +89,15 @@ The transaction that inserts the source item commits before enqueueing semantic 
 tables require `source_item_id` foreign keys. A classification request without a persisted source
 ID fails closed.
 
+### 4.3 Frozen source-persistence port
+
+DATA implements the frozen `RniSourcePersistencePort.commitSource(source)` interface. Its promise
+resolves only after the source, retrieval and content-version transaction commits, returning the
+durable `sourceItemId` plus explicit `sourceInserted`, `retrievalInserted` and
+`contentVersionInserted` idempotency flags. ENGINE may enqueue semantic work only from that
+returned identity, never from the caller-proposed `source.id`. Duplicate delivery returns the
+existing durable source identity and does not masquerade as a new write.
+
 ## 5. Security and observation contract
 
 Security resolution produces `rni_security_mention(source_item_id, security_id, mention_text,

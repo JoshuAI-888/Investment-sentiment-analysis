@@ -809,6 +809,16 @@ status. The configured Reddit community list is versioned in Settings, including
 `r/Superstonk` + `r/GME` analytical cluster while retaining separate provenance. `joshuai` owns
 production approval and human intervention recorded in `rni/DEPLOY.md`.
 
+### D-RNI-08 — Source persistence is a frozen commit-returning cross-lane port
+
+**Accepts CR-DATA-001, 2026-09-05.** DATA implements the additive
+`RniSourcePersistencePort.commitSource` boundary; ENGINE depends only on that frozen interface.
+The promise resolves after the source, retrieval and content-version transaction commits and
+returns the durable source identity plus explicit per-record idempotency outcomes. ENGINE never
+enqueues interpretation from a caller-proposed ID. Duplicate delivery returns the existing
+committed ID with false insertion flags, preserving source-first ordering without importing a
+DATA-private repository or duplicating transaction semantics in ENGINE.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

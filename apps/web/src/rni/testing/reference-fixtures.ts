@@ -4,6 +4,7 @@ import type {
   RniPlatformSlice,
   RniSecurityMention,
   RniSecurityObservation,
+  RniSourceCommitResult,
   RniSourceItem,
 } from '../contracts';
 
@@ -49,6 +50,20 @@ export const comparativeSource: RniSourceItem = {
   metadata: { fixture: true },
   rightsPolicyVersion: 'rni-source-policy-v1',
   createdAt: '2026-09-05T00:05:01.000Z',
+};
+
+export const comparativeSourceCommit: RniSourceCommitResult = {
+  sourceItemId: rniFixtureIds.source,
+  sourceInserted: true,
+  retrievalInserted: true,
+  contentVersionInserted: true,
+};
+
+export const comparativeSourceDuplicateCommit: RniSourceCommitResult = {
+  sourceItemId: rniFixtureIds.source,
+  sourceInserted: false,
+  retrievalInserted: false,
+  contentVersionInserted: false,
 };
 
 export const comparativeMentions: readonly RniSecurityMention[] = [
