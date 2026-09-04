@@ -941,6 +941,30 @@ from active to staged member count and cannot remove/add more identities than th
 contain. I08 additionally verifies set membership against stored versions. The service has no
 mutation, approval or activation method; existing D-RNI-06 human-governed activation is unchanged.
 
+### D-RNI-19 — Catalyst publication is claim-bound, point-in-time social corroboration
+
+**Accepts CR-ENGINE-001 and completes D-RNI-10 at I07, 2026-09-05.** The P0 source vocabulary
+remains Reddit and X. Separate persisted social evidence may `corroborate` or `challenge` a
+catalyst claim; it is not described as independent factual verification. Adding issuer,
+regulator, exchange, filing or news evidence is a later source-rights and source-kind decision,
+not an inference made by ENGINE.
+
+Before the integration branch merges, coordinator-owned migration `0024` will append the minimum
+durable representation for: separate verifier and challenger model invocations; a run/security/
+claim/policy/cutoff-bound catalyst assessment; claim-specific source, corroborating and
+counterevidence citation roles; exact platform-analytics citation lineage; challenger selection;
+and ordered publication statements with sentence-to-citation edges. The I07 composition port
+returns trusted persisted claim and invocation snapshots to ENGINE and stores the accepted
+assessment/publication trace. Caller-declared text, cutoff, role or model identity is never the
+authority.
+
+Point-in-time eligibility requires claim evidence to have been discovered and observed no later
+than the assessment cutoff. Corroborating and counterevidence sources additionally require a
+verified non-null `published_at` no later than that cutoff. Evidence outside that boundary never
+enters the affected model input. Publication revalidates the platform-canonical URL and active
+rights-policy version. Absence remains `unverified`, never false, and every non-coverage sentence
+retains at least one persisted citation edge.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

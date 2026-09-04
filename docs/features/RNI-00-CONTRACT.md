@@ -160,6 +160,27 @@ structured output, explicit tool allowlist, token/tool budgets and a persisted m
 OpenAI Web Search citations are discovery candidates, not publication evidence until the bounded
 source item exists. Synthesis tools return only persisted evidence IDs and citation URLs.
 
+### 8.1 Catalyst corroboration and publication trace
+
+P0 does not add a third source kind: catalyst evidence remains bounded, rights-governed Reddit/X
+content. A distinct persisted social source may corroborate or challenge a catalyst claim, but the
+product must not describe social corroboration as independent factual verification. Issuer,
+regulator, exchange, filing or news verification requires a later explicit source-rights and
+source-kind decision.
+
+Every catalyst assessment is bound durably to the exact run, security, persisted claim, policy,
+verification cutoff and verifier model invocation. The challenger is a separate persisted model
+invocation. Supporting and contradicting citations carry claim-specific roles; platform
+conclusion citations additionally bind the exact analytics artifact. Published summary statements
+retain ordered sentence-to-citation trace rather than relying only on a section-level citation
+union.
+
+A source first discovered or observed after the assessment cutoff is hindsight evidence and cannot
+enter that assessment's model input or publication. Corroborating or contradicting evidence also
+requires a verified non-null publication time at or before the cutoff. Publication revalidates the
+canonical Reddit/X URL and active rights-policy version. Missing evidence remains `unverified`; it
+is never converted to `false`.
+
 ## 9. Universe contract
 
 FMP `/stable/sp500-constituent` is authoritative for the active S&P 500 snapshot when the plan is

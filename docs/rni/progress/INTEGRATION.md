@@ -18,6 +18,7 @@
 | I02E | Resolve CR-SURFACE-04 idempotent manual-refresh command boundary | `PASSED` | D-RNI-17; additive intent-only request and server-resolved accepted/duplicate result; contract 14/14 |
 | I02F | Resolve CR-SURFACE-05 active-universe and staged-preview reads | `PASSED` | D-RNI-18; separate read-only service, bounded search and count-reconciled immutable impact; RNI 15/15, full contract 85/22 skipped |
 | I02F1 | Close universe-read contract review findings | `PASSED` | Independent re-review READY at `098f010`; legacy/FMP union, FMP floor and impossible-impact rejection; focused 15/15, full contract 85/22 skipped |
+| I02G | Resolve CR-ENGINE-001 catalyst publication lineage | `PASSED` | D-RNI-19; claim-bound point-in-time social corroboration, separate model invocations and sentence trace assigned to I07/migration 0024 |
 | I03 | Expand CI path filters for RNI prompts/agents/evals | `MERGED` | PR #5; actual `tests/eval/rni` path triggered and passed |
 | I04 | Pin/verify pnpm 10.33.0 and build-script policy | `PASSED` | Clean frozen install and PR #5 web/scorer CI passed |
 | I05 | Add forward universe migration and 600-member ceiling | `PASSED` | Independent re-review passed IR-01/03/05/06; focused validation 9 and fresh PostgreSQL activation/version gates 14 pass |
@@ -56,6 +57,7 @@
 | CR-DATA-002 | DATA | `DEFERRED_TO_I07` | Keep storage-shaped semantic writes DATA-private until an implemented ENGINE consumer proves the smallest cross-lane port | DATA, ENGINE, INTEGRATION | `264ea9c` |
 | CR-DATA-003 | DATA | `RESOLVED_NO_CHANGE` | pgvector remains deferred for this vertical slice; relational claim/narrative storage proceeds without an extension or placeholder | DATA, ENGINE, INTEGRATION | `264ea9c` |
 | CR-DATA-004 | DATA | `RESOLVED_NO_CHANGE` | I06 synchronizer owns duplicate, completeness, NVDA, ambiguous, and unresolved validation; transport schema remains structural | DATA, INTEGRATION | `e535624` + `264ea9c` |
+| CR-ENGINE-001 | ENGINE | `ACCEPTED_FOR_I07` | Persist claim-bound point-in-time corroboration, separate verifier/challenger invocations, citation roles, analytics lineage and ordered sentence trace; no P0 source-kind expansion or factual-verification copy | DATA, ENGINE, INTEGRATION | D-RNI-19 / current I02G commit |
 | CR-SURFACE-01 | SURFACE | `ACCEPTED` | Add `RniReadService.getCitation(citationId)` returning frozen `RniCitation`; evidence remains a second source-ID read | DATA, SURFACE, INTEGRATION | `264ea9c` |
 | CR-SURFACE-02 | SURFACE | `ACCEPTED` | Add a cursor-paginated Radar page with run lineage, security identity, two non-poolable platform-labelled cells, and explicit pending/aligned/divergent/partial/insufficient cross-source state | DATA, ENGINE, SURFACE, INTEGRATION | `84dca87` / D-RNI-13 |
 | CR-SURFACE-03 | SURFACE | `ACCEPTED` | Add a bounded security-detail read with canonical identity and exactly four cited dimension assignments for each independently labelled platform | DATA, ENGINE, SURFACE, INTEGRATION | `ce80424` / D-RNI-14 |
@@ -152,12 +154,37 @@
   identity/parent/count and impossible over-add/remove impacts; typecheck/lint, RNI 15/15 and full
   contract 85 pass with 22 database-only skips.
 
+### CR-ENGINE-001 decision
+
+- **Current behaviour:** accepted claim/citation rows do not own generic run membership,
+  assessment cutoff, claim-specific evidence role, model invocation, analytics-artifact lineage or
+  sentence trace. E08's first handoff therefore relied on caller-declared claim/cutoff/model values.
+- **Decision:** D-RNI-19 accepts the additive persistence boundary for I07. Before integration
+  merge, coordinator-owned migration `0024` will append separate model-invocation, claim-bound
+  assessment/citation-role, analytics-lineage, challenger-selection and ordered publication-trace
+  storage. The smallest frozen port will resolve trusted persisted inputs and commit accepted
+  outputs; ENGINE remains SQL-free.
+- **Source rights/publication:** P0 remains Reddit/X only. Separate retained social evidence may be
+  labelled `corroborating` or `counterevidence`, never independent factual verification. A future
+  primary/news source requires another explicit source-rights and source-kind decision.
+- **Point in time:** claim evidence must be discovered and observed by the assessment cutoff;
+  corroborating/counterevidence also requires a verified non-null publication time by the cutoff.
+  Later evidence cannot enter that claim's model input. Publication revalidates platform-canonical
+  URLs and the active rights-policy version; missing evidence remains unverified.
+- **Compatibility/ownership:** the frozen portal summary/read shapes and source vocabulary remain
+  unchanged. I07 composes the port and persistence; DATA may implement only the accepted
+  repository adapter after rebasing, and ENGINE corrects its pure injected boundary without SQL.
+- **Acceptance:** reject caller-altered claim/cutoff/model lineage, late-discovered/observed or
+  unknown-publication corroboration, wrong-host/search-result URLs, inactive rights policies,
+  self-citation and cross-run/security roles; persist/replay separate verifier/challenger runs and
+  prove every non-coverage sentence resolves through stored citation edges.
+
 ## Lane intake
 
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
-| ENGINE | `E07_APPROVED` | yes at `8ca4aa7` | builder serialized unit 1,285 + contract 100/22 skipped + integration 44/390 skipped + eval 5/5; coordinator typecheck/lint, focused 21/21 and diff check | yes | E01–E07 accepted through `d1ef93a`; lane remains held until E08–E10 |
+| ENGINE | `E08_CHANGES_REQUESTED` | no; first handoff based on `e010124`, current `12e1a42` | first handoff focused 31/31 plus typecheck/lint/diff; independent adversarial review returned ER-10–13 | yes | CR-ENGINE-001 accepted as D-RNI-19; E08 correction and current-base rebase required; E01–E07 remain accepted |
 | SURFACE | `S08_APPROVED` | yes at `ee47959` | coordinator typecheck/lint, RNI contract 15/15, production build and Chromium 3/3; independent adversarial review READY | yes | SR-09–14 resolved at `f929ab8`; S01–S08 accepted; lane remains held until S09–S10 |
 
 ## Live/deployment gates
@@ -213,6 +240,10 @@
 | ER-07 | P1 | `RESOLVED` | A zero-weight second source/group/community can satisfy the independent-source floor and remove single-source confidence caps while only one source contributes effective evidence | `ecbf049` derives effective source/community/cluster/author/narrative breadth from positive-weight traces; mixed positive/zero regression keeps sentiment/confidence insufficient at floor two |
 | ER-08 | P2 | `RESOLVED` | E06 added two test files with blank lines at EOF, contradicting its branch-range diff-check claim | `ecbf049` removes only the EOF lines; `git diff --check 098f010..ecbf049` passes |
 | ER-09 | P2 | `RESOLVED_BEFORE_HANDOFF` | The first observed E07 commit added a blank line at EOF in `convergence/types.ts` | The exact handoff `d1ef93a` removes the blank line; branch-range diff check passes |
+| ER-10 | P1 | `OPEN` | E08 accepts old content first discovered/observed after a claim cutoff, does not cutoff-check claim evidence and exposes future evidence to the verifier before output validation | Enforce D-RNI-19 availability on claim/support/counter sources and exclude post-cutoff evidence from each affected inference input |
+| ER-11 | P1 | `OPEN` | Reddit/X-only corroboration publishes as an independently verified factual catalyst | Use bounded social-corroboration copy and prove in-scope output never claims factual verification |
+| ER-12 | P1 | `OPEN` | Claim text/cutoff and one shared model-run descriptor are caller assertions; the trusted reader cannot prove persisted claim input or distinct verifier/challenger invocation lineage | Resolve trusted persisted claim/preparation and separate invocation snapshots through the injected D-RNI-19 boundary; add tamper/missing/swap tests |
+| ER-13 | P1 | `OPEN` | Citation URL equality alone accepts consistently wrong-host/search-result lineage and does not bind the active rights policy | Revalidate approved Reddit/X canonical URLs and the expected active rights-policy version before inference/publication |
 | ICR-01 | P1 | `RESOLVED` | D-RNI-18 cannot represent the preserved 100-member legacy active parent of the first staged FMP candidate, while undersized FMP versions pass | Active is an explicit legacy/FMP union; FMP active/staged variants require 501–600 and a 100→501 fixture passes |
 | ICR-02 | P1 | `RESOLVED` | Balanced arithmetic permits complete impact arrays that remove more members than active or add more members than staged | Frozen schema rejects both bounds; I08 retains repository-backed membership-set acceptance |
 | SR-04 | P2 | `RESOLVED` | S02's first commit left its task/evidence/handoff record stale and did not identify the actual browser gate | `c4899b8` amends the task commit with exact type, lint, contract, build and Chromium evidence plus complete files/risks/handoff |
@@ -279,6 +310,7 @@
 | `CURRENT` | Close I02F universe-read P1 review findings | typecheck; focused lint; RNI contract 15/15; full contract 85/22 skipped; independent re-review READY at `098f010` |
 | `CURRENT` | Accept ENGINE E07 deterministic cross-source facts | typecheck; focused lint; unit/contract/eval 21/21; branch diff check; ownership/base review |
 | `CURRENT` | Accept corrected SURFACE S08 universe settings | typecheck; focused lint; RNI contract 15/15; production build; Chromium 3/3; independent adversarial review READY; ownership/base/diff review |
+| `CURRENT` | Resolve CR-ENGINE-001 as D-RNI-19 and return E08 ER-10–13 | first handoff typecheck; scoped lint; focused unit/contract/eval 31/31; branch diff check; independent adversarial review CHANGES REQUESTED |
 
 ## Coordinator notes
 
