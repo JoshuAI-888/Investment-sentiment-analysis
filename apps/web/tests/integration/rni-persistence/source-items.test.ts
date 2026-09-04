@@ -1,8 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type pg from 'pg';
-import type { RniSourceItem } from '../../../src/rni/contracts';
-import { getRniSourceById, persistRniSource } from '../../../src/rni/repositories/source-items';
+import type { RniSourceItem, RniSourcePersistencePort } from '../../../src/rni/contracts';
+import {
+  getRniSourceById,
+  persistRniSource,
+  PostgresRniSourcePersistence,
+} from '../../../src/rni/repositories/source-items';
 import { databaseUrl, makePool, resetSchema, truncateAll } from '../helpers/db';
 
 const url = databaseUrl();
@@ -123,6 +127,63 @@ describe.skipIf(url === undefined)('RNI D01 source-first persistence', () => {
       contentVersionId: first.contentVersionId,
       contentVersionInserted: false,
     });
+  });
+
+  it('implements the frozen source port with committed IDs and duplicate flags', async () => {
+    const adapter: RniSourcePersistencePort = new PostgresRniSourcePersistence(pool);
+    const input = source();
+    const first = await adapter.commitSource(input);
+    const duplicate = await adapter.commitSource({ ...input, id: randomUUID() });
+
+    expect(first).toEqual({
+      sourceItemId: input.id,
+      sourceInserted: true,
+      retrievalInserted: true,
+      contentVersionInserted: true,
+    });
+    expect(duplicate).toEqual({
+      sourceItemId: first.sourceItemId,
+      sourceInserted: false,
+      retrievalInserted: false,
+      contentVersionInserted: false,
+    });
+  });
+
+  it('fails closed when external ID and canonical URL resolve to different sources', async () => {
+    const externalIdentity = source();
+    const canonicalIdentity = source({
+      id: randomUUID(),
+      externalId: 't3_rni_d01_other',
+      canonicalUrl: 'https://www.reddit.com/r/stocks/comments/rni_d01/other/',
+      originalUrl: 'https://www.reddit.com/r/stocks/comments/rni_d01/other/?context=3',
+      searchQueryId: randomUUID(),
+      providerRequestId: 'resp_rni_d01_other',
+    });
+    await persistRniSource(externalIdentity, pool);
+    await persistRniSource(canonicalIdentity, pool);
+
+    await expect(
+      persistRniSource(
+        source({
+          id: randomUUID(),
+          externalId: externalIdentity.externalId,
+          canonicalUrl: canonicalIdentity.canonicalUrl,
+          originalUrl: canonicalIdentity.originalUrl,
+          searchQueryId: randomUUID(),
+          providerRequestId: 'resp_rni_d01_crossed',
+        }),
+        pool,
+      ),
+    ).rejects.toThrow(
+      'RNI source identity conflict: external ID and canonical URL resolve to different sources',
+    );
+
+    const { rows } = await pool.query<{ sources: string; retrievals: string }>(
+      `select
+         (select count(*)::text from rni_source_item) as sources,
+         (select count(*)::text from rni_source_retrieval) as retrievals`,
+    );
+    expect(rows[0]).toEqual({ sources: '2', retrievals: '2' });
   });
 
   it('uses platform plus canonical URL when no external ID is available', async () => {

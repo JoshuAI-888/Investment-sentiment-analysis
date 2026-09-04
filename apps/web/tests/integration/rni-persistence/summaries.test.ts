@@ -8,6 +8,7 @@ import {
 } from '../../../src/rni/repositories/summaries';
 import { getRniPlatformSlices, persistRniRunWithSlices } from '../../../src/rni/repositories/runs';
 import { databaseUrl, makePool, resetSchema, truncateAll } from '../helpers/db';
+import { seedRniVersionLineage } from './version-fixtures';
 
 const url = databaseUrl();
 
@@ -24,6 +25,7 @@ describe.skipIf(url === undefined)('RNI D05 cross-source summary persistence', (
 
   beforeEach(async () => {
     await truncateAll(pool);
+    const versions = await seedRniVersionLineage(pool, 'd05');
     const { rows } = await pool.query<{ id: string }>(
       `insert into security (symbol, name, exchange, asset_type, currency)
        values ('NVDA', 'NVIDIA Corporation', 'NASDAQ', 'equity', 'USD') returning id`,
@@ -38,8 +40,8 @@ describe.skipIf(url === undefined)('RNI D05 cross-source summary persistence', (
       windowEnd: '2026-09-05T00:00:00.000Z',
       comparisonStart: null,
       comparisonEnd: null,
-      universeVersion: 'u1',
-      configVersion: 'c1',
+      universeVersion: versions.universeVersion,
+      configVersion: versions.configVersion,
       promptVersion: 'p1',
       aiRoute: 'openai_direct',
       requestedAt: '2026-09-05T00:00:01.000Z',

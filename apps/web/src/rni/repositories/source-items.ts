@@ -1,5 +1,11 @@
 import type pg from 'pg';
-import { rniSourceItem, type RniSourceItem } from '../contracts';
+import {
+  rniSourceCommitResult,
+  rniSourceItem,
+  type RniSourceCommitResult,
+  type RniSourceItem,
+  type RniSourcePersistencePort,
+} from '../contracts';
 import { getPool, withTransaction, type Queryable } from '../../repositories/client';
 
 type SourceRow = {
@@ -82,15 +88,18 @@ async function findByIdentity(source: RniSourceItem, db: Queryable): Promise<Sou
       ? [source.platform, source.canonicalUrl]
       : [source.platform, source.externalId, source.canonicalUrl];
   const { rows } = await db.query<SourceRow>(
-    `select ${SOURCE_COLUMNS} from rni_source_item where ${identityClause}
-     order by case when external_id = $2 then 0 else 1 end, created_at, id limit 1`,
+    `select ${SOURCE_COLUMNS} from rni_source_item where ${identityClause} order by created_at, id`,
     values,
   );
-  const row = rows[0];
-  if (row === undefined) {
+  if (rows.length === 0) {
     throw new Error('RNI source upsert found a conflict but could not read the committed source');
   }
-  return row;
+  if (rows.length > 1) {
+    throw new Error(
+      'RNI source identity conflict: external ID and canonical URL resolve to different sources',
+    );
+  }
+  return rows[0]!;
 }
 
 async function insertOrReadSource(
@@ -298,6 +307,25 @@ export async function persistRniSource(
       outboxInserted: outbox.inserted,
     };
   }, pool);
+}
+
+/** PostgreSQL adapter for the frozen commit-before-interpret source persistence boundary. */
+export class PostgresRniSourcePersistence implements RniSourcePersistencePort {
+  readonly #pool: pg.Pool;
+
+  constructor(pool: pg.Pool = getPool()) {
+    this.#pool = pool;
+  }
+
+  async commitSource(input: RniSourceItem): Promise<RniSourceCommitResult> {
+    const result = await persistRniSource(input, this.#pool);
+    return rniSourceCommitResult.parse({
+      sourceItemId: result.source.id,
+      sourceInserted: result.sourceInserted,
+      retrievalInserted: result.retrievalInserted,
+      contentVersionInserted: result.contentVersionInserted,
+    });
+  }
 }
 
 export type RniPendingOutboxEvent = {

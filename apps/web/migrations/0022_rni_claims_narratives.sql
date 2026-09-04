@@ -41,17 +41,21 @@ create table rni_evidence_claim (
     and (support_start is null or support_end is null or support_end > support_start)
   ),
   constraint rni_evidence_claim_input_hash_check check (input_hash ~ '^[a-f0-9]{64}$'),
+  constraint rni_evidence_claim_id_source_unique unique (id, source_item_id),
   constraint rni_evidence_claim_identity_unique
     unique (source_item_id, security_id, input_hash)
 );
 
 create table rni_claim_citation (
   id              uuid        primary key default gen_random_uuid(),
-  claim_id        uuid        not null references rni_evidence_claim (id),
+  claim_id        uuid        not null,
   source_item_id  uuid        not null references rni_source_item (id),
   evidence_text   text        not null,
   created_at      timestamptz not null default now(),
 
+  constraint rni_claim_citation_claim_source_fk
+    foreign key (claim_id, source_item_id)
+    references rni_evidence_claim (id, source_item_id),
   constraint rni_claim_citation_evidence_text_check
     check (length(evidence_text) between 1 and 2000),
   constraint rni_claim_citation_identity_unique

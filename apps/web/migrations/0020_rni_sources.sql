@@ -225,7 +225,11 @@ drop trigger rni_source_item_append_only on rni_source_item;
 create or replace function rni_source_status_transition_valid() returns trigger
 language plpgsql as $$
 begin
-  if old.source_status <> 'active' and new.source_status is distinct from old.source_status then
+  if old.source_status <> 'active' and (
+    new.source_status is distinct from old.source_status
+    or new.tombstoned_at is distinct from old.tombstoned_at
+    or new.tombstone_reason is distinct from old.tombstone_reason
+  ) then
     raise exception 'RNI source tombstone status is terminal; create a successor record for new evidence'
       using errcode = 'restrict_violation';
   end if;

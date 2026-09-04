@@ -8,11 +8,14 @@ import {
   persistRniRunWithSlices,
 } from '../../../src/rni/repositories/runs';
 import { databaseUrl, makePool, resetSchema, truncateAll } from '../helpers/db';
+import { seedRniVersionLineage } from './version-fixtures';
 
 const url = databaseUrl();
 
 describe.skipIf(url === undefined)('RNI D04 independent platform slices', () => {
   let pool: pg.Pool;
+  let configVersion: string;
+  let universeVersion: string;
 
   beforeAll(async () => {
     pool = makePool();
@@ -21,6 +24,7 @@ describe.skipIf(url === undefined)('RNI D04 independent platform slices', () => 
 
   beforeEach(async () => {
     await truncateAll(pool);
+    ({ configVersion, universeVersion } = await seedRniVersionLineage(pool, 'd04'));
   });
 
   afterAll(async () => {
@@ -37,8 +41,8 @@ describe.skipIf(url === undefined)('RNI D04 independent platform slices', () => 
       windowEnd: '2026-09-05T00:00:00.000Z',
       comparisonStart: null,
       comparisonEnd: null,
-      universeVersion: 'sp500-2026-09-05',
-      configVersion: 'rni-config-v1',
+      universeVersion,
+      configVersion,
       promptVersion: 'rni-prompts-v1',
       aiRoute: 'openai_direct',
       requestedAt: '2026-09-05T00:00:01.000Z',
@@ -132,8 +136,16 @@ describe.skipIf(url === undefined)('RNI D04 independent platform slices', () => 
         `insert into rni_run (
            id, idempotency_key, trigger, status, window_start, window_end, universe_version,
            config_version, prompt_version, requested_at
-         ) values ($1, $2, 'manual', 'running', $3, $4, 'u1', 'c1', 'p1', $5)`,
-        [input.id, input.idempotencyKey, input.windowStart, input.windowEnd, input.requestedAt],
+         ) values ($1, $2, 'manual', 'running', $3, $4, $5, $6, 'p1', $7)`,
+        [
+          input.id,
+          input.idempotencyKey,
+          input.windowStart,
+          input.windowEnd,
+          universeVersion,
+          configVersion,
+          input.requestedAt,
+        ],
       );
       await client.query(
         `insert into rni_platform_slice (
@@ -146,5 +158,21 @@ describe.skipIf(url === undefined)('RNI D04 independent platform slices', () => 
     } finally {
       client.release();
     }
+  });
+
+  it('rejects runs that pin nonexistent universe or config versions', async () => {
+    const missingUniverse = run({ universeVersion: '999999' });
+    await expect(
+      persistRniRunWithSlices(missingUniverse, slices(missingUniverse.id), pool),
+    ).rejects.toMatchObject({ constraint: 'rni_run_universe_version_fk' });
+
+    const missingConfig = run({
+      id: randomUUID(),
+      idempotencyKey: 'rni-d04-missing-config',
+      configVersion: '999999',
+    });
+    await expect(
+      persistRniRunWithSlices(missingConfig, slices(missingConfig.id), pool),
+    ).rejects.toMatchObject({ constraint: 'rni_run_config_version_fk' });
   });
 });

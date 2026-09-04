@@ -9,8 +9,8 @@ create table rni_run (
   window_end         timestamptz not null,
   comparison_start   timestamptz null,
   comparison_end     timestamptz null,
-  universe_version   text        not null,
-  config_version     text        not null,
+  universe_version   bigint      not null,
+  config_version     bigint      not null,
   prompt_version     text        not null,
   ai_route           text        not null default 'openai_direct',
   requested_at       timestamptz not null,
@@ -26,8 +26,10 @@ create table rni_run (
     (comparison_start is null and comparison_end is null)
     or (comparison_start is not null and comparison_end is not null and comparison_end > comparison_start)
   ),
-  constraint rni_run_universe_version_check check (length(universe_version) > 0),
-  constraint rni_run_config_version_check check (length(config_version) > 0),
+  constraint rni_run_universe_version_fk
+    foreign key (universe_version) references universe_version (id),
+  constraint rni_run_config_version_fk
+    foreign key (config_version) references config_version (id),
   constraint rni_run_prompt_version_check check (length(prompt_version) > 0),
   constraint rni_run_ai_route_check
     check (ai_route in ('openai_direct', 'vercel_ai_gateway'))

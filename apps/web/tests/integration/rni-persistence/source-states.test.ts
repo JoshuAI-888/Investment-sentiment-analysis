@@ -103,6 +103,17 @@ describe.skipIf(url === undefined)('RNI D07 source tombstone and rejection state
         pool,
       ),
     ).rejects.toThrow('already in a terminal');
+    await expect(
+      pool.query("update rni_source_item set tombstone_reason = 'rewritten reason' where id = $1", [
+        input.id,
+      ]),
+    ).rejects.toMatchObject({ code: '23001' });
+    await expect(
+      pool.query(
+        "update rni_source_item set tombstoned_at = '2026-09-05T03:00:00.000Z' where id = $1",
+        [input.id],
+      ),
+    ).rejects.toMatchObject({ code: '23001' });
   });
 
   it('records rejected discovery provenance without a content/page column', async () => {

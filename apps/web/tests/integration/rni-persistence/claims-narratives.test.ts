@@ -26,6 +26,7 @@ import {
 import { persistRniSource } from '../../../src/rni/repositories/source-items';
 import { persistRniRunWithSlices } from '../../../src/rni/repositories/runs';
 import { databaseUrl, makePool, resetSchema, truncateAll } from '../helpers/db';
+import { seedRniVersionLineage } from './version-fixtures';
 
 const url = databaseUrl();
 const HASH_A = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
@@ -137,7 +138,36 @@ describe.skipIf(url === undefined)('RNI D03 relational claims and narratives', (
         },
         pool,
       ),
-    ).rejects.toMatchObject({ constraint: 'rni_claim_citation_claim_id_fkey' });
+    ).rejects.toMatchObject({ constraint: 'rni_claim_citation_claim_source_fk' });
+  });
+
+  it('rejects a citation whose persisted source differs from its claim source', async () => {
+    const otherSource = {
+      ...comparativeSource,
+      id: randomUUID(),
+      externalId: 't1_rni_d03_other',
+      canonicalUrl: 'https://www.reddit.com/r/stocks/comments/rni_d03/other/',
+      originalUrl: 'https://www.reddit.com/r/stocks/comments/rni_d03/other/?context=3',
+      boundedContent: 'AMD is discussed in a different persisted source.',
+      contentSha256: HASH_B,
+      searchQueryId: randomUUID(),
+      providerRequestId: 'resp_rni_d03_other',
+    };
+    await persistRniSource(otherSource, pool);
+    const storedClaim = await persistRniEvidenceClaim(claim(), pool);
+
+    await expect(
+      persistRniClaimCitation(
+        {
+          id: randomUUID(),
+          claimId: storedClaim.id,
+          sourceItemId: otherSource.id,
+          evidenceText: 'wrong persisted source',
+          createdAt: '2026-09-05T00:06:31.000Z',
+        },
+        pool,
+      ),
+    ).rejects.toMatchObject({ constraint: 'rni_claim_citation_claim_source_fk' });
   });
 
   it('stores the frozen comparative relationship only after both source-security links exist', async () => {
@@ -161,6 +191,7 @@ describe.skipIf(url === undefined)('RNI D03 relational claims and narratives', (
   });
 
   it('persists theme assignment and adjudicated narrative membership idempotently', async () => {
+    const versions = await seedRniVersionLineage(pool, 'd03');
     const themeId = randomUUID();
     await persistRniThemeDefinition(
       {
@@ -201,8 +232,8 @@ describe.skipIf(url === undefined)('RNI D03 relational claims and narratives', (
         windowEnd: '2026-09-05T00:00:00.000Z',
         comparisonStart: null,
         comparisonEnd: null,
-        universeVersion: 'u1',
-        configVersion: 'c1',
+        universeVersion: versions.universeVersion,
+        configVersion: versions.configVersion,
         promptVersion: 'p1',
         aiRoute: 'openai_direct',
         requestedAt: '2026-09-05T00:00:00.000Z',
