@@ -158,7 +158,7 @@
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
 | ENGINE | `E07_APPROVED` | yes at `8ca4aa7` | builder serialized unit 1,285 + contract 100/22 skipped + integration 44/390 skipped + eval 5/5; coordinator typecheck/lint, focused 21/21 and diff check | yes | E01–E07 accepted through `d1ef93a`; lane remains held until E08–E10 |
-| SURFACE | `S08_CHANGES_REQUESTED` | yes at `573d7be` | coordinator typecheck/lint, RNI contract 15/15, production build and current Chromium 1/1 | yes | SR-09–13 open: live-composition seam, bounded generic search, canonical impact, lane record and announced keyboard search; S01–S07 remain accepted |
+| SURFACE | `S08_CHANGES_REQUESTED` | yes at `e010124` | coordinator typecheck/lint, RNI contract 15/15, production build and corrected Chromium 2/2 | yes | SR-09–13 corrected but final tracker reconciliation pending; SR-14 legacy-active UI coverage open; S01–S07 remain accepted |
 
 ## Live/deployment gates
 
@@ -225,6 +225,7 @@
 | SR-11 | P1 | `OPEN` | Staged Settings discards canonical added/removed identities and renders counts only | Render ticker/company/exchange additions and removals with explicit none state; assert PLTR and version distinction in Chromium |
 | SR-12 | P1 | `OPEN` | S08 claims READY without its required test row, task record, risks, resolved blocker, commits or current handoff | Reconcile the complete lane record in the corrective S08 commit |
 | SR-13 | P2 | `OPEN` | S08 browser coverage uses programmatic fill and dynamic search results have no announced status | Add a labelled polite result status and exercise Tab plus keyboard typing/submission in Chromium |
+| SR-14 | P2 | `OPEN` | S08 implements legacy-active source/retrieval copy but tests only the FMP active variant | Exercise the legacy-active presentation branch directly without exposing a production fixture selector |
 | IR-01 | P1 | `RESOLVED` | Universe activation can publish an unapproved, stale-parent or caller-altered FMP snapshot and can diverge selected count from stored members | FMP approval is one-way; activation requires the recorded admin, current parent, exact stored-member set and count; negative DB tests pass |
 | IR-02 | P1 | `RESOLVED` | FMP synchronization claims idempotency only after the external provider call and payload-hash reuse does not bind a new key | Command is committed before fetch; concurrent/later replay performs one fetch per key; expected and unexpected terminal outcomes retain audit and provider/payload/version lineage |
 | IR-03 | P1 | `RESOLVED` | An exactly 500-row FMP response passes the contract's greater-than-500 completeness gate | Minimum is 501 and the 500-row boundary test fails closed |
