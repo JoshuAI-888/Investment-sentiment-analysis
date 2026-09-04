@@ -203,3 +203,89 @@ create trigger rni_event_outbox_content_immutable
 
 comment on table rni_event_outbox is
   'Transactional source-persisted events containing IDs only. Queue relays cannot observe an event without its committed source/retrieval/content lineage.';
+
+alter table rni_source_item
+  add column source_status text not null default 'active',
+  add column tombstoned_at timestamptz null,
+  add column tombstone_reason text null,
+  add constraint rni_source_item_status_check
+    check (source_status in ('active', 'deleted', 'unavailable', 'restricted', 'tombstoned')),
+  add constraint rni_source_item_tombstone_fields_check check (
+    (source_status = 'active' and tombstoned_at is null and tombstone_reason is null)
+    or (
+      source_status <> 'active'
+      and tombstoned_at is not null
+      and tombstone_reason is not null
+      and length(tombstone_reason) > 0
+    )
+  );
+
+drop trigger rni_source_item_append_only on rni_source_item;
+
+create or replace function rni_source_status_transition_valid() returns trigger
+language plpgsql as $$
+begin
+  if old.source_status <> 'active' and new.source_status is distinct from old.source_status then
+    raise exception 'RNI source tombstone status is terminal; create a successor record for new evidence'
+      using errcode = 'restrict_violation';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger rni_source_item_status_transition
+  before update on rni_source_item
+  for each row execute function rni_source_status_transition_valid();
+
+create trigger rni_source_item_content_immutable
+  before update or delete on rni_source_item
+  for each row execute function reject_content_mutation(
+    'source_status', 'tombstoned_at', 'tombstone_reason'
+  );
+
+create table rni_rejected_discovery (
+  id                     uuid        primary key default gen_random_uuid(),
+  platform               text        not null,
+  returned_url           text        null,
+  canonical_url          text        null,
+  search_query_id        uuid        null,
+  provider_request_id    text        null,
+  rejection_reason       text        not null,
+  discovery_fingerprint  text        not null unique,
+  metadata_json          jsonb       not null default '{}'::jsonb,
+  observed_at            timestamptz not null,
+  created_at             timestamptz not null default now(),
+
+  constraint rni_rejected_discovery_platform_check check (platform in ('reddit', 'x')),
+  constraint rni_rejected_discovery_returned_url_check
+    check (returned_url is null or returned_url ~* '^https?://'),
+  constraint rni_rejected_discovery_canonical_url_check
+    check (canonical_url is null or canonical_url ~* '^https?://'),
+  constraint rni_rejected_discovery_reason_check check (
+    rejection_reason in (
+      'missing_url',
+      'invalid_url',
+      'invalid_scope',
+      'whole_page_html',
+      'content_unavailable',
+      'terms_blocked',
+      'unsupported_source'
+    )
+  ),
+  constraint rni_rejected_discovery_fingerprint_check
+    check (discovery_fingerprint ~ '^[a-f0-9]{64}$'),
+  constraint rni_rejected_discovery_metadata_object_check
+    check (jsonb_typeof(metadata_json) = 'object'),
+  constraint rni_rejected_discovery_no_page_html_check
+    check (metadata_json::text !~* '<!doctype[[:space:]]+html|<html([[:space:]]|>)')
+);
+
+create index rni_rejected_discovery_observed_idx
+  on rni_rejected_discovery (observed_at desc, id desc);
+
+create trigger rni_rejected_discovery_append_only
+  before update or delete on rni_rejected_discovery
+  for each row execute function reject_mutation();
+
+comment on table rni_rejected_discovery is
+  'Audit-only rejected discovery metadata. It has no bounded-content or page-payload column, so rejected whole pages cannot enter the evidence corpus.';

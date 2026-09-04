@@ -19,7 +19,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | D04 | Independent Reddit/X `run_source_slice` persistence | `READY_FOR_REVIEW` | Migration `0023`; exactly-two platform isolation 4/4 pass |
 | D05 | Cross-source summary persistence without component mutation | `READY_FOR_REVIEW` | Divergence/partial repository tests 4/4 pass |
 | D06 | Idempotent/concurrent inserts and transactional outbox | `READY_FOR_REVIEW` | 8-way concurrent upsert and outbox rollback 3/3 pass |
-| D07 | Bounded-content, tombstone and rejected-discovery states | `NOT_STARTED` | HTML rejection and tombstone tests |
+| D07 | Bounded-content, tombstone and rejected-discovery states | `READY_FOR_REVIEW` | Tombstone/rejected-page tests 3/3 pass |
 | D08 | FMP >500-member fixture support for integration migration   | `NOT_STARTED` | Valid/invalid atomic activation fixtures |
 | D09 | Full DATA lane verification and handoff | `NOT_STARTED` | Report contract completed |
 
@@ -122,6 +122,23 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 - **Handoff:** the persisted-source event is `rni.source_persisted.v1`; coordinator should include
   its return shape when resolving CR-DATA-001.
 
+### D07 — Tombstones and rejected discoveries
+
+- **Status:** `READY_FOR_REVIEW`
+- **Files:** lifecycle/rejection extension in `apps/web/migrations/0020_rni_sources.sql`,
+  `apps/web/src/rni/repositories/source-states.ts`,
+  `apps/web/tests/integration/rni-persistence/source-states.test.ts`, and this progress file.
+- **Tests:** TypeScript; targeted ESLint; D07 PostgreSQL integration (`3/3`); cumulative DATA
+  persistence PostgreSQL regression (`30/30`); `git diff --check`.
+- **Result:** source tombstones are terminal while original URL/evidence stays immutable; rejected
+  discoveries retain URL/query/request provenance and reason without any page-content column;
+  whole-page HTML is rejected in both adapter and database paths.
+- **Risk:** physical content erasure for a legal takedown is intentionally not invented because
+  the frozen `RniSourceItem` requires bounded content; a retention-policy change needs coordinator
+  contract review.
+- **Handoff:** SURFACE/INTEGRATION should use the terminal state for display restrictions while
+  retaining the source identity and audit lineage.
+
 ## Required invariants
 
 - One external source row, many security links and observations.
@@ -200,7 +217,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | migration clean apply | `READY_FOR_REVIEW` | targeted D01 Vitest | Fresh schema applied through `0020`; 7/7 pass |
 | migration forward apply | `NOT_STARTED` | — | D09 lane gate |
 | repository unit | `READY_FOR_REVIEW` | typecheck + targeted ESLint | No errors |
-| database integration | `READY_FOR_REVIEW` | DATA persistence Vitest | 24/24 D01-D05 tests pass against PostgreSQL |
+| database integration | `READY_FOR_REVIEW` | DATA persistence Vitest | 30/30 D01-D07 tests pass against PostgreSQL |
 | concurrency/idempotency | `READY_FOR_REVIEW` | D06 PostgreSQL Vitest | 8 concurrent deliveries + forced rollback; 3/3 pass |
 | repository required gate | `NOT_STARTED` | — | D09 lane gate |
 
@@ -226,7 +243,8 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | 2757f5c | D03 relational claim/citation/narrative slice | Typecheck, targeted lint, PostgreSQL 16/16; vector blocked |
 | adb91a4 | D04 independent run/platform slices | Typecheck, targeted lint, PostgreSQL 20/20 |
 | ca9ca72 | D05 immutable cross-source summaries | Typecheck, targeted lint, PostgreSQL 24/24 |
-| this commit | D06 concurrent source upsert and transactional outbox | Typecheck, targeted lint, PostgreSQL 27/27 |
+| 2cc02d7 | D06 concurrent source upsert and transactional outbox | Typecheck, targeted lint, PostgreSQL 27/27 |
+| this commit | D07 source tombstones and rejected discoveries | Typecheck, targeted lint, PostgreSQL 30/30 |
 
 ## Handoff
 
@@ -235,11 +253,11 @@ RNI LANE     DATA
 BRANCH       feat/rni-data-source-first
 BASE SHA     86ec5b4757f45cbe96c651f413e8ff1109fef279
 STATUS       PARTIAL
-TASKS        5/9; D03 blocked, D07-D09 incomplete
-TESTS        D01-D06 PostgreSQL integration 27/27; typecheck/lint pass
+TASKS        6/9; D03 blocked, D08-D09 incomplete
+TESTS        D01-D07 PostgreSQL integration 30/30; typecheck/lint pass
 CONTRACT     CR-DATA-001, CR-DATA-002, CR-DATA-003
 RISKS        D03 pgvector/ports blocked; outbox relay remains integration scope
 FILES        migrations 0020-0022; source/observation/claim repositories; D01-D03 tests; DATA.md
-COMMITS      3c0cc56 (D01); bae4e9f (D02); 2757f5c (D03 relational); adb91a4 (D04); ca9ca72 (D05); this commit (D06)
+COMMITS      3c0cc56 (D01); bae4e9f (D02); 2757f5c (D03 relational); adb91a4 (D04); ca9ca72 (D05); 2cc02d7 (D06); this commit (D07)
 DEMO PROOF   one comparative source persists distinct bullish NVDA and bearish AMD observations
 ```
