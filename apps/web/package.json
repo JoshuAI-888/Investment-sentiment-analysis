@@ -13,7 +13,7 @@
     "test:unit": "vitest run tests/unit",
     "test:contract": "vitest run tests/contract --passWithNoTests --no-file-parallelism",
     "test:integration": "vitest run tests/integration --passWithNoTests --no-file-parallelism",
-    "test:eval": "vitest run tests/eval --passWithNoTests",
+    "test:eval": "vitest run tests/eval",
     "test:e2e": "playwright test",
     "check:calc-coverage": "tsx scripts/check-calc-coverage.ts",
     "check:bundle": "tsx scripts/check-bundle.ts",
