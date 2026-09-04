@@ -91,6 +91,8 @@ const shape = {
   GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
   AZURE_OPENAI_ENDPOINT: z.string().url().optional(),
   AZURE_OPENAI_API_KEY: z.string().min(1).optional(),
+  // Optional here only "to parse" — REQUIRED_IN_LIVE_MODE below enforces all three, since an
+  // unset route means F10/F11/F12 read `undefined` as a model ID at request time, not at boot.
   AI_MODEL_FAST: z.string().min(1).optional(),
   AI_MODEL_SYNTHESIS: z.string().min(1).optional(),
   AI_MODEL_VERIFY: z.string().min(1).optional(),
@@ -132,6 +134,9 @@ const REQUIRED_IN_LIVE_MODE = [
   'RESEND_API_KEY',
   'RESEND_FROM',
   'BETTER_AUTH_SECRET',
+  'AI_MODEL_FAST',
+  'AI_MODEL_SYNTHESIS',
+  'AI_MODEL_VERIFY',
 ] as const;
 
 /** The key each transport cannot operate without. */
