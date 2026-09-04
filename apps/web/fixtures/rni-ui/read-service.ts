@@ -1,4 +1,5 @@
 import type {
+  RniCitation,
   RniCombinedStatus,
   RniCombinedSummary,
   RniPlatformSlice,
@@ -8,6 +9,7 @@ import type {
   RniSourceItem,
 } from '@/rni/contracts';
 import {
+  comparativeCitation,
   comparativeSource,
   independentPlatformSlices,
   partialCombinedSummary,
@@ -37,12 +39,13 @@ export type RniUiFixture = Readonly<{
   run: RniRun;
   platformSlices: readonly RniPlatformSlice[];
   summariesBySecurityId: Readonly<Record<string, RniCombinedSummary>>;
+  citationsByCitationId: Readonly<Record<string, RniCitation>>;
   evidenceBySourceItemId: Readonly<Record<string, RniSourceItem>>;
 }>;
 
 export class RniFixtureNotFoundError extends Error {
   constructor(
-    readonly resource: 'run' | 'security summary' | 'evidence',
+    readonly resource: 'run' | 'security summary' | 'citation' | 'evidence',
     readonly id: string,
   ) {
     super(`RNI fixture ${resource} was not found: ${id}`);
@@ -129,6 +132,14 @@ const xSource: RniSourceItem = {
   metadata: { fixture: true },
   rightsPolicyVersion: 'rni-source-policy-v1',
   createdAt: '2026-09-05T00:05:01.000Z',
+};
+
+const xCitation: RniCitation = {
+  id: X_CITATION_ID,
+  sourceItemId: xSource.id,
+  platform: 'x',
+  url: xSource.originalUrl,
+  evidenceText: 'NVDA demand remains strong',
 };
 
 const completeSummary = summary(COMPLETE_SUMMARY_ID, 'complete', [
@@ -218,6 +229,10 @@ export const rniUiFixtureCatalogue: Readonly<Record<RniUiFixtureState, RniUiFixt
     run: run('complete'),
     platformSlices: completeSlices,
     summariesBySecurityId: { [rniFixtureIds.nvda]: completeSummary },
+    citationsByCitationId: {
+      [comparativeCitation.id]: comparativeCitation,
+      [xCitation.id]: xCitation,
+    },
     evidenceBySourceItemId: { [comparativeSource.id]: comparativeSource, [xSource.id]: xSource },
   },
   empty: {
@@ -227,6 +242,7 @@ export const rniUiFixtureCatalogue: Readonly<Record<RniUiFixtureState, RniUiFixt
       { status: 'complete', eligibleSourceCount: 0, errorCode: null },
     ),
     summariesBySecurityId: { [rniFixtureIds.nvda]: emptySummary },
+    citationsByCitationId: {},
     evidenceBySourceItemId: {},
   },
   failed: {
@@ -242,12 +258,14 @@ export const rniUiFixtureCatalogue: Readonly<Record<RniUiFixtureState, RniUiFixt
       { status: 'failed', errorCode: 'X_PROVIDER_UNAVAILABLE' },
     ),
     summariesBySecurityId: { [rniFixtureIds.nvda]: failedSummary },
+    citationsByCitationId: {},
     evidenceBySourceItemId: {},
   },
   partial: {
     run: run('partial'),
     platformSlices: independentPlatformSlices,
     summariesBySecurityId: { [rniFixtureIds.nvda]: partialCombinedSummary },
+    citationsByCitationId: { [comparativeCitation.id]: comparativeCitation },
     evidenceBySourceItemId: { [comparativeSource.id]: comparativeSource },
   },
   refreshing: {
@@ -273,6 +291,7 @@ export const rniUiFixtureCatalogue: Readonly<Record<RniUiFixtureState, RniUiFixt
     // Consumers derive this durable in-progress state from getRun/getPlatformSlices and must not
     // request a security summary until that condition holds.
     summariesBySecurityId: {},
+    citationsByCitationId: {},
     evidenceBySourceItemId: {},
   },
   stale: {
@@ -296,6 +315,7 @@ export const rniUiFixtureCatalogue: Readonly<Record<RniUiFixtureState, RniUiFixt
     summariesBySecurityId: {
       [rniFixtureIds.nvda]: { ...partialCombinedSummary, createdAt: STALE_TIME },
     },
+    citationsByCitationId: { [comparativeCitation.id]: comparativeCitation },
     evidenceBySourceItemId: { [comparativeSource.id]: comparativeSource },
   },
   unpublished: {
@@ -312,6 +332,7 @@ export const rniUiFixtureCatalogue: Readonly<Record<RniUiFixtureState, RniUiFixt
       },
     ),
     summariesBySecurityId: { [rniFixtureIds.nvda]: unpublishedSummary },
+    citationsByCitationId: {},
     evidenceBySourceItemId: { [comparativeSource.id]: comparativeSource, [xSource.id]: xSource },
   },
 };
@@ -341,6 +362,12 @@ export class FixtureRniReadService implements RniReadService {
     if (runId !== this.fixture.run.id) throw new RniFixtureNotFoundError('run', runId);
     const result = this.fixture.summariesBySecurityId[securityId];
     if (!result) throw new RniFixtureNotFoundError('security summary', securityId);
+    return copy(result);
+  }
+
+  async getCitation(citationId: string): Promise<RniCitation> {
+    const result = this.fixture.citationsByCitationId[citationId];
+    if (!result) throw new RniFixtureNotFoundError('citation', citationId);
     return copy(result);
   }
 

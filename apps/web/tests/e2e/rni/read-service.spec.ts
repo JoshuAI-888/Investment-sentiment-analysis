@@ -4,7 +4,13 @@ import {
   createFixtureRniReadService,
   rniUiFixtureCatalogue,
 } from '../../../fixtures/rni-ui/read-service';
-import { rniCombinedSummary, rniPlatformSlice, rniRun, rniSourceItem } from '@/rni/contracts';
+import {
+  rniCitation,
+  rniCombinedSummary,
+  rniPlatformSlice,
+  rniRun,
+  rniSourceItem,
+} from '@/rni/contracts';
 import { comparativeSource, rniFixtureIds } from '@/rni/testing/reference-fixtures';
 
 test.describe('RNI fixture read service', () => {
@@ -32,6 +38,16 @@ test.describe('RNI fixture read service', () => {
         expect(rniCombinedSummary.parse(fixtureSummary)).toEqual(
           fixture.summariesBySecurityId[rniFixtureIds.nvda],
         );
+        for (const citationId of fixtureSummary.sections.flatMap(
+          (section) => section.citationIds,
+        )) {
+          const citation = await service.getCitation(citationId);
+          const evidence = await service.getEvidence(citation.sourceItemId);
+          expect(rniCitation.parse(citation)).toEqual(fixture.citationsByCitationId[citationId]);
+          expect(citation.platform).toBe(evidence.platform);
+          expect(citation.url).toBe(evidence.originalUrl);
+          expect(evidence.boundedContent).toContain(citation.evidenceText);
+        }
       }
 
       for (const [sourceItemId, evidence] of Object.entries(fixture.evidenceBySourceItemId)) {
@@ -62,6 +78,9 @@ test.describe('RNI fixture read service', () => {
       service.getSecuritySummary(rniFixtureIds.run, '00000000-0000-4000-8000-000000000099'),
     ).rejects.toEqual(
       new RniFixtureNotFoundError('security summary', '00000000-0000-4000-8000-000000000099'),
+    );
+    await expect(service.getCitation('00000000-0000-4000-8000-000000000099')).rejects.toEqual(
+      new RniFixtureNotFoundError('citation', '00000000-0000-4000-8000-000000000099'),
     );
   });
 });

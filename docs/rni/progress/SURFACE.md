@@ -3,7 +3,7 @@
 **Writer:** SURFACE builder only  
 **Branch:** `feat/rni-surface-demo`  
 **Depends on:** merged RNI contract-freeze SHA; fixture-backed `RniReadService`  
-**Status:** `IN_PROGRESS` — S01 typed fixture read service and state catalogue
+**Status:** `IN_PROGRESS` — S01 citation-read compatibility awaiting commit; S02 next
 
 ## Owned paths
 
@@ -13,7 +13,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 
 | ID  | Task                                                             | Status            | Acceptance evidence                        |
 | --- | ---------------------------------------------------------------- | ----------------- | ------------------------------------------ |
-| S01 | Typed fixture `RniReadService` and state catalogue               | `READY_FOR_MERGE` | Component contract tests                   |
+| S01 | Typed fixture `RniReadService` and state catalogue               | `IN_PROGRESS` | Citation resolution contract tests         |
 | S02 | Retail Radar with Reddit/X/combined columns                      | `NOT_STARTED`     | Desktop/narrow/keyboard tests              |
 | S03 | Security detail and four dimensions per platform                 | `NOT_STARTED`     | NVDA and divergence fixtures               |
 | S04 | Evidence drawer with platform-labelled canonical citations       | `NOT_STARTED`     | Citation navigation e2e                    |
@@ -39,15 +39,15 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 
 ## Contract requests
 
-| ID            | Status | Request                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Impact                                                                             |
-| ------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| CR-SURFACE-01 | `OPEN` | **Current behaviour:** `RniReadService.getSecuritySummary()` returns citation IDs only, while `getEvidence()` accepts a `sourceItemId`; the frozen interface has no citation lookup or citation-to-source/span relation. **Requested change:** add a read-only citation-resolution method or include citation records (source item ID, platform, canonical URL and supporting span) in the security-summary read shape. **Justification:** the SURFACE evidence drawer and mandatory clickable source citations cannot resolve a summary citation through the existing interface without bypassing the service or guessing that a citation ID is a source ID. **Affected lanes:** SURFACE, DATA read model, INTEGRATION API composition, ENGINE synthesis fixtures. **Compatibility:** additive response/method only; existing consumers remain valid. **Recommended acceptance test:** a summary citation opens its persisted source item and exact bounded supporting span, rejects a mismatched platform/source, and never fetches a repository directly. | Blocks S04 and cited explanation rendering; S01 fixture service remains unblocked. |
+| ID            | Status     | Request                                                                                                                                                                                                      | Impact                                                                            |
+| ------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| CR-SURFACE-01 | `ACCEPTED` | I02B / D-RNI-12 (`264ea9c`) adds `getCitation(citationId)` returning frozen `RniCitation`. Consumers must resolve citation ID → citation source ID → bounded evidence, never equate citation and source IDs. | S01 must implement the additive method; this unblocks S04’s evidence-drawer flow. |
 
 ## Test evidence
 
 | Suite                         | Status        | Command/run link                                                                                                                              | Notes                                                                                                            |
 | ----------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| component/contract            | `PASSED`      | `apps/web/node_modules/.bin/tsc --noEmit`; `apps/web/node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism` | Type check passed; frozen RNI contract suite passed (7 tests).                                                   |
+| component/contract            | `PASSED`      | `apps/web/node_modules/.bin/tsc --noEmit`; `apps/web/node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism` | Type check passed; rebased frozen RNI contract suite passed (9 tests).                                           |
 | e2e happy path                | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:1 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts --project=chromium`            | Fixture read-service contract passed (2 tests).                                                                  |
 | e2e partial/divergent/failure | `PASSED`      | Same targeted Playwright fixture suite                                                                                                        | Exercises independent partial/unavailable and active refresh states; full surface divergence UI remains S02/S03. |
 | accessibility/keyboard        | `NOT_STARTED` | —                                                                                                                                             | —                                                                                                                |
@@ -60,6 +60,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | ----- | -------- | ---------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | SR-01 | P1       | `RESOLVED` | Refreshing fixture returned a summary before both platform slices reached a terminal state.                               | Removed the summary; consumers derive the durable refresh state from run and platform-slice reads.                         |
 | SR-02 | P2       | `RESOLVED` | Initial test parsed fixture objects directly instead of exercising each successful service method and state relationship. | Targeted Playwright test now reads through the service across every catalogue state and asserts partial/refresh isolation. |
+| SR-03 | P1       | `RESOLVED` | I02B added `getCitation`, making the pre-I02B fixture service structurally incomplete after rebase.                       | Fixture now resolves citation → source ID → bounded evidence and asserts platform, URL and evidence-text relationships.    |
 
 ## Open risks/blockers
 
@@ -69,29 +70,30 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 
 ## Commits
 
-| SHA | Summary | Tests |
-| --- | ------- | ----- |
-| —   | —       | —     |
+| SHA       | Summary                               | Tests                                       |
+| --------- | ------------------------------------- | ------------------------------------------- |
+| `3220e0d` | S01 fixture service rebased onto I02B | typecheck; contract 7; fixture Playwright 2 |
 
 ## S01 delivery record
 
 - **Files changed:** `apps/web/fixtures/rni-ui/read-service.ts`, `apps/web/tests/e2e/rni/read-service.spec.ts`, and this lane tracker.
 - **Result:** fixture-only `RniReadService` covers complete, empty, partial, refreshing, stale, failed, and unpublished states; every state retains one Reddit and one X slice and returns defensive copies. The active refresh state deliberately has no combined summary.
-- **Risk:** `CR-SURFACE-01` blocks citation navigation and cited explanation rendering, but not S01.
-- **Handoff:** independent re-review passed after resolving SR-01 and SR-02; no routes or UI components are added in S01.
+- **Contract compatibility:** after rebasing on I02B (`264ea9c`), `FixtureRniReadService` implements `getCitation`. Tests prove a citation resolves to a same-platform source record whose bounded evidence contains the cited text; citation IDs are not treated as source IDs.
+- **Risk:** S01 has no open contract blocker. S04 must consume the same citation flow when it adds UI navigation.
+- **Handoff:** coordinator-approved fixture-only slice; citation compatibility is verified and awaiting its task commit.
 
 ## Handoff
 
 ```text
 RNI LANE     SURFACE
 BRANCH       feat/rni-surface-demo
-BASE SHA     —
+BASE SHA     264ea9c
 STATUS       PARTIAL
-TASKS        S01 ready for coordinator review; S02–S10 not started
-TESTS        typecheck: pass; RNI contract: 7 pass; fixture service Playwright: 2 pass
-CONTRACT     CR-SURFACE-01 open
-RISKS        Citation resolution is not representable through the frozen read service
+TASKS        S01 citation compatibility ready to commit; S02–S10 not started
+TESTS        typecheck: pass; RNI contract: 9 pass; fixture service Playwright: 2 pass
+CONTRACT     CR-SURFACE-01 accepted at 264ea9c
+RISKS        none for S01; S04 must use citation → source → evidence flow
 FILES        apps/web/fixtures/rni-ui/read-service.ts; apps/web/tests/e2e/rni/read-service.spec.ts; docs/rni/progress/SURFACE.md
-COMMITS      pending S01 review
+COMMITS      3220e0d
 DEMO PROOF   Fixture service returns independent Reddit/X slices for complete, partial, active-refresh, stale, failed and unpublished states
 ```
