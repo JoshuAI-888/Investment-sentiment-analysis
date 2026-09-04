@@ -1,0 +1,59 @@
+{
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": [
+    {
+      "itemId": "11111111-1111-4111-8111-111111111111",
+      "label": "bullish",
+      "scores": {
+        "bullish": "0.900000",
+        "bearish": "0.050000",
+        "neutral": "0.050000"
+      },
+      "scorer": {
+        "scorerId": "finbert",
+        "scorerVersion": "ProsusAI/finbert@4556d13015211d73dccd3fdd39d39232506f3e43",
+        "runtimeVersion": "sha256:1f0c2f0f6b5f4d0b9c2f8a1d3e4b5c6d7e8f90112233445566778899aabbccdd"
+      },
+      "scoredAt": "2026-08-30T12:00:00.000000Z",
+      "inputHash": "109c518372536e39e75f3f09930c8d619b794c85376e2b1c35db5d1746fd8bd8",
+      "truncated": false
+    },
+    {
+      "itemId": "22222222-2222-4222-8222-222222222222",
+      "label": "neutral",
+      "scores": {
+        "bullish": "0.200000",
+        "bearish": "0.200000",
+        "neutral": "0.600000"
+      },
+      "scorer": {
+        "scorerId": "finbert",
+        "scorerVersion": "ProsusAI/finbert@4556d13015211d73dccd3fdd39d39232506f3e43",
+        "runtimeVersion": "sha256:1f0c2f0f6b5f4d0b9c2f8a1d3e4b5c6d7e8f90112233445566778899aabbccdd"
+      },
+      "scoredAt": "2026-08-30T12:00:00.000000Z",
+      "inputHash": "5c36e85fbfb3823160dd12eecb598ef58055dc7cfe46e8ca8d4d920e96ba7e1a",
+      "truncated": true
+    },
+    {
+      "itemId": "33333333-3333-4333-8333-333333333333",
+      "label": "bearish",
+      "scores": {
+        "bullish": "0.050000",
+        "bearish": "0.900000",
+        "neutral": "0.050000"
+      },
+      "scorer": {
+        "scorerId": "tweet-roberta",
+        "scorerVersion": "cardiffnlp/twitter-roberta-base-sentiment-latest@3216a57f2a0d9c45a2e6c20157c20c49fb4bf9c7",
+        "runtimeVersion": "sha256:1f0c2f0f6b5f4d0b9c2f8a1d3e4b5c6d7e8f90112233445566778899aabbccdd"
+      },
+      "scoredAt": "2026-08-30T12:00:00.000000Z",
+      "inputHash": "b5f1f697507e82d6a183628f40314d4cfdd168eda9b87cda96391c7ab8346e77",
+      "truncated": false
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+# F20 §4.1. Versions confirmed available via `pip index versions <pkg>` 2026-09-03 — the same
+# no-guessing discipline the adapter work this session applied to provider API schemas. Not yet
+# installed together and exercised as a whole: this environment has no Docker daemon (see
+# ../Dockerfile), so the actual model-loading path (models.py) is CI-build-verified only.
+flask==3.1.3
+transformers==5.16.1
+torch==2.13.0
+huggingface_hub==1.29.0

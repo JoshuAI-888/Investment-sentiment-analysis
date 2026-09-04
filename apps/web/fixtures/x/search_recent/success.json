@@ -1,0 +1,47 @@
+{
+  "status": 200,
+  "headers": { "content-type": "application/json" },
+  "body": {
+    "data": [
+      {
+        "id": "1900000000000000001",
+        "text": "$AAPL breaking out on volume, watching the 200-day",
+        "author_id": "1000000000000000001",
+        "created_at": "2026-08-30T14:02:11.000Z",
+        "lang": "en",
+        "public_metrics": {
+          "retweet_count": 3,
+          "reply_count": 1,
+          "like_count": 12,
+          "quote_count": 0,
+          "bookmark_count": 2,
+          "impression_count": 480
+        }
+      },
+      {
+        "id": "1900000000000000002",
+        "text": "not sure the $AAPL move holds through close",
+        "author_id": "1000000000000000002",
+        "created_at": "2026-08-30T14:05:47.000Z",
+        "lang": "en",
+        "public_metrics": {
+          "retweet_count": 0,
+          "reply_count": 0,
+          "like_count": 4,
+          "quote_count": 0
+        }
+      }
+    ],
+    "includes": {
+      "users": [
+        { "id": "1000000000000000001", "username": "example_trader_one", "name": "Example Trader One" },
+        { "id": "1000000000000000002", "username": "example_trader_two", "name": "Example Trader Two" }
+      ]
+    },
+    "meta": {
+      "newest_id": "1900000000000000002",
+      "oldest_id": "1900000000000000001",
+      "result_count": 2
+    }
+  }
+}

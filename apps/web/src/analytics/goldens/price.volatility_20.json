@@ -1,0 +1,44 @@
+{
+  "$comment": "price.volatility_20@1.0.0 — source §8.4/§8.7's vol_20. A nonzero-variance case is inherently irrational (· sqrt(252)), so the exact/hand-verifiable golden here is the zero-variance boundary; a nonzero case is exercised structurally (sign, nonzero-ness) in the companion test rather than pinned as a golden.",
+  "methodId": "price.volatility_20",
+  "methodVersion": "1.0.0",
+  "cases": [
+    {
+      "name": "wrong_quote_kind",
+      "identityInputs": { "quote_kind": "intraday" },
+      "seriesInputs": { "close": ["100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "101"] },
+      "expected": {
+        "eligibility": "not_applicable",
+        "exact": null,
+        "display": null,
+        "abstention": {
+          "reason": "not_applicable",
+          "message": "The price series is tagged 'intraday', not 'adjusted_close'. §8.4 forbids mixing intraday and close-to-close returns in the same metric."
+        },
+        "warnings": []
+      }
+    },
+    {
+      "name": "non_positive_close",
+      "identityInputs": { "quote_kind": "adjusted_close" },
+      "seriesInputs": { "close": ["100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "0", "101"] },
+      "expected": {
+        "eligibility": "not_applicable",
+        "exact": null,
+        "display": null,
+        "abstention": {
+          "reason": "not_applicable",
+          "message": "One of the closes in the window is zero or negative, which is not a real traded price."
+        },
+        "warnings": []
+      }
+    },
+    {
+      "name": "flat_series_zero_vol",
+      "why": "21 identical closes: every daily return is exactly 0, so the population stdev — and vol_20 — is exactly 0, with no sqrt(252) irrationality surviving a multiplication by zero.",
+      "identityInputs": { "quote_kind": "adjusted_close" },
+      "seriesInputs": { "close": ["100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100"] },
+      "expected": { "eligibility": "ok", "exact": "0", "display": "0.000000", "abstention": null, "warnings": [] }
+    }
+  ]
+}

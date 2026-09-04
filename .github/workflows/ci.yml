@@ -1,0 +1,191 @@
+# CI — 05-TEST-STRATEGY.md §8, F01 §4.4b.
+#
+# CI spans TWO deploy targets and either one red blocks the merge. `verify` is the Next.js app;
+# `scorer` is F20's pinned service. The scorer is deliberately **not** a step inside `verify`:
+# a Python failure reported as a Next.js failure costs a debugging cycle every single time.
+#
+# The governing rule is 00-ADVERSARIAL-REVIEW.md F-14 — the loop never grades its own homework
+# on the merge decision. This workflow runs independently of the agent that wrote the code.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # CI runs in fixture mode with NO provider keys present. A test that needs a key to pass is
+  # a test that will pass for the wrong reason (05-TEST-STRATEGY.md §8). Nothing in this file
+  # may reference `secrets.*` for the verify or scorer jobs.
+  PROVIDER_MODE: fixture
+
+jobs:
+  # ── deploy target 1 ─────────────────────────────────────────────────────────────────────
+  verify:
+    name: verify (web app)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      # Ephemeral Postgres, per §8. Present from F01 so that F03's integration tests land into
+      # a lane that already works rather than into one that has to be built under them.
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: app_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        # --frozen-lockfile: a hand-merged lockfile that resolves cleanly in git still fails
+        # here, which is the point (06-PARALLEL-LANES.md §4b).
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        # Includes the five architectural rules of F01 §4.3.
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test:unit
+
+      - name: Contract tests
+        # Serialization parity is a database round-trip — a float that survives `100.00` and
+        # loses `0.1` cannot be caught without one.
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/app_test
+        run: pnpm test:contract
+
+      - name: Integration tests
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/app_test
+        run: pnpm test:integration
+
+      - name: Storage projection (report only)
+        # F03 §4.5 is a WAVE 1 EXIT gate, not a per-PR gate, and it currently exceeds 300 MB —
+        # which is F-07's own trigger to revisit the granularity rule before Wave 2. It runs
+        # here so the number is visible on every PR, and `|| true` so a known, recorded Wave-1
+        # gate item does not turn every unrelated merge red.
+        run: pnpm --filter web check:storage || true
+
+      - name: Build
+        run: pnpm build
+
+      - name: Install Playwright browser
+        run: pnpm --filter web exec playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        # F07's dashboard e2e suite (tests/e2e/dashboard.spec.ts) needs a real database and
+        # self-skips without one — matching the Contract/Integration steps' DATABASE_URL is what
+        # makes those cases actually run here instead of silently skipping on every CI run
+        # (found by two rounds of F07's adversarial `lane-review`). E2E_ALLOW_ATTENTION_TRUNCATE
+        # opts this run into F08's global-setup truncate of `attention_snapshot` — `app_test` here
+        # is always a disposable, freshly migrated database, unlike a developer's local
+        # DATABASE_URL, which `tests/e2e/global-setup.ts` must never assume is safe to wipe
+        # (lane-review round 4 finding 2).
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/app_test
+          E2E_ALLOW_ATTENTION_TRUNCATE: '1'
+        run: pnpm test:e2e
+
+      - name: check:calc-coverage
+        run: pnpm check:calc-coverage
+
+      - name: check:bundle
+        # Runs after the build: it scans the real client chunks under .next/static.
+        run: pnpm check:bundle
+
+      - name: check:copy
+        run: pnpm check:copy
+
+  # ── deploy target 2 ─────────────────────────────────────────────────────────────────────
+  scorer:
+    name: scorer (pinned service)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the scorer image
+        # F20's models are baked into the image at BUILD time, by commit SHA. CI never reaches
+        # Hugging Face at run time — an upstream outage would otherwise turn every merge red
+        # for a reason unrelated to the diff (F01 §4.4b).
+        run: docker build -t scorer:ci services/scorer
+
+      - name: Run the scorer suite with no network
+        # `--network none` is the enforcement, not the intention. A suite that can reach the
+        # network is a suite that will, eventually, depend on it.
+        run: docker run --rm --network none scorer:ci
+
+  # ── conditional ─────────────────────────────────────────────────────────────────────────
+  eval:
+    name: eval (judge suite)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # §8: conditional on the paths whose behaviour the judge grades. It is not a merge gate
+    # for a diff that cannot have changed its outcome.
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Does this diff touch agent/, prompts/ or analytics/?
+        id: scope
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          if git diff --name-only "$base" "$head" \
+              | grep -Eq '^apps/web/src/(agent|analytics)/|^apps/web/prompts/'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.scope.outputs.run == 'true'
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v4
+        if: steps.scope.outputs.run == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        if: steps.scope.outputs.run == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Eval suite
+        if: steps.scope.outputs.run == 'true'
+        run: pnpm test:eval

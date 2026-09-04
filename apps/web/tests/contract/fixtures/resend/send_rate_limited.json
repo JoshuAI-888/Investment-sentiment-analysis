@@ -1,0 +1,5 @@
+{
+  "message": "Too many requests. You can only make 2 requests per second.",
+  "statusCode": 429,
+  "name": "rate_limit_exceeded"
+}

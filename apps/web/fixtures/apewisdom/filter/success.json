@@ -1,0 +1,29 @@
+{
+  "status": 200,
+  "headers": { "content-type": "application/json" },
+  "body": {
+    "count": 817,
+    "pages": 9,
+    "current_page": 1,
+    "results": [
+      {
+        "rank": 1,
+        "ticker": "GME",
+        "name": "GameStop Corp.",
+        "mentions": "1204",
+        "upvotes": "8213",
+        "rank_24h_ago": "1",
+        "mentions_24h_ago": "1350"
+      },
+      {
+        "rank": 2,
+        "ticker": "AAPL",
+        "name": "Apple Inc.",
+        "mentions": "980",
+        "upvotes": "4021",
+        "rank_24h_ago": "3",
+        "mentions_24h_ago": "870"
+      }
+    ]
+  }
+}

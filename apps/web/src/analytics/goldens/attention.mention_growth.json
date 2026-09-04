@@ -1,0 +1,38 @@
+{
+  "$comment": "attention.mention_growth@1.0.0 — source §8.1: mention_growth = mention_delta / max(mentions_prior, 1). Hand-computed; every case chosen to divide evenly, no tolerance needed.",
+  "methodId": "attention.mention_growth",
+  "methodVersion": "1.0.0",
+  "cases": [
+    {
+      "name": "normal_growth",
+      "inputs": { "mentions_now": "150", "mentions_prior": "100" },
+      "expected": { "eligibility": "ok", "exact": "0.5", "display": "0.500000", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "negative_growth",
+      "inputs": { "mentions_now": "40", "mentions_prior": "100" },
+      "expected": { "eligibility": "ok", "exact": "-0.6", "display": "-0.600000", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "at_floor_exactly",
+      "why": "prior mentions == min_mentions (5) exactly — the off-by-one boundary, computed not abstained.",
+      "inputs": { "mentions_now": "10", "mentions_prior": "5" },
+      "expected": { "eligibility": "ok", "exact": "1", "display": "1.000000", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "below_prior_floor",
+      "why": "§4.1: prior mentions < 5 ⇒ hide growth, show absolute delta instead.",
+      "inputs": { "mentions_now": "100", "mentions_prior": "3" },
+      "expected": {
+        "eligibility": "insufficient_data",
+        "exact": null,
+        "display": null,
+        "abstention": {
+          "reason": "below_sample_threshold",
+          "message": "The prior window had 3 mention(s). At least 5 are required before growth is shown as a ratio, because a ratio over a handful of mentions swings enormously for a change of one or two. The absolute change (attention.mention_delta) is shown instead."
+        },
+        "warnings": []
+      }
+    }
+  ]
+}

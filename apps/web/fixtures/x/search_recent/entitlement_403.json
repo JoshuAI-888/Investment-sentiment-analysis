@@ -1,0 +1,12 @@
+{
+  "status": 403,
+  "headers": { "content-type": "application/json" },
+  "body": {
+    "client_id": "00000000000000000000",
+    "required_enrollment": "Standard Basic",
+    "title": "Client Forbidden",
+    "detail": "Client is not permitted to perform this action.",
+    "reason": "client-not-enrolled",
+    "type": "https://api.twitter.com/2/problems/client-forbidden"
+  }
+}

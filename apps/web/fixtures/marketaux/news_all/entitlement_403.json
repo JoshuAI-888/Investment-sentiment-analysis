@@ -1,0 +1,5 @@
+{
+  "status": 403,
+  "headers": { "content-type": "application/json" },
+  "body": { "error": { "code": "usage_limit_reached", "message": "Your API token is invalid or has expired." } }
+}

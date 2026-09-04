@@ -1,0 +1,58 @@
+{
+  "$comment": "price.regime@1.0.0 — source §8.4. Every 'ok' case is a flat 20-session close series (close_0..close_19 = 100) with a single move on the final session, chosen so the realized volatility stays under the 0.005 floor — the outer clamp then acts on 0.6·r5+0.4·r20 divided by a fixed 0.005, which is hand-computable exactly. Sign/magnitude-only checks (not exact strings) cover the branch where volatility exceeds the floor, in the companion test file, because that branch is genuinely irrational (sqrt).",
+  "methodId": "price.regime",
+  "methodVersion": "1.0.0",
+  "cases": [
+    {
+      "name": "wrong_quote_kind",
+      "identityInputs": { "quote_kind": "intraday" },
+      "seriesInputs": { "close": ["100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "101"] },
+      "expected": {
+        "eligibility": "not_applicable",
+        "exact": null,
+        "display": null,
+        "abstention": {
+          "reason": "not_applicable",
+          "message": "The price series is tagged 'intraday', not 'adjusted_close'. Source §8.4 requires adjusted daily closes for regime calculations and forbids mixing intraday and close-to-close returns in the same metric — this is a registry-level prohibition, not a preference, so the computation stops rather than mix quote kinds."
+        },
+        "warnings": []
+      }
+    },
+    {
+      "name": "non_positive_close",
+      "identityInputs": { "quote_kind": "adjusted_close" },
+      "seriesInputs": { "close": ["100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "0", "101"] },
+      "expected": {
+        "eligibility": "not_applicable",
+        "exact": null,
+        "display": null,
+        "abstention": {
+          "reason": "not_applicable",
+          "message": "One of the closes in the window is zero or negative, which is not a real traded price. A regime computed across a bad price would be a fabricated number."
+        },
+        "warnings": []
+      }
+    },
+    {
+      "name": "floor_engaged_at_clamp_bound",
+      "why": "A 1.5% move on the final session against 20 flat closes: r5 = r20 = 0.015, realized volatility ≈ 0.00327 (well under the 0.005 floor), (0.6·0.015+0.4·0.015)/0.005 = 3 exactly — at the clamp bound, not past it.",
+      "identityInputs": { "quote_kind": "adjusted_close" },
+      "seriesInputs": { "close": ["100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "101.5"] },
+      "expected": { "eligibility": "ok", "exact": "1", "display": "1.000000", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "exceeds_upper_clamp",
+      "why": "A 2% move: r5 = r20 = 0.02, realized volatility ≈ 0.00436 (still under the floor), raw trend ratio = 4, clamped to 3 before the final /3 — same numeric result as the boundary case, reached by the clamp instead of landing on it exactly.",
+      "identityInputs": { "quote_kind": "adjusted_close" },
+      "seriesInputs": { "close": ["100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "102"] },
+      "expected": { "eligibility": "ok", "exact": "1", "display": "1.000000", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "negative_at_clamp_bound",
+      "why": "The mirror of floor_engaged_at_clamp_bound: a −1.5% move gives trend_strength exactly −1.",
+      "identityInputs": { "quote_kind": "adjusted_close" },
+      "seriesInputs": { "close": ["100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "98.5"] },
+      "expected": { "eligibility": "ok", "exact": "-1", "display": "-1.000000", "abstention": null, "warnings": [] }
+    }
+  ]
+}

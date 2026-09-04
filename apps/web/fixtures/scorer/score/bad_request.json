@@ -1,0 +1,9 @@
+{
+  "status": 400,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "error": "each item must have itemId, text and kind"
+  }
+}

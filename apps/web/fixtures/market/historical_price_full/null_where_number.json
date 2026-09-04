@@ -1,0 +1,17 @@
+{
+  "status": 200,
+  "headers": { "content-type": "application/json" },
+  "body": {
+    "symbol": "AAPL",
+    "historical": [
+      {
+        "date": "2026-08-28",
+        "open": 230.12,
+        "high": 233.4,
+        "low": 229.8,
+        "close": null,
+        "volume": 54321000
+      }
+    ]
+  }
+}

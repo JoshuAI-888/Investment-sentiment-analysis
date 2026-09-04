@@ -1,0 +1,65 @@
+{
+  "$comment": "news.sentiment@1.0.0 — source §8.3. age_hours = 0 (decay = exp(0) = 1) and relevance = 1 throughout, so news_weight_i = 1 uniformly and shrunk_news is hand-verifiable.",
+  "methodId": "news.sentiment",
+  "methodVersion": "1.0.0",
+  "cases": [
+    {
+      "name": "insufficient_data",
+      "why": "2 entity-tagged articles, one short of F-08's floor of 3.",
+      "seriesInputs": {
+        "entity_sentiment": ["1", "-1"],
+        "relevance": ["1", "1"],
+        "age_hours": ["0", "0"]
+      },
+      "expected": {
+        "eligibility": "insufficient_data",
+        "exact": null,
+        "display": null,
+        "abstention": {
+          "reason": "below_sample_threshold",
+          "message": "2 entity-tagged article(s) were found. At least 3 are required — Marketaux's free tier caps at 3 articles per request, so a shrunk mean over fewer than that is noise wearing a decimal point."
+        },
+        "warnings": []
+      }
+    },
+    {
+      "name": "at_floor_balanced",
+      "why": "3 articles at the floor exactly, signed sum zero: raw_news = 0, so shrunk_news = 0 regardless of n.",
+      "seriesInputs": {
+        "entity_sentiment": ["1", "0", "-1"],
+        "relevance": ["1", "1", "1"],
+        "age_hours": ["0", "0", "0"]
+      },
+      "expected": { "eligibility": "ok", "exact": "0", "display": "0.000000", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "normal",
+      "why": "5 articles, weight 1 each: raw_news = 3/5 = 0.6, shrunk_news = 0.6 · 5/10 = 0.3.",
+      "seriesInputs": {
+        "entity_sentiment": ["1", "1", "1", "1", "-1"],
+        "relevance": ["1", "1", "1", "1", "1"],
+        "age_hours": ["0", "0", "0", "0", "0"]
+      },
+      "expected": { "eligibility": "ok", "exact": "0.3", "display": "0.300000", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "all_zero_weights",
+      "why": "3 articles, zero relevance throughout — no_coverage_in_window, not a smaller number.",
+      "seriesInputs": {
+        "entity_sentiment": ["1", "1", "1"],
+        "relevance": ["0", "0", "0"],
+        "age_hours": ["0", "0", "0"]
+      },
+      "expected": {
+        "eligibility": "insufficient_data",
+        "exact": null,
+        "display": null,
+        "abstention": {
+          "reason": "no_coverage_in_window",
+          "message": "3 article(s) were found, but every one carries zero weight (zero relevance throughout). There is nothing to average — a mean over all-zero weights is undefined, not zero."
+        },
+        "warnings": []
+      }
+    }
+  ]
+}

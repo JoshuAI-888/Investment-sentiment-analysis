@@ -1,0 +1,48 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+*.local.yaml
+
+# Node / Next.js (apps/web, created in F01)
+node_modules/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+.vercel/
+coverage/
+playwright-report/
+test-results/
+
+# Python (the F20 scorer service)
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Model and data artifacts — never commit.
+# NOTE the leading slashes. An unanchored `data/` matches a directory named `data` at ANY
+# depth, and it silently swallowed `apps/web/app/api/admin/data/route.ts` — a route that
+# existed on disk, passed every local run, and 404'd in CI because it had never been
+# committed. `tests/unit/tracked-sources.test.ts` now catches that class locally.
+*.ckpt
+*.bin
+*.safetensors
+*.parquet
+/data/
+/_cache/
+
+# Tooling output
+graphify-out/
+.DS_Store
+.turbo/
+blob-report/
+.playwright/
+
+# lane-build agents' isolated worktrees (06-PARALLEL-LANES.md §1) — local session state,
+# never a deliverable; each agent commits its own work inside its own worktree/branch.
+/.claude/worktrees/

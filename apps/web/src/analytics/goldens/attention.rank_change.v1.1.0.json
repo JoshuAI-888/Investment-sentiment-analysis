@@ -1,0 +1,316 @@
+{
+  "$comment": "Golden fixtures for attention.rank_change@1.1.0 (F06 §4.1's methodology-boundary amendment). Regenerated deliberately via scripts/gen-goldens.ts, never hand-edited to match a new output — a golden that moves with the code detects nothing. inputHash/resultHash values differ from v1.0.0's own golden (attention.rank_change.v1.0.0.json) because the method version and the two new methodology-version inputs are inside the hash by construction.",
+  "methodId": "attention.rank_change",
+  "methodVersion": "1.1.0",
+  "reading": {
+    "filter": "all-stocks",
+    "sourceUrl": "https://apewisdom.io/api/v1.0/filter/all-stocks/page/1",
+    "observedAt": "2026-08-30T11:55:00.000Z",
+    "availableAt": "2026-08-30T11:55:00.000Z",
+    "ingestedAt": "2026-08-30T11:56:00.000Z",
+    "rawPayloadId": null,
+    "methodologyVersion": "v1"
+  },
+  "asOf": "2026-08-30T12:00:00.000Z",
+  "computedAt": "2026-08-30T12:00:01.000Z",
+  "configVersion": "1",
+  "securityId": "sec-golden",
+  "cases": [
+    {
+      "name": "moved_up_one_rank",
+      "why": "AAPL from the committed ApeWisdom success fixture: rank 3 → rank 2, one rank gained. Same methodology on both ends.",
+      "entry": {
+        "rank": 2,
+        "ticker": "AAPL",
+        "name": "Apple Inc.",
+        "mentions": "980",
+        "upvotes": "4021",
+        "rank24hAgo": "3",
+        "mentions24hAgo": "870"
+      },
+      "expected": {
+        "eligibility": "ok",
+        "exact": "1",
+        "display": "1",
+        "unit": "ranks",
+        "abstention": null,
+        "warnings": [],
+        "inputHash": "899cdc8589906ddd67434eb7968f24cb9b3c72373b61fd86207fc17cde17c2d5",
+        "resultHash": "94c2205fb7f966dd4a06075e69feaee0d8e9e017403c14a551fe9e58c22041eb",
+        "steps": [
+          {
+            "key": "rank_delta",
+            "expression": "{rank_prior} - {rank_now}",
+            "substituted": "3 - 2",
+            "exactValue": "1",
+            "displayValue": "1",
+            "status": "applied"
+          },
+          {
+            "key": "bounded_rank_delta",
+            "expression": "clamp({rank_delta}, -{board_size}, {board_size})",
+            "substituted": "clamp(1, -100, 100)",
+            "exactValue": "1",
+            "displayValue": "1",
+            "status": "applied"
+          }
+        ]
+      }
+    },
+    {
+      "name": "unchanged_rank",
+      "why": "GME from the same fixture: rank 1 → rank 1. Zero is a measured value, not an absence.",
+      "entry": {
+        "rank": 1,
+        "ticker": "GME",
+        "name": "GameStop Corp.",
+        "mentions": "1204",
+        "upvotes": "8213",
+        "rank24hAgo": "1",
+        "mentions24hAgo": "1350"
+      },
+      "expected": {
+        "eligibility": "ok",
+        "exact": "0",
+        "display": "0",
+        "unit": "ranks",
+        "abstention": null,
+        "warnings": [],
+        "inputHash": "5a85e06b6cdd732ff94940b726a968c4943bbc7192d5ae237086228fc42b8989",
+        "resultHash": "5d6ecf5b24581de48bd9320df5ae90f8b3f68fd56f237e1901c84fd97ee5ff62",
+        "steps": [
+          {
+            "key": "rank_delta",
+            "expression": "{rank_prior} - {rank_now}",
+            "substituted": "1 - 1",
+            "exactValue": "0",
+            "displayValue": "0",
+            "status": "applied"
+          },
+          {
+            "key": "bounded_rank_delta",
+            "expression": "clamp({rank_delta}, -{board_size}, {board_size})",
+            "substituted": "clamp(0, -100, 100)",
+            "exactValue": "0",
+            "displayValue": "0",
+            "status": "applied"
+          }
+        ]
+      }
+    },
+    {
+      "name": "below_sample_threshold",
+      "why": "Under min_mentions. Product invariant §6.3: a stated abstention, never a smaller number.",
+      "entry": {
+        "rank": 40,
+        "ticker": "THIN",
+        "name": "Thinly Mentioned Inc.",
+        "mentions": "3",
+        "upvotes": "4",
+        "rank24hAgo": "55",
+        "mentions24hAgo": "2"
+      },
+      "expected": {
+        "eligibility": "insufficient_data",
+        "exact": null,
+        "display": null,
+        "unit": null,
+        "abstention": {
+          "reason": "below_sample_threshold",
+          "message": "This security was mentioned 3 time(s) in the window. At least 25 are required before a rank change is shown, because below that floor the rank moves on too few observations to describe anything. No number is shown rather than a smaller one."
+        },
+        "warnings": [],
+        "inputHash": "854f05126404f921ca3563c4909a78a3b85d347893b403f577a1ff162a9377a5",
+        "resultHash": "68eecb9477d134dff79a45dee3f50ed2331fd36aae6b4e56cb63f44cb7bc7037",
+        "steps": []
+      }
+    },
+    {
+      "name": "not_on_the_board_before",
+      "why": "A top-N board reports absence and rank 0 identically. Absence is not a position.",
+      "entry": {
+        "rank": 12,
+        "ticker": "NEWCO",
+        "name": "New Arrival Corp.",
+        "mentions": "410",
+        "upvotes": "900",
+        "rank24hAgo": "0",
+        "mentions24hAgo": "0"
+      },
+      "expected": {
+        "eligibility": "not_applicable",
+        "exact": null,
+        "display": null,
+        "unit": null,
+        "abstention": {
+          "reason": "new_to_board",
+          "message": "This security was not on the attention board at the prior observation — it is new to the board since then, not a security whose rank moved. There is no earlier position to measure a change from."
+        },
+        "warnings": [],
+        "inputHash": "d31660e7549539649ef9f5e05d17a2e355e83c33b81c524bf93edba2701c2113",
+        "resultHash": "eb42e2b7720beefe19fd876ace8be8f4e69b0164799399be2592239bf85a0288",
+        "steps": []
+      }
+    },
+    {
+      "name": "dropped_from_board",
+      "why": "The mirror of not_on_the_board_before: present at the prior observation, absent now. Mentions stay above min_mentions so this actually reaches the rank_now check rather than aborting on the sample-threshold check first.",
+      "entry": {
+        "rank": 0,
+        "ticker": "GONECO",
+        "name": "Gone Corp.",
+        "mentions": "30",
+        "upvotes": "50",
+        "rank24hAgo": "15",
+        "mentions24hAgo": "380"
+      },
+      "expected": {
+        "eligibility": "not_applicable",
+        "exact": null,
+        "display": null,
+        "unit": null,
+        "abstention": {
+          "reason": "dropped_from_board",
+          "message": "This security is not on the attention board at the current observation — it fell off the board since the prior one, not a security whose rank moved. There is no current position to measure a change to."
+        },
+        "warnings": [],
+        "inputHash": "1d573a8ed39b09d78e8dcce84916cce956b38bb5214f2064781e7f999001e144",
+        "resultHash": "81326fa4d375c6e42c5302879620a53c11ccfe16bbc3004d79dcda1e186808cc",
+        "steps": []
+      }
+    },
+    {
+      "name": "absent_from_board_at_both_ends",
+      "why": "Neither `new_to_board` nor `dropped_from_board` alone is true when a security is absent at both observations — it never held a tracked position at all. Found by a third lane-review pass: the two single-ended checks were independent `if`s, so this case fell into the first one and got a false 'new to board' message.",
+      "entry": {
+        "rank": 0,
+        "ticker": "NEVERON",
+        "name": "Never Onboard Inc.",
+        "mentions": "30",
+        "upvotes": "10",
+        "rank24hAgo": "0",
+        "mentions24hAgo": "0"
+      },
+      "expected": {
+        "eligibility": "not_applicable",
+        "exact": null,
+        "display": null,
+        "unit": null,
+        "abstention": {
+          "reason": "not_applicable",
+          "message": "This security was not on the attention board at either observation. There is no tracked position at either end to measure a change from or to."
+        },
+        "warnings": [],
+        "inputHash": "8ed022ad50b3c6ec3add08200be7f6af45af5f5bc8cdff9f1814422eb7844f51",
+        "resultHash": "72ac9fc2378055aa311e78ecd90f330d16cafbacfadeecaea08b1a9a3c02179d",
+        "steps": []
+      }
+    },
+    {
+      "name": "clamped_to_board_size",
+      "why": "A move larger than the board reports a board that changed size, not a real move.",
+      "entry": {
+        "rank": 5,
+        "ticker": "JUMPY",
+        "name": "Jumpy Holdings",
+        "mentions": "600",
+        "upvotes": "700",
+        "rank24hAgo": "400",
+        "mentions24hAgo": "30"
+      },
+      "expected": {
+        "eligibility": "ok",
+        "exact": "100",
+        "display": "100",
+        "unit": "ranks",
+        "abstention": null,
+        "warnings": [
+          "The measured move is larger than the board itself, which happens when the board changed size between the two observations. The value shown is clamped to the board size and should be read as \"moved as far as the board allows\", not as a measured distance."
+        ],
+        "inputHash": "015c29ff3356a30837301a669c78785a93f423bdf2b880de26dfd5e8fcbfa665",
+        "resultHash": "bb34883711c03213434a238a50efc268690f15d7a343502f991070f9138083be",
+        "steps": [
+          {
+            "key": "rank_delta",
+            "expression": "{rank_prior} - {rank_now}",
+            "substituted": "400 - 5",
+            "exactValue": "395",
+            "displayValue": "395",
+            "status": "applied"
+          },
+          {
+            "key": "bounded_rank_delta",
+            "expression": "clamp({rank_delta}, -{board_size}, {board_size})",
+            "substituted": "clamp(395, -100, 100)",
+            "exactValue": "100",
+            "displayValue": "100",
+            "status": "clamped"
+          }
+        ]
+      }
+    },
+    {
+      "name": "personal_scenario_raised_threshold",
+      "why": "The same frozen inputs with min_mentions raised to 1000 — one variable changed, no provider call.",
+      "entry": {
+        "rank": 2,
+        "ticker": "AAPL",
+        "name": "Apple Inc.",
+        "mentions": "980",
+        "upvotes": "4021",
+        "rank24hAgo": "3",
+        "mentions24hAgo": "870"
+      },
+      "scenario": {
+        "kind": "personal",
+        "userId": "user-1",
+        "profileId": "profile-1"
+      },
+      "accountDefaults": {
+        "min_mentions": "1000"
+      },
+      "expected": {
+        "eligibility": "insufficient_data",
+        "exact": null,
+        "display": null,
+        "unit": null,
+        "abstention": {
+          "reason": "below_sample_threshold",
+          "message": "This security was mentioned 980 time(s) in the window. At least 1000 are required before a rank change is shown, because below that floor the rank moves on too few observations to describe anything. No number is shown rather than a smaller one."
+        },
+        "warnings": [],
+        "inputHash": "a228486f7a591fa5afeb70a4e4a7e76fb7f2455f47d2c544669318ac14d3bccf",
+        "resultHash": "68eecb9477d134dff79a45dee3f50ed2331fd36aae6b4e56cb63f44cb7bc7037",
+        "steps": []
+      }
+    },
+    {
+      "name": "methodology_changed",
+      "why": "F06 §4.1's amendment: AAPL's own inputs from moved_up_one_rank, but the prior snapshot was produced under a retired board methodology. The comparison is abandoned before rank or mentions are even read.",
+      "entry": {
+        "rank": 2,
+        "ticker": "AAPL",
+        "name": "Apple Inc.",
+        "mentions": "980",
+        "upvotes": "4021",
+        "rank24hAgo": "3",
+        "mentions24hAgo": "870"
+      },
+      "priorMethodologyVersion": "v0",
+      "expected": {
+        "eligibility": "not_applicable",
+        "exact": null,
+        "display": null,
+        "unit": null,
+        "abstention": {
+          "reason": "methodology_version_boundary",
+          "message": "The attention board's methodology changed between the two observations (v0 → v1), so a rank change cannot be computed across them. Snapshots on either side of a methodology boundary are not comparable, and a delta computed across one would be a fabricated number rather than a measured move."
+        },
+        "warnings": [],
+        "inputHash": "1662a77de8f8c5c8bb6e348fcde7f8db8e90b6e9932a445f4c0507ff5175cbb2",
+        "resultHash": "9cbc8f27cd15d5b380b4b88bec397310a7e960d90b84447a65343c51277c5483",
+        "steps": []
+      }
+    }
+  ]
+}

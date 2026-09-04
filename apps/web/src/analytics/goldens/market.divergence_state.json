@@ -1,0 +1,110 @@
+{
+  "$comment": "market.divergence_state@1.0.0 — source §8.6's table, all five named rows plus the fallback. direction codes: 1 = up/positive, -1 = down/negative, 0 = flat/mixed.",
+  "methodId": "market.divergence_state",
+  "methodVersion": "1.0.0",
+  "cases": [
+    {
+      "name": "confirming_interest",
+      "inputs": {
+        "attention_direction": "1",
+        "social_direction": "1",
+        "price_direction": "1"
+      },
+      "expected": {
+        "eligibility": "ok",
+        "exact": "1",
+        "display": "1",
+        "abstention": null,
+        "warnings": [
+          "This is a description of what is currently observable. It has not been tested against historical returns and is not a forecast."
+        ]
+      }
+    },
+    {
+      "name": "bullish_discussion_weak_tape",
+      "inputs": {
+        "attention_direction": "1",
+        "social_direction": "1",
+        "price_direction": "-1"
+      },
+      "expected": {
+        "eligibility": "ok",
+        "exact": "2",
+        "display": "2",
+        "abstention": null,
+        "warnings": [
+          "This is a description of what is currently observable. It has not been tested against historical returns and is not a forecast."
+        ]
+      }
+    },
+    {
+      "name": "risk_focused_attention",
+      "inputs": {
+        "attention_direction": "1",
+        "social_direction": "-1",
+        "price_direction": "-1"
+      },
+      "expected": {
+        "eligibility": "ok",
+        "exact": "3",
+        "display": "3",
+        "abstention": null,
+        "warnings": [
+          "This is a description of what is currently observable. It has not been tested against historical returns and is not a forecast."
+        ]
+      }
+    },
+    {
+      "name": "debate_uncertainty",
+      "inputs": {
+        "attention_direction": "1",
+        "social_direction": "0",
+        "price_direction": "1"
+      },
+      "expected": {
+        "eligibility": "ok",
+        "exact": "4",
+        "display": "4",
+        "abstention": null,
+        "warnings": [
+          "This is a description of what is currently observable. It has not been tested against historical returns and is not a forecast."
+        ]
+      }
+    },
+    {
+      "name": "price_led_move",
+      "inputs": {
+        "attention_direction": "0",
+        "social_direction": "1",
+        "price_direction": "1"
+      },
+      "expected": {
+        "eligibility": "ok",
+        "exact": "5",
+        "display": "5",
+        "abstention": null,
+        "warnings": [
+          "This is a description of what is currently observable. It has not been tested against historical returns and is not a forecast."
+        ]
+      }
+    },
+    {
+      "name": "no_clear_pattern",
+      "why": "Attention down, social positive, price flat — none of the five named rows match.",
+      "inputs": {
+        "attention_direction": "-1",
+        "social_direction": "1",
+        "price_direction": "0"
+      },
+      "expected": {
+        "eligibility": "ok",
+        "exact": "6",
+        "display": "6",
+        "abstention": null,
+        "warnings": [
+          "This is a description of what is currently observable. It has not been tested against historical returns and is not a forecast."
+        ]
+      }
+    }
+  ]
+}

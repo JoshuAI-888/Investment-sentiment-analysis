@@ -1,0 +1,25 @@
+{
+  "$comment": "technical.moving_average_50@1.0.0 — source §8.7. 49 closes at 100, one at 150: mean = (49·100 + 150) / 50 = 5050/50 = 101.",
+  "methodId": "technical.moving_average_50",
+  "methodVersion": "1.0.0",
+  "cases": [
+    {
+      "name": "wrong_quote_kind",
+      "identityInputs": { "quote_kind": "intraday" },
+      "seriesInputs": { "close": ["100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "150"] },
+      "expected": {
+        "eligibility": "not_applicable",
+        "exact": null,
+        "display": null,
+        "abstention": { "reason": "not_applicable", "message": "The price series is tagged 'intraday', not 'adjusted_close'." },
+        "warnings": []
+      }
+    },
+    {
+      "name": "mostly_flat_one_spike",
+      "identityInputs": { "quote_kind": "adjusted_close" },
+      "seriesInputs": { "close": ["100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "150"] },
+      "expected": { "eligibility": "ok", "exact": "101", "display": "101.00", "abstention": null, "warnings": [] }
+    }
+  ]
+}

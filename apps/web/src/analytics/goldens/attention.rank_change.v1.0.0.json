@@ -1,0 +1,233 @@
+{
+  "$comment": "Golden fixtures for attention.rank_change@1.0.0 (F05 §2, product invariant §6.2: deterministic metrics are pure functions with golden fixtures). Regenerated deliberately, never edited to match a new output — a golden that moves with the code detects nothing.",
+  "methodId": "attention.rank_change",
+  "methodVersion": "1.0.0",
+  "reading": {
+    "filter": "all-stocks",
+    "sourceUrl": "https://apewisdom.io/api/v1.0/filter/all-stocks/page/1",
+    "observedAt": "2026-08-30T11:55:00.000Z",
+    "availableAt": "2026-08-30T11:55:00.000Z",
+    "ingestedAt": "2026-08-30T11:56:00.000Z",
+    "rawPayloadId": null
+  },
+  "asOf": "2026-08-30T12:00:00.000Z",
+  "computedAt": "2026-08-30T12:00:01.000Z",
+  "configVersion": "1",
+  "securityId": "sec-golden",
+  "cases": [
+    {
+      "name": "moved_up_one_rank",
+      "why": "AAPL from the committed ApeWisdom success fixture: rank 3 → rank 2, one rank gained.",
+      "entry": {
+        "rank": 2,
+        "ticker": "AAPL",
+        "name": "Apple Inc.",
+        "mentions": "980",
+        "upvotes": "4021",
+        "rank24hAgo": "3",
+        "mentions24hAgo": "870"
+      },
+      "expected": {
+        "eligibility": "ok",
+        "exact": "1",
+        "display": "1",
+        "unit": "ranks",
+        "abstention": null,
+        "warnings": [],
+        "inputHash": "cc25c3aa5fc72827cb046efb4856e36dba023a39f0f327d5bc88ac1586dba677",
+        "resultHash": "94c2205fb7f966dd4a06075e69feaee0d8e9e017403c14a551fe9e58c22041eb",
+        "steps": [
+          {
+            "key": "rank_delta",
+            "expression": "{rank_prior} - {rank_now}",
+            "substituted": "3 - 2",
+            "exactValue": "1",
+            "displayValue": "1",
+            "status": "applied"
+          },
+          {
+            "key": "bounded_rank_delta",
+            "expression": "clamp({rank_delta}, -{board_size}, {board_size})",
+            "substituted": "clamp(1, -100, 100)",
+            "exactValue": "1",
+            "displayValue": "1",
+            "status": "applied"
+          }
+        ]
+      }
+    },
+    {
+      "name": "unchanged_rank",
+      "why": "GME from the same fixture: rank 1 → rank 1. Zero is a measured value, not an absence.",
+      "entry": {
+        "rank": 1,
+        "ticker": "GME",
+        "name": "GameStop Corp.",
+        "mentions": "1204",
+        "upvotes": "8213",
+        "rank24hAgo": "1",
+        "mentions24hAgo": "1350"
+      },
+      "expected": {
+        "eligibility": "ok",
+        "exact": "0",
+        "display": "0",
+        "unit": "ranks",
+        "abstention": null,
+        "warnings": [],
+        "inputHash": "5327296b9ff98350b7eab08a7e53e7c883abe7cd5f2c8393d2b517d1bd04b97f",
+        "resultHash": "5d6ecf5b24581de48bd9320df5ae90f8b3f68fd56f237e1901c84fd97ee5ff62",
+        "steps": [
+          {
+            "key": "rank_delta",
+            "expression": "{rank_prior} - {rank_now}",
+            "substituted": "1 - 1",
+            "exactValue": "0",
+            "displayValue": "0",
+            "status": "applied"
+          },
+          {
+            "key": "bounded_rank_delta",
+            "expression": "clamp({rank_delta}, -{board_size}, {board_size})",
+            "substituted": "clamp(0, -100, 100)",
+            "exactValue": "0",
+            "displayValue": "0",
+            "status": "applied"
+          }
+        ]
+      }
+    },
+    {
+      "name": "below_sample_threshold",
+      "why": "Under min_mentions. Product invariant §6.3: a stated abstention, never a smaller number.",
+      "entry": {
+        "rank": 40,
+        "ticker": "THIN",
+        "name": "Thinly Mentioned Inc.",
+        "mentions": "3",
+        "upvotes": "4",
+        "rank24hAgo": "55",
+        "mentions24hAgo": "2"
+      },
+      "expected": {
+        "eligibility": "insufficient_data",
+        "exact": null,
+        "display": null,
+        "unit": null,
+        "abstention": {
+          "reason": "below_sample_threshold",
+          "message": "This security was mentioned 3 time(s) in the window. At least 25 are required before a rank change is shown, because below that floor the rank moves on too few observations to describe anything. No number is shown rather than a smaller one."
+        },
+        "warnings": [],
+        "inputHash": "989b40033b378e8d3be94659a4d35d0911d51fa0e280881e8d4b21f568b0d0ea",
+        "resultHash": "68eecb9477d134dff79a45dee3f50ed2331fd36aae6b4e56cb63f44cb7bc7037",
+        "steps": []
+      }
+    },
+    {
+      "name": "not_on_the_board_before",
+      "why": "A top-N board reports absence and rank 0 identically. Absence is not a position.",
+      "entry": {
+        "rank": 12,
+        "ticker": "NEWCO",
+        "name": "New Arrival Corp.",
+        "mentions": "410",
+        "upvotes": "900",
+        "rank24hAgo": "0",
+        "mentions24hAgo": "0"
+      },
+      "expected": {
+        "eligibility": "not_applicable",
+        "exact": null,
+        "display": null,
+        "unit": null,
+        "abstention": {
+          "reason": "not_applicable",
+          "message": "This security was not on the attention board at one end of the comparison, so there is no earlier position to measure a change from. A board is a top-N list; being absent from it is not the same as being ranked last on it, and treating it as rank 0 would invent the largest possible move."
+        },
+        "warnings": [],
+        "inputHash": "ccaa63a8beaf1755ce801466d2cb6bef18c312942dd45ad5dfe1636b8240e0c7",
+        "resultHash": "72ac9fc2378055aa311e78ecd90f330d16cafbacfadeecaea08b1a9a3c02179d",
+        "steps": []
+      }
+    },
+    {
+      "name": "clamped_to_board_size",
+      "why": "A move larger than the board reports a board that changed size, not a real move.",
+      "entry": {
+        "rank": 5,
+        "ticker": "JUMPY",
+        "name": "Jumpy Holdings",
+        "mentions": "600",
+        "upvotes": "700",
+        "rank24hAgo": "400",
+        "mentions24hAgo": "30"
+      },
+      "expected": {
+        "eligibility": "ok",
+        "exact": "100",
+        "display": "100",
+        "unit": "ranks",
+        "abstention": null,
+        "warnings": [
+          "The measured move is larger than the board itself, which happens when the board changed size between the two observations. The value shown is clamped to the board size and should be read as \"moved as far as the board allows\", not as a measured distance."
+        ],
+        "inputHash": "b82c596bd874149e589080906ae99a7091626bb172154a5ff7c4f8eebde79334",
+        "resultHash": "bb34883711c03213434a238a50efc268690f15d7a343502f991070f9138083be",
+        "steps": [
+          {
+            "key": "rank_delta",
+            "expression": "{rank_prior} - {rank_now}",
+            "substituted": "400 - 5",
+            "exactValue": "395",
+            "displayValue": "395",
+            "status": "applied"
+          },
+          {
+            "key": "bounded_rank_delta",
+            "expression": "clamp({rank_delta}, -{board_size}, {board_size})",
+            "substituted": "clamp(395, -100, 100)",
+            "exactValue": "100",
+            "displayValue": "100",
+            "status": "clamped"
+          }
+        ]
+      }
+    },
+    {
+      "name": "personal_scenario_raised_threshold",
+      "why": "The same frozen inputs with min_mentions raised to 1000 — one variable changed, no provider call.",
+      "entry": {
+        "rank": 2,
+        "ticker": "AAPL",
+        "name": "Apple Inc.",
+        "mentions": "980",
+        "upvotes": "4021",
+        "rank24hAgo": "3",
+        "mentions24hAgo": "870"
+      },
+      "scenario": {
+        "kind": "personal",
+        "userId": "user-1",
+        "profileId": "profile-1"
+      },
+      "accountDefaults": {
+        "min_mentions": "1000"
+      },
+      "expected": {
+        "eligibility": "insufficient_data",
+        "exact": null,
+        "display": null,
+        "unit": null,
+        "abstention": {
+          "reason": "below_sample_threshold",
+          "message": "This security was mentioned 980 time(s) in the window. At least 1000 are required before a rank change is shown, because below that floor the rank moves on too few observations to describe anything. No number is shown rather than a smaller one."
+        },
+        "warnings": [],
+        "inputHash": "198946d25e19d375bc410586de6d4fa54598fd01e5ad3b8670b3a16d0cc22bb4",
+        "resultHash": "68eecb9477d134dff79a45dee3f50ed2331fd36aae6b4e56cb63f44cb7bc7037",
+        "steps": []
+      }
+    }
+  ]
+}

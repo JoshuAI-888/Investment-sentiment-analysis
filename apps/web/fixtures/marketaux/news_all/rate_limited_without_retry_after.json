@@ -1,0 +1,5 @@
+{
+  "status": 429,
+  "headers": { "content-type": "application/json" },
+  "body": { "error": { "code": "rate_limit_reached", "message": "Too many requests." } }
+}

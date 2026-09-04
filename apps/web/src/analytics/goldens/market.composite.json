@@ -1,0 +1,44 @@
+{
+  "$comment": "market.composite@1.0.0 — source §8.5. Renormalized weighted mean. Cases chosen so the renormalized weighted mean is hand-verifiable exactly.",
+  "methodId": "market.composite",
+  "methodVersion": "1.0.0",
+  "cases": [
+    {
+      "name": "all_four_present",
+      "why": "Weights sum to 1.00 when every component is present, so renormalization is a no-op: 0.35·0.2 + 0.30·0.5 + 0.25·(−0.2) + 0.10·1.0 = 0.07 + 0.15 − 0.05 + 0.10 = 0.27.",
+      "inputs": {
+        "news_sentiment": "0.2",
+        "price_regime": "0.5",
+        "sector_breadth_score": "-0.2",
+        "sampled_retail_stance": "1.0"
+      },
+      "expected": { "eligibility": "ok", "exact": "0.27", "display": "0.270000", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "two_missing_renormalized",
+      "why": "sector_breadth_score and sampled_retail_stance omitted entirely (not zero). news and price both equal 0.5, so the renormalized weighted mean equals 0.5 regardless of the exact renormalized weights.",
+      "inputs": { "news_sentiment": "0.5", "price_regime": "0.5" },
+      "expected": { "eligibility": "ok", "exact": "0.5", "display": "0.500000", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "single_component",
+      "why": "Only price_regime present: its renormalized weight is 1, so the composite equals the component value exactly.",
+      "inputs": { "price_regime": "0.6" },
+      "expected": { "eligibility": "ok", "exact": "0.6", "display": "0.600000", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "no_components",
+      "inputs": {},
+      "expected": {
+        "eligibility": "insufficient_data",
+        "exact": null,
+        "display": null,
+        "abstention": {
+          "reason": "no_coverage_in_window",
+          "message": "None of the four composite components (news sentiment, price regime, sector breadth, sampled retail stance) had adequate coverage this cycle. A composite with no participating component is not a smaller composite, it is no composite."
+        },
+        "warnings": []
+      }
+    }
+  ]
+}

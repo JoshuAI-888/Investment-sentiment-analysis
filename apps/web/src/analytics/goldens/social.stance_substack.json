@@ -1,0 +1,183 @@
+{
+  "$comment": "social.stance_substack@1.0.0 — source §8.2. `min_items` is locked at 5 on every axis by 01-PRODUCT-SPEC.md §6.3 / Tier B's B5 (zero thin-sample stance scores at n < 5); an earlier draft lowered it to 3 here and lane-review caught it. Same age_hours=0 / relevance=confidence=1 trick as the other two axes for hand-verifiable shrunk_social.",
+  "methodId": "social.stance_substack",
+  "methodVersion": "1.0.0",
+  "cases": [
+    {
+      "name": "insufficient_data",
+      "why": "2 relevant items, well short of the locked 5-item floor (§6.3/B5).",
+      "seriesInputs": {
+        "signed": [
+          "1",
+          "-1"
+        ],
+        "relevance": [
+          "1",
+          "1"
+        ],
+        "confidence": [
+          "1",
+          "1"
+        ],
+        "age_hours": [
+          "0",
+          "0"
+        ]
+      },
+      "expected": {
+        "eligibility": "insufficient_data",
+        "exact": null,
+        "display": null,
+        "abstention": {
+          "reason": "below_sample_threshold",
+          "message": "2 relevant item(s) were found. At least 5 are required before a stance of sampled snippets is shown at all — below that floor there is no sample to shrink, only a handful of individually-read items."
+        },
+        "warnings": []
+      }
+    },
+    {
+      "name": "low_adequacy_stored",
+      "why": "6 items (5–7): stored, flagged low adequacy, not withheld. signed sums to zero so shrunk_social is exactly 0 regardless of n_eff.",
+      "seriesInputs": {
+        "signed": [
+          "1",
+          "1",
+          "1",
+          "-1",
+          "-1",
+          "-1"
+        ],
+        "relevance": [
+          "1",
+          "1",
+          "1",
+          "1",
+          "1",
+          "1"
+        ],
+        "confidence": [
+          "1",
+          "1",
+          "1",
+          "1",
+          "1",
+          "1"
+        ],
+        "age_hours": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ]
+      },
+      "expected": {
+        "eligibility": "ok",
+        "exact": "0",
+        "display": "0.000000",
+        "abstention": null,
+        "warnings": [
+          "6 relevant item(s) were found (effective sample size 6.00), below the 8-item effective-sample floor for full display. The stance is stored and shown, flagged low adequacy rather than withheld — §8.2 stores a score at 5–7 items and only withholds one below 5."
+        ]
+      }
+    },
+    {
+      "name": "fully_displayable",
+      "why": "8 items, all weight 1: raw_social = 4/8 = 0.5, n_eff = 8, shrunk = 0.5 · 8/16 = 0.25.",
+      "seriesInputs": {
+        "signed": [
+          "1",
+          "1",
+          "1",
+          "1",
+          "1",
+          "1",
+          "-1",
+          "-1"
+        ],
+        "relevance": [
+          "1",
+          "1",
+          "1",
+          "1",
+          "1",
+          "1",
+          "1",
+          "1"
+        ],
+        "confidence": [
+          "1",
+          "1",
+          "1",
+          "1",
+          "1",
+          "1",
+          "1",
+          "1"
+        ],
+        "age_hours": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ]
+      },
+      "expected": {
+        "eligibility": "ok",
+        "exact": "0.25",
+        "display": "0.250000",
+        "abstention": null,
+        "warnings": []
+      }
+    },
+    {
+      "name": "all_zero_weights",
+      "why": "5 items, zero relevance throughout — no_coverage_in_window, not a smaller number.",
+      "seriesInputs": {
+        "signed": [
+          "1",
+          "1",
+          "1",
+          "1",
+          "1"
+        ],
+        "relevance": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "confidence": [
+          "1",
+          "1",
+          "1",
+          "1",
+          "1"
+        ],
+        "age_hours": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ]
+      },
+      "expected": {
+        "eligibility": "insufficient_data",
+        "exact": null,
+        "display": null,
+        "abstention": {
+          "reason": "no_coverage_in_window",
+          "message": "5 item(s) were found, but every one carries zero weight (zero relevance or zero classifier confidence). There is nothing to average — a mean over all-zero weights is undefined, not zero."
+        },
+        "warnings": []
+      }
+    }
+  ]
+}

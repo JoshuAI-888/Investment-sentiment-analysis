@@ -1,0 +1,18 @@
+{
+  "status": 200,
+  "headers": { "content-type": "application/json" },
+  "body": {
+    "meta": { "found": 1, "returned": 1, "limit": 100, "page": 1 },
+    "data": [
+      {
+        "uuid": "a1b2c3d4-0004",
+        "title": "A headline missing its symbol identity",
+        "url": "https://example.test/news/a1b2c3d4-0004",
+        "published_at": "2026-08-28T13:00:00.000000Z",
+        "entities": [
+          { "symbol": null, "name": "Apple Inc.", "sentiment_score": 0.1 }
+        ]
+      }
+    ]
+  }
+}

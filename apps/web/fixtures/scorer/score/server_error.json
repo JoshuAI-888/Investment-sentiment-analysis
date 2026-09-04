@@ -1,0 +1,7 @@
+{
+  "status": 503,
+  "headers": {
+    "content-type": "text/html"
+  },
+  "body": "<html><title>503 Service Unavailable</title></html>"
+}

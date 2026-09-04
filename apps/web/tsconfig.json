@@ -1,0 +1,44 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "ES2022"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "verbatimModuleSyntax": true,
+    "types": ["node"],
+    "plugins": [{ "name": "next" }],
+    "baseUrl": ".",
+    "paths": {
+      "@/contracts/*": ["./src/contracts/*"],
+      "@/adapters/*": ["./src/adapters/*"],
+      "@/analytics/*": ["./src/analytics/*"],
+      "@/calc/*": ["./src/calc/*"],
+      "@/repositories/*": ["./src/repositories/*"],
+      "@/services/*": ["./src/services/*"],
+      "@/agent/*": ["./src/agent/*"],
+      "@/ui/*": ["./src/ui/*"],
+      "@/fixtures/*": ["./fixtures/*"],
+      "@/env": ["./src/env.ts"],
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": ["node_modules", "tests/e2e", "eslint-rules/**/fixtures/**"]
+}

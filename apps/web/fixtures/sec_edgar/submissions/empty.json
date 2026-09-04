@@ -1,0 +1,22 @@
+{
+  "status": 200,
+  "headers": { "content-type": "application/json" },
+  "body": {
+    "cik": "1234567",
+    "name": "New Registrant Inc.",
+    "sic": "",
+    "sicDescription": "",
+    "tickers": [],
+    "exchanges": [],
+    "filings": {
+      "recent": {
+        "accessionNumber": [],
+        "filingDate": [],
+        "reportDate": [],
+        "form": [],
+        "primaryDocument": []
+      },
+      "files": []
+    }
+  }
+}

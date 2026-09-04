@@ -1,0 +1,20 @@
+{
+  "status": 200,
+  "headers": { "content-type": "application/json" },
+  "body": {
+    "count": 817,
+    "pages": 9,
+    "current_page": 1,
+    "results": [
+      {
+        "rank": null,
+        "ticker": "GME",
+        "name": "GameStop Corp.",
+        "mentions": "1204",
+        "upvotes": "8213",
+        "rank_24h_ago": "1",
+        "mentions_24h_ago": "1350"
+      }
+    ]
+  }
+}

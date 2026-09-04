@@ -1,0 +1,21 @@
+{
+  "status": 200,
+  "headers": { "content-type": "application/json" },
+  "body": {
+    "symbol": "AAPL",
+    "historicalStockList": [],
+    "historical": [
+      {
+        "date": "2026-08-28",
+        "open": 230.12,
+        "high": 233.4,
+        "low": 229.8,
+        "close": 232.1,
+        "adjClose": 232.1,
+        "volume": 54321000,
+        "splitFactor": 1,
+        "dividendsPaid": 0
+      }
+    ]
+  }
+}

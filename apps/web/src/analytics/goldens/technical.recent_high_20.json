@@ -1,0 +1,25 @@
+{
+  "$comment": "technical.recent_high_20@1.0.0 — source §8.7. max(close_0..close_19). 110 is the clear maximum of the window.",
+  "methodId": "technical.recent_high_20",
+  "methodVersion": "1.0.0",
+  "cases": [
+    {
+      "name": "wrong_quote_kind",
+      "identityInputs": { "quote_kind": "intraday" },
+      "seriesInputs": { "close": ["100", "105", "95", "110", "90", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100"] },
+      "expected": {
+        "eligibility": "not_applicable",
+        "exact": null,
+        "display": null,
+        "abstention": { "reason": "not_applicable", "message": "The price series is tagged 'intraday', not 'adjusted_close'." },
+        "warnings": []
+      }
+    },
+    {
+      "name": "clear_max",
+      "identityInputs": { "quote_kind": "adjusted_close" },
+      "seriesInputs": { "close": ["100", "105", "95", "110", "90", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100"] },
+      "expected": { "eligibility": "ok", "exact": "110", "display": "110.00", "abstention": null, "warnings": [] }
+    }
+  ]
+}

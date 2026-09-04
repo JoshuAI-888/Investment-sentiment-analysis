@@ -1,0 +1,12 @@
+# Append-only state directories.
+#
+# `merge=union` keeps BOTH sides' lines when two branches add to the same file,
+# which is exactly right for a file that is only ever added to. It is WRONG for
+# any file where a side rewrites an existing line — union would silently keep
+# both versions. Do not widen these patterns to the lane status files.
+docs/progress/log/**   merge=union
+
+# NOTE: a `docs/memory/**` rule was removed 2026-08-30 — no such directory exists or is
+# planned. The decision log is the single file `docs/MEMORY.md`, which is coordinator-written
+# and must NOT get merge=union: it is rewritten in place (statuses flip, questions close), and
+# union would silently keep both versions of an edited line.

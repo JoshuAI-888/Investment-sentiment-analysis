@@ -1,0 +1,5 @@
+{
+  "status": 403,
+  "headers": { "content-type": "application/json" },
+  "body": { "Error Message": "This endpoint is not available under your current subscription. Please upgrade your plan." }
+}

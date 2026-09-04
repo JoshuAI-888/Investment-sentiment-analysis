@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "headers": { "content-type": "application/json" },
+  "body": {
+    "count": 1,
+    "observations": [
+      { "date": null, "value": "2.9" }
+    ]
+  }
+}

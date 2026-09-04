@@ -1,0 +1,10 @@
+{
+  "status": 429,
+  "headers": { "content-type": "application/json" },
+  "body": {
+    "title": "Too Many Requests",
+    "detail": "Too Many Requests",
+    "type": "about:blank",
+    "status": 429
+  }
+}

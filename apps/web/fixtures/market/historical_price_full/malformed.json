@@ -1,0 +1,5 @@
+{
+  "status": 200,
+  "headers": { "content-type": "application/json" },
+  "body": { "Error Message": "Invalid API KEY. Please retry or visit our documentation." }
+}

@@ -1,0 +1,10 @@
+{
+  "status": 503,
+  "headers": { "content-type": "application/json" },
+  "body": {
+    "title": "Service Unavailable",
+    "detail": "The service is temporarily unavailable.",
+    "type": "about:blank",
+    "status": 503
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$comment": "attention.engagement_per_mention@1.0.0 — source §8.1: engagement / max(mentions_current, 1). Hand-computed; every case divides evenly.",
+  "methodId": "attention.engagement_per_mention",
+  "methodVersion": "1.0.0",
+  "cases": [
+    {
+      "name": "normal",
+      "inputs": { "engagement": "500", "mentions_now": "100" },
+      "expected": { "eligibility": "ok", "exact": "5", "display": "5.000000", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "fractional",
+      "inputs": { "engagement": "10", "mentions_now": "4" },
+      "expected": { "eligibility": "ok", "exact": "2.5", "display": "2.500000", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "zero_mentions_guarded",
+      "why": "Divide-by-zero guard: mentions_now = 0 is floored to 1, not rejected.",
+      "inputs": { "engagement": "42", "mentions_now": "0" },
+      "expected": { "eligibility": "ok", "exact": "42", "display": "42.000000", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "zero_engagement",
+      "inputs": { "engagement": "0", "mentions_now": "50" },
+      "expected": { "eligibility": "ok", "exact": "0", "display": "0.000000", "abstention": null, "warnings": [] }
+    }
+  ]
+}

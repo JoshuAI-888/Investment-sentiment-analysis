@@ -1,0 +1,5 @@
+{
+  "status": 200,
+  "headers": { "content-type": "application/rss+xml; charset=utf-8" },
+  "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<rss version=\"2.0\">\n<channel>\n<title>Example Sector Notes</title>\n<link>https://example.substack.com</link>\n<description>No items yet — a new or dormant publication.</description>\n</channel>\n</rss>\n"
+}

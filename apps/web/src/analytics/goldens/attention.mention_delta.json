@@ -1,0 +1,27 @@
+{
+  "$comment": "attention.mention_delta@1.0.0 — source §8.1: mention_delta = mentions_current - mentions_prior. Hand-computed; every value here is exact by construction, no ln/sqrt involved.",
+  "methodId": "attention.mention_delta",
+  "methodVersion": "1.0.0",
+  "cases": [
+    {
+      "name": "increase",
+      "inputs": { "mentions_now": "150", "mentions_prior": "90" },
+      "expected": { "eligibility": "ok", "exact": "60", "display": "60", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "decrease",
+      "inputs": { "mentions_now": "40", "mentions_prior": "90" },
+      "expected": { "eligibility": "ok", "exact": "-50", "display": "-50", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "no_change",
+      "inputs": { "mentions_now": "90", "mentions_prior": "90" },
+      "expected": { "eligibility": "ok", "exact": "0", "display": "0", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "from_zero",
+      "inputs": { "mentions_now": "12", "mentions_prior": "0" },
+      "expected": { "eligibility": "ok", "exact": "12", "display": "12", "abstention": null, "warnings": [] }
+    }
+  ]
+}

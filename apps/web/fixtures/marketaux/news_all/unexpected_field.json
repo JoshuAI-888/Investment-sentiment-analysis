@@ -1,0 +1,25 @@
+{
+  "status": 200,
+  "headers": { "content-type": "application/json" },
+  "body": {
+    "meta": { "found": 1, "returned": 1, "limit": 100, "page": 1, "request_id": "req_abc123" },
+    "data": [
+      {
+        "uuid": "a1b2c3d4-0003",
+        "title": "A headline",
+        "url": "https://example.test/news/a1b2c3d4-0003",
+        "published_at": "2026-08-28T13:00:00.000000Z",
+        "similar": [],
+        "entities": [
+          {
+            "symbol": "AAPL",
+            "name": "Apple Inc.",
+            "sentiment_score": 0.1,
+            "match_score": 12.4,
+            "industry": "Consumer Electronics"
+          }
+        ]
+      }
+    ]
+  }
+}

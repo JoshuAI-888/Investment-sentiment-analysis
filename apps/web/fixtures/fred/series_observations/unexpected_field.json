@@ -1,0 +1,19 @@
+{
+  "status": 200,
+  "headers": { "content-type": "application/json" },
+  "body": {
+    "realtime_start": "2026-08-30",
+    "realtime_end": "2026-08-30",
+    "vintage_dates": ["2026-08-30"],
+    "count": 1,
+    "observations": [
+      {
+        "realtime_start": "2026-08-30",
+        "realtime_end": "2026-08-30",
+        "date": "2026-08-01",
+        "value": "2.9",
+        "revised": false
+      }
+    ]
+  }
+}

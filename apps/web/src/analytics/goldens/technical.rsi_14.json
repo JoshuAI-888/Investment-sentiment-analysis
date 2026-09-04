@@ -1,0 +1,66 @@
+{
+  "$comment": "technical.rsi_14@1.0.0 — source §8.7, simple-mean RSI(14) (see the method's own doc comment for why simple mean rather than Wilder smoothing). Every case hand-computed.",
+  "methodId": "technical.rsi_14",
+  "methodVersion": "1.0.0",
+  "cases": [
+    {
+      "name": "wrong_quote_kind",
+      "identityInputs": { "quote_kind": "intraday" },
+      "seriesInputs": { "close": ["100", "101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111", "112", "113", "114"] },
+      "expected": {
+        "eligibility": "not_applicable",
+        "exact": null,
+        "display": null,
+        "abstention": {
+          "reason": "not_applicable",
+          "message": "The price series is tagged 'intraday', not 'adjusted_close'."
+        },
+        "warnings": []
+      }
+    },
+    {
+      "name": "all_up_no_losses",
+      "why": "14 consecutive +1 sessions, no losing session: avg_loss = 0, RSI = 100 by the divide-by-zero guard — a clamp, marked with a warning (lane-review, round 3).",
+      "identityInputs": { "quote_kind": "adjusted_close" },
+      "seriesInputs": { "close": ["100", "101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111", "112", "113", "114"] },
+      "expected": {
+        "eligibility": "ok",
+        "exact": "100",
+        "display": "100.00",
+        "abstention": null,
+        "warnings": [
+          "No losing session in the window, so avg_loss is zero. RSI(14) is reported as 100 — the formula's ceiling — rather than dividing by zero."
+        ]
+      }
+    },
+    {
+      "name": "all_down_no_gains",
+      "why": "14 consecutive −1 sessions: avg_gain = 0, avg_loss = 1, RS = 0, RSI = 100 − 100/(1+0) = 0.",
+      "identityInputs": { "quote_kind": "adjusted_close" },
+      "seriesInputs": { "close": ["114", "113", "112", "111", "110", "109", "108", "107", "106", "105", "104", "103", "102", "101", "100"] },
+      "expected": { "eligibility": "ok", "exact": "0", "display": "0.00", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "flat_neutral",
+      "why": "15 identical closes: avg_gain = avg_loss = 0, reported as the conventional neutral reading, 50, not an abstention — a clamp, marked with a warning (lane-review, round 3).",
+      "identityInputs": { "quote_kind": "adjusted_close" },
+      "seriesInputs": { "close": ["100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100", "100"] },
+      "expected": {
+        "eligibility": "ok",
+        "exact": "50",
+        "display": "50.00",
+        "abstention": null,
+        "warnings": [
+          "Every close in the window is identical — no gains and no losses — so RSI(14) is reported as the conventional neutral reading, 50, rather than computed."
+        ]
+      }
+    },
+    {
+      "name": "mixed_rs_three",
+      "why": "Two +21 sessions then one −14 session, 11 flat sessions: sum_gains = 42, sum_losses = 14 over 14 changes — avg_gain = 3 and avg_loss = 1 both land on whole numbers (not repeating decimals, unlike a naive +6/−2 choice), so RS = 3 exactly and RSI = 100 − 100/(1+3) = 75 exactly.",
+      "identityInputs": { "quote_kind": "adjusted_close" },
+      "seriesInputs": { "close": ["100", "121", "142", "128", "128", "128", "128", "128", "128", "128", "128", "128", "128", "128", "128"] },
+      "expected": { "eligibility": "ok", "exact": "75", "display": "75.00", "abstention": null, "warnings": [] }
+    }
+  ]
+}

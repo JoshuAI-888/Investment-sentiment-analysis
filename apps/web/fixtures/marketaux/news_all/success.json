@@ -1,0 +1,45 @@
+{
+  "status": 200,
+  "headers": { "content-type": "application/json" },
+  "body": {
+    "meta": { "found": 2, "returned": 2, "limit": 100, "page": 1 },
+    "data": [
+      {
+        "uuid": "a1b2c3d4-0001",
+        "title": "Company beats quarterly estimates on strong services growth",
+        "description": "Placeholder description.",
+        "keywords": "earnings, services",
+        "snippet": "The company reported...",
+        "url": "https://example.test/news/a1b2c3d4-0001",
+        "image_url": "https://example.test/img/a1b2c3d4-0001.jpg",
+        "language": "en",
+        "published_at": "2026-08-28T13:00:00.000000Z",
+        "source": "Example Wire",
+        "relevance_score": 0.91,
+        "entities": [
+          {
+            "symbol": "AAPL",
+            "name": "Apple Inc.",
+            "exchange": "NASDAQ",
+            "exchange_long": "NASDAQ Stock Exchange",
+            "sentiment_score": 0.42
+          }
+        ]
+      },
+      {
+        "uuid": "a1b2c3d4-0002",
+        "title": "Sector-wide margin pressure noted across peers",
+        "url": "https://example.test/news/a1b2c3d4-0002",
+        "published_at": "2026-08-28T09:15:00.000000Z",
+        "source": "Example Wire",
+        "entities": [
+          {
+            "symbol": "AAPL",
+            "name": "Apple Inc.",
+            "sentiment_score": null
+          }
+        ]
+      }
+    ]
+  }
+}

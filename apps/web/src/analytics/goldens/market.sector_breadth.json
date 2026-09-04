@@ -1,0 +1,36 @@
+{
+  "$comment": "market.sector_breadth@1.0.0 — source §8.5. sector_breadth_score = 2·(positive/withData) − 1. Hand-computed.",
+  "methodId": "market.sector_breadth",
+  "methodVersion": "1.0.0",
+  "cases": [
+    {
+      "name": "normal",
+      "inputs": { "positive_sector_etfs": "7", "sector_etfs_with_data": "10" },
+      "expected": { "eligibility": "ok", "exact": "0.4", "display": "0.400000", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "all_positive",
+      "inputs": { "positive_sector_etfs": "5", "sector_etfs_with_data": "5" },
+      "expected": { "eligibility": "ok", "exact": "1", "display": "1.000000", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "all_negative",
+      "inputs": { "positive_sector_etfs": "0", "sector_etfs_with_data": "5" },
+      "expected": { "eligibility": "ok", "exact": "-1", "display": "-1.000000", "abstention": null, "warnings": [] }
+    },
+    {
+      "name": "no_sector_data",
+      "inputs": { "positive_sector_etfs": "0", "sector_etfs_with_data": "0" },
+      "expected": {
+        "eligibility": "insufficient_data",
+        "exact": null,
+        "display": null,
+        "abstention": {
+          "reason": "no_coverage_in_window",
+          "message": "No sector ETF reported data this cycle, so there is nothing to compute breadth from."
+        },
+        "warnings": []
+      }
+    }
+  ]
+}

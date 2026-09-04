@@ -1,0 +1,5 @@
+{
+  "status": 403,
+  "headers": { "content-type": "text/html" },
+  "body": "<html><body>Your Request Originates from an Undeclared Automated Tool</body></html>"
+}

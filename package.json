@@ -1,0 +1,29 @@
+{
+  "name": "barebone-social-sentiment",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint": "pnpm --filter web lint",
+    "typecheck": "pnpm --filter web typecheck",
+    "test": "pnpm --filter web test",
+    "test:unit": "pnpm --filter web test:unit",
+    "test:contract": "pnpm --filter web test:contract",
+    "test:integration": "pnpm --filter web test:integration",
+    "test:e2e": "pnpm --filter web test:e2e",
+    "test:eval": "pnpm --filter web test:eval",
+    "build": "pnpm --filter web build",
+    "check:calc-coverage": "pnpm --filter web check:calc-coverage",
+    "check:bundle": "pnpm --filter web check:bundle",
+    "check:copy": "pnpm --filter web check:copy"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp"
+    ]
+  }
+}

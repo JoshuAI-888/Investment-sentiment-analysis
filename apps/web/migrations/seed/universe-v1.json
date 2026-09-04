@@ -1,0 +1,406 @@
+{
+  "seededAt": "2026-08-30",
+  "basis": "The 100 tickers ranked most-discussed by ApeWisdom on the seed date, most-discussed individual companies only \u2014 broad-market and sector ETFs (e.g. SPY, VOO, QQQ, TLT) excluded and backfilled with the next-ranked individual equity. The universe is selected by social attention and the attention metric is therefore not independent of the selection; level is not interpretable, rank change is. (D-27, D-30)",
+  "symbols": [
+    {
+      "symbol": "NVDA",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "AMD",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "DTE",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "MU",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "EU",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "SNDK",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "MRVL",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "YOU",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "IREN",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "MSFT",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "ES",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "NBIS",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "META",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "RR",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "AVGO",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "AM",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "ASTS",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "NOW",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "SPCX",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "LINK",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "RDDT",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "ALL",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "NKE",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "SIM",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "CD",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "SMA",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "HPE",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "TTWO",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "CC",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "DELL",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "WTI",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "OI",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "BE",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "CCS",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "OPEN",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "CAN",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "FA",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "API",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "MCD",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "IP",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "SO",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "CRM",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "MRNA",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "IBKR",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "ATR",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "SNOW",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "PLTR",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "FCF",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "VTOL",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "AAPL",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "GOOG",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "TSLA",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "INTC",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "NFLX",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "CBOE",
+      "exchange": "CBOE"
+    },
+    {
+      "symbol": "CME",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "GL",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "HPQ",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "WDC",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "CVX",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "VC",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "SMCI",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "ON",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "LITE",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "LULU",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "HR",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "RS",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "OR",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "DEI",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "AGI",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "JD",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "HP",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "AMC",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "UP",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "ARR",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "APLD",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "INTR",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "DC",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "LOT",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "CRWV",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "FIG",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "AMZN",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "V",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "WMT",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "MA",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "PG",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "T",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "TSM",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "HD",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "KO",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "PEP",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "CSCO",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "TM",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "BA",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "ADBE",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "ORCL",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "SAP",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "COST",
+      "exchange": "NASDAQ"
+    },
+    {
+      "symbol": "ABT",
+      "exchange": "NYSE"
+    },
+    {
+      "symbol": "MDT",
+      "exchange": "NYSE"
+    }
+  ]
+}

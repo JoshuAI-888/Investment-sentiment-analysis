@@ -1,0 +1,24 @@
+-- 0013 — an index for evidence_item's real per-observation identity (F09 dependency;
+-- lane-review finding 1 on the market/evidence/sentiment repository slice).
+--
+-- `repositories/evidence.ts`'s `insertEvidenceItem` checks for a duplicate observation by
+-- `(security_id, provider, raw_hash)` — not `raw_hash` alone, because a wire story covering two
+-- tickers produces the identical raw payload, and therefore the identical `raw_hash`, once per
+-- ticker it is collected for. Without an index on that triple, every insert's duplicate check
+-- was a full sequential scan of `evidence_item`, which only gets worse as the permanent corpus
+-- (`02-ARCHITECTURE-CONTRACTS.md` §5.1) grows without bound.
+--
+-- **Deliberately a plain index, not a `unique` constraint.** `repositories/evidence.ts`'s
+-- `insertEvidenceItem` already decides, at the application level, that two rows sharing
+-- `(provider, raw_hash, security_id)` — including two macro items where `security_id is null` on
+-- both — are the same observation; see that file's module docstring for why (`raw_hash` is built
+-- to hash the actual payload, so two genuinely different macro facts get different hashes as a
+-- matter of course). What is genuinely still open, and is the actual reason this is an index and
+-- not a `unique` constraint, is whether that identity should be *enforced by the database* — a
+-- `unique` constraint would turn a same-payload race between two ordinary sequential retries
+-- (already handled) into a hard guarantee against a true concurrent double-insert too, which is
+-- a real, separate improvement this repository-layer bug-fix pass should not make unilaterally.
+-- Only a true concurrent race is left unguarded today, exactly as documented in `evidence.ts`'s
+-- module docstring.
+create index evidence_item_identity_idx
+  on evidence_item (provider, raw_hash, security_id);

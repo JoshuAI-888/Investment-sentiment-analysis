@@ -1,0 +1,25 @@
+{
+  "$comment": "technical.moving_average_20@1.0.0 — source §8.7. mean(close_0..close_19). 20 consecutive integers 91..110: mean = (91+110)/2 = 100.5.",
+  "methodId": "technical.moving_average_20",
+  "methodVersion": "1.0.0",
+  "cases": [
+    {
+      "name": "wrong_quote_kind",
+      "identityInputs": { "quote_kind": "intraday" },
+      "seriesInputs": { "close": ["91", "92", "93", "94", "95", "96", "97", "98", "99", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109", "110"] },
+      "expected": {
+        "eligibility": "not_applicable",
+        "exact": null,
+        "display": null,
+        "abstention": { "reason": "not_applicable", "message": "The price series is tagged 'intraday', not 'adjusted_close'." },
+        "warnings": []
+      }
+    },
+    {
+      "name": "consecutive_integers",
+      "identityInputs": { "quote_kind": "adjusted_close" },
+      "seriesInputs": { "close": ["91", "92", "93", "94", "95", "96", "97", "98", "99", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109", "110"] },
+      "expected": { "eligibility": "ok", "exact": "100.5", "display": "100.50", "abstention": null, "warnings": [] }
+    }
+  ]
+}

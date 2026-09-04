@@ -1,0 +1,39 @@
+{
+  "status": 200,
+  "headers": { "content-type": "application/json" },
+  "body": {
+    "symbol": "AAPL",
+    "historical": [
+      {
+        "date": "2026-08-28",
+        "open": 230.12,
+        "high": 233.4,
+        "low": 229.8,
+        "close": 232.1,
+        "adjClose": 232.1,
+        "volume": 54321000,
+        "unadjustedVolume": 54321000,
+        "change": 1.98,
+        "changePercent": 0.86,
+        "vwap": 231.5,
+        "label": "August 28, 26",
+        "changeOverTime": 0.0086
+      },
+      {
+        "date": "2026-08-27",
+        "open": 228.5,
+        "high": 231.0,
+        "low": 227.9,
+        "close": 230.12,
+        "adjClose": 230.12,
+        "volume": 48120000,
+        "unadjustedVolume": 48120000,
+        "change": 1.62,
+        "changePercent": 0.71,
+        "vwap": 229.6,
+        "label": "August 27, 26",
+        "changeOverTime": 0.0071
+      }
+    ]
+  }
+}
