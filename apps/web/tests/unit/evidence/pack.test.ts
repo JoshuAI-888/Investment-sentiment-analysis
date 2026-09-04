@@ -79,6 +79,28 @@ function markerModelClient(): ModelClient {
 }
 
 describe('buildEvidencePack', () => {
+  it('handles an empty item set — the emptiest input — without crashing, and abstains honestly', async () => {
+    const pack = await buildEvidencePack(
+      {
+        securityId: 'sec-1',
+        asOf: new Date('2026-09-02T00:00:00.000Z'),
+        items: [],
+        truncatedByScanWindow: false,
+        windowFrom: null,
+        windowTo: null,
+        reddit: { subredditsPolled: [], treeComplete: null },
+        x: { watchlistVersion: null, triggerEvent: null },
+      },
+      { client: markerModelClient(), security: AAPL },
+    );
+
+    expect(pack.items).toEqual([]);
+    expect(pack.excluded).toEqual([]);
+    expect(pack.retrievedCount).toBe(0);
+    expect(pack.usedCount).toBe(0);
+    expect(pack.disclosures.every((d) => d.retrievedCount === 0 && d.usedCount === 0)).toBe(true);
+  });
+
   it('includes a cashtag-matched, LLM-relevant item and records its methods', async () => {
     const item = evidenceRow({ id: 'i1', title: 'Apple note', snippet: 'Bullish on $AAPL' });
     const pack = await buildEvidencePack(
