@@ -3,7 +3,7 @@
 **Writer:** SURFACE builder only  
 **Branch:** `feat/rni-surface-demo`  
 **Depends on:** merged RNI contract-freeze SHA; fixture-backed `RniReadService`  
-**Status:** `IN_PROGRESS` — S01–S08 ready for coordinator review; S09–S10 not started
+**Status:** `BLOCKED` — S01–S08 ready for merge; S09 awaits the frozen route/model setting boundary; S10 not started
 
 ## Owned paths
 
@@ -20,8 +20,8 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | S05 | Raw data/lineage explorer                                        | `READY_FOR_MERGE` | Coordinator accepted `d4c1a09`             |
 | S06 | Per-platform freshness, run progress and partial/failure states  | `READY_FOR_MERGE` | Coordinator accepted `ffd5119`             |
 | S07 | Manual ticker/full refresh controls and double-submit prevention | `READY_FOR_MERGE` | Coordinator accepted through `babd940` |
-| S08 | S&P 500 search, NVDA default and universe Settings components    | `READY_FOR_REVIEW` | SR-09–SR-13 correction verified |
-| S09 | Route/model display and Direct/Gateway future-run setting        | `NOT_STARTED`     | Setting/history immutability test          |
+| S08 | S&P 500 search, NVDA default and universe Settings components    | `READY_FOR_MERGE` | Coordinator accepted                         |
+| S09 | Route/model display and Direct/Gateway future-run setting        | `BLOCKED`         | CR-SURFACE-06: no frozen setting boundary   |
 | S10 | Accessibility, responsive and full SURFACE handoff               | `NOT_STARTED`     | Required audits and lane report            |
 
 ## Required invariants
@@ -46,6 +46,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | CR-SURFACE-03 | `ACCEPTED` | D-RNI-14 / `ce80424` adds frozen `getSecurityDetail(runId, securityId)` with canonical identity, fixed Reddit/X detail records, exactly four cited platform-bound dimensions, and independent state/freshness/coverage/confidence.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | S03 consumes only the additive read shape; Radar remains unchanged.               |
 | CR-SURFACE-04 | `ACCEPTED` | D-RNI-17 / `fec8c46` adds frozen `RniCommandService.requestManualRefresh` with a required idempotency key, ticker/full scope, accepted/duplicate disposition, durable run ID, and resolved scope preview. Exact same-key replay returns the original run/preview; crossed-key scope fails closed. | S07 uses the fixture command boundary; I09 owns live auth, CSRF, audit and queue composition. |
 | CR-SURFACE-05 | `ACCEPTED` | D-RNI-18 corrected at `098f010` / integration `573d7be` adds frozen read-only active-member search and immutable staged preview. | S08 consumes only `RniUniverseReadService`; no FMP or activation access. |
+| CR-SURFACE-06 | `OPEN` | **Current behaviour:** frozen contracts expose `RniAiRoute` only as the resolved route on an immutable run and expose no route/model setting read or audited future-run update command. **Requested change:** add a frozen setting read model and an auditable command boundary that changes the selected Direct/Gateway route (and its resolved model) for future RNI runs only. **Justification:** S09 must display the current choice and make the contract-required Direct/Gateway future-run setting without inventing a fixture-only mutation or bypassing ENGINE ownership. **Affected lanes:** SURFACE, ENGINE, INTEGRATION. **Compatibility:** additive; historical runs and their persisted `aiRoute` remain immutable. **Recommended acceptance test:** set a future route through the command, read the changed current setting, then prove existing runs retain their original resolved route/model while a newly created run receives the selected route. | S09 cannot begin until the coordinator freezes the read/write setting boundary and assigns live composition ownership. |
 
 ## Test evidence
 
@@ -94,6 +95,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | 2026-09-05 | `RESOLVED` | S07 needed a typed idempotent refresh command, which frozen reads could not express.                            | INTEGRATION / SURFACE          | D-RNI-17 (`fec8c46`) froze the additive command boundary; S07 fixture tests cover exact replay and crossed-key rejection. | Coordinator review of S07 |
 | 2026-09-05 | `RESOLVED` | Static citation anchors did not provide citation → source → evidence provenance.                               | SURFACE                        | S04 renders platform-labelled evidence drawers from the frozen citation and evidence reads.        | Coordinator review of S04                |
 | 2026-09-05 | `RESOLVED` | S03 needed four per-platform dimension assignments, which the previous frozen `RniReadService` could not read. | DATA / ENGINE / INTEGRATION    | D-RNI-14 added `getSecurityDetail`; S03 uses it without direct repository access.                  | Coordinator review of S03                |
+| 2026-09-05 | `BLOCKED` | S09 needs a frozen AI route/model setting read and future-run mutation boundary. | ENGINE / INTEGRATION / SURFACE | Inspected frozen contracts: `RniAiRoute` is run metadata only; no setting service or command exists. | Coordinator disposition of CR-SURFACE-06 |
 
 ## Commits
 
@@ -173,19 +175,27 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 - **Result:** server composition uses only frozen `RniUniverseReadService`; the UI is presentation-only. Active NVDA default, parsed bounded case-insensitive search, source/retrieval, staged version impact identities, and explicit empty removals are displayed.
 - **Verification:** coordinator independently passed typecheck, scoped lint, contracts 15/15, build, diff check, and focused Chromium 3/3 including Tab → type → submit, live search status, MSFT, PLTR, 375px fit, and legacy active presentation.
 - **Risk:** fixture composition only; I08 owns live repository/FMP composition and activation remains outside SURFACE.
-- **Handoff:** S08 ready for coordinator review; S09 remains `NOT_STARTED`.
+- **Handoff:** coordinator accepted S08; it is ready for merge. S09 is blocked on CR-SURFACE-06.
+
+## S09 delivery record
+
+- **Files changed:** this lane tracker only.
+- **Result:** implementation stopped before any SURFACE UI or fixture mutation work. The frozen contract records `aiRoute` on historical runs but exposes no current route/model setting read or audited future-run update command.
+- **Verification:** contract-boundary inspection of `apps/web/src/rni/contracts/index.ts`, reference fixtures, and D-RNI-05 in `docs/MEMORY.md`; no code or browser tests apply while the shared boundary is absent.
+- **Risk:** a client-side or fixture-local toggle would misrepresent a durable future-run setting and violate ENGINE/INTEGRATION ownership.
+- **Handoff:** CR-SURFACE-06 is ready for coordinator disposition. Do not start S10 while S09 remains blocked.
 
 ## Handoff
 
 ```text
 RNI LANE     SURFACE
 BRANCH       feat/rni-surface-demo
-BASE SHA     ee47959
-STATUS       S01–S07 ready for merge; S08 ready for review; S09–S10 not started
-TASKS        S01–S07 ready for merge; S08 ready for review; S09–S10 not started
+BASE SHA     82ed8de
+STATUS       S01–S08 ready for merge; S09 blocked on CR-SURFACE-06; S10 not started
+TASKS        S01–S08 ready for merge; S09 blocked on CR-SURFACE-06; S10 not started
 TESTS        typecheck: pass; focused lint: pass; RNI contract: 15 pass; production build: pass; Chromium: S07 4 pass twice; S08 3 pass
-CONTRACT     CR-SURFACE-01–05 accepted; CR-SURFACE-05 resolved by D-RNI-18
-RISKS        Fixture-only composition; I08 owns live universe repository/FMP composition and activation; I09 owns live refresh command composition
+CONTRACT     CR-SURFACE-01–05 accepted; CR-SURFACE-05 resolved by D-RNI-18; CR-SURFACE-06 open
+RISKS        Fixture-only composition; I08 owns live universe repository/FMP composition and activation; I09 owns live refresh command composition; S09 requires frozen setting boundary
 FILES        apps/web/fixtures/rni-ui/read-service.ts; apps/web/app/(rni)/rni/settings/universe/page.tsx; apps/web/src/rni/ui/UniverseSettings.tsx; apps/web/tests/e2e/rni/universe-settings.spec.ts; apps/web/app/(rni)/rni/refresh/page.tsx; apps/web/src/rni/ui/ManualRefreshControls.tsx; docs/rni/progress/SURFACE.md
 COMMITS      S07 401d2f7, 63d42d8, fb58989, f7e481e; S08 e12472d, CURRENT
 DEMO PROOF   `/rni/settings/universe` shows NVDA default, keyboard active-member search, source/retrieval, and immutable staged PLTR impact without activation access
