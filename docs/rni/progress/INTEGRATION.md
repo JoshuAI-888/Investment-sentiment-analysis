@@ -221,7 +221,7 @@
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
-| ENGINE | `E10_CHANGES_REQUESTED_R2` | yes at `6b4902c`; corrected E10 handoff `e41106a` | focused E10 9/1 live skip, E08 46/46, full eval 16/1 live skip, typecheck/full lint/diff pass; independent review returned ER-23 | yes | E01–E09 accepted; ER-20–22 closed; tighten classifier insufficiency and exact verifier claim-set semantics before E10 acceptance |
+| ENGINE | `ACCEPTED` | yes at `e52052f`; final handoff `62eab1d` | coordinator focused E10 plus E08 57/1 live skip, full eval 18/1 live skip, typecheck/lint/diff pass; independent review PASS | yes | E01–E10 merged sequentially at `62eab1d`; ER-20–23 closed |
 | SURFACE | `ACCEPTED_WAITING_ORDER` | yes at `87742d0`; code `c68980b`, tracker head `5d9cd3d` | coordinator typecheck/lint, RNI contract 17/17, production build and complete Chromium 22/22; independent review PASS | yes | S01–S10 accepted; merge waits behind ENGINE per DATA→ENGINE→SURFACE order |
 
 ## Live/deployment gates
@@ -290,7 +290,7 @@
 | ER-20 | P1 | `RESOLVED` | E10 verifier/challenger live cases used fixture model/prompt descriptors, injected into a trusted methodology field and submitted empty claim evidence | `e41106a` uses active Sol verification/challenger v2 descriptors plus valid persisted Reddit/X evidence and production synthesis preparation with complete run/security/cutoff lineage |
 | ER-21 | P1 | `RESOLVED` | E10 live validation read only the first output text, ignored additional/unknown output items and accepted uncited or wrong-community Reddit candidates | `e41106a` enforces one governed response envelope and production discovery citation/source/community binding, with extra-text, unknown-item, uncited and wrong-community negatives |
 | ER-22 | P2 | `RESOLVED` | The D-RNI-21 Direct-default/low-reasoning eval compared test-local literals and an explicitly supplied route, so it proved no production behavior | `e41106a` labels the check as an evaluator expectation snapshot and explicitly defers production route behavior to I10 |
-| ER-23 | P1 | `OPEN` | E10 semantic resistance can accept top-level insufficient classification with bullish dimensions, and verifier validation can accept duplicate assessments while omitting an expected claim | Match the complete production insufficiency shape for all dimensions and require the returned unique claim-ID set to equal the expected set; add deterministic bullish-dimension and duplicate/missing-assessment negatives |
+| ER-23 | P1 | `RESOLVED` | E10 semantic resistance accepted top-level insufficient classification with bullish dimensions, and verifier validation accepted duplicate assessments while omitting an expected claim | `62eab1d` matches the complete production insufficiency shape, requires exact unique verifier claim-ID equality and adds deterministic bullish-dimension and duplicate/omission negatives |
 | ICR-01 | P1 | `RESOLVED` | D-RNI-18 cannot represent the preserved 100-member legacy active parent of the first staged FMP candidate, while undersized FMP versions pass | Active is an explicit legacy/FMP union; FMP active/staged variants require 501–600 and a 100→501 fixture passes |
 | ICR-02 | P1 | `RESOLVED` | Balanced arithmetic permits complete impact arrays that remove more members than active or add more members than staged | Frozen schema rejects both bounds; I08 retains repository-backed membership-set acceptance |
 | SR-04 | P2 | `RESOLVED` | S02's first commit left its task/evidence/handoff record stale and did not identify the actual browser gate | `c4899b8` amends the task commit with exact type, lint, contract, build and Chromium evidence plus complete files/risks/handoff |
@@ -371,6 +371,7 @@
 | `CURRENT` | Accept final ENGINE E09 routing correction | `9a8a8f8` descends `25023b9`; coordinator typecheck/scoped lint, affected 97/97, diff/ownership/frozen-contract checks and independent adversarial review PASS; ER-14–19 closed |
 | `CURRENT` | Review ENGINE E10 release/live-resistance eval | `e5293f2` descends `bb151ff`; unit 1,345, contract 107/22 skipped, available integration 44/390 skipped, eval 12/1 live skip, typecheck/full lint/diff/CI-scope pass; independent adversarial review CHANGES REQUESTED on ER-20–22 |
 | `CURRENT` | Re-review corrected ENGINE E10 live-resistance semantics | `e41106a` descends `6b4902c`; focused E10 9/1 live skip, E08 46/46, full eval 16/1 live skip, typecheck/full lint/diff/ownership pass; ER-20–22 closed, independent adversarial review CHANGES REQUESTED on ER-23 |
+| `CURRENT` | Accept and merge final ENGINE E10 | `62eab1d` descends `e52052f`; coordinator focused E10 plus E08 57/1 live skip, full eval 18/1 live skip, typecheck/lint/diff pass; independent adversarial review PASS; ER-20–23 closed |
 
 ## Coordinator notes
 
