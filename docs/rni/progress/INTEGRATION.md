@@ -222,7 +222,7 @@
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
 | ENGINE | `E09_CHANGES_REQUESTED` | yes at `bdb23ce`; corrected E09 handoff `c4668b3` | coordinator typecheck/lint, focused router 17/17 and E08 regression 46/46; independent correction review returned ER-15–18 | yes | E01–E08 accepted; ER-14 closed, but E09 must preserve exact historical prompt bytes, make delimiters unspoofable, unify classifier/dispatched hashes and retain failed-call telemetry; E10 not started |
-| SURFACE | `S09_ACCEPTED` | yes at `bdb23ce`; rebase current integration before S10 | coordinator typecheck/lint, RNI contract 17/17, production build and Chromium 3/3; independent review PASS | yes | S01–S09 accepted; S09 is future-only and D-RNI-21-compatible; S10 not started |
+| SURFACE | `ACCEPTED_WAITING_ORDER` | yes at `87742d0`; final lane `c68980b` | coordinator typecheck/lint, RNI contract 17/17, production build and complete Chromium 22/22; independent review PASS | yes | S01–S10 accepted; merge waits behind ENGINE per DATA→ENGINE→SURFACE order |
 
 ## Live/deployment gates
 
@@ -359,6 +359,7 @@
 | `CURRENT` | Lock owner-approved RNI model and AI-spend baseline as D-RNI-21 | Direct default; Terra/low discovery/relationship/classification; Sol/low verifier/challenger; Gateway parity without silent fallback; USD 2/25/50 hard and USD 300 warning/500 monthly stop; documentation validation |
 | `CURRENT` | Re-review corrected ENGINE E09 routing | `c4668b3` descends `bdb23ce`; coordinator focused router 17/17, E08 regression 46/46, typecheck/scoped lint/diff pass; ER-14 closed, independent adversarial review CHANGES REQUESTED on ER-15–18 |
 | `CURRENT` | Accept SURFACE S09 future-run AI route settings | `8d1d943` descends `bdb23ce`; coordinator typecheck/lint, RNI contract 17/17, production build and Chromium 3/3; independent adversarial review PASS; S10 remains |
+| `CURRENT` | Accept final SURFACE S10 accessibility/responsive audit | `c68980b` descends `87742d0`; ownership/diff, typecheck, focused lint, RNI contract 17/17, production build and Chromium 22/22 pass; independent adversarial review PASS |
 
 ## Coordinator notes
 
@@ -435,6 +436,11 @@
   while preserving historical run lineage. Coordinator and independent review found no actionable
   issue; Chromium passes 3/3. The lane must remove its uncommitted `pnpm-workspace.yaml` mutation,
   rebase current integration and complete S10 before the SURFACE merge gate.
+- SURFACE S10 and the full rebased lane are accepted at `c68980b`. The worktree is clean; all seven
+  routes pass a narrow-screen heading/overflow/scoped-axe sweep, existing interaction coverage
+  remains green in the complete 22-test Chromium suite, and the guarded unavailable-Gateway state
+  is directly covered. Shared navigation/layout accessibility remains I08/G6 work. The branch is
+  ready but must wait for ENGINE to merge first.
 
 ## I02F handoff
 
