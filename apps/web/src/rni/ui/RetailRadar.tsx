@@ -1,4 +1,6 @@
 import type { RniRadarPage, RniRadarPlatformCell } from '@/rni/contracts';
+import { EvidenceCitation } from './EvidenceCitation';
+import type { CitationEvidenceById } from './evidence';
 
 function label(value: string) {
   return value.replaceAll('_', ' ').replace(/\b\w/gu, (c) => c.toUpperCase());
@@ -10,7 +12,12 @@ function time(value: string | null) {
 function PlatformCell({
   cell,
   heading,
-}: Readonly<{ cell: RniRadarPlatformCell; heading: string }>) {
+  evidenceByCitationId,
+}: Readonly<{
+  cell: RniRadarPlatformCell;
+  heading: string;
+  evidenceByCitationId: CitationEvidenceById;
+}>) {
   return (
     <section data-rni-platform={cell.platform} className="space-y-1">
       <strong>{heading}</strong>
@@ -22,21 +29,19 @@ function PlatformCell({
       <p>Confidence: {cell.confidence ?? 'Insufficient evidence'}</p>
       <p>{cell.coverageDisclosure}</p>
       <p>{cell.summary}</p>
-      {cell.citationIds.map((id, index) => (
-        <a
-          key={id}
-          href={`#citation-${id}`}
-          data-rni-citation-id={id}
-          className="mr-2 underline focus:outline-none focus:ring-2 focus:ring-blue-700"
-        >
-          Citation {index + 1}
-        </a>
-      ))}
+      {cell.citationIds.map((id, index) => {
+        const evidence = evidenceByCitationId[id];
+        if (!evidence) throw new Error(`Missing evidence for RNI citation ${id}`);
+        return <EvidenceCitation key={id} evidence={evidence} label={`Citation ${index + 1}`} />;
+      })}
     </section>
   );
 }
 
-export function RetailRadar({ page }: Readonly<{ page: RniRadarPage }>) {
+export function RetailRadar({
+  page,
+  evidenceByCitationId,
+}: Readonly<{ page: RniRadarPage; evidenceByCitationId: CitationEvidenceById }>) {
   return (
     <main data-rni-radar className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
       <header>
@@ -67,15 +72,34 @@ export function RetailRadar({ page }: Readonly<{ page: RniRadarPage }>) {
                   <span className="block text-sm font-normal">{row.security.exchange}</span>
                 </th>
                 <td className="p-3">
-                  <PlatformCell cell={row.reddit} heading="Reddit sentiment" />
+                  <PlatformCell
+                    cell={row.reddit}
+                    heading="Reddit sentiment"
+                    evidenceByCitationId={evidenceByCitationId}
+                  />
                 </td>
                 <td className="p-3">
-                  <PlatformCell cell={row.x} heading="X sentiment" />
+                  <PlatformCell
+                    cell={row.x}
+                    heading="X sentiment"
+                    evidenceByCitationId={evidenceByCitationId}
+                  />
                 </td>
                 <td className="p-3" data-rni-combined-state={row.combined.state}>
                   <strong>Combined summary</strong>
                   <p>{label(row.combined.state)}</p>
                   <p>{row.combined.summary}</p>
+                  {row.combined.citationIds.map((id, index) => {
+                    const evidence = evidenceByCitationId[id];
+                    if (!evidence) throw new Error(`Missing evidence for RNI citation ${id}`);
+                    return (
+                      <EvidenceCitation
+                        key={id}
+                        evidence={evidence}
+                        label={`Citation ${index + 1}`}
+                      />
+                    );
+                  })}
                 </td>
               </tr>
             ))}
@@ -93,12 +117,27 @@ export function RetailRadar({ page }: Readonly<{ page: RniRadarPage }>) {
               {row.security.ticker} — {row.security.companyName}
             </h2>
             <p>{row.security.exchange}</p>
-            <PlatformCell cell={row.reddit} heading="Reddit sentiment" />
-            <PlatformCell cell={row.x} heading="X sentiment" />
+            <PlatformCell
+              cell={row.reddit}
+              heading="Reddit sentiment"
+              evidenceByCitationId={evidenceByCitationId}
+            />
+            <PlatformCell
+              cell={row.x}
+              heading="X sentiment"
+              evidenceByCitationId={evidenceByCitationId}
+            />
             <section data-rni-combined-state={row.combined.state}>
               <strong>Combined summary</strong>
               <p>{label(row.combined.state)}</p>
               <p>{row.combined.summary}</p>
+              {row.combined.citationIds.map((id, index) => {
+                const evidence = evidenceByCitationId[id];
+                if (!evidence) throw new Error(`Missing evidence for RNI citation ${id}`);
+                return (
+                  <EvidenceCitation key={id} evidence={evidence} label={`Citation ${index + 1}`} />
+                );
+              })}
             </section>
           </article>
         ))}

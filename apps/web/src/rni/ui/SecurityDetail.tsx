@@ -3,29 +3,37 @@ import type {
   RniSecurityDetailDimension,
   RniSecurityDetailPlatform,
 } from '@/rni/contracts';
+import { EvidenceCitation } from './EvidenceCitation';
+import type { CitationEvidenceById } from './evidence';
 
 function label(value: string) {
   return value.replaceAll('_', ' ').replace(/\b\w/gu, (character) => character.toUpperCase());
 }
 
-function CitationLinks({ citationIds }: Readonly<{ citationIds: readonly string[] }>) {
+function CitationLinks({
+  citationIds,
+  evidenceByCitationId,
+}: Readonly<{ citationIds: readonly string[]; evidenceByCitationId: CitationEvidenceById }>) {
   return (
     <p>
-      {citationIds.map((citationId, index) => (
-        <a
-          key={citationId}
-          href={`#citation-${citationId}`}
-          data-rni-citation-id={citationId}
-          className="mr-2 underline focus:outline-none focus:ring-2 focus:ring-blue-700"
-        >
-          Citation {index + 1}
-        </a>
-      ))}
+      {citationIds.map((citationId, index) => {
+        const evidence = evidenceByCitationId[citationId];
+        if (!evidence) throw new Error(`Missing evidence for RNI citation ${citationId}`);
+        return (
+          <EvidenceCitation key={citationId} evidence={evidence} label={`Citation ${index + 1}`} />
+        );
+      })}
     </p>
   );
 }
 
-function Dimension({ dimension }: Readonly<{ dimension: RniSecurityDetailDimension }>) {
+function Dimension({
+  dimension,
+  evidenceByCitationId,
+}: Readonly<{
+  dimension: RniSecurityDetailDimension;
+  evidenceByCitationId: CitationEvidenceById;
+}>) {
   return (
     <li data-rni-dimension={dimension.dimension} className="space-y-1 border-t pt-3">
       <h4 className="font-medium">{label(dimension.dimension)}</h4>
@@ -33,7 +41,10 @@ function Dimension({ dimension }: Readonly<{ dimension: RniSecurityDetailDimensi
         {label(dimension.stance)} · Score: {dimension.score ?? 'Insufficient evidence'}
       </p>
       <p>{dimension.rationale}</p>
-      <CitationLinks citationIds={dimension.citationIds} />
+      <CitationLinks
+        citationIds={dimension.citationIds}
+        evidenceByCitationId={evidenceByCitationId}
+      />
     </li>
   );
 }
@@ -41,7 +52,12 @@ function Dimension({ dimension }: Readonly<{ dimension: RniSecurityDetailDimensi
 function PlatformDimensions({
   platform,
   heading,
-}: Readonly<{ platform: RniSecurityDetailPlatform; heading: string }>) {
+  evidenceByCitationId,
+}: Readonly<{
+  platform: RniSecurityDetailPlatform;
+  heading: string;
+  evidenceByCitationId: CitationEvidenceById;
+}>) {
   return (
     <section data-rni-detail-platform={platform.platform} className="space-y-3 border p-4">
       <h3 className="text-xl font-semibold">{heading}</h3>
@@ -49,7 +65,10 @@ function PlatformDimensions({
         {label(platform.status)} · {platform.eligibleSourceCount} eligible sources
       </p>
       <p>{platform.summary}</p>
-      <CitationLinks citationIds={platform.citationIds} />
+      <CitationLinks
+        citationIds={platform.citationIds}
+        evidenceByCitationId={evidenceByCitationId}
+      />
       <dl className="grid gap-2 text-sm sm:grid-cols-2">
         <div>
           <dt className="font-medium">Freshness</dt>
@@ -63,14 +82,21 @@ function PlatformDimensions({
       <p className="text-sm">{platform.coverageDisclosure}</p>
       <ol className="space-y-3" aria-label={`${heading} dimensions`}>
         {platform.dimensions.map((dimension) => (
-          <Dimension key={dimension.dimension} dimension={dimension} />
+          <Dimension
+            key={dimension.dimension}
+            dimension={dimension}
+            evidenceByCitationId={evidenceByCitationId}
+          />
         ))}
       </ol>
     </section>
   );
 }
 
-export function SecurityDetail({ detail }: Readonly<{ detail: RniSecurityDetail }>) {
+export function SecurityDetail({
+  detail,
+  evidenceByCitationId,
+}: Readonly<{ detail: RniSecurityDetail; evidenceByCitationId: CitationEvidenceById }>) {
   return (
     <main data-rni-security-detail className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
       <header>
@@ -84,8 +110,16 @@ export function SecurityDetail({ detail }: Readonly<{ detail: RniSecurityDetail 
         </p>
       </header>
       <div className="grid gap-4 lg:grid-cols-2">
-        <PlatformDimensions platform={detail.reddit} heading="Reddit sentiment" />
-        <PlatformDimensions platform={detail.x} heading="X sentiment" />
+        <PlatformDimensions
+          platform={detail.reddit}
+          heading="Reddit sentiment"
+          evidenceByCitationId={evidenceByCitationId}
+        />
+        <PlatformDimensions
+          platform={detail.x}
+          heading="X sentiment"
+          evidenceByCitationId={evidenceByCitationId}
+        />
       </div>
     </main>
   );
