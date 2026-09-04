@@ -11,6 +11,7 @@ import {
   rniStance,
   rniUnitDecimal,
 } from '@/rni/contracts';
+import { hashRniModelInput } from '@/rni/model-input';
 import type {
   RniCitationProposal,
   RniClassifiedClaim,
@@ -287,7 +288,7 @@ function validateNoise(
 
 function stableInputHash(input: Parameters<RniClassifierInferencePort['infer']>[0]): string {
   const { modelRunId: _routingIdentity, ...modelVisibleInput } = input;
-  return createHash('sha256').update(JSON.stringify(modelVisibleInput)).digest('hex');
+  return hashRniModelInput(modelVisibleInput);
 }
 
 function classifierCallId(batchId: string, sourceItemId: string, securityId: string): string {

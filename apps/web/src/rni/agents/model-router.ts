@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { canonicalHash, sha256Hex } from '../../calc/canonical';
 import type { RniAiRoute, RniResolvedModelRoute } from '../contracts';
 import {
+  DiscoveryResponseError,
   OpenAiRedditDiscovery,
-  serializeRniDiscoveryModelInput,
 } from '../discovery/openai-web-search';
 import type {
   OpenAiResponsesTransport,
@@ -17,7 +17,6 @@ import type {
 } from '../observations/types';
 import {
   getRniPromptDefinition,
-  type RniPromptDefinition,
   type RniPromptTask,
 } from '../../../prompts/rni/registry';
 import type {
@@ -26,9 +25,6 @@ import type {
   RniVerificationInferencePort,
   RniVerificationModelInput,
 } from './types';
-
-const DELIMITER_START = '<rni_dynamic_input version="1">';
-const DELIMITER_END = '</rni_dynamic_input>';
 
 const transportResponseSchema = z
   .object({
@@ -171,10 +167,23 @@ export type RniCanonicalModelInvocation = RniModelInvocationAttempt & {
   readonly citations: readonly string[];
 };
 
+export type RniFailedProviderTelemetry = {
+  readonly responseId: string;
+  readonly provider: string;
+  readonly modelId: string;
+  readonly modelRevision: string | null;
+  readonly usage: z.infer<typeof transportResponseSchema>['usage'];
+  readonly latencyMs: number | null;
+  readonly costUsd: string | null;
+  readonly toolCalls: readonly string[];
+  readonly citations: readonly string[];
+};
+
 export type RniFailedModelInvocation = {
   readonly status: 'failed';
   readonly attempt: RniModelInvocationAttempt;
   readonly error: { readonly name: string; readonly message: string };
+  readonly providerTelemetry: RniFailedProviderTelemetry | null;
 };
 
 export interface RniModelInvocationRecorder {
@@ -193,43 +202,6 @@ export type RniModelRouter = {
 };
 
 const expectedStage = (task: RniPromptTask): RniModelStage => task.replace('rni_', '') as RniModelStage;
-
-const stablePrefixFor = (
-  definition: RniPromptDefinition,
-  cacheContextVersion: string | null,
-): string =>
-  serializeDynamicInput({
-    task: definition.task,
-    promptVersion: definition.promptVersion,
-    inputSchemaVersion: definition.inputSchemaVersion,
-    outputSchemaVersion: definition.outputSchemaVersion,
-    toolVersion: definition.toolVersion,
-    systemPolicy: definition.systemPolicy,
-    outputSchema: definition.outputSchema,
-    tools: definition.tools,
-    cacheContextVersion,
-  });
-
-const serializeDynamicInput = (input: unknown): string => {
-  const serialized = JSON.stringify(input, (_key, value: unknown) => {
-    if (typeof value === 'number' && !Number.isFinite(value)) {
-      throw new Error('RNI dynamic input contains a non-finite number');
-    }
-    if (typeof value === 'bigint' || typeof value === 'function' || typeof value === 'symbol') {
-      throw new Error(`RNI dynamic input contains non-JSON ${typeof value}`);
-    }
-    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-      return Object.fromEntries(
-        Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
-          left < right ? -1 : left > right ? 1 : 0,
-        ),
-      );
-    }
-    return value;
-  });
-  if (serialized === undefined) throw new Error('RNI dynamic input is not JSON serializable');
-  return serialized;
-};
 
 const resolvedModelFor = (
   config: RniImmutableModelRunConfig,
@@ -310,11 +282,11 @@ export const createRniModelRouter = (deps: {
       task === 'rni_classifier'
         ? (parsedInput as Parameters<RniClassifierInferencePort['infer']>[0]).taxonomy.version
         : null;
-    const stablePrefix = stablePrefixFor(definition, cacheContextVersion);
+    const stablePrefix = definition.serializeStablePrefix(cacheContextVersion);
     const stablePrefixHash = sha256Hex(stablePrefix);
-    const serializedInput = serializeDynamicInput(parsedInput);
-    const dynamicInputHash = sha256Hex(serializedInput);
-    const dynamicSuffix = `${DELIMITER_START}\n${serializedInput}\n${DELIMITER_END}\n${definition.finalInstruction}`;
+    const serializedInput = definition.serializeInput(dynamicInput);
+    const dynamicInputHash = serializedInput.dynamicInputHash;
+    const dynamicSuffix = serializedInput.dynamicSuffix;
     const promptCacheKey = canonicalHash({
       tenantCachePartition,
       route: runConfig.aiRoute,
@@ -352,6 +324,7 @@ export const createRniModelRouter = (deps: {
     await deps.recorder.start(attempt);
 
     let invocation: RniCanonicalModelInvocation;
+    let parsedResponse: z.infer<typeof transportResponseSchema> | undefined;
     try {
       const transport =
         runConfig.aiRoute === 'openai_direct' ? deps.openaiDirect : deps.vercelAiGateway;
@@ -366,6 +339,7 @@ export const createRniModelRouter = (deps: {
           dynamicSuffix,
         }),
       );
+      parsedResponse = response;
       if (
         response.provider !== model.provider ||
         response.modelId !== model.modelId ||
@@ -394,6 +368,20 @@ export const createRniModelRouter = (deps: {
           status: 'failed',
           attempt,
           error: { name: error.name, message: error.message },
+          providerTelemetry:
+            parsedResponse === undefined
+              ? null
+              : {
+                  responseId: parsedResponse.responseId,
+                  provider: parsedResponse.provider,
+                  modelId: parsedResponse.modelId,
+                  modelRevision: parsedResponse.modelRevision,
+                  usage: parsedResponse.usage,
+                  latencyMs: parsedResponse.latencyMs,
+                  costUsd: parsedResponse.costUsd,
+                  toolCalls: parsedResponse.toolCalls,
+                  citations: parsedResponse.citations,
+                },
         });
       } catch (finalizationCause) {
         throw new AggregateError(
@@ -428,10 +416,11 @@ export const createRniRoutedRedditDiscovery = (deps: {
     const definition = getRniPromptDefinition(task, model.promptVersion);
     const governedTools = discoveryToolsSchema.parse(definition.tools);
     const parsedInput = definition.parseInput(input) as RedditDiscoveryRequest;
-    const stablePrefix = stablePrefixFor(definition, null);
+    const stablePrefix = definition.serializeStablePrefix(null);
     const stablePrefixHash = sha256Hex(stablePrefix);
-    const dynamicSuffix = serializeRniDiscoveryModelInput(parsedInput, definition.finalInstruction);
-    const dynamicInputHash = sha256Hex(dynamicSuffix);
+    const serializedInput = definition.serializeInput(input);
+    const dynamicSuffix = serializedInput.dynamicSuffix;
+    const dynamicInputHash = serializedInput.dynamicInputHash;
     const promptCacheKey = canonicalHash({
       tenantCachePartition: deps.tenantCachePartition,
       route: deps.runConfig.aiRoute,
@@ -478,6 +467,7 @@ export const createRniRoutedRedditDiscovery = (deps: {
 
     let invocation: RniCanonicalModelInvocation;
     let result: RedditDiscoveryResult;
+    let providerTelemetry: RniFailedProviderTelemetry | null = null;
     try {
       const transport =
         deps.runConfig.aiRoute === 'openai_direct'
@@ -498,8 +488,20 @@ export const createRniRoutedRedditDiscovery = (deps: {
           outputSchema: definition.outputSchema,
           parseOutput: definition.parseOutput,
           tools: governedTools,
+          serializeInput: () => dynamicSuffix,
         },
       }).discover(parsedInput);
+      providerTelemetry = {
+        responseId: result.providerRequestId,
+        provider: model.provider,
+        modelId: result.resolvedModel,
+        modelRevision: null,
+        usage: { ...result.usage, cacheWriteTokens: null },
+        latencyMs: result.latencyMs,
+        costUsd: null,
+        toolCalls: result.webSearchActions.map(({ callId }) => callId),
+        citations: result.consultedSources.map(({ url }) => url),
+      };
       if (result.resolvedModel !== model.modelId) {
         throw new Error('RNI discovery transport silently changed the resolved model');
       }
@@ -521,11 +523,25 @@ export const createRniRoutedRedditDiscovery = (deps: {
       };
     } catch (cause) {
       const error = asError(cause);
+      if (cause instanceof DiscoveryResponseError && cause.providerTelemetry !== null) {
+        providerTelemetry = {
+          responseId: cause.providerTelemetry.responseId,
+          provider: model.provider,
+          modelId: cause.providerTelemetry.resolvedModel,
+          modelRevision: null,
+          usage: { ...cause.providerTelemetry.usage, cacheWriteTokens: null },
+          latencyMs: cause.providerTelemetry.latencyMs,
+          costUsd: null,
+          toolCalls: cause.providerTelemetry.toolCalls,
+          citations: cause.providerTelemetry.citations,
+        };
+      }
       try {
         await deps.recorder.finish({
           status: 'failed',
           attempt,
           error: { name: error.name, message: error.message },
+          providerTelemetry,
         });
       } catch (finalizationCause) {
         throw new AggregateError(

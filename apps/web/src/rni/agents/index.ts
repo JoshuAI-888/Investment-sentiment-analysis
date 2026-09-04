@@ -8,6 +8,7 @@ export { replayCitedSynthesis, synthesizeCitedNarrative } from './synthesis';
 export type {
   RniCanonicalModelInvocation,
   RniFailedModelInvocation,
+  RniFailedProviderTelemetry,
   RniImmutableModelRunConfig,
   RniModelCallScope,
   RniModelInvocationAttempt,

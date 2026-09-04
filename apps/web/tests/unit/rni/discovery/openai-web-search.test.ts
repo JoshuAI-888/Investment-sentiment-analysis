@@ -165,11 +165,14 @@ describe('OpenAI Web Search discovery request', () => {
     expect(payload.include).toEqual(['web_search_call.action.sources']);
     expect(payload.tool_choice).toBe('required');
     expect(payload.text.format).toMatchObject({ strict: true, name: 'rni_reddit_discovery_v1' });
-    const delimitedInput = /^<rni_dynamic_input version="1">\n(.+)\n<\/rni_dynamic_input>\n.+$/u.exec(
+    const delimitedInput =
+      /^<rni_dynamic_input encoding="base64url" bytes="(\d+)">\n([A-Za-z0-9_-]+)\n<\/rni_dynamic_input>\n.+$/u.exec(
       payload.input,
     );
     expect(delimitedInput).not.toBeNull();
-    expect(JSON.parse(delimitedInput![1]!)).toMatchObject({
+    const decodedInput = Buffer.from(delimitedInput![2]!, 'base64url').toString('utf8');
+    expect(Buffer.byteLength(decodedInput, 'utf8')).toBe(Number(delimitedInput![1]));
+    expect(JSON.parse(decodedInput)).toMatchObject({
       query_id: request.queryId,
       coverage: 'REDDIT_SAMPLED_WEB_DISCOVERY',
       half_open_utc_window: {

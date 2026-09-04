@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
+import {
+  createRniModelRouter,
+  createRniObservationInferencePorts,
+  type RniModelInvocationAttempt,
+  type RniModelTransportRequest,
+} from '@/rni/agents';
 import type { RniSecurityMention, RniSourceItem } from '@/rni/contracts';
+import { hashRniSerializedModelInput } from '@/rni/model-input';
 import {
   classifyPersistedSecurityObservations,
   type RniClassificationPolicy,
@@ -339,6 +346,84 @@ describe('persisted RNI semantic classification', () => {
         endOffset: content.length,
       },
     ]);
+  });
+
+  it('records the exact dispatched classifier input hash on each observation', async () => {
+    const attempts: RniModelInvocationAttempt[] = [];
+    const dispatchedHashesBySecurity = new Map<string, string>();
+    const runConfig = {
+      runId: '00000000-0000-4000-8000-000000000799',
+      configVersion: 'rni-config-v1',
+      aiRoute: 'openai_direct' as const,
+      resolvedModels: [
+        {
+          task: 'rni_classifier' as const,
+          provider: 'openai',
+          modelId: request.modelId,
+          modelRevision: 'fixture-revision',
+          promptVersion: request.promptVersion,
+        },
+      ],
+    };
+    const router = createRniModelRouter({
+      openaiDirect: {
+        invoke: async (call: RniModelTransportRequest) => {
+          const envelope =
+            /^<rni_dynamic_input encoding="base64url" bytes="\d+">\n([A-Za-z0-9_-]+)\n<\/rni_dynamic_input>\n/du.exec(
+              call.dynamicSuffix,
+            );
+          if (envelope === null || call.scope.securityId === null) {
+            throw new Error('Expected encoded per-security classifier dispatch');
+          }
+          dispatchedHashesBySecurity.set(
+            call.scope.securityId,
+            hashRniSerializedModelInput(Buffer.from(envelope[1]!, 'base64url').toString('utf8')),
+          );
+          return {
+            responseId: `response-${call.scope.securityId}`,
+            provider: call.provider,
+            modelId: call.modelId,
+            modelRevision: call.modelRevision,
+            output: (outputs() as Record<string, unknown>)[call.scope.securityId],
+            usage: {
+              inputTokens: 100,
+              outputTokens: 20,
+              cachedInputTokens: 0,
+              cacheWriteTokens: null,
+            },
+            latencyMs: 10,
+            costUsd: '0.001',
+            toolCalls: [],
+            citations: [],
+          };
+        },
+      },
+      recorder: {
+        start: async (attempt) => {
+          attempts.push(attempt);
+        },
+        finish: async () => undefined,
+      },
+    });
+    const routed = createRniObservationInferencePorts(router, {
+      runConfig,
+      tenantCachePartition: 'tenant-fixture',
+      relationshipModelRunIdForSource: () => ids.classifierRun,
+    });
+
+    const result = await classifyPersistedSecurityObservations(request, {
+      evidence,
+      inference: routed.classifier,
+      observationIdFactory,
+    });
+
+    expect(attempts).toHaveLength(2);
+    for (const observation of result.observations) {
+      const attempt = attempts.find(({ scope }) => scope.securityId === observation.securityId);
+      expect(attempt?.dynamicInputHash).toBe(observation.inputHash);
+      expect(dispatchedHashesBySecurity.get(observation.securityId)).toBe(observation.inputHash);
+      expect(attempt?.scope.modelRunId).toBe(observation.classifierRunId);
+    }
   });
 
   it('keeps company and market-trading stance independent for one security', async () => {

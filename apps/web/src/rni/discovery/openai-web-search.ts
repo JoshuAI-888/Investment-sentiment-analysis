@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import { serializeRniModelInput } from '../model-input';
 import { canonicalizeRedditUrl, isRedditHost } from './reddit-url';
 import type {
   ConsultedSource,
@@ -27,8 +28,6 @@ export const RNI_DISCOVERY_SYSTEM_PROMPT = [
 ].join('\n');
 export const RNI_DISCOVERY_FINAL_INSTRUCTION =
   'Return sampled Reddit candidates with exact provider source citations.';
-const DYNAMIC_INPUT_START = '<rni_dynamic_input version="1">';
-const DYNAMIC_INPUT_END = '</rni_dynamic_input>';
 const DISCOVERY_TOOLS = [
   { type: 'web_search' as const, filters: { allowed_domains: ['reddit.com'] as const } },
 ] as const;
@@ -40,6 +39,7 @@ type DiscoveryPromptGovernance = {
   readonly outputSchema: Readonly<Record<string, unknown>>;
   readonly parseOutput: (output: unknown) => unknown;
   readonly tools: typeof DISCOVERY_TOOLS;
+  readonly serializeInput: (input: RedditDiscoveryRequest) => string;
 };
 
 export const rniDiscoveryModelInput = z
@@ -208,11 +208,23 @@ export const RNI_DISCOVERY_OUTPUT_JSON_SCHEMA: Readonly<Record<string, unknown>>
 };
 
 export class DiscoveryResponseError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly providerTelemetry: DiscoveryProviderTelemetry | null = null,
+  ) {
     super(message);
     this.name = 'DiscoveryResponseError';
   }
 }
+
+export type DiscoveryProviderTelemetry = {
+  readonly responseId: string;
+  readonly resolvedModel: string;
+  readonly usage: DiscoveryUsage;
+  readonly latencyMs: number;
+  readonly toolCalls: readonly string[];
+  readonly citations: readonly string[];
+};
 
 export function serializeRniDiscoveryModelInput(
   value: RedditDiscoveryRequest,
@@ -232,7 +244,23 @@ export function serializeRniDiscoveryModelInput(
     max_candidates: request.maxCandidates,
     task: 'Find candidate Reddit posts or individually addressable comments. Return sampled evidence, not a completeness claim.',
   };
-  return `${DYNAMIC_INPUT_START}\n${JSON.stringify(dynamicInput)}\n${DYNAMIC_INPUT_END}\n${finalInstruction}`;
+  return serializeRniModelInput(dynamicInput, finalInstruction).dynamicSuffix;
+}
+
+export function serializeLegacyRniDiscoveryV1Input(value: RedditDiscoveryRequest): string {
+  const request = rniDiscoveryModelInput.parse(value);
+  return JSON.stringify({
+    coverage: 'REDDIT_SAMPLED_WEB_DISCOVERY',
+    mode: request.mode,
+    half_open_utc_window: {
+      start: new Date(request.windowStart).toISOString(),
+      end: new Date(request.windowEnd).toISOString(),
+    },
+    communities: request.communities,
+    securities: request.securities,
+    max_candidates: request.maxCandidates,
+    task: 'Find candidate Reddit posts or individually addressable comments. Return sampled evidence, not a completeness claim.',
+  });
 }
 
 export function buildOpenAiWebSearchRequest(
@@ -256,10 +284,9 @@ export function buildOpenAiWebSearchRequest(
   return {
     model: config.model,
     instructions: config.governance?.systemPolicy ?? RNI_DISCOVERY_SYSTEM_PROMPT,
-    input: serializeRniDiscoveryModelInput(
-      request,
-      config.governance?.finalInstruction ?? RNI_DISCOVERY_FINAL_INSTRUCTION,
-    ),
+    input:
+      config.governance?.serializeInput(request) ??
+      serializeRniDiscoveryModelInput(request, RNI_DISCOVERY_FINAL_INSTRUCTION),
     tools: config.governance?.tools ?? DISCOVERY_TOOLS,
     tool_choice: 'required',
     include: ['web_search_call.action.sources'],
@@ -619,50 +646,69 @@ export class OpenAiRedditDiscovery {
     if (!response.success) {
       throw new DiscoveryResponseError(`Invalid OpenAI Responses envelope: ${response.error.message}`);
     }
-    if (response.data.status !== 'completed') {
-      throw new DiscoveryResponseError(`OpenAI response did not complete: ${response.data.status}`);
-    }
-
-    const trace = readWebSearchTrace(response.data.output);
-
-    let boundOutput: BoundOutputText;
-    let decoded: unknown;
-    try {
-      boundOutput = readOutputText(response.data.output);
-      decoded = JSON.parse(boundOutput.text);
-    } catch (error) {
-      if (error instanceof DiscoveryResponseError) throw error;
-      throw new DiscoveryResponseError('Structured discovery output was not valid JSON');
-    }
-    let output: z.infer<typeof rniDiscoveryModelOutput>;
-    try {
-      output = rniDiscoveryModelOutput.parse(
-        this.config.governance?.parseOutput(decoded) ?? rniDiscoveryModelOutput.parse(decoded),
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'unknown schema violation';
-      throw new DiscoveryResponseError(`Structured discovery output violated schema: ${message}`);
-    }
-
-    const normalized = normalizeCandidates(
-      output,
-      boundOutput,
-      request,
-      trace.consultedSources,
-    );
-    return {
-      queryId: request.queryId,
-      providerRequestId: response.data.id,
+    let providerTelemetry: DiscoveryProviderTelemetry = {
+      responseId: response.data.id,
       resolvedModel: response.data.model,
-      promptVersion: this.config.governance?.promptVersion ?? RNI_DISCOVERY_PROMPT_VERSION,
-      candidates: normalized.candidates,
-      urlOnlyCandidates: normalized.urlOnlyCandidates,
-      consultedSources: trace.consultedSources,
-      webSearchActions: trace.actions,
-      rejectedCandidates: normalized.rejected,
-      limitations: output.limitations,
       usage: usageFrom(response.data),
       latencyMs,
+      toolCalls: [],
+      citations: [],
     };
+    try {
+      if (response.data.status !== 'completed') {
+        throw new DiscoveryResponseError(`OpenAI response did not complete: ${response.data.status}`);
+      }
+      const trace = readWebSearchTrace(response.data.output);
+      providerTelemetry = {
+        ...providerTelemetry,
+        toolCalls: trace.actions.map(({ callId }) => callId),
+        citations: trace.consultedSources.map(({ url }) => url),
+      };
+
+      let boundOutput: BoundOutputText;
+      let decoded: unknown;
+      try {
+        boundOutput = readOutputText(response.data.output);
+        decoded = JSON.parse(boundOutput.text);
+      } catch (error) {
+        if (error instanceof DiscoveryResponseError) throw error;
+        throw new DiscoveryResponseError('Structured discovery output was not valid JSON');
+      }
+      let output: z.infer<typeof rniDiscoveryModelOutput>;
+      try {
+        output = rniDiscoveryModelOutput.parse(
+          this.config.governance?.parseOutput(decoded) ?? rniDiscoveryModelOutput.parse(decoded),
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'unknown schema violation';
+        throw new DiscoveryResponseError(`Structured discovery output violated schema: ${message}`);
+      }
+
+      const normalized = normalizeCandidates(
+        output,
+        boundOutput,
+        request,
+        trace.consultedSources,
+      );
+      return {
+        queryId: request.queryId,
+        providerRequestId: response.data.id,
+        resolvedModel: response.data.model,
+        promptVersion: this.config.governance?.promptVersion ?? RNI_DISCOVERY_PROMPT_VERSION,
+        candidates: normalized.candidates,
+        urlOnlyCandidates: normalized.urlOnlyCandidates,
+        consultedSources: trace.consultedSources,
+        webSearchActions: trace.actions,
+        rejectedCandidates: normalized.rejected,
+        limitations: output.limitations,
+        usage: providerTelemetry.usage,
+        latencyMs,
+      };
+    } catch (error) {
+      if (error instanceof DiscoveryResponseError) {
+        throw new DiscoveryResponseError(error.message, providerTelemetry);
+      }
+      throw error;
+    }
   }
 }
