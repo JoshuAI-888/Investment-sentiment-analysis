@@ -136,6 +136,116 @@ export async function findJobDefinitionByKey(
 }
 
 /**
+ * By `id` rather than `job_key` — added for F16b (SURFACE, Wave 4): the admin edit/dry-run
+ * surfaces address a job by its primary key (from a listing), not by the human-chosen key every
+ * other F16a caller already had in hand at dispatch time.
+ */
+export async function findJobDefinitionById(
+  id: string,
+  db: Queryable = getPool(),
+): Promise<JobDefinition | null> {
+  const { rows } = await db.query(
+    `select ${JOB_DEFINITION_COLUMNS} from job_definition where id = $1`,
+    [id],
+  );
+  const row = rows[0] as Row | undefined;
+  return row === undefined ? null : jobDefinition.parse(camelizeRow(row));
+}
+
+/**
+ * Every job row, for F16b's admin listing (F16 §4.2/§4.4). Same ordering as `dueJobDefinitions`
+ * (priority first) so the admin sees jobs in the order the dispatcher would actually claim them,
+ * then `job_key` as a stable tiebreak `dueJobDefinitions` doesn't need (it never has two due rows
+ * at identical priority *and* identical `next_due_at` in practice, but an admin listing enumerates
+ * every row regardless of due-ness, where that coincidence is far more likely — e.g. every job
+ * freshly seeded at the same `now()`).
+ */
+export async function listJobDefinitions(db: Queryable = getPool()): Promise<JobDefinition[]> {
+  const { rows } = await db.query(
+    `select ${JOB_DEFINITION_COLUMNS} from job_definition order by priority asc, job_key asc`,
+  );
+  return rows.map((row) => jobDefinition.parse(camelizeRow(row as Row)));
+}
+
+/**
+ * F16 §4.2 — "editable [from the admin]: due times, cadence, enabled state, retry policy,
+ * per-job budget ceiling." Deliberately not a type with every `job_definition` column: `jobKey`,
+ * `scope`, `priority`, `maxRuntimeSeconds`, `concurrencyPolicy`, `dependencies`,
+ * `maxCallsPerRun`, `triggerEligible` and `configVersion` are absent by construction, so nothing
+ * that reaches this function's `edit` argument can touch them — the same "make the forbidden
+ * thing impossible to express, not merely unused" discipline `services/admin/jobs.ts`'s schema
+ * repeats one layer up. None of these fields, editable or not, ever reaches the QStash schedule,
+ * `vercel.json`, or the dispatch secret (ADR-013) — this function writes exactly one row of one
+ * table.
+ */
+export type JobDefinitionEdit = {
+  readonly nextDueAt?: Date | undefined;
+  readonly scheduleType?: JobDefinition['scheduleType'] | undefined;
+  readonly scheduleExpression?: string | undefined;
+  readonly displayTimezone?: string | undefined;
+  readonly enabled?: boolean | undefined;
+  readonly maxAttempts?: number | undefined;
+  readonly backoffPolicy?: unknown;
+  /** `null` clears the ceiling (no per-run cap); `undefined` leaves it unchanged. */
+  readonly maxCostUsdPerRun?: string | null | undefined;
+};
+
+/**
+ * Conditional UPDATE keyed on `(id, version)` — the same optimistic-concurrency shape
+ * `repositories/calculation-issues.ts#resolveCalculationIssue` uses for its own second, later
+ * writer (an `updated_at` match there; a `version` match here, matching this table's own
+ * versioning column). Returns `null` on any mismatch — row missing entirely, or present but at a
+ * different version — and deliberately does not distinguish the two: by the time a caller reaches
+ * this function it has already loaded the row and knows it existed, so a `null` here can only mean
+ * "someone else wrote to it since." **This is the real second writer this table has had since
+ * F16a shipped `advanceJobDefinitionSchedule`** (this file's own module docstring: "there is
+ * exactly one writer of `next_due_at` in Wave 1... It exists so one exists when Wave 4 adds a
+ * second writer, rather than being retrofitted then") — a dispatcher tick racing an admin edit on
+ * the same row is exactly the scenario that guard was built ahead of, and it is real now:
+ * `services/admin/jobs.ts#updateJobMutation` treats a `null` return here as a genuine conflict,
+ * not a bug.
+ */
+export async function updateJobDefinition(
+  jobId: string,
+  expectedVersion: number,
+  edit: JobDefinitionEdit,
+  updatedBy: string,
+  db: Queryable = getPool(),
+): Promise<JobDefinition | null> {
+  const setEntries = Object.entries(
+    snakeizeRow({
+      nextDueAt: edit.nextDueAt,
+      scheduleType: edit.scheduleType,
+      scheduleExpression: edit.scheduleExpression,
+      displayTimezone: edit.displayTimezone,
+      enabled: edit.enabled,
+      maxAttempts: edit.maxAttempts,
+      backoffPolicy: jsonParam(edit.backoffPolicy),
+      maxCostUsdPerRun: edit.maxCostUsdPerRun,
+    }),
+  ).filter(([, value]) => value !== undefined);
+
+  if (setEntries.length === 0) {
+    throw new Error('updateJobDefinition called with no editable fields set — nothing to update');
+  }
+
+  // $1 = jobId, $2 = expectedVersion; the SET clause's own parameters start at $3, `updatedBy`
+  // takes the next placeholder after them.
+  const setSql = setEntries.map(([key], index) => `"${key}" = $${index + 3}`).join(', ');
+  const values = setEntries.map(([, value]) => value);
+
+  const { rows } = await db.query(
+    `update job_definition
+        set ${setSql}, version = version + 1, updated_by = $${values.length + 3}, updated_at = now()
+      where id = $1 and version = $2
+      returning ${JOB_DEFINITION_COLUMNS}`,
+    [jobId, expectedVersion, ...values, updatedBy],
+  );
+  const updated = rows[0] as Row | undefined;
+  return updated === undefined ? null : jobDefinition.parse(camelizeRow(updated));
+}
+
+/**
  * F16 §4.1b / D-15: "The trigger may never dispatch a job that was not registered as
  * trigger-eligible. The eligible set is a seeded column, not a runtime decision." Enforced here,
  * at the data layer, rather than left to every caller to remember to check `triggerEligible`

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { APIRequestContext, Page } from '@playwright/test';
+import pg from 'pg';
 import { GATED_PAGE_ROUTES } from './routes';
 
 const ADMIN_PAGES = GATED_PAGE_ROUTES.filter((route) => route.path.startsWith('/admin'));
@@ -10,8 +11,8 @@ const ADMIN_PAGES = GATED_PAGE_ROUTES.filter((route) => route.path.startsWith('/
  * `/admin/models`, `/admin/data-explorer`, `/admin/calculation-issues`) — those no longer render
  * F01's `data-state="fixture"` shell, so the negative-auth check (still true for all twelve:
  * every one still refuses a non-admin) and the positive "an admin reaches it" check now diverge
- * per page. `/admin/data-sources`, `/admin/jobs` (F16b) and `/admin/user-assumptions` remain
- * fixture.
+ * per page. **F16b adds `/admin/jobs` as a ninth.** `/admin/data-sources` and
+ * `/admin/user-assumptions` remain fixture.
  */
 const ADMIN_PAGES_WITH_REAL_CONTENT = new Set([
   '/admin',
@@ -22,7 +23,15 @@ const ADMIN_PAGES_WITH_REAL_CONTENT = new Set([
   '/admin/models',
   '/admin/data-explorer',
   '/admin/calculation-issues',
+  '/admin/jobs',
 ]);
+
+/**
+ * A well-formed but definitely-nonexistent job id — `job_definition.id` is a `uuid` column, so a
+ * placeholder like the old `job_fixture` would fail at the database with an "invalid input syntax
+ * for type uuid" error rather than a clean 404 once this route stopped being a fixture (F16b).
+ */
+const NONEXISTENT_JOB_ID = '00000000-0000-0000-0000-000000000000';
 
 const ADMIN_API_ROUTES = [
   // F15-built, real content — GET reads.
@@ -42,8 +51,26 @@ const ADMIN_API_ROUTES = [
   { path: '/api/admin/settings', method: 'POST' as const, real: true, mutation: true },
   { path: '/api/admin/settings/rollback', method: 'POST' as const, real: true, mutation: true },
   { path: '/api/admin/calculation-issues/resolve', method: 'POST' as const, real: true, mutation: true },
-  // Still fixture — F16b's own tab.
-  { path: '/api/admin/jobs/job_fixture/runs', method: 'GET' as const, real: false },
+  // F16b-built, real content.
+  { path: '/api/admin/jobs', method: 'GET' as const, real: true },
+  {
+    path: `/api/admin/jobs/${NONEXISTENT_JOB_ID}/runs`,
+    method: 'GET' as const,
+    real: true,
+  },
+  { path: '/api/admin/jobs/update', method: 'POST' as const, real: true, mutation: true },
+  // No body validation to fail before the not-found check, so an unauthenticated-body POST
+  // against a job that does not exist reaches a genuine 404, never a 400 — its own category
+  // rather than shoehorned into `mutation`'s "400 or 200" expectation.
+  {
+    path: `/api/admin/jobs/${NONEXISTENT_JOB_ID}/preview`,
+    method: 'POST' as const,
+    real: true,
+    notFound: true,
+  },
+  // Body validation (a required `reason`) runs before the not-found check here, so an empty-body
+  // POST reaches validation (400) first — the ordinary `mutation` category.
+  { path: `/api/admin/jobs/${NONEXISTENT_JOB_ID}/dry-run`, method: 'POST' as const, real: true, mutation: true },
 ];
 
 /** ≥ 12 chars — `emailAndPassword.minPasswordLength` (`src/services/auth/instance.ts`). */
@@ -430,6 +457,15 @@ test.describe('F02 — a real admin session reaches every gated route', () => {
         return;
       }
 
+      if ('notFound' in route && route.notFound) {
+        // F16b's `[jobId]/preview` route checks job existence before any body validation could
+        // fail — a genuine 404 for a well-formed but nonexistent id is the "past the auth gate"
+        // signal here, not 400/200.
+        expect(response.status()).not.toBe(401);
+        expect(response.status()).toBe(404);
+        return;
+      }
+
       if ('mutation' in route && route.mutation) {
         // An admin with no request body reaches validation (400), never authorization (401) —
         // that is the "past the auth gate" signal for a mutation route; a genuinely valid
@@ -445,6 +481,78 @@ test.describe('F02 — a real admin session reaches every gated route', () => {
       expect(body.state).toBe('ready');
     });
   }
+
+  /**
+   * F16 §5 E2E test-plan row, verbatim: "admin edits a job's cadence and the next-run preview
+   * updates." Seeds a real `job_definition` row directly (this suite's admin session has no
+   * standing to bootstrap a `config_version` itself — the same gap F16a's own migration 0014
+   * documents), reuses whatever active `config_version` already exists if one does (CI's e2e run
+   * may have one from an earlier test file in the same worker), and cleans up nothing afterward —
+   * `truncateAll`/`resetSchema` at the start of the next full suite run own that, the same way
+   * every other e2e-seeded row in this repository is left for the next run to inherit or reset.
+   */
+  test("F16 §4.4 — editing a job's cadence updates the next-run preview, and Save persists it", async ({ page }) => {
+    test.skip(process.env['DATABASE_URL'] === undefined, 'needs DATABASE_URL — seeds a real job_definition row');
+    const dbUrl = process.env['DATABASE_URL'] as string;
+    const pool = new pg.Pool({ connectionString: dbUrl, max: 1 });
+    let jobId: string;
+    try {
+      const { rows: configRows } = await pool.query<{ id: string }>(
+        `select id from config_version where environment = 'production' and status = 'active' limit 1`,
+      );
+      let configVersionId = configRows[0]?.id;
+      if (configVersionId === undefined) {
+        const inserted = await pool.query<{ id: string }>(
+          `insert into config_version (environment, status, created_by, change_reason, checksum)
+           values ('production', 'active', 'e2e-seed', 'seed for admin jobs e2e', 'checksum-e2e-jobs')
+           returning id`,
+        );
+        configVersionId = inserted.rows[0]?.id as string;
+      }
+      const { rows: jobRows } = await pool.query<{ id: string }>(
+        `insert into job_definition
+           (job_key, display_name, enabled, schedule_type, schedule_expression, display_timezone,
+            priority, max_runtime_seconds, trigger_eligible, next_due_at, config_version, updated_by)
+         values ($1, 'E2E cadence-edit target', true, 'interval', '300', 'UTC', 500, 60, false,
+                 '2020-01-01T00:00:00Z', $2, 'e2e-seed')
+         returning id`,
+        [`e2e-cadence-edit-${Date.now()}`, configVersionId],
+      );
+      jobId = jobRows[0]?.id as string;
+    } finally {
+      await pool.end();
+    }
+
+    await page.goto('/admin/jobs');
+    const row = page.locator(`[data-job-row="${jobId}"]`);
+    await expect(row).toBeVisible();
+
+    const beforeEdit = await row.locator(`[data-job-current-next-due="${jobId}"]`).innerText();
+    expect(beforeEdit).toContain('2020-01-01'); // the deliberately-stale seeded value
+
+    await row.locator(`[data-job-schedule-type="${jobId}"]`).selectOption('cron');
+    await row.locator(`[data-job-schedule-expression="${jobId}"]`).fill('0 9 * * *');
+    await row.locator(`[data-job-timezone="${jobId}"]`).fill('America/New_York');
+    await row.locator(`[data-job-preview-button="${jobId}"]`).click();
+
+    const previewLocator = row.locator(`[data-job-preview-value="${jobId}"]`);
+    await expect(previewLocator).toBeVisible();
+    const previewText = await previewLocator.innerText();
+    // A real recomputed ISO instant, not the stale 2020 seed and not an error payload — the
+    // preview genuinely called through to `computeNextDueAt` for the new cadence.
+    const previewMatch = /(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)/.exec(previewText);
+    expect(previewMatch, `preview text should contain an ISO instant, got: ${previewText}`).not.toBeNull();
+    const previewedInstant = new Date(previewMatch?.[1] as string);
+    expect(previewedInstant.getTime()).toBeGreaterThan(Date.now());
+
+    await row.locator(`[data-job-reason="${jobId}"]`).fill('e2e: switch to a daily 9am Eastern cron');
+    await row.locator(`[data-job-save="${jobId}"]`).click();
+
+    await expect(row.getByText('Saved.')).toBeVisible();
+    const afterSave = await row.locator(`[data-job-current-next-due="${jobId}"]`).innerText();
+    expect(afterSave).not.toBe(beforeEdit);
+    expect(afterSave).not.toContain('2020-01-01');
+  });
 });
 
 test.describe('F02 — account deletion', () => {

@@ -20,6 +20,7 @@ import { spendInWindow } from '@/repositories/cost';
 import { costBreakdownInWindow } from '@/repositories/cost-breakdown';
 import { searchRawProviderPayloads, countRestrictedPayloads, type DataExplorerQuery } from '@/repositories/data-explorer';
 import { insertAuditEvent, type NewAuditEvent } from '@/repositories/audit';
+import { findJobDefinitionById, listJobDefinitions, jobRunHistory, type JobRunHistoryQuery } from '@/repositories/jobs';
 import { readDeploymentPlainValues, readDeploymentSecretStatus } from './secrets';
 import { findCatalogueEntry, SETTINGS_CATALOGUE } from './settings-catalogue';
 import { ADMIN_ENVIRONMENT } from './constants';
@@ -114,4 +115,19 @@ export async function getDataExplorerResults(query: DataExplorerQuery) {
 /** F15 §4.5: audited on every access, including a zero-row result. */
 export async function auditAdminAccess(event: NewAuditEvent): Promise<void> {
   await insertAuditEvent(event);
+}
+
+/** F16 §4.2/§4.4 (F16b) — every `job_definition` row, for the admin jobs listing. */
+export async function getJobsView() {
+  return listJobDefinitions();
+}
+
+/** F16 §4.4 (F16b) — one job row, for the preview and dry-run routes (`app/` may not import `repositories/` directly, `02-ARCHITECTURE-CONTRACTS.md` §3). */
+export async function getJobById(jobId: string) {
+  return findJobDefinitionById(jobId);
+}
+
+/** F16 §4.4 — one job's recent run history, dry runs included (`JobRun.dryRun`). */
+export async function getJobRunHistoryView(query: JobRunHistoryQuery) {
+  return jobRunHistory(query);
 }
