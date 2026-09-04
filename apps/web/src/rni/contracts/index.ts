@@ -274,6 +274,57 @@ export const rniRunRequest = z
   });
 export type RniRunRequest = z.infer<typeof rniRunRequest>;
 
+export const rniManualRefreshScope = z.discriminatedUnion('kind', [
+  z
+    .object({
+      kind: z.literal('ticker'),
+      ticker: z.string().regex(/^[A-Z][A-Z0-9.-]{0,9}$/u),
+    })
+    .strict(),
+  z.object({ kind: z.literal('full_universe') }).strict(),
+]);
+export type RniManualRefreshScope = z.infer<typeof rniManualRefreshScope>;
+
+/** The client supplies intent only; active configuration, windows and universe stay server-owned. */
+export const rniManualRefreshRequest = z
+  .object({
+    idempotencyKey: z.string().min(1),
+    scope: rniManualRefreshScope,
+  })
+  .strict();
+export type RniManualRefreshRequest = z.infer<typeof rniManualRefreshRequest>;
+
+export const rniManualRefreshScopePreview = z.discriminatedUnion('kind', [
+  z
+    .object({
+      kind: z.literal('ticker'),
+      securityId: z.string().uuid(),
+      ticker: z.string().regex(/^[A-Z][A-Z0-9.-]{0,9}$/u),
+      companyName: z.string().min(1),
+      exchange: z.string().min(1),
+      universeVersion: z.string().min(1),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('full_universe'),
+      universeVersion: z.string().min(1),
+      securityCount: z.number().int().positive().max(RNI_UNIVERSE_MAX_SYMBOLS),
+    })
+    .strict(),
+]);
+export type RniManualRefreshScopePreview = z.infer<typeof rniManualRefreshScopePreview>;
+
+export const rniManualRefreshResult = z
+  .object({
+    disposition: z.enum(['accepted', 'duplicate']),
+    runId: z.string().uuid(),
+    idempotencyKey: z.string().min(1),
+    scopePreview: rniManualRefreshScopePreview,
+  })
+  .strict();
+export type RniManualRefreshResult = z.infer<typeof rniManualRefreshResult>;
+
 export const rniUniverseMemberCandidate = z
   .object({
     ticker: z.string().regex(/^[A-Z][A-Z0-9.-]{0,9}$/u),
@@ -599,4 +650,13 @@ export interface RniReadService {
   getSecuritySummary(runId: string, securityId: string): Promise<RniCombinedSummary>;
   getCitation(citationId: string): Promise<RniCitation>;
   getEvidence(sourceItemId: string): Promise<RniSourceItem>;
+}
+
+/**
+ * Authenticated command composition. Implementations must bind one idempotency key to one exact
+ * request scope; an exact replay returns `duplicate` with the original run and preview, while a
+ * crossed-key scope fails rather than starting different work.
+ */
+export interface RniCommandService {
+  requestManualRefresh(request: RniManualRefreshRequest): Promise<RniManualRefreshResult>;
 }

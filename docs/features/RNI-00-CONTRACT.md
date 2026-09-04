@@ -211,6 +211,14 @@ IDs. Every non-insufficient dimension assignment has at least one persisted cita
 shape has no pooled count or unlabeled dimension collection, and a non-publishable platform may
 carry only insufficient, unscored dimensions.
 
+`RniCommandService.requestManualRefresh(request)` is the additive manual ticker/full-run command
+boundary. The client supplies only a required idempotency key and either a ticker or
+`full_universe` intent. Authz, audit, active configuration, universe, model route and time windows
+remain server-owned. An exact replay returns `duplicate` with the original durable run ID and
+resolved scope preview; reusing a key for different scope fails instead of starting different
+work. A ticker preview resolves canonical security/company/exchange identity, while a full preview
+binds the active universe version and a positive count no greater than the frozen 600 ceiling.
+
 ## 11. Publication and test gates
 
 A claim publishes only when every claim citation resolves to a persisted source item, belongs to

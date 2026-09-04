@@ -15,6 +15,7 @@
 | I02B | Resolve DATA/SURFACE contract requests | `READY_FOR_REVIEW` | `264ea9c`; D-RNI-09–12; narrow citation lookup plus explicit storage, pgvector, and universe-validation ownership decisions; contract 79 pass |
 | I02C | Resolve CR-SURFACE-02 Radar read shape | `PASSED` | `84dca87`; D-RNI-13; additive cursor page with security identity and non-poolable Reddit/X/combined cells; contract 81 pass |
 | I02D | Resolve CR-SURFACE-03 security-detail dimension read | `PASSED` | D-RNI-14; additive complete/cited per-platform dimension shape; focused 13 pass, full contract 83 pass/22 DB-skipped |
+| I02E | Resolve CR-SURFACE-04 idempotent manual-refresh command boundary | `PASSED` | D-RNI-17; additive intent-only request and server-resolved accepted/duplicate result; contract 14/14 |
 | I03 | Expand CI path filters for RNI prompts/agents/evals | `MERGED` | PR #5; actual `tests/eval/rni` path triggered and passed |
 | I04 | Pin/verify pnpm 10.33.0 and build-script policy | `PASSED` | Clean frozen install and PR #5 web/scorer CI passed |
 | I05 | Add forward universe migration and 600-member ceiling | `PASSED` | Independent re-review passed IR-01/03/05/06; focused validation 9 and fresh PostgreSQL activation/version gates 14 pass |
@@ -56,6 +57,7 @@
 | CR-SURFACE-01 | SURFACE | `ACCEPTED` | Add `RniReadService.getCitation(citationId)` returning frozen `RniCitation`; evidence remains a second source-ID read | DATA, SURFACE, INTEGRATION | `264ea9c` |
 | CR-SURFACE-02 | SURFACE | `ACCEPTED` | Add a cursor-paginated Radar page with run lineage, security identity, two non-poolable platform-labelled cells, and explicit pending/aligned/divergent/partial/insufficient cross-source state | DATA, ENGINE, SURFACE, INTEGRATION | `84dca87` / D-RNI-13 |
 | CR-SURFACE-03 | SURFACE | `ACCEPTED` | Add a bounded security-detail read with canonical identity and exactly four cited dimension assignments for each independently labelled platform | DATA, ENGINE, SURFACE, INTEGRATION | `ce80424` / D-RNI-14 |
+| CR-SURFACE-04 | SURFACE | `ACCEPTED` | Add an idempotent manual-refresh command boundary for ticker/full scope; server owns auth/audit/active config/universe/model/window resolution and returns one durable run identity plus resolved preview | ENGINE, SURFACE, INTEGRATION | D-RNI-17 / current I02E commit |
 
 ### CR-DATA-001 decision
 
@@ -114,6 +116,20 @@
 - **Acceptance:** the NVDA fixture has all four dimensions for both sources and preserves a
   bullish-Reddit/bearish-X trading stance. Missing dimensions, pooled counts, cross-labelled
   platforms and uncited publishable assignments fail contract parsing.
+
+### CR-SURFACE-04 decision
+
+- **Current behaviour:** frozen reads and the ticker-oriented `rniRunRequest` could not express
+  full-universe intent or accepted-versus-duplicate command results, so S07 could only simulate a
+  write outside a shared boundary.
+- **Decision:** accept additive `RniCommandService.requestManualRefresh`, with a required key and
+  ticker/full intent. The result returns a durable run ID, exact-key disposition and a resolved
+  canonical ticker or active-universe preview. A crossed-key scope must fail closed.
+- **Ownership:** SURFACE may implement the fixture control and pending/double-submit behaviour;
+  I09 owns authz, CSRF, audit, durable queue/run composition and server-side config/window/model
+  binding. Existing read and run-request shapes are unchanged.
+- **Acceptance:** typecheck/focused lint pass; RNI contract 14/14 and full contract 84 pass with 22
+  database-only skips.
 
 ## Lane intake
 
@@ -218,6 +234,7 @@
 | `CURRENT` | Accept SURFACE S05 bounded lineage explorer | typecheck; focused lint; RNI contract 13/13; Chromium 10/10; ownership/base/diff review |
 | `CURRENT` | Accept ENGINE E04 security resolution and comparative relations | typecheck; focused lint; unit/contract/eval 19/19; ownership/base/diff review |
 | `CURRENT` | Accept SURFACE S06 independent source-state matrix | typecheck; focused lint; RNI contract 13/13; Chromium 11/11; ownership/base/diff review |
+| `CURRENT` | Resolve CR-SURFACE-04 with idempotent manual-refresh command | typecheck; focused lint; RNI contract 14/14; full contract 84/22 skipped |
 
 ## Coordinator notes
 

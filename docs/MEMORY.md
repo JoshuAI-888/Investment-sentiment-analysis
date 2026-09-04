@@ -910,6 +910,20 @@ one database transaction. Failure or process termination between those writes th
 neither an orphaned staged version nor a falsely successful command. Expected provider and
 validation failures remain terminal replayable command results with their available lineage.
 
+### D-RNI-17 — Manual refresh exposes intent, durable identity and resolved scope
+
+**Resolves CR-SURFACE-04, 2026-09-05.** The shared command boundary accepts a required
+idempotency key plus either one ticker or `full_universe`; clients do not choose active
+configuration, universe, model route or analysis windows. Server composition resolves those
+versioned inputs, applies authz/audit, and returns one durable run ID with an `accepted` or
+`duplicate` disposition and a scope preview. Ticker previews include canonical security identity,
+company, exchange and universe version. Full previews include active universe version and a
+positive security count capped at 600.
+
+An exact same-key replay returns the original run and preview without a second execution. Reusing
+the key for a different scope fails closed. S07 may implement fixture-backed controls against this
+interface; I09 owns its durable job/queue and HTTP composition.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

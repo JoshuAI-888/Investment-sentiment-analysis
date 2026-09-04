@@ -7,6 +7,8 @@ import {
   rniRadarPage,
   rniRadarQuery,
   rniRunRequest,
+  rniManualRefreshRequest,
+  rniManualRefreshResult,
   rniSecurityDetail,
   rniSecurityMention,
   rniSecurityObservation,
@@ -268,6 +270,58 @@ describe('RNI frozen contracts', () => {
       comparisonEnd: null,
     });
     expect(request.aiRoute).toBe('openai_direct');
+  });
+
+  it('freezes client-owned manual refresh intent and server-resolved scope previews', () => {
+    expect(
+      rniManualRefreshRequest.parse({
+        idempotencyKey: 'manual-nvda-1',
+        scope: { kind: 'ticker', ticker: 'NVDA' },
+      }),
+    ).toEqual({
+      idempotencyKey: 'manual-nvda-1',
+      scope: { kind: 'ticker', ticker: 'NVDA' },
+    });
+    expect(
+      rniManualRefreshResult.parse({
+        disposition: 'accepted',
+        runId: rniFixtureIds.run,
+        idempotencyKey: 'manual-nvda-1',
+        scopePreview: {
+          kind: 'ticker',
+          securityId: rniFixtureIds.nvda,
+          ticker: 'NVDA',
+          companyName: 'NVIDIA Corporation',
+          exchange: 'NASDAQ',
+          universeVersion: 'rni-universe-fixture-v1',
+        },
+      }),
+    ).toMatchObject({ disposition: 'accepted', runId: rniFixtureIds.run });
+    expect(
+      rniManualRefreshResult.parse({
+        disposition: 'duplicate',
+        runId: rniFixtureIds.run,
+        idempotencyKey: 'manual-full-1',
+        scopePreview: {
+          kind: 'full_universe',
+          universeVersion: 'rni-universe-fixture-v1',
+          securityCount: 501,
+        },
+      }),
+    ).toMatchObject({ disposition: 'duplicate', runId: rniFixtureIds.run });
+    expect(() => rniManualRefreshRequest.parse({ scope: { kind: 'full_universe' } })).toThrow();
+    expect(() =>
+      rniManualRefreshResult.parse({
+        disposition: 'accepted',
+        runId: rniFixtureIds.run,
+        idempotencyKey: 'manual-full-over-limit',
+        scopePreview: {
+          kind: 'full_universe',
+          universeVersion: 'rni-universe-fixture-v1',
+          securityCount: 601,
+        },
+      }),
+    ).toThrow();
   });
 
   it('rejects an over-600-member FMP universe candidate', () => {
