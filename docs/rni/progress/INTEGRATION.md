@@ -221,7 +221,7 @@
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
-| ENGINE | `E09_ACCEPTED` | yes at `25023b9`; accepted handoff `9a8a8f8` | coordinator typecheck/lint and affected 97/97; independent final re-review PASS | yes | ER-14–19 closed; E01–E09 accepted; E10 may start |
+| ENGINE | `E10_CHANGES_REQUESTED` | yes at `bb151ff`; E10 handoff `e5293f2` | coordinator full unit/contract/available integration/eval, typecheck/full lint/diff pass; independent review returned ER-20–22 | yes | E01–E09 accepted; correct live-resistance semantic inputs/output validation and narrow D-RNI-21 claims before E10 acceptance |
 | SURFACE | `ACCEPTED_WAITING_ORDER` | yes at `87742d0`; code `c68980b`, tracker head `5d9cd3d` | coordinator typecheck/lint, RNI contract 17/17, production build and complete Chromium 22/22; independent review PASS | yes | S01–S10 accepted; merge waits behind ENGINE per DATA→ENGINE→SURFACE order |
 
 ## Live/deployment gates
@@ -287,6 +287,9 @@
 | ER-17 | P1 | `RESOLVED` | `80a5d2b` retained billed telemetry but persisted attacker-controlled/provider failure text | `9a8a8f8` records one of six allowlisted codes with fixed bounded messages, rethrows original errors transiently, and proves hostile keys/values and fake secrets never enter durable generic/discovery failures |
 | ER-18 | P1 | `RESOLVED` | E05 observation and E09 dispatch hashes previously used different JSON serialization | `80a5d2b` shares canonical serialization/hashing and proves each two-security observation hash equals its recorded exact dispatched-input hash and distinct call ID |
 | ER-19 | P1 | `RESOLVED` | `apps/web/src/rni/model-input.ts` sat outside the ENGINE-owned subtrees in RNI_BUILD_LOOP §3.3 | `9a8a8f8` moves the serializer to `src/rni/agents/model-input.ts`; all imports resolve there and no ownership expansion remains |
+| ER-20 | P1 | `OPEN` | E10 verifier/challenger live cases use fixture model/prompt descriptors, inject into a trusted methodology field and submit empty claim evidence, so trivial abstention can pass without testing persisted-source resistance | Build active Sol/prompt-v2 descriptors and domain-valid claim/evidence inputs whose bounded Reddit/X source content carries the injection with valid run/security/cutoff lineage |
+| ER-21 | P1 | `OPEN` | E10 live validation reads only the first output text, ignores additional or unknown output items, and accepts any Reddit-host candidate without provider-source citation or configured-community binding | Require one governed message/output-text envelope, reject non-allowlisted items/tools, and reuse production discovery citation/source/community validation; add extra-text, unknown-item, uncited and wrong-community regressions |
+| ER-22 | P2 | `OPEN` | The D-RNI-21 Direct-default/low-reasoning eval compares test-local literals and an explicitly supplied route, so it proves no production behavior | Label it an evaluator expectation snapshot and defer behavioral proof to I10, or test the shared I10 resolver once it exists; correct tracker claims accordingly |
 | ICR-01 | P1 | `RESOLVED` | D-RNI-18 cannot represent the preserved 100-member legacy active parent of the first staged FMP candidate, while undersized FMP versions pass | Active is an explicit legacy/FMP union; FMP active/staged variants require 501–600 and a 100→501 fixture passes |
 | ICR-02 | P1 | `RESOLVED` | Balanced arithmetic permits complete impact arrays that remove more members than active or add more members than staged | Frozen schema rejects both bounds; I08 retains repository-backed membership-set acceptance |
 | SR-04 | P2 | `RESOLVED` | S02's first commit left its task/evidence/handoff record stale and did not identify the actual browser gate | `c4899b8` amends the task commit with exact type, lint, contract, build and Chromium evidence plus complete files/risks/handoff |
@@ -365,6 +368,7 @@
 | `CURRENT` | Re-review ENGINE E09 ER-15–18 correction | `80a5d2b` descends `00e0d23`; coordinator typecheck/scoped lint and affected 97/97 pass; ER-15/16/18 close, independent adversarial review CHANGES REQUESTED on persisted error sanitization and out-of-lane serializer placement |
 
 | `CURRENT` | Accept final ENGINE E09 routing correction | `9a8a8f8` descends `25023b9`; coordinator typecheck/scoped lint, affected 97/97, diff/ownership/frozen-contract checks and independent adversarial review PASS; ER-14–19 closed |
+| `CURRENT` | Review ENGINE E10 release/live-resistance eval | `e5293f2` descends `bb151ff`; unit 1,345, contract 107/22 skipped, available integration 44/390 skipped, eval 12/1 live skip, typecheck/full lint/diff/CI-scope pass; independent adversarial review CHANGES REQUESTED on ER-20–22 |
 
 ## Coordinator notes
 
