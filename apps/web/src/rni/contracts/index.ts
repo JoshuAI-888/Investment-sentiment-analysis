@@ -58,6 +58,21 @@ export type RniDimensionKey = z.infer<typeof rniDimensionKey>;
 export const rniCombinedStatus = z.enum(['complete', 'partial', 'insufficient']);
 export type RniCombinedStatus = z.infer<typeof rniCombinedStatus>;
 
+export const rniErrorCode = z.enum([
+  'UNAUTHENTICATED',
+  'FORBIDDEN',
+  'INVALID_REQUEST',
+  'RUN_NOT_FOUND',
+  'SOURCE_NOT_FOUND',
+  'SOURCE_NOT_PERSISTED',
+  'CITATION_INVALID',
+  'PROVIDER_UNAVAILABLE',
+  'BUDGET_EXHAUSTED',
+  'UNIVERSE_SYNC_INVALID',
+  'CONFLICT',
+]);
+export type RniErrorCode = z.infer<typeof rniErrorCode>;
+
 export const rniIsoTimestamp = z.string().datetime({ offset: true });
 export const rniSha256 = z.string().regex(/^[a-f0-9]{64}$/u);
 export const rniUnitDecimal = z.string().regex(/^(?:0(?:\.\d+)?|1(?:\.0+)?)$/u);
@@ -220,6 +235,62 @@ export const rniRun = z
     path: ['windowEnd'],
   });
 export type RniRun = z.infer<typeof rniRun>;
+
+export const rniRunRequest = z
+  .object({
+    idempotencyKey: z.string().min(1),
+    trigger: rniRunTrigger,
+    ticker: z.string().regex(/^[A-Z][A-Z0-9.-]{0,9}$/u),
+    windowStart: rniIsoTimestamp,
+    windowEnd: rniIsoTimestamp,
+    comparisonStart: rniIsoTimestamp.nullable(),
+    comparisonEnd: rniIsoTimestamp.nullable(),
+    aiRoute: rniAiRoute.default('openai_direct'),
+  })
+  .strict()
+  .refine((request) => new Date(request.windowEnd) > new Date(request.windowStart), {
+    message: 'windowEnd must be after windowStart',
+    path: ['windowEnd'],
+  });
+export type RniRunRequest = z.infer<typeof rniRunRequest>;
+
+export const rniUniverseMemberCandidate = z
+  .object({
+    ticker: z.string().regex(/^[A-Z][A-Z0-9.-]{0,9}$/u),
+    companyName: z.string().min(1),
+    exchange: z.string().min(1),
+    fmpSymbol: z.string().min(1),
+  })
+  .strict();
+
+export const rniUniverseSnapshotCandidate = z
+  .object({
+    source: z.literal('fmp_sp500_constituent'),
+    retrievedAt: rniIsoTimestamp,
+    payloadSha256: rniSha256,
+    members: z.array(rniUniverseMemberCandidate).min(1).max(RNI_UNIVERSE_MAX_SYMBOLS),
+  })
+  .strict()
+  .refine((snapshot) => snapshot.members.some((member) => member.ticker === 'NVDA'), {
+    message: 'The S&P 500 candidate must contain NVDA',
+    path: ['members'],
+  });
+export type RniUniverseSnapshotCandidate = z.infer<typeof rniUniverseSnapshotCandidate>;
+
+export const rniErrorEnvelope = z
+  .object({
+    error: z
+      .object({
+        code: rniErrorCode,
+        message: z.string().min(1),
+        retryable: z.boolean(),
+        requestId: z.string().min(1),
+        details: z.record(z.unknown()).optional(),
+      })
+      .strict(),
+  })
+  .strict();
+export type RniErrorEnvelope = z.infer<typeof rniErrorEnvelope>;
 
 export const rniCitation = z
   .object({

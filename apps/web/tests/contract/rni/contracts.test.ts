@@ -3,9 +3,11 @@ import {
   rniCombinedSummary,
   rniComparativeRelation,
   rniPlatformSlice,
+  rniRunRequest,
   rniSecurityMention,
   rniSecurityObservation,
   rniSourceItem,
+  rniUniverseSnapshotCandidate,
 } from '@/rni/contracts';
 import {
   comparativeMentions,
@@ -59,5 +61,35 @@ describe('RNI frozen contracts', () => {
       ],
     };
     expect(() => rniCombinedSummary.parse(duplicate)).toThrow(/three distinct summary sections/u);
+  });
+
+  it('defaults future RNI runs to OpenAI Direct', () => {
+    const request = rniRunRequest.parse({
+      idempotencyKey: 'fixture-run-1',
+      trigger: 'manual',
+      ticker: 'NVDA',
+      windowStart: '2026-09-04T00:00:00.000Z',
+      windowEnd: '2026-09-05T00:00:00.000Z',
+      comparisonStart: null,
+      comparisonEnd: null,
+    });
+    expect(request.aiRoute).toBe('openai_direct');
+  });
+
+  it('rejects an over-600-member FMP universe candidate', () => {
+    const members = Array.from({ length: 601 }, (_, index) => ({
+      ticker: index === 0 ? 'NVDA' : `T${index}`,
+      companyName: `Fixture ${index}`,
+      exchange: 'NASDAQ',
+      fmpSymbol: index === 0 ? 'NVDA' : `T${index}`,
+    }));
+    expect(() =>
+      rniUniverseSnapshotCandidate.parse({
+        source: 'fmp_sp500_constituent',
+        retrievedAt: '2026-09-05T00:00:00.000Z',
+        payloadSha256: 'a'.repeat(64),
+        members,
+      }),
+    ).toThrow();
   });
 });
