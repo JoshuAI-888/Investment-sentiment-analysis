@@ -27,7 +27,7 @@
 | G2 RNI contract frozen | `PASSED` | coordinator | PR #5 merged at `dd28ea2`; typed source contract at `9908eda` |
 | G3 DATA accepted | `PASSED` | DATA + reviewer | merged sequentially at `254fe45`; coordinator type/contract plus fresh PostgreSQL DATA 41/41 pass |
 | G4 ENGINE accepted | `IN_PROGRESS` | ENGINE + reviewer | E01–E07 accepted through `d1ef93a`; E08–E10 remain |
-| G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01–S07 accepted through `babd940`; S08–S10 remain |
+| G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01–S08 accepted through `f929ab8`; S09–S10 remain |
 | G6 integrated preview | `NOT_STARTED` | coordinator | Depends G3–G5 |
 | G7 live Reddit/X/FMP gates | `NOT_STARTED` | coordinator + joshuai | Depends G6 and configured credentials |
 | G8 production approval | `NOT_STARTED` | joshuai | Depends all prior gates |
@@ -38,7 +38,7 @@
 |---|---|---|---|---|
 | DATA | `feat/rni-data-source-first` | `MERGED_TO_INTEGRATION` | `DATA.md` | lane `5926601`; merge `254fe45` |
 | ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01–E07 accepted | `ENGINE.md` | `d1ef93a` |
-| SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01–S07 accepted | `SURFACE.md` | `babd940` |
+| SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01–S08 accepted | `SURFACE.md` | `f929ab8` |
 | INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I06 passed at `5950b53`; current coordinator record follows |
 
 ## Confirmed product decisions
@@ -119,3 +119,4 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — independent I02F1 re-review returned READY at `098f010`: the 100→501 legacy/FMP transition, 501–600 bounds, impossible-impact rejection and read-only provider/mutation isolation pass with focused contract 15/15 plus type/lint. CR-SURFACE-05 is fully accepted and S08 may resume from the superseding integration head.
 - 2026-09-05 — accepted ENGINE E06 at `ecbf049` after returning ER-07/08: positive-weight traces now gate effective source/community/narrative breadth, sentiment independence and confidence while raw distinct-source attention stays visible; EOF-only diff failures were removed. Coordinator type/lint, focused unit/contract/eval 18/18 and branch diff check pass; ENGINE advances to E07 after rebase and remains unmerged.
 - 2026-09-05 — accepted ENGINE E07 at `d1ef93a`: deterministic convergence preserves independently labelled Reddit/X snapshots, emits no pooled metric, maps explicit terminal/freshness coverage into combined state, and binds replay to canonical input/result hashes. Coordinator type/lint, focused unit/contract/eval 21/21 and branch diff check pass; ENGINE advances to E08 and remains unmerged.
+- 2026-09-05 — accepted SURFACE S08 at `f929ab8` after SR-09–14 correction: the server owns the frozen universe-read seam, the UI is props-only, parsed search is bounded and version-bound, active legacy/FMP lineage plus staged identity impact remain explicit, and keyboard/live-status/legacy branches are covered. Coordinator type/lint, RNI contract 15/15, production build and Chromium 3/3 pass; independent adversarial review returned READY. SURFACE advances to S09 and remains unmerged.

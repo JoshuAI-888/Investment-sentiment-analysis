@@ -158,7 +158,7 @@
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
 | ENGINE | `E07_APPROVED` | yes at `8ca4aa7` | builder serialized unit 1,285 + contract 100/22 skipped + integration 44/390 skipped + eval 5/5; coordinator typecheck/lint, focused 21/21 and diff check | yes | E01–E07 accepted through `d1ef93a`; lane remains held until E08–E10 |
-| SURFACE | `S08_CHANGES_REQUESTED` | yes at `e010124` | coordinator typecheck/lint, RNI contract 15/15, production build and corrected Chromium 2/2 | yes | SR-09–13 corrected but final tracker reconciliation pending; SR-14 legacy-active UI coverage open; S01–S07 remain accepted |
+| SURFACE | `S08_APPROVED` | yes at `ee47959` | coordinator typecheck/lint, RNI contract 15/15, production build and Chromium 3/3; independent adversarial review READY | yes | SR-09–14 resolved at `f929ab8`; S01–S08 accepted; lane remains held until S09–S10 |
 
 ## Live/deployment gates
 
@@ -220,12 +220,12 @@
 | SR-06 | P1 | `RESOLVED` | S07 revealed scope only after submission and permanently reused one key per scope | `55b01ef` previews ticker/full scope before action and uses a new key for each intentional request |
 | SR-07 | P1 | `RESOLVED` | S07's 25 ms fixture made double-submit browser coverage timing-dependent | `a28121e` injects a deferred command and proves both controls remain disabled until explicit release; Chromium 4/4 twice |
 | SR-08 | P1 | `RESOLVED` | S07 emitted its deferred fixture harness as an unguarded production route | `babd940` forces request-time evaluation and returns not-found outside validated fixture mode; guard test passes |
-| SR-09 | P1 | `OPEN` | S08 constructs the fixture universe service inside the production client component, leaving I08 no server-side live-composition seam | Keep fixture composition in the lane page, make the UI data-only and drive query reads through a server boundary replaceable by I08 |
-| SR-10 | P1 | `OPEN` | Fixture search hardcodes exact MSFT tokens, ignores limit and does not parse the frozen query/result | Search an explicit active-member fixture catalogue by case-insensitive ticker/company substring, enforce parsed limit/hasMore and test partial/empty/over-limit cases |
-| SR-11 | P1 | `OPEN` | Staged Settings discards canonical added/removed identities and renders counts only | Render ticker/company/exchange additions and removals with explicit none state; assert PLTR and version distinction in Chromium |
-| SR-12 | P1 | `OPEN` | S08 claims READY without its required test row, task record, risks, resolved blocker, commits or current handoff | Reconcile the complete lane record in the corrective S08 commit |
-| SR-13 | P2 | `OPEN` | S08 browser coverage uses programmatic fill and dynamic search results have no announced status | Add a labelled polite result status and exercise Tab plus keyboard typing/submission in Chromium |
-| SR-14 | P2 | `OPEN` | S08 implements legacy-active source/retrieval copy but tests only the FMP active variant | Exercise the legacy-active presentation branch directly without exposing a production fixture selector |
+| SR-09 | P1 | `RESOLVED` | S08 constructed the fixture universe service inside the production client component, leaving I08 no server-side live-composition seam | `f929ab8` composes `RniUniverseReadService` in the server page and keeps the UI props-only |
+| SR-10 | P1 | `RESOLVED` | Fixture search hardcoded exact MSFT tokens, ignored limit and did not parse the frozen query/result | `f929ab8` parses the frozen query, searches an explicit catalogue by case-insensitive ticker/company substring, enforces limit/hasMore and covers initial/partial/mixed-case/empty/over-limit reads |
+| SR-11 | P1 | `RESOLVED` | Staged Settings discarded canonical added/removed identities and rendered counts only | `f929ab8` renders canonical ticker/company/exchange additions and removals with an explicit empty state; Chromium asserts PLTR and distinct versions |
+| SR-12 | P1 | `RESOLVED` | S08 claimed READY without its required test row, task record, risks, resolved blocker, commits or current handoff | `f929ab8` reconciles the complete S08 lane record in the same commit |
+| SR-13 | P2 | `RESOLVED` | S08 browser coverage used programmatic fill and dynamic search results had no announced status | `f929ab8` adds a labelled polite status and Chromium Tab/type/Tab/Enter submission coverage |
+| SR-14 | P2 | `RESOLVED` | S08 implemented legacy-active source/retrieval copy but tested only the FMP active variant | `f929ab8` routes both variants through a pure presentation helper and directly covers the legacy/null-retrieval branch without a production fixture selector |
 | IR-01 | P1 | `RESOLVED` | Universe activation can publish an unapproved, stale-parent or caller-altered FMP snapshot and can diverge selected count from stored members | FMP approval is one-way; activation requires the recorded admin, current parent, exact stored-member set and count; negative DB tests pass |
 | IR-02 | P1 | `RESOLVED` | FMP synchronization claims idempotency only after the external provider call and payload-hash reuse does not bind a new key | Command is committed before fetch; concurrent/later replay performs one fetch per key; expected and unexpected terminal outcomes retain audit and provider/payload/version lineage |
 | IR-03 | P1 | `RESOLVED` | An exactly 500-row FMP response passes the contract's greater-than-500 completeness gate | Minimum is 501 and the 500-row boundary test fails closed |
@@ -278,6 +278,7 @@
 | `CURRENT` | Review SURFACE S08 universe settings | typecheck; focused lint; RNI contract 15/15; production build; Chromium 1/1; SR-09–12 returned |
 | `CURRENT` | Close I02F universe-read P1 review findings | typecheck; focused lint; RNI contract 15/15; full contract 85/22 skipped; independent re-review READY at `098f010` |
 | `CURRENT` | Accept ENGINE E07 deterministic cross-source facts | typecheck; focused lint; unit/contract/eval 21/21; branch diff check; ownership/base review |
+| `CURRENT` | Accept corrected SURFACE S08 universe settings | typecheck; focused lint; RNI contract 15/15; production build; Chromium 3/3; independent adversarial review READY; ownership/base/diff review |
 
 ## Coordinator notes
 
