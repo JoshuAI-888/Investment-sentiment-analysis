@@ -3,8 +3,8 @@
 This repository is the **Barebone Social Sentiment** build: a spec-driven agentic engineering
 package for a social sentiment dashboard, plus the application code it produces.
 
-Everything in `archive/` is retired. Nothing outside it should reference it, with one named
-exception recorded below.
+`archive/` was removed from the repository in a deliberate history reset (2026-09-04). Nothing
+in the current tree should reference it — see the note below for what that changes.
 
 ## Cold start
 
@@ -45,23 +45,20 @@ Subagents are defined in `.claude/agents/`: `lane-build` (Sonnet, worktree), `la
 - Analytics modules import nothing with I/O and use decimals, never floats. A raw JS `number`
   in an analytics module is a review failure.
 
-## `archive/` — retired, with one live dependency
+## `archive/` — removed 2026-09-04
 
-| Path | What it is | Status |
-|---|---|---|
-| `archive/finsent/` | A PIT-correct financial sentiment-drift pipeline for Databricks. Broker notes and news; no social sources. 103 tests passing on synthetic data; never run against real data. | Retired by D-18. **Do not delete** — see below |
-| `archive/approach-comparison/` | The ranked comparison and SWOT of four approaches, plus the source of the retired GitHub Pages site. §11 records what was decided. | Historical. Site retired by D-25 |
-| `archive/README-two-project-index.md` | The old root README, from when this repository held two projects. | Historical |
+The repository's git history was reset by the owner on 2026-09-04, and `archive/` (`finsent/`,
+`approach-comparison/`, and `README-two-project-index.md`) was dropped in that reset — a
+deliberate choice, not an accident, confirmed by the owner. Nothing under `archive/` exists in
+the tree any more.
 
-**The one live dependency:** **D-18 ports finsent's evaluation harness into F12** —
-`archive/finsent/src/backtest/{engine,pit}.py` with `archive/finsent/tests/test_pit_leakage.py`
-and `test_parity.py`. It is ported as a **versioned module with its own tests**, never imported
-across the boundary. D-18 also asks that finsent's Challenge 1 — whether sentiment drift is
-roughly collinear with 12-1 price momentum — be run early, as the cheapest available
-falsification of this project.
-
-finsent's own `docs/{spec,memory,progress}.md` are archived with it. **Their locked decisions do
-not apply to this build**, and this build's decisions do not apply to them.
+**D-18's port is abandoned, not fulfilled.** D-18 (`docs/MEMORY.md`) called for porting finsent's
+evaluation harness — `archive/finsent/src/backtest/{engine,pit}.py` plus its `test_pit_leakage.py`
+and `test_parity.py` — into F12 as a versioned module with its own tests. That source no longer
+exists to port. **F12's evaluation harness (PIT correctness, cross-sectional IC, Newey–West t,
+decay curve, momentum-residualised IC, horizon-normalised P&L) must be built from scratch when
+F12 is picked up**, not assumed available from an archive that is gone. See `MEMORY.md` D-18 for
+the full superseding note.
 
 ## Git
 

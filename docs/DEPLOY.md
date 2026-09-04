@@ -82,10 +82,11 @@ collision D-01 worried about no longer exists: there is one project at the root,
 one `README.md`, and a `CLAUDE.md` that describes only this build. A separate repository would
 now add a migration and remove nothing.
 
-**finsent is archived, not deleted, and this matters:** D-18 ports its evaluation harness —
-`archive/finsent/src/backtest/{engine,pit}.py` and `archive/finsent/tests/test_{pit_leakage,parity}.py`
-— into **F12** as a versioned module with its own tests. Do not delete `archive/` before F12
-has taken what it needs.
+**Overtaken 2026-09-04: `archive/` (including `finsent/`) is gone.** The owner reset the
+repository's git history and dropped `archive/` entirely, confirmed deliberate. The paragraph
+above described why it mattered while it existed; it no longer applies. D-18's port from
+`archive/finsent/src/backtest/{engine,pit}.py` has no source left to port from — see `MEMORY.md`
+D-18's superseding note. F12's evaluation harness will be built from scratch, not ported.
 
 **Still outstanding from the original task:** set branch protection on `main` to require the CI
 check once **F01** creates it. That is the one item here the flatten did not do, and it cannot
