@@ -20,7 +20,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | D05 | Cross-source summary persistence without component mutation | `READY_FOR_REVIEW` | Divergence/partial repository tests 4/4 pass |
 | D06 | Idempotent/concurrent inserts and transactional outbox | `READY_FOR_REVIEW` | 8-way concurrent upsert and outbox rollback 3/3 pass |
 | D07 | Bounded-content, tombstone and rejected-discovery states | `READY_FOR_REVIEW` | Tombstone/rejected-page tests 3/3 pass |
-| D08 | FMP >500-member fixture support for integration migration   | `NOT_STARTED` | Valid/invalid atomic activation fixtures |
+| D08 | FMP >500-member fixture support for integration migration   | `READY_FOR_REVIEW` | 501-member and six invalid activation fixtures 4/4 pass |
 | D09 | Full DATA lane verification and handoff | `NOT_STARTED` | Report contract completed |
 
 ## Task evidence
@@ -139,6 +139,21 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 - **Handoff:** SURFACE/INTEGRATION should use the terminal state for display restrictions while
   retaining the source identity and audit lineage.
 
+### D08 — FMP universe fixtures
+
+- **Status:** `READY_FOR_REVIEW`
+- **Files:** `apps/web/tests/integration/rni-persistence/fmp-universe-fixtures.ts`, its test, and
+  this progress file; migration `0024` and shared universe code were not touched.
+- **Tests:** TypeScript; targeted ESLint; D08 fixture suite (`4/4`); cumulative DATA suite
+  (`34/34`); `git diff --check`.
+- **Result:** the integration coordinator receives a unique 501-member NVDA-containing candidate
+  plus empty, duplicate, missing-NVDA, >600, ambiguous, and unresolved fixtures with explicit
+  expected outcomes.
+- **Risk:** CR-DATA-004 records that the frozen schema accepts duplicate/resolution-failure
+  candidates; only the integration synchronizer can enforce atomic non-activation today.
+- **Handoff:** use all seven fixtures against migration `0024` and the FMP synchronizer; invalid
+  cases must leave the prior active universe unchanged.
+
 ## Required invariants
 
 - One external source row, many security links and observations.
@@ -157,6 +172,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | CR-DATA-001 | `READY` | Freeze a source-persistence repository port that accepts `RniSourceItem` and returns the committed source identity plus idempotency outcome. | ENGINE persist-first workflow cannot bind to DATA without importing a DATA-private concrete adapter. |
 | CR-DATA-002 | `READY` | Freeze claim, citation, theme, and narrative persistence schemas/ports. | D03 relational schema can proceed, but ENGINE integration cannot depend on DATA-private shapes. |
 | CR-DATA-003 | `READY` | Reconcile the assignment's pgvector requirement with `DEPLOY.md`/`INTEGRATION_PLAN.md`, which defer pgvector for this slice. | Determines whether migration `0022` may require `vector` in preview/production. |
+| CR-DATA-004 | `READY` | Add duplicate-member and resolution-result semantics to the frozen universe sync contract. | D08 can supply fixtures, but the frozen candidate schema alone cannot fail duplicate/ambiguous/unresolved members. |
 
 ### CR-DATA-001 — Source-persistence repository port
 
@@ -210,6 +226,22 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
   available, exact cosine query over fixed embeddings, and explicit migration failure when the
   extension prerequisite is missing.
 
+### CR-DATA-004 — Universe validation semantics
+
+- **Current behaviour:** `rniUniverseSnapshotCandidate` enforces 1-600 members and NVDA presence,
+  but accepts duplicate ticker/FMP-symbol members and has no resolved/ambiguous/unresolved member
+  result shape.
+- **Requested change:** add duplicate-member refinement and a frozen staged-resolution result (or
+  explicitly assign those checks to the integration synchronizer contract).
+- **Justification:** D08 must prove duplicate, ambiguous, and unresolved inputs cannot activate;
+  fixture-only conventions are not an enforceable cross-lane API.
+- **Affected lanes:** DATA fixtures and INTEGRATION migration `0024`/FMP synchronizer.
+- **Compatibility impact:** duplicate payloads that currently parse would fail; valid unique
+  snapshots remain compatible.
+- **Recommended acceptance test:** the DATA `duplicate`, `ambiguous`, and `unresolved` fixtures
+  all leave the prior active universe unchanged, while the 501-member valid fixture activates
+  atomically and retains NVDA.
+
 ## Test evidence
 
 | Suite | Status | Command/run link | Notes |
@@ -217,7 +249,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | migration clean apply | `READY_FOR_REVIEW` | targeted D01 Vitest | Fresh schema applied through `0020`; 7/7 pass |
 | migration forward apply | `NOT_STARTED` | — | D09 lane gate |
 | repository unit | `READY_FOR_REVIEW` | typecheck + targeted ESLint | No errors |
-| database integration | `READY_FOR_REVIEW` | DATA persistence Vitest | 30/30 D01-D07 tests pass against PostgreSQL |
+| database integration | `READY_FOR_REVIEW` | DATA persistence + fixture Vitest | 34/34 D01-D08 tests pass |
 | concurrency/idempotency | `READY_FOR_REVIEW` | D06 PostgreSQL Vitest | 8 concurrent deliveries + forced rollback; 3/3 pass |
 | repository required gate | `NOT_STARTED` | — | D09 lane gate |
 
@@ -233,6 +265,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 |---|---|---|---|---|---|
 | 2026-09-05 | `READY` | CR-DATA-001: no frozen persistence repository port | coordinator | Concrete DATA adapter uses only frozen `RniSourceItem`; no contract edit made | Before ENGINE persistence binding |
 | 2026-09-05 | `BLOCKED` | CR-DATA-002/003: D03 types/port and pgvector deployment scope unresolved | coordinator | Completed relational lineage and tests without changing contracts or enabling vector | Before D03 embedding storage / ENGINE binding |
+| 2026-09-05 | `READY` | CR-DATA-004: duplicate/resolution universe validation absent from frozen schema | coordinator | Supplied explicit invalid fixtures; did not touch integration-owned migration/code | During migration 0024/FMP synchronizer review |
 
 ## Commits
 
@@ -244,7 +277,8 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | adb91a4 | D04 independent run/platform slices | Typecheck, targeted lint, PostgreSQL 20/20 |
 | ca9ca72 | D05 immutable cross-source summaries | Typecheck, targeted lint, PostgreSQL 24/24 |
 | 2cc02d7 | D06 concurrent source upsert and transactional outbox | Typecheck, targeted lint, PostgreSQL 27/27 |
-| this commit | D07 source tombstones and rejected discoveries | Typecheck, targeted lint, PostgreSQL 30/30 |
+| e75a0af | D07 source tombstones and rejected discoveries | Typecheck, targeted lint, PostgreSQL 30/30 |
+| this commit | D08 >500-member FMP universe fixture support | Typecheck, targeted lint, DATA 34/34 |
 
 ## Handoff
 
@@ -253,11 +287,11 @@ RNI LANE     DATA
 BRANCH       feat/rni-data-source-first
 BASE SHA     86ec5b4757f45cbe96c651f413e8ff1109fef279
 STATUS       PARTIAL
-TASKS        6/9; D03 blocked, D08-D09 incomplete
-TESTS        D01-D07 PostgreSQL integration 30/30; typecheck/lint pass
-CONTRACT     CR-DATA-001, CR-DATA-002, CR-DATA-003
-RISKS        D03 pgvector/ports blocked; outbox relay remains integration scope
+TASKS        7/9; D03 blocked, D09 incomplete
+TESTS        D01-D08 DATA suite 34/34; typecheck/lint pass
+CONTRACT     CR-DATA-001, CR-DATA-002, CR-DATA-003, CR-DATA-004
+RISKS        D03 pgvector/ports blocked; universe validation gap handed to integration
 FILES        migrations 0020-0022; source/observation/claim repositories; D01-D03 tests; DATA.md
-COMMITS      3c0cc56 (D01); bae4e9f (D02); 2757f5c (D03 relational); adb91a4 (D04); ca9ca72 (D05); 2cc02d7 (D06); this commit (D07)
+COMMITS      3c0cc56 (D01); bae4e9f (D02); 2757f5c (D03 relational); adb91a4 (D04); ca9ca72 (D05); 2cc02d7 (D06); e75a0af (D07); this commit (D08)
 DEMO PROOF   one comparative source persists distinct bullish NVDA and bearish AMD observations
 ```
