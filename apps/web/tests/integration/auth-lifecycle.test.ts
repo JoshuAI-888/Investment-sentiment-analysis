@@ -11,25 +11,30 @@
 import { describe, expect, it } from 'vitest';
 import type { MemoryDB } from 'better-auth/adapters/memory';
 import { createAuthInstance, createEmptyMemoryDb } from '@/services/auth/instance';
-import { clearFixtureOtpStore, readFixtureOtp } from '@/services/auth/fixture-otp-store';
+import { readFixtureLink } from '@/services/auth/fixture-link-store';
+
+const PASSWORD = 'correct horse battery staple';
 
 function freshAuth() {
   const fixtureDb: MemoryDB = createEmptyMemoryDb();
   return { auth: createAuthInstance({ fixtureDb }), fixtureDb };
 }
 
-/** Signs in and returns a `Headers` carrying the resulting session cookie, cookie-jar style. */
+/** Signs up, verifies, and returns a `Headers` carrying the resulting session cookie, cookie-jar style. */
 async function signInAndGetCookieHeaders(
   auth: ReturnType<typeof createAuthInstance>,
   email: string,
 ): Promise<Headers> {
-  await auth.api.sendVerificationOTP({ body: { email, type: 'sign-in' } });
-  const otp = readFixtureOtp(email);
-  if (otp === null) throw new Error('test setup: no fixture OTP was recorded');
+  await auth.api.signUpEmail({ body: { email, password: PASSWORD, name: email } });
+  const verifyUrl = readFixtureLink(email);
+  if (verifyUrl === null) throw new Error('test setup: no fixture verification link was recorded');
+  const token = new URL(verifyUrl).searchParams.get('token');
+  if (token === null) throw new Error('test setup: verification link carried no token');
 
-  const response = await auth.api.signInEmailOTP({ body: { email, otp }, asResponse: true });
+  // `autoSignInAfterVerification` (instance.ts) means verifying already sets the session cookie.
+  const response = await auth.api.verifyEmail({ query: { token }, asResponse: true });
   const setCookie = response.headers.get('set-cookie');
-  if (setCookie === null) throw new Error('test setup: sign-in did not set a session cookie');
+  if (setCookie === null) throw new Error('test setup: verification did not set a session cookie');
 
   return new Headers({ cookie: setCookie.split(';')[0] ?? '' });
 }
@@ -63,7 +68,10 @@ describe('account deletion and export', () => {
     await auth.api.deleteUser({ body: {}, headers: firstHeaders });
     expect(await auth.api.getSession({ headers: firstHeaders })).toBeNull();
 
-    clearFixtureOtpStore();
+    // No store-clearing needed between the two sign-ins here: unlike an OTP, verifying a link
+    // does not leave a stale value behind that a later `readFixtureLink` for a *different* email
+    // could collide with — each call is keyed by address, and this test reuses one address
+    // sequentially, not concurrently.
     const secondHeaders = await signInAndGetCookieHeaders(auth, email);
     const secondSession = await auth.api.getSession({ headers: secondHeaders });
 

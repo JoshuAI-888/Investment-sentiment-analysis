@@ -12,7 +12,8 @@ task would have used if it were ever reopened.
 |---|---|---|---|
 | Email, account | `user` | life of account | deleted |
 | Sessions | `session` | 30 days | deleted |
-| OTP records | `verification` | 5 min + Better Auth's own housekeeping | deleted |
+| Password hash | `account` | life of account | deleted |
+| Verification/reset tokens | `verification` | until used or expired + Better Auth's own housekeeping | deleted |
 | Assumption profiles | `user_assumption_profile` | life of account | deleted — **not yet wired, see below** |
 | Share grants | `calculation_share` | until revoked | revoked, then deleted — **not yet wired, see below** |
 | Issue reports | `calculation_issue` | permanent | anonymised, not deleted — audit trail — **not yet wired, see below** |
@@ -25,9 +26,9 @@ the code — is the one thing this document exists to prevent.
 
 ## What F02 actually built, and what it did not
 
-`src/services/auth/lifecycle.ts` implements deletion and export for exactly the first three
-rows above: `user`, `session`, and `verification` (the last is Better Auth's own housekeeping,
-cleared as part of deleting the user). Both are:
+`src/services/auth/lifecycle.ts` implements deletion and export for exactly the first four
+rows above: `user`, `session`, `account`, and `verification` (the last two are Better Auth's
+own housekeeping, cleared as part of deleting the user). Both are:
 
 - **self-service** — reachable from `/settings/account`, no admin action needed;
 - **confirmed** — the UI requires an explicit second click (`AccountPanel.tsx`'s "Confirm

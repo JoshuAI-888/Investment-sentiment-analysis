@@ -39,3 +39,21 @@ export function isAllowlisted(email: string, allowlist: readonly string[]): bool
   const normalized = normalizeEmail(email);
   return allowlist.some((entry) => normalizeEmail(entry) === normalized);
 }
+
+/**
+ * The account-creation gate `databaseHooks.user.create.before` (`instance.ts`) enforces —
+ * pulled out as a pure function so it is unit-testable without standing up a full Better Auth
+ * instance. **`fixture` mode always allows creation, regardless of the allowlist.** This mirrors
+ * the old OTP flow's own fixture short-circuit (`send-decision.ts`'s `decideAndSend`, which
+ * never reached its allowlist check outside `live` mode either) and exists for the same reason:
+ * fixture mode has no live mailbox and nothing real to protect, and `tests/e2e/auth.spec.ts`
+ * needs to create a genuinely non-allowlisted, signed-in session to prove `requireAdmin()`
+ * actually refuses one.
+ */
+export function isAccountCreationAllowed(
+  providerMode: 'fixture' | 'live',
+  email: string,
+  allowlist: readonly string[],
+): boolean {
+  return providerMode !== 'live' || isAllowlisted(email, allowlist);
+}

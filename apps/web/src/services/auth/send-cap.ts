@@ -10,12 +10,15 @@
  * Backed by Upstash Redis (REST), per `02-ARCHITECTURE-CONTRACTS.md` §1 — "Cache / locks /
  * rate limits". A plain `INCR` + conditional `EXPIRE` on an hour-bucketed and a day-bucketed
  * key, both well under Resend's free-tier 100/day (`DEPLOY.md` MT-02).
+ *
+ * Covers both mail-sending paths password auth has — email verification on sign-up and
+ * password-reset requests — under one cap, the same way it covered every OTP send before.
  */
 import { env } from '@/env';
 
 /** Comfortably below Resend's 100/day free-tier allowance (`DEPLOY.md` MT-02). */
-export const OTP_SEND_CAP_HOURLY = 10;
-export const OTP_SEND_CAP_DAILY = 50;
+export const AUTH_EMAIL_SEND_CAP_HOURLY = 10;
+export const AUTH_EMAIL_SEND_CAP_DAILY = 50;
 
 export type SendCapResult =
   | { readonly allowed: true }
@@ -57,11 +60,11 @@ export function upstashRestClient(
 }
 
 function hourKey(now: Date): string {
-  return `otp-send-cap:hour:${now.toISOString().slice(0, 13)}`; // YYYY-MM-DDTHH
+  return `auth-email-send-cap:hour:${now.toISOString().slice(0, 13)}`; // YYYY-MM-DDTHH
 }
 
 function dayKey(now: Date): string {
-  return `otp-send-cap:day:${now.toISOString().slice(0, 10)}`; // YYYY-MM-DD
+  return `auth-email-send-cap:day:${now.toISOString().slice(0, 10)}`; // YYYY-MM-DD
 }
 
 /**
@@ -79,14 +82,14 @@ export async function recordAndCheckSendCap(
 
   const hourCount = await client.incr(hKey);
   if (hourCount === 1) await client.expire(hKey, 3600);
-  if (hourCount > OTP_SEND_CAP_HOURLY) {
-    return { allowed: false, window: 'hour', limit: OTP_SEND_CAP_HOURLY };
+  if (hourCount > AUTH_EMAIL_SEND_CAP_HOURLY) {
+    return { allowed: false, window: 'hour', limit: AUTH_EMAIL_SEND_CAP_HOURLY };
   }
 
   const dayCount = await client.incr(dKey);
   if (dayCount === 1) await client.expire(dKey, 86_400);
-  if (dayCount > OTP_SEND_CAP_DAILY) {
-    return { allowed: false, window: 'day', limit: OTP_SEND_CAP_DAILY };
+  if (dayCount > AUTH_EMAIL_SEND_CAP_DAILY) {
+    return { allowed: false, window: 'day', limit: AUTH_EMAIL_SEND_CAP_DAILY };
   }
 
   return { allowed: true };

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireUser, UnauthenticatedError } from '@/services/auth';
+import { requireUser, UnauthenticatedError, PasswordChangeRequiredError } from '@/services/auth';
 import { searchTickers } from '@/services/ticker/search';
 
 /**
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   try {
     await requireUser();
   } catch (error) {
-    if (error instanceof UnauthenticatedError) {
+    if (error instanceof UnauthenticatedError || error instanceof PasswordChangeRequiredError) {
       return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     }
     throw error;

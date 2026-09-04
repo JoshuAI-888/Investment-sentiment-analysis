@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { requireUser, UnauthenticatedError } from '@/services/auth';
+import { requireUser, UnauthenticatedError, PasswordChangeRequiredError } from '@/services/auth';
 import { APEWISDOM_WINDOW_HOURS } from '@/services/attention/collector';
 import { assembleAttentionLeaderboard } from '@/services/attention/leaderboard';
 import { DegradedPanel } from '@/ui/DegradedPanel';
@@ -20,6 +20,7 @@ export default async function Page() {
     await requireUser();
   } catch (error) {
     if (error instanceof UnauthenticatedError) redirect('/sign-in');
+    if (error instanceof PasswordChangeRequiredError) redirect('/change-password');
     throw error;
   }
 

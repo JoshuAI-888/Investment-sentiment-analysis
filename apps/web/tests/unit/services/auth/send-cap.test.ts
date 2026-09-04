@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  OTP_SEND_CAP_DAILY,
-  OTP_SEND_CAP_HOURLY,
+  AUTH_EMAIL_SEND_CAP_DAILY,
+  AUTH_EMAIL_SEND_CAP_HOURLY,
   recordAndCheckSendCap,
   upstashRestClient,
   type RedisRestClient,
@@ -31,13 +31,13 @@ describe('recordAndCheckSendCap', () => {
     const client = fakeRedisClient();
     const now = new Date('2026-08-30T12:00:00Z');
 
-    for (let i = 0; i < OTP_SEND_CAP_HOURLY; i += 1) {
+    for (let i = 0; i < AUTH_EMAIL_SEND_CAP_HOURLY; i += 1) {
       const result = await recordAndCheckSendCap(client, now);
       expect(result.allowed).toBe(true);
     }
 
     const overCap = await recordAndCheckSendCap(client, now);
-    expect(overCap).toEqual({ allowed: false, window: 'hour', limit: OTP_SEND_CAP_HOURLY });
+    expect(overCap).toEqual({ allowed: false, window: 'hour', limit: AUTH_EMAIL_SEND_CAP_HOURLY });
   });
 
   it('resets the hourly cap in the next hour but still tracks the daily cap', async () => {
@@ -45,9 +45,9 @@ describe('recordAndCheckSendCap', () => {
 
     // Exhaust the daily cap across many distinct hours (each under the hourly cap).
     let count = 0;
-    for (let hour = 0; hour < 24 && count < OTP_SEND_CAP_DAILY; hour += 1) {
+    for (let hour = 0; hour < 24 && count < AUTH_EMAIL_SEND_CAP_DAILY; hour += 1) {
       const now = new Date(Date.UTC(2026, 7, 30, hour, 0, 0));
-      for (let i = 0; i < OTP_SEND_CAP_HOURLY && count < OTP_SEND_CAP_DAILY; i += 1) {
+      for (let i = 0; i < AUTH_EMAIL_SEND_CAP_HOURLY && count < AUTH_EMAIL_SEND_CAP_DAILY; i += 1) {
         const result = await recordAndCheckSendCap(client, now);
         expect(result.allowed).toBe(true);
         count += 1;
@@ -55,11 +55,11 @@ describe('recordAndCheckSendCap', () => {
     }
 
     const overDailyCap = await recordAndCheckSendCap(client, new Date(Date.UTC(2026, 7, 30, 23, 30, 0)));
-    expect(overDailyCap).toEqual({ allowed: false, window: 'day', limit: OTP_SEND_CAP_DAILY });
+    expect(overDailyCap).toEqual({ allowed: false, window: 'day', limit: AUTH_EMAIL_SEND_CAP_DAILY });
   });
 
   it('the hourly cap sits comfortably under the Resend daily allowance (DEPLOY.md MT-02)', () => {
-    expect(OTP_SEND_CAP_DAILY).toBeLessThan(100);
+    expect(AUTH_EMAIL_SEND_CAP_DAILY).toBeLessThan(100);
   });
 });
 
@@ -68,12 +68,12 @@ describe('upstashRestClient', () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ result: 4 }), { status: 200 }));
     const client = upstashRestClient('https://redis.example.com', 'a-token', fetchMock as unknown as typeof fetch);
 
-    const value = await client.incr('otp-send-cap:hour:2026-08-30T12');
+    const value = await client.incr('auth-email-send-cap:hour:2026-08-30T12');
 
     expect(value).toBe(4);
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toContain('incr');
-    expect(url).toContain('otp-send-cap');
+    expect(url).toContain('auth-email-send-cap');
     expect((init.headers as Record<string, string>)['authorization']).toBe('Bearer a-token');
   });
 
