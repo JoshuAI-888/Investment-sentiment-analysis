@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "body": {
+    "modelId": "anthropic/claude-haiku-synthetic",
+    "tokensIn": 240,
+    "tokensOut": 30,
+    "costUsd": "0.000138",
+    "content": "{\"itemId\":\"fixture-item\",\"relevant\":true,\"relevanceScore\":0.81,\"reason\":\"Corrected: the text is about the company's earnings.\"}"
+  }
+}
