@@ -103,6 +103,12 @@ mirroring `universe-seed.ts`'s pattern for the symbol list. This is the adapters
 `DATABASE_URL`) and **no polling starts from this alone**, since F16a's dispatcher still doesn't
 exist. MT-08 is unaffected. See `MEMORY.md` D-40.
 
+**2026-09-04 — Wave 2 gate certified; F10/F11/F12 contract-frozen and allocated to three
+temporary lanes (D-41, D-42).** A2/A3 are the one named exception (no measuring instrument until
+F19). `src/contracts/evidence-pack.ts` freezes `EvidencePack`/`ClassifiedItem` on top of the
+already-merged `evidence.ts`/`research.ts` contracts; migration `0014` adds the missing
+`abstained` research-run state. See "Wave 3 lanes" below and `MEMORY.md` D-41/D-42.
+
 **Next work, in order:**
 
 1. **`DEPLOY.md` MT-13** — file the Reddit application. **Confirmed unfiled on 2026-09-03.** Free,
@@ -182,17 +188,26 @@ rather than lettered so the two never read as the same thing.
 > total of **160–210 h**. The gap predates the lane split and is unresolved — treat the lane
 > figures above as the registry's own numbers, not as a schedule.
 
-## Not yet allocated to a lane
+## Wave 3 lanes (allocated 2026-09-04, D-42)
 
-Wave 3 is allocated at the Wave 2 gate, when it is known which lane has capacity and whether
-F10's corpora arrived.
+The Wave 2 gate is certified (D-41), so `06-PARALLEL-LANES.md` §1b's "full three-lane parallelism
+begins at the Wave 2 gate" condition is met. **Three temporary lanes**, scoped like RNI's
+DATA/ENGINE/SURFACE rather than the legacy SPINE/COLLECT/SURFACE partition (F10/F11/F12 don't fit
+that split without every lane touching `src/contracts/`) — see `MEMORY.md` D-42 for the frozen
+contracts (`src/contracts/evidence-pack.ts`) and the path map. In flight as of this entry: all
+three `lane-build` agents dispatched in parallel.
+
+| ID | Feature | Wave | Status | Lane | Notes |
+|---|---|---|---|---|---|
+| F10 | Evidence and stance pipeline | 3 | `in progress` | F10-lane | `src/services/evidence/`. Consumes frozen `EvidencePack`/`ClassifiedItem` |
+| F11 | Research agent and verifier | 3 | `in progress` | F11-lane | `src/services/research/`, `app/api/research/**`. Consumes F10's output contract |
+| F12 | Evaluation harness and judge | 3 | `in progress` | F12-lane | `src/services/eval/`, `tests/eval/`. Consumes F10 and F11's output contracts |
+
+## Not yet allocated to a lane
 
 | ID | Feature | Wave | Status | Blocker |
 |---|---|---|---|---|
-| F10 | Evidence and stance pipeline | 3 | `not started` | **MT-06 resolved 2026-09-04 (D-39).** Reworked: real corpora, three sampling frames. Awaiting lane allocation at the Wave 2 gate |
-| F11 | Research agent and verifier | 3 | `not started` | **MT-06 resolved 2026-09-04 (D-39).** Now also the **measurement path** for F21. Awaiting lane allocation |
-| F12 | Evaluation harness and judge | 3 | `not started` | **MT-06 resolved 2026-09-04 (D-39); OQ-7 closed by D-35.** No named blocker left. Extended with Tier D; evaluation harness built from scratch, not ported (D-18 superseded) |
-| F21 | MCP server and MCP Apps surface | 3 | `not started` | — **New (D-10).** Placed at the Wave 3 exit, not after Wave 5 |
+| F21 | MCP server and MCP Apps surface | 3 | `not started` | — **New (D-10).** Placed at the Wave 3 exit, not after Wave 5. Depends on F12, F20 — allocate once F12 merges |
 
 Status values: `not started` · `in progress` · `in review` · `merged` · `blocked` · `deferred`
 
@@ -212,7 +227,7 @@ Status values: `not started` · `in progress` · `in review` · `merged` · `blo
 | Wave | Gate | State |
 |---|---|---|
 | 1 | Walking skeleton **through the scoring boundary and the PIT store**: Reddit → raw store → queue → pinned scorer → analytics → artifact → Inspector → replay. CI green on both deploy targets. Scorer determinism and outage-abstention proven. Look-ahead guard fires. Collector live. Growth measured in MB/month. **OTP sign-in works and a non-allowlisted address is refused every operator route** (F02 — added 2026-09-03; this row omitted it while `03-ROADMAP.md`'s Wave 1 exit gate required it) | not reached |
-| 2 | Dashboard, leaderboard and ticker page on live data; every number inspectable; **per-axis thresholds re-derived**; A2–A6 pass | not reached |
+| 2 | Dashboard, leaderboard and ticker page on live data; every number inspectable; **per-axis thresholds re-derived**; A2–A6 pass | **certified 2026-09-04 (D-41)** — A4/A5/A6 pass; A2/A3 named as a disclosed exception, no measuring instrument until F19 (Wave 4–5) |
 | 3 | Research streams, verifies, abstains; Tier B passes; Tier C judge gate passes; **Tier D1–D3 pass**; A1 passes; **F21 exposes the tool surface with no corpus leak** | not reached |
 | 4 | Operator negative-auth and dispatcher idempotency pass; config/universe changes versioned with working rollback; trigger thresholds operator-editable and audited | not reached |
 | 5 | Source §20 DoD (less the multi-tenant items D-11 voids) + Tiers A, B, C, D1–D3 | not reached |

@@ -204,6 +204,13 @@ export type EvidenceItemQuery = {
   readonly securityId: string;
   readonly asOfInstant: Date;
   readonly limit?: number;
+  /**
+   * F10 §4.1's three sampling frames are `provider` values on this table ('reddit', 'x',
+   * 'substack') — there is no separate axis column. Omitted (F09's existing usage) reads every
+   * provider, unchanged from before this field existed; F10's pack builder passes exactly one
+   * axis per frame, since the three frames are never blended (D-14).
+   */
+  readonly providers?: readonly string[];
 };
 
 const DEFAULT_EVIDENCE_LIMIT = 50;
@@ -331,13 +338,14 @@ export async function evidenceForSecurity(
   db: Queryable = getPool(),
   scanLimit: number = CANDIDATE_SCAN_LIMIT,
 ): Promise<EvidenceForSecurityResult> {
+  const hasProviders = query.providers !== undefined && query.providers.length > 0;
   const rows = await asOf<Row>(
     {
       table: 'evidence_item',
       asOfInstant: query.asOfInstant,
       columns: EVIDENCE_ITEM_COLUMNS,
-      where: 'security_id = $2',
-      params: [query.securityId],
+      where: hasProviders ? 'security_id = $2 and provider = any($3::text[])' : 'security_id = $2',
+      params: hasProviders ? [query.securityId, query.providers] : [query.securityId],
       orderBy: 'available_at desc, ingested_at desc',
       limit: scanLimit,
     },

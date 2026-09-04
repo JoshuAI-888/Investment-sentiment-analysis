@@ -958,6 +958,119 @@ typecheck and lint all verified green against this change.
 
 ---
 
+### D-41 — Wave 2 exit gate certified, with A2/A3 named as a disclosed exception
+
+**Certified 2026-09-04**, against `03-ROADMAP.md`'s five Wave 2 exit criteria (dashboard/
+leaderboard/ticker live-data render; Inspector on every number; `NEW`/`THIN_SAMPLE`/stale/
+`insufficient_data` states; the golden-fixture suite; Tier A A2–A6):
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| 1. Live-data render with source/coverage/freshness | **Pass** | `tests/e2e/dashboard.spec.ts`, `attention.spec.ts` assert `data-freshness`, `data-source-link`, `data-coverage-*` directly |
+| 2. Every number opens an Inspector | **Pass** | `dashboard.spec.ts`, `attention.spec.ts`, `ticker.spec.ts` each assert a real Inspector link with a `calculationId` |
+| 3. `NEW`/`THIN_SAMPLE`/stale/insufficient states render | **Pass** | `attention.spec.ts` ("NEW and thin-sample rows render distinctly"), stale-state e2e, `insufficient_data` at ticker level; `contracts/primitives.ts`'s `insufficiencyReason` enum covers `new_to_board`/`dropped_from_board` |
+| 4. Golden-fixture suite, exact tolerance | **Pass** | 20 golden JSON files under `analytics/goldens/`; `golden-helpers.ts` asserts exact strings, throws on any mismatch; F06 merged 627+22+105 tests |
+| 5. Tier A A2–A6 | **Partial — A4/A5/A6 pass, A2/A3 unverifiable** | A4: `check:calc-coverage` passes. A5: `tests/unit/calc/replay.test.ts` (`F05 §4.6`) proves `match`/`result_mismatch` outcomes. A6: same golden suite as criterion 4. **A2 (perf) and A3 (≥20-ticker smoke) have no measuring instrument** — both are named as "F19 perf suite"/"F19 smoke" in `01-PRODUCT-SPEC.md`, and F19 (Release Hardening, Wave 4–5) is `not started`. `package.json` has no `test:perf` script; nothing asserts a 20-ticker count anywhere in the suite |
+
+**Ruling: the gate is certified, not deferred, with A2/A3 recorded as a disclosed exception
+rather than either a silent pass or a blocking failure.** Two reasons this is the right call and
+not a weakened gate:
+
+1. A2/A3's own measuring instrument (F19) does not exist by design — it is a Wave 4–5 feature.
+   Blocking Wave 3 lane allocation on a Wave 4 feature would invert the roadmap's own wave order
+   for no safety gained: nothing about F10/F11/F12's correctness depends on dashboard p95 latency
+   or a 20-ticker smoke count.
+2. This is the same pattern already used for the 300 MB storage gate (`MEMORY.md` B-13) and the
+   MB/month growth measurement (`PROGRESS.md` Wave gates note) — a criterion whose instrument
+   doesn't exist yet is named as a gap with a trigger, never quietly marked passed.
+
+**Named trigger:** A2 and A3 move from "unverified" to "measured" the moment F19 lands its perf
+and smoke suites. Until then, any claim that Tier A is fully satisfied is false, and this entry
+is the record that stops that claim from being made by omission.
+
+**Consequence:** `06-PARALLEL-LANES.md` §1b's "full three-lane parallelism begins at the Wave 2
+gate" condition is met. F10/F11/F12 lane allocation (D-42) proceeds.
+
+---
+
+### D-42 — F10/F11/F12 contract freeze; three temporary Wave-3 lanes allocated
+
+**Why a freeze, and why now.** `03-ROADMAP.md`'s dependency graph is a strict chain — F10 → F11
+→ F12 — and each spec's own Contracts section confirms it: F11 "Consumes: `EvidencePack`,
+`ClassifiedItem` (F10)"; F12 "Consumes: `EvidencePack` (F10), research output and the claim
+ledger (F11)". Three independent builders each guessing the others' output shape is exactly the
+failure this package's culture already rejects elsewhere ("this lane has declined to guess
+against an unverified schema" — `progress/collect.md`, on FMP fundamentals). RNI's own
+DATA/ENGINE/SURFACE split solved the same problem the same way (`rni/RNI_BUILD_LOOP.md`); this
+mirrors it for legacy Wave 3.
+
+**What was already there, found before writing anything new** (material — it changed the plan):
+
+- `contracts/research.ts`'s `researchRun`, `researchEvent`, `claimLedgerEntry` **already exist**,
+  already tested, already backed by merged migration `0005`. F11 must consume these as-is, not
+  redefine them.
+- `contracts/evidence.ts`'s `evidenceItem` **already exists** (migration `0003`) and **F09
+  already renders against it** on the merged ticker page. F10 must produce evidence compatible
+  with this exact shape — not the older sketch in `02-ARCHITECTURE-CONTRACTS.md` §4.4, which
+  predates it and is superseded by what actually shipped.
+- **A real gap, not cosmetic:** `researchRunStatus` (code, tested, backing a merged migration)
+  had no `abstained` state, even though both F11's own spec and architecture §4.5 name one. The
+  `gathering`/`analyzing`/`synthesizing`/`verifying` sub-stages the same state machine names were
+  never in the DB enum either. **Resolved this session:** migration `0014` adds `abstained` only.
+  The sub-stages are *not* added as `status` values — they are represented in `research_event`
+  while `status = 'running'`, since F11's own spec already makes events, not status, the source
+  of truth for progress ("a run survives reload because the events are the source of truth, not
+  the stream"). Splitting `status` further would create a second place that fact could live and
+  drift from the first.
+- `SocialAxis` (`reddit`/`x`/`substack`) already exists in `primitives.ts`. `ScoreResult`/
+  `ScorerIdentity`/`ScorerId` already exist in `adapters/scorer.ts` (that file's own docstring
+  flags they belong in `contracts/scoring.ts` once SPINE lands it — not moved this session; F10
+  imports them from their current path, which is a known, named, low-risk future cleanup, not a
+  blocker).
+- No Reddit adapter is merged (MT-13 still unfiled) and no Substack/X polling has started (F16a
+  doesn't exist) — so **none of F10's three axes have real collected data yet regardless.** This
+  turned out not to matter: F10's own test plan is fixture-driven for all three axes already
+  ("Reddit/Substack/X fixtures → normalized items"), because F10 reads `evidence_item` rows, not
+  the adapters that wrote them. A fixture-shaped row with `provider: 'reddit'` is exactly as
+  usable to this feature as a real one.
+
+**Frozen this session (`src/contracts/evidence-pack.ts`, new file):** `EvidencePack`,
+`ClassifiedItem`, `FrameDisclosure`, `ClassificationFlag`. `ClassifiedItem` wraps the existing
+`evidenceItem` rather than replacing it; stance stays on `evidenceItem`'s existing nullable
+`stanceLabel` (`bullish | bearish | neutral`, never widened to add `'unclear'` — an unclear item
+carries `stanceLabel: null` plus a flag instead, so `sentimentSnapshot` and F20's `ScoreResult`
+are untouched). `evidencePack.frames` is refined to forbid two disclosure entries for the same
+axis. `repositories/evidence.ts`'s `EvidenceItemQuery` gained an optional `providers` filter
+(additive; F09's existing calls are unaffected) since nothing let F10 scope a read to one axis
+before this. No new migration was needed for `evidence_pack` itself — a pack is a query-time
+construct (`EvidencePack` is `zod`-only), not a new table; only `research_run`'s status enum
+needed a schema change.
+
+**Not frozen, and deliberately left to the owning lane:** `EvalResult` and the corpus format
+(F12's own contracts — nothing outside F12 consumes them); fixtures (each lane records its own
+real payloads per `04-BUILD-LOOP.md` §2.3, "fixtures before live calls").
+
+**Lane allocation — three temporary lanes, scoped like RNI's, not the legacy SPINE/COLLECT/
+SURFACE split** (F10/F11/F12 don't fit that partition; forcing them into it would require every
+lane to touch `src/contracts/` or `src/repositories/`, which is exactly what the freeze exists to
+avoid):
+
+| Lane | Owns | Feature | Consumes (frozen) |
+|---|---|---|---|
+| F10-lane | `src/services/evidence/`, `fixtures/evidence-pack/` (new dirs), its own tests | F10 | `contracts/evidence.ts`, `contracts/evidence-pack.ts`, `contracts/primitives.ts`, `adapters/scorer.ts`, `repositories/evidence.ts` (read-only — reports any needed repository change) |
+| F11-lane | `src/services/research/` (new dir), `app/api/research/**` (F01 §4.6's own placeholder names F11 as the owner), its own tests | F11 | `contracts/evidence-pack.ts`, `contracts/research.ts` |
+| F12-lane | `src/services/eval/` (new dir), `tests/eval/` (currently vacuous), its own contracts (`EvalResult`, corpus format) | F12 | `contracts/evidence-pack.ts`, `contracts/research.ts`, F11-lane's service output |
+
+None of the three touches `src/contracts/`, `src/repositories/`, or `migrations/` — those stay
+coordinator-owned for this stint, same rule as legacy lanes. A needed change to any of them is
+reported, not made, per `06-PARALLEL-LANES.md` §8.
+
+**Verification of the freeze itself:** full unit suite (102 files, 1188 tests, up from 101/1178),
+contract suite (77 passed / 22 DB-skipped, unchanged), typecheck, lint and `next build` all green
+against the frozen state.
+
+---
+
 ## 2. Rulings made during review
 
 Each closes a finding in `00-ADVERSARIAL-REVIEW.md`. Rationale is there; recorded here so a
