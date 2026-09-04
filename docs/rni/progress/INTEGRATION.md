@@ -205,7 +205,7 @@
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
-| ENGINE | `E08_ACCEPTED` | yes at `a8ed02e`; exact handoff `b96162a` | coordinator typecheck/lint and focused 46/46; corrected-tree independent adversarial review READY; branch diff clean | yes | ER-10–13 resolved under D-RNI-19; E01–E08 accepted; I07 owns durable reads/persistence and E09 may begin |
+| ENGINE | `E09_CHANGES_REQUESTED` | yes at `f4f7318`; E09 handoff `a6177d3` | coordinator typecheck/lint and focused router + E08 regression 57/57; independent review returned ER-14–17 | yes | E01–E08 accepted; E09 must close task coverage, strict inputs, historical prompt replay and complete success/failure invocation recording; E10 not started |
 | SURFACE | `S09_UNBLOCKED` | yes at `82ed8de`; must rebase I02H | coordinator I02H typecheck/lint, RNI contract 17/17 and full contract 87/22 skipped | yes | CR-SURFACE-06 accepted as D-RNI-20; S01–S08 accepted; S09 may resume after rebase |
 
 ## Live/deployment gates
@@ -265,6 +265,10 @@
 | ER-11 | P1 | `RESOLVED` | Reddit/X-only corroboration publishes as an independently verified factual catalyst | `b96162a` uses explicit corroboration roles and bounded social-corroboration copy; in-scope output cannot claim factual verification |
 | ER-12 | P1 | `RESOLVED` | Claim text/cutoff and one shared model-run descriptor are caller assertions; the trusted reader cannot prove persisted claim input or distinct verifier/challenger invocation lineage | `b96162a` revalidates exact persisted claims and separate trusted verifier/challenger invocation descriptors, with tamper/missing/swap tests |
 | ER-13 | P1 | `RESOLVED` | Citation URL equality alone accepts consistently wrong-host/search-result lineage and does not bind the active rights policy | `b96162a` validates native Reddit/X canonical identity while preserving the stored original citation URL and requires the trusted active rights-policy version |
+| ER-14 | P1 | `OPEN` | E09 routes only verifier/challenger while active relationship and classifier inference ports remain outside the governed model route/prompt boundary | Register and adapt every active ENGINE model task, or resolve an explicit coordinator scope decision; E10 eval cannot retroactively complete E09 routing |
+| ER-15 | P1 | `OPEN` | The public router forwards unknown dynamic input without task-specific validation or a pinned evidence delimiter | Strictly parse a versioned input per task before hashing/dispatch and test the exact delimited model-visible serialization plus extra-field rejection |
+| ER-16 | P1 | `OPEN` | One current prompt definition per task makes a historical v1 run unreplayable after v2 becomes active | Resolve prompts by `(task, promptVersion)` or an immutable persisted prompt snapshot and prove old-version replay after a successor exists |
+| ER-17 | P1 | `OPEN` | Canonical model-call lineage omits tool version/governed limits and failures escape before the recorder can durably finalize the preallocated attempt | Record complete prompt/tool/budget lineage and finalize both success and failure before returning output or propagating error, with recorder/failure tests |
 | ICR-01 | P1 | `RESOLVED` | D-RNI-18 cannot represent the preserved 100-member legacy active parent of the first staged FMP candidate, while undersized FMP versions pass | Active is an explicit legacy/FMP union; FMP active/staged variants require 501–600 and a 100→501 fixture passes |
 | ICR-02 | P1 | `RESOLVED` | Balanced arithmetic permits complete impact arrays that remove more members than active or add more members than staged | Frozen schema rejects both bounds; I08 retains repository-backed membership-set acceptance |
 | SR-04 | P2 | `RESOLVED` | S02's first commit left its task/evidence/handoff record stale and did not identify the actual browser gate | `c4899b8` amends the task commit with exact type, lint, contract, build and Chromium evidence plus complete files/risks/handoff |
@@ -334,6 +338,7 @@
 | `CURRENT` | Resolve CR-ENGINE-001 as D-RNI-19 and return E08 ER-10–13 | first handoff typecheck; scoped lint; focused unit/contract/eval 31/31; branch diff check; independent adversarial review CHANGES REQUESTED |
 | `CURRENT` | Resolve CR-SURFACE-06 as D-RNI-20 and freeze future-run route settings | typecheck; focused lint; RNI contract 17/17; full contract 87/22 skipped; exact replay/crossed-key/history tests |
 | `CURRENT` | Accept corrected ENGINE E08 cited synthesis | final `b96162a` descends `a8ed02e`; code byte-identical to reviewed `3132589`; typecheck; scoped lint; focused unit/contract/eval 46/46; branch diff check; independent adversarial review READY |
+| `CURRENT` | Review ENGINE E09 model routing and prompt registry | `a6177d3` descends `f4f7318`; typecheck; scoped lint; focused router plus E08 regression 57/57; branch diff check; independent adversarial review CHANGES REQUESTED on ER-14–17 |
 
 ## Coordinator notes
 
