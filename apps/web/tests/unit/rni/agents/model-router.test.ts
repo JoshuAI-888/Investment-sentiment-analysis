@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  getRniPromptDefinition,
   RNI_PROMPT_HISTORY,
   RNI_PROMPT_REGISTRY,
 } from '../../../../prompts/rni/registry';
@@ -658,6 +659,17 @@ describe('RNI model router', () => {
     expect(direct.invoke.mock.calls[0]?.[0].dynamicSuffix).toBe(
       JSON.stringify(verificationInput(historicalConfig)),
     );
+  });
+
+  it('keeps challenger-v1 replayable while activating the encoded challenger-v2 boundary', () => {
+    const input = { boundedSourceContent: hostileValue };
+    const historical = getRniPromptDefinition('rni_challenger', 'rni-challenger-v1');
+    const current = RNI_PROMPT_REGISTRY.rni_challenger;
+
+    expect(historical.serializeInput(input).dynamicSuffix).toBe(JSON.stringify(input));
+    expect(current.promptVersion).toBe('rni-challenger-v2');
+    expect(decodeDynamicEnvelope(current.serializeInput(input).dynamicSuffix)).toEqual(input);
+    expect(current.serializeInput(input).dynamicSuffix).not.toContain(hostileValue);
   });
 
   it('fails closed on unavailable Gateway without silently falling back to Direct', async () => {
