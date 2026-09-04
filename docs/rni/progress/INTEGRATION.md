@@ -157,8 +157,8 @@
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
-| ENGINE | `E06_APPROVED` | E06 based on `098f010`; must rebase to current integration before E07 | builder serialized unit 1,269 + contract 97/22 skipped + integration 44/390 skipped + eval 3/3; coordinator typecheck/lint, focused 18/18 and diff check | yes | E01–E06 accepted through `ecbf049`; ER-07/08 closed; lane remains held |
-| SURFACE | `S08_CHANGES_REQUESTED` | yes at `573d7be` | coordinator typecheck/lint, RNI contract 15/15, production build and current Chromium 1/1 | yes | SR-09–12 open: client fixture coupling, hardcoded/unbounded search, hidden canonical impact and incomplete lane record; S01–S07 remain accepted |
+| ENGINE | `E07_APPROVED` | yes at `8ca4aa7` | builder serialized unit 1,285 + contract 100/22 skipped + integration 44/390 skipped + eval 5/5; coordinator typecheck/lint, focused 21/21 and diff check | yes | E01–E07 accepted through `d1ef93a`; lane remains held until E08–E10 |
+| SURFACE | `S08_CHANGES_REQUESTED` | yes at `573d7be` | coordinator typecheck/lint, RNI contract 15/15, production build and current Chromium 1/1 | yes | SR-09–13 open: live-composition seam, bounded generic search, canonical impact, lane record and announced keyboard search; S01–S07 remain accepted |
 
 ## Live/deployment gates
 
@@ -212,6 +212,7 @@
 | ER-06 | P1 | `RESOLVED` | X content-version candidates do not identify exactly one latest interpretation version and A→B→A leaves B latest | `0e229d6` separates persistence versions from one latest interpretation candidate and records ordered A→B→A transitions |
 | ER-07 | P1 | `RESOLVED` | A zero-weight second source/group/community can satisfy the independent-source floor and remove single-source confidence caps while only one source contributes effective evidence | `ecbf049` derives effective source/community/cluster/author/narrative breadth from positive-weight traces; mixed positive/zero regression keeps sentiment/confidence insufficient at floor two |
 | ER-08 | P2 | `RESOLVED` | E06 added two test files with blank lines at EOF, contradicting its branch-range diff-check claim | `ecbf049` removes only the EOF lines; `git diff --check 098f010..ecbf049` passes |
+| ER-09 | P2 | `RESOLVED_BEFORE_HANDOFF` | The first observed E07 commit added a blank line at EOF in `convergence/types.ts` | The exact handoff `d1ef93a` removes the blank line; branch-range diff check passes |
 | ICR-01 | P1 | `RESOLVED` | D-RNI-18 cannot represent the preserved 100-member legacy active parent of the first staged FMP candidate, while undersized FMP versions pass | Active is an explicit legacy/FMP union; FMP active/staged variants require 501–600 and a 100→501 fixture passes |
 | ICR-02 | P1 | `RESOLVED` | Balanced arithmetic permits complete impact arrays that remove more members than active or add more members than staged | Frozen schema rejects both bounds; I08 retains repository-backed membership-set acceptance |
 | SR-04 | P2 | `RESOLVED` | S02's first commit left its task/evidence/handoff record stale and did not identify the actual browser gate | `c4899b8` amends the task commit with exact type, lint, contract, build and Chromium evidence plus complete files/risks/handoff |
@@ -275,6 +276,7 @@
 | `CURRENT` | Accept corrected ENGINE E06 platform analytics | typecheck; focused lint; focused unit/contract/eval 18/18; branch diff check; ownership/base review |
 | `CURRENT` | Review SURFACE S08 universe settings | typecheck; focused lint; RNI contract 15/15; production build; Chromium 1/1; SR-09–12 returned |
 | `CURRENT` | Close I02F universe-read P1 review findings | typecheck; focused lint; RNI contract 15/15; full contract 85/22 skipped; independent re-review READY at `098f010` |
+| `CURRENT` | Accept ENGINE E07 deterministic cross-source facts | typecheck; focused lint; unit/contract/eval 21/21; branch diff check; ownership/base review |
 
 ## Coordinator notes
 
@@ -336,11 +338,16 @@
   attention, but cannot manufacture effective source/community breadth for sentiment or confidence.
 - ENGINE E06 is accepted at `ecbf049`: positive-weight traces now govern effective independence,
   breadth, concentration and freshness, while raw distinct-source attention remains unchanged.
-- SURFACE S08 `43f261a` is held on SR-09–12 despite its 1/1 happy path: the UI must remain live-
+- SURFACE S08 `43f261a` is held on SR-09–13 despite its 1/1 happy path: the UI must remain live-
   composable, the fixture search must enforce the frozen bound, canonical impact must be visible,
   and the same commit must carry complete lane evidence.
 - I02F1 closes ICR-01/02 with an explicit legacy/FMP active union, a 501-member FMP floor and
   impossible over-add/remove rejection. Surface must use the superseding commit, not `03f8afc`.
+- ENGINE E07 is accepted at `d1ef93a`: the versioned artifact preserves exact Reddit/X inputs,
+  emits only non-pooled agreement, divergence, scale, freshness and coverage facts, fails closed
+  for unknown/unready evidence, and replays from canonical snapshots. Focused 21/21 plus
+  typecheck, scoped lint and branch diff check pass; E08 may begin after rebasing this coordinator
+  record.
 
 ## I02F handoff
 
