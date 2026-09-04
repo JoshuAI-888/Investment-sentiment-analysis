@@ -100,8 +100,11 @@ clears the weekly-cadence bar). See `DEPLOY.md` MT-15 and `MEMORY.md` **B-30**/*
 **Next work, in order:**
 
 1. ~~**`DEPLOY.md` MT-13**~~ — **discarded 2026-09-05 (D-39).** Not filed, not filing it — RNI's
-   OpenAI Web Search path is the only Reddit channel for either surface now. **F16a (dispatch
-   core) is the genuinely next COLLECT pickup**: its only blocker, MT-04, is done.
+   OpenAI Web Search path is the only Reddit channel for either surface now. ~~**F16a (dispatch
+   core)**~~ — **merged 2026-09-05** (`progress/collect.md`). **`DEPLOY.md` MT-08 (start the
+   collector) is now the genuinely next item** — its remaining prerequisites are wiring the
+   confirmed Substack publication list into F04's config and confirming the standard production
+   env vars, both engineering/operational tasks, not owner decisions.
 2. ~~**`DEPLOY.md` MT-15**~~ — **confirmed 2026-09-04.** 13 Substack publications, 10/11 GICS
    sectors. **This is still the only channel that can collect today** — no key, no approval — but
    collection now waits on wiring the confirmed list into F04's Substack config (COLLECT), an
