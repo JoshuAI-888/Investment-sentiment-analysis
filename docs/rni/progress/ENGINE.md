@@ -21,7 +21,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 | E06 | Platform-specific deterministic analytics and confidence | `COMPLETE` | 18 focused tests: decimal golden vectors, platform/security isolation, positive-weight independent-source/breadth gates, half-open windows, low/zero bases, baseline winsorization/abstention, confidence readiness/caps, canonical replay/tamper; coordinator accepted, current rebased correction `9e13304` |
 | E07 | Reddit/X convergence and agreement/divergence facts | `COMPLETE` | 21 focused tests: aligned/divergent/magnitude and dimension differences, scale imbalance without pooling, partial/unavailable/pending/insufficient/stale/unknown states, deterministic replay/tamper and frozen combined-state compatibility; coordinator accepted, current rebased `f2ee1a7` |
 | E08 | Verification, challenger and three-part cited synthesis | `COMPLETE` | 46 focused tests: point-in-time claim-specific social corroboration/counterevidence, exact persisted claim and distinct model-invocation lineage, active rights/canonical URL validation, strongest countercase, no-model terminal paths, citation completeness, injection containment and deterministic replay; independent review PASS; coordinator accepted |
-| E09 | RNI model routes, prompts and caching-compatible stable prefixes | `NOT_STARTED` | Direct default/Gateway parity fixtures |
+| E09 | RNI model routes, prompts and caching-compatible stable prefixes | `READY_FOR_REVIEW` | 11 focused tests: immutable Direct/Gateway route parity, strict registry-owned schemas, stable-prefix/cache partitioning, exact call scope/input hash, E08 adapters, no fallback/model drift/tool escape; full repository gate passed |
 | E10 | RNI eval suite and full ENGINE handoff | `NOT_STARTED` | CI-trigger and lane report evidence |
 
 ## Required invariants
@@ -97,8 +97,9 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 | analytics golden/replay | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/analytics/platform-analytics.test.ts tests/contract/rni/platform-analytics.test.ts tests/eval/rni/platform-analytics.eval.test.ts --no-file-parallelism` | 3 files, 18/18 passed; coordinator accepted |
 | cross-source isolation | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/convergence/platform-convergence.test.ts tests/contract/rni/platform-convergence.test.ts tests/eval/rni/platform-convergence.eval.test.ts` | 3 files, 21/21 passed; independent re-review READY with no P0/P1/P2 findings; coordinator accepted |
 | prompt injection/citations | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/agents/cited-synthesis.test.ts tests/contract/rni/cited-synthesis.test.ts tests/eval/rni/cited-synthesis.eval.test.ts --no-file-parallelism` | 3 files, 46/46 passed; independent review PASS with no runtime/test P0/P1/P2; coordinator accepted; D-RNI-19 accepted durable composition for I07 |
+| model routing/prompt registry | `READY_FOR_REVIEW` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/agents/model-router.test.ts tests/contract/rni/model-router.test.ts --no-file-parallelism` | 2 files, 11/11 passed; Direct/Gateway fixture parity and immutable lineage; E08 combined regression 57/57 |
 | RNI eval | `NOT_STARTED` | — | — |
-| repository required gate | `READY_FOR_REVIEW` | `corepack pnpm --dir apps/web typecheck`; `corepack pnpm --dir apps/web lint`; serialized unit, contract, integration and eval commands | post-rebase typecheck/full lint passed; unit 1,326/1,326; contract 105 passed/22 skipped; integration 44 passed/390 environment-gated skips; eval 7/7; branch-range diff check passed |
+| repository required gate | `READY_FOR_REVIEW` | `corepack pnpm --dir apps/web typecheck`; `corepack pnpm --dir apps/web lint`; serialized unit, contract, integration and eval commands | E09 typecheck/full lint passed; unit 1,335/1,335; contract 107 passed/22 skipped; integration 44 passed/390 environment-gated skips; eval 7/7; branch-range diff check passed |
 
 ## Review findings
 
@@ -454,6 +455,39 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
   E09 still owns live model routing, prompts, budgets and cache-compatible prefixes; E10 owns the
   full live eval gate.
 
+### E09 — RNI model routes, prompts and caching-compatible stable prefixes
+
+- **Status:** `READY_FOR_REVIEW`; E10 not started.
+- **Slice:** Added versioned no-tool verifier/challenger prompt definitions with registry-owned
+  strict JSON schemas and decoders, plus a provider-neutral router over injected Direct/Gateway
+  transports. Immutable run configuration selects the exact server-resolved task model. The
+  router records route/provider/model/revision, exact model-run scope, canonical dynamic-input
+  hash, stable-prefix/cache hashes, response ID, usage, cache, latency, cost and citation/tool
+  trace. Fixed E08 adapters forward distinct verifier/challenger invocation scopes and require an
+  integration-owned recorder before returning structured output.
+- **Files changed:** `apps/web/prompts/rni/registry.ts`,
+  `apps/web/src/rni/agents/{index,model-router}.ts`,
+  `apps/web/tests/unit/rni/agents/model-router.test.ts`,
+  `apps/web/tests/contract/rni/{model-router,cited-synthesis}.test.ts`, and this tracker.
+- **Tests/results:** focused router 11/11 and combined router/E08 regression 57/57 passed;
+  serialized unit 1,335/1,335, contract 107 passed/22 skipped, integration 44 passed/390 skipped,
+  eval 7/7, typecheck, scoped/full lint and diff check passed.
+- **Models/prompts changed:** added `rni-verification-v1` and `rni-challenger-v1` prompt/schema
+  registrations. No production model ID, Gateway slug, endpoint or credential is hardcoded;
+  model/provider/revision identities come only from the immutable server-resolved run config.
+- **Deterministic rules:** stable prefix hash covers task/prompt/schema/tool versions, policy,
+  strict output schema, empty ordered toolset and final instruction. Cache key additionally binds
+  tenant partition, route and exact resolved model/revision; run IDs and dynamic evidence are
+  excluded. A separate canonical dynamic-input hash binds audit lineage. Missing/duplicate task
+  resolution, prompt drift, non-OpenAI Direct provider, unavailable Gateway, silent model drift,
+  malformed output or any tool call fails closed with zero fallback and zero retry.
+- **Token/latency evidence:** no live model calls. Parity fixtures record 120 input, 14 output and
+  80 cached-input tokens, 42 ms and USD 0.0012 for envelope verification only; these are not live
+  performance claims.
+- **Risks/handoff:** I10 must inject live transports and persist the canonical envelope without
+  consulting newer active settings for an existing run. E10 owns eval approval, broader
+  classifier/relationship prompt coverage, live cache/latency measurements and release gates.
+
 ## Commits
 
 | SHA | Summary | Tests |
@@ -471,18 +505,19 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 | `f2ee1a7` | E07 deterministic Reddit/X convergence facts without pooled metrics; coordinator accepted | focused 21/21; serialized unit 1,285/1,285; contract 100 passed/22 skipped; integration 44 passed/390 skipped; eval 5/5; typecheck/lint passed |
 | `33c4bed` | E08 citation-gated verification, challenger and deterministic three-part synthesis | focused 31/31; serialized unit 1,311/1,311; contract 103 passed/22 skipped; integration 44 passed/390 skipped; eval 7/7; typecheck/lint passed; initial independent review PASS |
 | correction commit | E08 D-RNI-19 point-in-time, claim/invocation lineage, rights and URL publication gates | post-rebase focused 46/46; serialized unit 1,326/1,326; contract 105 passed/22 skipped; integration 44 passed/390 skipped; eval 7/7; typecheck/lint/diff passed; final independent review PASS |
+| this task commit | E09 immutable Direct/Gateway model router and strict stable prompt registry | focused 11/11; combined E08 regression 57/57; serialized unit 1,335/1,335; contract 107 passed/22 skipped; integration 44 passed/390 skipped; eval 7/7; typecheck/lint/diff passed |
 
 ## Handoff
 
 ```text
 RNI LANE     ENGINE
 BRANCH       feat/rni-engine-live-slice
-BASE SHA     a8ed02e (required coordinator integration head for final E08 handoff)
-STATUS       PARTIAL; E08 coordinator accepted; CR-ENGINE-001 accepted for I07
-TASKS        8/10; E01-E08 coordinator accepted; E09-E10 not started
-TESTS        post-rebase E08 focused 46/46; serialized unit 1,326/1,326; contract 105 passed/22 skipped; integration 44 passed/390 skipped; eval 7/7; typecheck/scoped+full lint/branch-range diff check pass; independent review PASS
+BASE SHA     f4f7318 (required coordinator integration head for E09)
+STATUS       PARTIAL; E09 ready for coordinator review; E10 not started
+TASKS        8/10 complete; E01-E08 coordinator accepted; E09 ready for review; E10 not started
+TESTS        E09 focused 11/11; combined E08 regression 57/57; serialized unit 1,335/1,335; contract 107 passed/22 skipped; integration 44 passed/390 skipped; eval 7/7; typecheck/scoped+full lint/branch-range diff check pass
 CONTRACT     CR-ENGINE-001 ACCEPTED_FOR_I07 by D-RNI-19 — durable persistence/composition remains I07/migration 0024 work
-RISKS        I07 must implement the accepted durable boundary; live Web Search/X smokes pending approved credentials; E09/E10 own model routes/prompts/budgets/cache and live eval resistance
+RISKS        I07/I10 must persist/compose accepted model-call lineage and live transports; E10 owns broader prompt/eval activation and live cache evidence; live Web Search/X smokes pending approved credentials
 FILES        src/rni/{discovery,sources,workflow,observations,analytics,convergence,agents}/**; tests/unit/rni/{discovery,sources,workflow,observations,analytics,convergence,agents}/**; RNI contract/eval tests; docs/rni/progress/ENGINE.md
 COMMITS      rebased E01/E02 series through d981d0d, E03 ddeb3c9, E04 7de2f69, E05 6b2b1b3, E06 3ae686b plus accepted correction 9e13304, E07 f2ee1a7, E08 33c4bed plus this correction commit
 DEMO PROOF   citation-bound discovery through separate platform facts; E08 replays E07, corroborates catalysts only with claim-specific point-in-time persisted social evidence, selects one cited countercase and renders three citation-complete sections without pooled metrics or model prose

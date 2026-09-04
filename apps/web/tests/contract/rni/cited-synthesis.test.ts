@@ -25,6 +25,8 @@ describe('RNI cited synthesis contract', () => {
   it('exposes only injected synthesis/replay and its internal types/version', () => {
     expect(Object.keys(agents).sort()).toEqual([
       'RNI_CITED_SYNTHESIS_CODE_VERSION',
+      'createRniCitedSynthesisInferencePorts',
+      'createRniModelRouter',
       'replayCitedSynthesis',
       'synthesizeCitedNarrative',
     ]);
