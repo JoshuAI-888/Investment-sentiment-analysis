@@ -285,6 +285,43 @@ describe('RNI platform analytics', () => {
     ).toThrow(/smaller than its window members/u);
   });
 
+  it('excludes zero-weight rows from effective independence and breadth gates', () => {
+    const input = platformInput();
+    const observations = input.current.observations.map((observation, index) => ({
+      ...observation,
+      sourceWeight: index === 0 ? '1' : '0',
+    }));
+    const result = calculatePlatformAnalytics(
+      { ...input, current: { ...input.current, observations } },
+      methodology(),
+    ).result;
+
+    expect(result.attention).toBe('2');
+    expect(result.effectiveAttention).toBe('0.5');
+    expect(result.independentSourceBreadth).toBe('1');
+    expect(result.communityBreadth).toBe('1');
+    expect(
+      result.sentimentByDimension.every(
+        (metric) =>
+          metric.independentSourceCount === '1' && metric.status === 'insufficient_evidence',
+      ),
+    ).toBe(true);
+    expect(result.confidence).toBeNull();
+    expect(result.confidenceStatus).toBe('insufficient_evidence');
+
+    const capped = calculatePlatformAnalytics(
+      { ...input, current: { ...input.current, observations } },
+      { ...methodology(), minimumIndependentSources: '1' },
+    ).result;
+    expect(capped.confidenceStatus).toBe('available');
+    expect(capped.confidence).toMatchObject({
+      score100: '69',
+      appliedCaps: expect.arrayContaining([
+        expect.objectContaining({ reason: 'single_source_or_community', cap: '69' }),
+      ]),
+    });
+  });
+
   it('normalizes set ordering and replays only frozen inputs and methodology', () => {
     const input = platformInput();
     const original = calculatePlatformAnalytics(input, methodology());

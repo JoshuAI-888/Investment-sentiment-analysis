@@ -43,4 +43,3 @@ describe('RNI platform analytics contract', () => {
     expect(serialized).not.toContain('prompt');
   });
 });
-

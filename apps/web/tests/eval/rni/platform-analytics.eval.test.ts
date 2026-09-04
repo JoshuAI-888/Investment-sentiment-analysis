@@ -25,4 +25,3 @@ describe('RNI platform analytics deterministic eval', () => {
     });
   });
 });
-

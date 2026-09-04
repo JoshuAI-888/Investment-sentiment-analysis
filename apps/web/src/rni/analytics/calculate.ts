@@ -472,7 +472,14 @@ function sentimentByDimension(
     const eligible = observations.flatMap((observation) => {
       const assignment = observation.dimensions.find((candidate) => candidate.dimension === dimension);
       const trace = traceBySource.get(observation.sourceItemId);
-      if (assignment?.score === null || assignment === undefined || trace === undefined) return [];
+      if (
+        assignment?.score === null ||
+        assignment === undefined ||
+        trace === undefined ||
+        new D(trace.weight).lessThanOrEqualTo(ZERO)
+      ) {
+        return [];
+      }
       return [{ observation, score: new D(assignment.score), weight: new D(trace.weight) }];
     });
     const effectiveAttention = sum(eligible.map((item) => item.weight));
@@ -724,22 +731,28 @@ function computeResult(
   }
 
   const mentionIds = input.current.observations.flatMap((observation) => observation.mentionIds);
+  const currentTraceBySource = new Map(
+    current.traces.map((trace) => [trace.sourceItemId, trace]),
+  );
+  const contributingObservations = input.current.observations.filter((observation) =>
+    new D(currentTraceBySource.get(observation.sourceItemId)?.weight ?? '0').greaterThan(ZERO),
+  );
   const independentSourceBreadth = distinctCount(
-    input.current.observations.map((observation) => observation.duplicateGroupKey),
+    contributingObservations.map((observation) => observation.duplicateGroupKey),
   );
   const communityBreadth = distinctCount(
-    input.current.observations.map((observation) => observation.communityOrScope),
+    contributingObservations.map((observation) => observation.communityOrScope),
   );
   const clusterBreadth = distinctCount(
-    input.current.observations.map((observation) => observation.analyticalCluster),
+    contributingObservations.map((observation) => observation.analyticalCluster),
   );
   const authorBreadth = distinctCount(
-    input.current.observations.flatMap((observation) =>
+    contributingObservations.flatMap((observation) =>
       observation.authorHash === null ? [] : [observation.authorHash],
     ),
   );
-  const narratives = narrativeMetrics(input.current.observations, current.traces);
-  const ages = input.current.observations.map((observation) => ageHours(observation, input.current));
+  const narratives = narrativeMetrics(contributingObservations, current.traces);
+  const ages = contributingObservations.map((observation) => ageHours(observation, input.current));
   const maxAgeHours = ages.reduce(
     (oldest, age) => (age.greaterThan(oldest) ? age : oldest),
     new D('0'),

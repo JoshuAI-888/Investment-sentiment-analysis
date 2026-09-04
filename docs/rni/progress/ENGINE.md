@@ -13,13 +13,13 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 | ID | Task | Status | Acceptance evidence |
 |---|---|---|---|
-| E01 | Reddit OpenAI Web Search discovery and canonical candidate normalization | `COMPLETE` | 16 focused tests: exact source/evidence binding, URL-only abstention, complete action lineage, half-open windows, dedup, frozen-source compatibility; coordinator accepted, current rebased `9cef65f` |
-| E02 | Existing X adapter port and independent terminal source slice | `COMPLETE` | 20 focused tests: partial-success propagation, isolation, tenant-safe identity, retrieval/version lineage, A→B→A latest selection, half-open windows; coordinator accepted, current rebased `d16a2e3` |
-| E03 | Persist-first workflow, retry, checkpoint and budget logic | `COMPLETE` | 17 focused tests: commit/checkpoint and enqueue/completion crashes, exact redelivery, lease heartbeat, retry not-before, bounded jitter, stable budget reservation, durable wall-time and hash integrity; coordinator accepted, current rebased `1856db3` |
-| E04 | Security resolver and multi-security relationships | `COMPLETE` | 19 focused tests: exact NVDA/AMD offsets, governed bare-ticker abstention, duplicate-symbol ambiguity, committed-evidence-only inference, cited canonical relationship deduplication; coordinator accepted current rebased `1c8ab45` |
+| E01 | Reddit OpenAI Web Search discovery and canonical candidate normalization | `COMPLETE` | 16 focused tests: exact source/evidence binding, URL-only abstention, complete action lineage, half-open windows, dedup, frozen-source compatibility; coordinator accepted, current rebased `6e932b7` |
+| E02 | Existing X adapter port and independent terminal source slice | `COMPLETE` | 20 focused tests: partial-success propagation, isolation, tenant-safe identity, retrieval/version lineage, A→B→A latest selection, half-open windows; coordinator accepted, current rebased `ce503bd` |
+| E03 | Persist-first workflow, retry, checkpoint and budget logic | `COMPLETE` | 17 focused tests: commit/checkpoint and enqueue/completion crashes, exact redelivery, lease heartbeat, retry not-before, bounded jitter, stable budget reservation, durable wall-time and hash integrity; coordinator accepted, current rebased `a32c04b` |
+| E04 | Security resolver and multi-security relationships | `COMPLETE` | 19 focused tests: exact NVDA/AMD offsets, governed bare-ticker abstention, duplicate-symbol ambiguity, committed-evidence-only inference, cited canonical relationship deduplication; coordinator accepted current rebased `26205f4` |
 | E05 | Four-dimension classifier, themes, claims and noise labels | `COMPLETE` | 15 focused tests: isolated opposing security stance, four dimensions, mixed dimension/theme stance, source spans, taxonomy/policy versions, noise/exclusion labels, strict injection handling; coordinator accepted |
-| E06 | Platform-specific deterministic analytics and confidence | `READY_FOR_REVIEW` | 17 focused tests: decimal golden vectors, platform/security isolation, distinct/duplicate-group source gates, half-open windows, low/zero bases, baseline winsorization/abstention, confidence readiness/caps, canonical replay/tamper; independent review READY |
-| E07 | Reddit/X convergence and agreement/divergence facts | `NOT_STARTED` | Divergence/scale imbalance/partial tests |
+| E06 | Platform-specific deterministic analytics and confidence | `COMPLETE` | 18 focused tests: decimal golden vectors, platform/security isolation, positive-weight independent-source/breadth gates, half-open windows, low/zero bases, baseline winsorization/abstention, confidence readiness/caps, canonical replay/tamper; coordinator accepted, current rebased correction in this commit |
+| E07 | Reddit/X convergence and agreement/divergence facts | `IN_PROGRESS` | Divergence/scale imbalance/partial tests |
 | E08 | Verification, challenger and three-part cited synthesis | `NOT_STARTED` | Citation entailment/fail-closed tests |
 | E09 | RNI model routes, prompts and caching-compatible stable prefixes | `NOT_STARTED` | Direct default/Gateway parity fixtures |
 | E10 | RNI eval suite and full ENGINE handoff | `NOT_STARTED` | CI-trigger and lane report evidence |
@@ -46,13 +46,13 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 | Suite | Status | Command/run link | Notes |
 |---|---|---|---|
-| discovery/adapter contract | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/discovery/openai-web-search.test.ts tests/contract/rni/discovery.test.ts --no-file-parallelism` | 2 files, 16 tests passed after coordinator fixes; coordinator accepted, current rebased `9cef65f` |
-| X adapter/source slice | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/sources/x-source-slice.test.ts tests/contract/rni/x-source-slice.test.ts --no-file-parallelism` | 2 files, 20 tests passed after coordinator fixes; coordinator accepted, current rebased `d16a2e3` |
-| workflow/idempotency | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/workflow/persist-source.test.ts tests/contract/rni/persist-source-workflow.test.ts --no-file-parallelism` | 2 files, 17 tests passed; coordinator accepted, current rebased `1856db3` |
+| discovery/adapter contract | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/discovery/openai-web-search.test.ts tests/contract/rni/discovery.test.ts --no-file-parallelism` | 2 files, 16 tests passed after coordinator fixes; coordinator accepted, current rebased `6e932b7` |
+| X adapter/source slice | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/sources/x-source-slice.test.ts tests/contract/rni/x-source-slice.test.ts --no-file-parallelism` | 2 files, 20 tests passed after coordinator fixes; coordinator accepted, current rebased `ce503bd` |
+| workflow/idempotency | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/workflow/persist-source.test.ts tests/contract/rni/persist-source-workflow.test.ts --no-file-parallelism` | 2 files, 17 tests passed; coordinator accepted, current rebased `a32c04b` |
 | security resolution/relationships | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/observations/security-resolution.test.ts tests/contract/rni/security-resolution.test.ts tests/eval/rni/security-resolution.eval.test.ts --no-file-parallelism` | 3 files, 19 tests passed; coordinator accepted |
 | semantic gold set | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/observations/classifier.test.ts tests/contract/rni/semantic-classifier.test.ts tests/eval/rni/semantic-classifier.eval.test.ts --no-file-parallelism` | 3 files, 15 tests passed; coordinator accepted; live model-resistance eval remains E10 |
-| analytics golden/replay | `READY_FOR_REVIEW` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/analytics/platform-analytics.test.ts tests/contract/rni/platform-analytics.test.ts tests/eval/rni/platform-analytics.eval.test.ts --no-file-parallelism` | 3 files, 17/17 passed; independent read-only review returned READY with no P0/P1/P2 findings |
-| cross-source isolation | `NOT_STARTED` | — | — |
+| analytics golden/replay | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/analytics/platform-analytics.test.ts tests/contract/rni/platform-analytics.test.ts tests/eval/rni/platform-analytics.eval.test.ts --no-file-parallelism` | 3 files, 18/18 passed; coordinator accepted |
+| cross-source isolation | `IN_PROGRESS` | — | E07 marked before implementation |
 | prompt injection/citations | `NOT_STARTED` | — | — |
 | RNI eval | `NOT_STARTED` | — | — |
 | repository required gate | `NOT_STARTED` | — | — |
@@ -85,6 +85,8 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 | E06-R1-03 | P1 | `CLOSED` | Fractional confidence caps could produce divergent rounded 0–100 score, 0–1 score and band | Penalties/caps feed one half-even integer score; unit score and band derive only from that rounded value |
 | E06-R2-01 | P2 | `CLOSED` | Replay coverage did not directly mutate frozen input or methodology snapshots | Regressions mutate each snapshot with unchanged hashes and require fail-closed input-hash mismatch |
 | E06-R2-02 | P1 | `CLOSED` | A schema-valid zero effective-attention floor could publish confidence over zero-weight evidence | The floor is strictly positive and confidence independently abstains when total effective attention is zero |
+| E06-CR-01 | P1 | `CLOSED` | Zero-weight observations could satisfy independent-source sentiment floors and remove effective breadth confidence caps | Raw distinct-source attention remains visible, while only positive-weight traces count toward sentiment independence, effective source/community/cluster/author/narrative breadth, HHI, staleness and confidence gates/caps |
+| E06-CR-02 | P2 | `CLOSED` | Two analytics test files added a blank line at EOF, contradicting the branch-range diff-check claim | Removed only the extra EOF lines; focused 18/18, scoped typecheck/lint and `git diff --check 098f010` pass |
 
 ## Open risks/blockers
 
@@ -96,7 +98,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 ### E01 — Reddit OpenAI Web Search discovery and canonical candidate normalization
 
-- **Status:** `COMPLETE`; coordinator accepted; current rebased `9cef65f`
+- **Status:** `COMPLETE`; coordinator accepted; current rebased `6e932b7`
 - **Slice:** Added a Responses API Web Search request builder and injected transport boundary,
   strict structured-output parsing, complete per-call action/source validation, and deterministic
   Reddit post/comment URL normalization. Interpretation-eligible candidates require exact
@@ -128,7 +130,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 ### E02 — Existing X adapter port and independent terminal source slice
 
-- **Status:** `COMPLETE`; coordinator accepted; current rebased `d16a2e3`
+- **Status:** `COMPLETE`; coordinator accepted; current rebased `ce503bd`
 - **Slice:** Added a composition port around the existing authorised X recent-search adapter and
   an X-only terminal source-slice runner. A governed query set is invoked without Reddit inputs;
   each returned post is deterministically filtered to the exact half-open UTC window, normalized
@@ -160,7 +162,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 ### E03 — Persist-first workflow, retry, checkpoint and budget logic
 
-- **Status:** `COMPLETE`; coordinator accepted; current rebased `1856db3`
+- **Status:** `COMPLETE`; coordinator accepted; current rebased `a32c04b`
 - **Slice:** Added the portable operational `RniWorkflowPort` around the existing durable
   job/queue composition boundary while consuming the frozen `RniSourcePersistencePort` directly.
   The runner claims the `(run, stage, subject, version)` step, maintains its lease heartbeat,
@@ -193,7 +195,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 ### E04 — Security resolver and multi-security relationships
 
-- **Status:** `COMPLETE`; coordinator accepted current rebased `1c8ab45`
+- **Status:** `COMPLETE`; coordinator accepted current rebased `26205f4`
 - **Slice:** Added pure exact-ticker and company-alias mention resolution with exact source offsets,
   active-candidate filtering, overlap resolution, duplicate-symbol abstention and a required
   versioned bare-ticker ambiguity policy. The only public model-capable composition path first
@@ -264,7 +266,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 ### E06 — Platform-specific deterministic analytics and confidence
 
-- **Status:** `READY_FOR_REVIEW`
+- **Status:** `COMPLETE`; coordinator accepted; current rebased correction in this commit
 - **Slice:** Added a pure one-platform/one-security analytics artifact boundary. It validates
   exact half-open current/comparison windows, persisted source/mention uniqueness, stable
   duplicate groups and comparable historical baselines; then emits distinct-source attention,
@@ -277,10 +279,12 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
   `apps/web/tests/contract/rni/platform-analytics.test.ts`,
   `apps/web/tests/eval/rni/platform-analytics.eval.test.ts`, and this tracker.
 - **Tests/results:** focused unit + contract + deterministic eval 17/17 passed; serialized
-  repository unit 1,268/1,268 passed; repository contract 97 passed and 22 pre-existing skips;
+  repository unit 1,269/1,269 passed; repository contract 97 passed and 22 pre-existing skips;
   repository integration 44 passed and 390 environment-gated skips; repository eval 3/3 passed;
   `typecheck`, focused ESLint, full ESLint and `git diff --check` passed. Independent read-only
-  review returned READY with no remaining P0/P1/P2 findings after five findings were closed.
+  review returned READY with no remaining P0/P1/P2 findings after five findings were closed. The
+  coordinator's E06-CR-01 correction was independently re-reviewed READY after its regression;
+  E06-CR-02 removed two EOF-only blank lines and the full base-to-head diff check now passes.
 - **Models/prompts/formulas:** no LLM, model route or prompt is used or changed. Decimal-safe
   formulas implement quality/noise/duplicate/freshness observation weight; distinct-source and
   effective attention; weighted dimension means ×100; absolute and percent attention change;
@@ -290,8 +294,8 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
   confidence components minus penalties, deterministic caps, integer half-even score, frozen
   unit-decimal mapping and bands. All parameters and rounding conventions are versioned.
 - **Token/latency evidence:** zero model tokens and zero model latency. On the final pre-handoff
-  base, the focused fake/in-memory suite completed in 1.14 s; full serialized unit in 19.62 s,
-  contract in 4.31 s, integration in 8.05 s and eval in 1.00 s.
+  base, the final focused fake/in-memory suite completed in 606 ms; full serialized unit in
+  20.02 s, contract in 4.43 s, integration in 8.11 s and eval in 1.01 s.
 - **Risks/handoff:** confidence stays null until narrative and catalyst stages are explicitly
   terminal and the positive effective-attention/independent-source floors pass. E07/E08 must
   supply their deterministic component snapshots; integration must persist the artifact through
@@ -304,28 +308,29 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 | SHA | Summary | Tests |
 |---|---|---|
-| `832b2f8` | E01 Web Search discovery and canonical candidate normalization | focused 10/10; unit 1,180/1,180; contract 78 passed/22 skipped; typecheck/lint passed |
-| `ba04100` | E01 exact evidence binding and complete action lineage | focused 15/15; unit 1,185/1,185; contract 78 passed/22 skipped; typecheck/lint passed |
-| `9cef65f` | E01 full citation-span coverage; coordinator accepted | focused 16/16; unit 1,186/1,186; contract 78 passed/22 skipped; typecheck/lint passed |
-| `5525a7c` | E02 independent X adapter/source slice | focused 16/16; unit 1,200/1,200; contract 80 passed/22 skipped; typecheck/lint passed |
-| `d16a2e3` | E02 partial signal, tenant-safe identity and explicit latest/version lineage; coordinator accepted | focused 20/20; unit 1,204/1,204; contract 80 passed/22 skipped; typecheck/lint passed |
-| `1856db3` | E03 persist-first durable workflow slice; coordinator accepted | focused 17/17; serialized unit 1,223/1,223; contract 88 passed/22 skipped; typecheck/focused lint passed |
-| `1c8ab45` | E04 deterministic security resolution and cited comparative relationships; coordinator accepted | focused 19/19; serialized unit 1,242/1,242; contract 91 passed/22 skipped; integration 44 passed/390 skipped; eval 1/1; typecheck/lint passed |
-| `29b7495` | E05 isolated four-dimension classification and semantic proposals; coordinator accepted | focused 15/15; serialized unit 1,254/1,254; contract 94 passed/22 skipped; integration 44 passed/390 skipped; eval 2/2; typecheck/lint passed |
-| this task commit | E06 platform-specific deterministic analytics and evidence confidence | focused 17/17; serialized unit 1,268/1,268; contract 97 passed/22 skipped; integration 44 passed/390 skipped; eval 3/3; typecheck/lint passed |
+| `1a1da7d` | E01 Web Search discovery and canonical candidate normalization | focused 10/10; unit 1,180/1,180; contract 78 passed/22 skipped; typecheck/lint passed |
+| `fa70d33` | E01 exact evidence binding and complete action lineage | focused 15/15; unit 1,185/1,185; contract 78 passed/22 skipped; typecheck/lint passed |
+| `6e932b7` | E01 full citation-span coverage; coordinator accepted | focused 16/16; unit 1,186/1,186; contract 78 passed/22 skipped; typecheck/lint passed |
+| `46ff9e2` | E02 independent X adapter/source slice | focused 16/16; unit 1,200/1,200; contract 80 passed/22 skipped; typecheck/lint passed |
+| `ce503bd` | E02 partial signal, tenant-safe identity and explicit latest/version lineage; coordinator accepted | focused 20/20; unit 1,204/1,204; contract 80 passed/22 skipped; typecheck/lint passed |
+| `a32c04b` | E03 persist-first durable workflow slice; coordinator accepted | focused 17/17; serialized unit 1,223/1,223; contract 88 passed/22 skipped; typecheck/focused lint passed |
+| `26205f4` | E04 deterministic security resolution and cited comparative relationships; coordinator accepted | focused 19/19; serialized unit 1,242/1,242; contract 91 passed/22 skipped; integration 44 passed/390 skipped; eval 1/1; typecheck/lint passed |
+| `ab5e171` | E05 isolated four-dimension classification and semantic proposals; coordinator accepted | focused 15/15; serialized unit 1,254/1,254; contract 94 passed/22 skipped; integration 44 passed/390 skipped; eval 2/2; typecheck/lint passed |
+| `25d1195` | E06 platform-specific deterministic analytics and evidence confidence | focused 17/17; serialized unit 1,268/1,268; contract 97 passed/22 skipped; integration 44 passed/390 skipped; eval 3/3; typecheck/lint passed |
+| this task commit | E06 positive-weight effective-independence correction; coordinator accepted | focused 18/18; serialized unit 1,269/1,269; contract 97 passed/22 skipped; integration 44 passed/390 skipped; eval 3/3; typecheck/lint passed |
 
 ## Handoff
 
 ```text
 RNI LANE     ENGINE
 BRANCH       feat/rni-engine-live-slice
-BASE SHA     03f8afc (latest feat/rni-integration-demo at final verification)
+BASE SHA     a26cac5 (latest feat/rni-integration-demo at final verification)
 STATUS       PARTIAL
-TASKS        6/10; E01-E05 coordinator accepted; E06 ready for review; E07-E10 not started
-TESTS        E01 focused 16/16; E02 focused 20/20; E03 focused 17/17; E04 focused 19/19; E05 focused 15/15; E06 focused 17/17; serialized unit 1,268/1,268; contract 97 passed/22 skipped; integration 44 passed/390 skipped; eval 3/3; typecheck/full lint pass
+TASKS        6/10; E01-E06 coordinator accepted; E07 in progress; E08-E10 not started
+TESTS        E01 focused 16/16; E02 focused 20/20; E03 focused 17/17; E04 focused 19/19; E05 focused 15/15; E06 focused 18/18; serialized unit 1,269/1,269; contract 97 passed/22 skipped; integration 44 passed/390 skipped; eval 3/3; typecheck/full lint pass
 CONTRACT     none
 RISKS        live Web Search/X smokes pending approved credentials; coordinator must compose workflow, ambiguity policy and I07 semantic persistence; E09/E10 own evaluated model prompts and live injection resistance
 FILES        src/rni/{discovery,sources,workflow,observations,analytics}/**; tests/unit/rni/{discovery,sources,workflow,observations,analytics}/**; tests/contract/rni/{discovery,x-source-slice,persist-source-workflow,security-resolution,semantic-classifier,platform-analytics}.test.ts; tests/eval/rni/{security-resolution,semantic-classifier,platform-analytics}.eval.test.ts; docs/rni/progress/ENGINE.md
-COMMITS      rebased E01/E02 series through d16a2e3, E03 1856db3, E04 1c8ab45, E05 29b7495, plus E06 task commit
+COMMITS      rebased E01/E02 series through ce503bd, E03 a32c04b, E04 26205f4, E05 ab5e171, E06 25d1195 plus accepted correction in this commit
 DEMO PROOF   citation-bound Reddit; independent X terminal states; commit-before-ID-only-interpret; persisted NVDA/AMD exact mentions, cited canonical preference, isolated opposing classification and reproducible platform-bound analytics/confidence
 ```
