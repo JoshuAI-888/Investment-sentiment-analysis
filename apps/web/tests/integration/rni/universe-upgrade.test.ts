@@ -6,6 +6,8 @@ import type pg from 'pg';
 import { UNIVERSE_MAX_SYMBOLS, universeVersion } from '../../../src/contracts/config';
 import { loadMigrations } from '../../../src/repositories/migrate';
 import {
+  activateUniverseVersion,
+  approveFmpUniverseVersion,
   insertUniverseProviderCall,
   stageFmpUniverseVersion,
 } from '../../../src/repositories/versions';
@@ -129,6 +131,16 @@ describe.skipIf(url === undefined)('I05 — forward RNI universe migration', () 
       source_provider: null,
     });
     await expectCeiling(configVersion);
+
+    await expect(
+      pool.query(
+        `insert into universe_version
+           (environment, config_version, status, selected_count, source_provider,
+            created_by, change_reason)
+         values ('test', $1, 'staged', 501, 'fmp', 'owner', 'incomplete FMP lineage')`,
+        [configVersion],
+      ),
+    ).rejects.toThrow(/universe_version_fmp_lineage_check/);
   });
 
   it('applies cleanly with the complete migration set and exposes FMP lineage columns', async () => {
@@ -272,5 +284,158 @@ describe.skipIf(url === undefined)('I05 — forward RNI universe migration', () 
       [first.version.id],
     );
     expect(counts[0]).toEqual({ versions: '2', members: '501', audits: '1' });
+
+    const activationMembers = securities.map((security) => ({
+      securityId: security.id,
+      addedBy: 'ignored-at-fmp-activation',
+      selectionSource: 'fmp_sp500',
+    }));
+    const activationAudit = {
+      actorId: 'joshuai',
+      actorRole: 'admin',
+      reason: 'Approve and activate reviewed FMP fixture',
+      requestId: 'activate-sync-1',
+      correlationId: 'corr-activate-1',
+    };
+    await expect(
+      activateUniverseVersion('test', first.version.id, activationMembers, activationAudit),
+    ).rejects.toThrow(/staged and approved first/);
+
+    const approved = await approveFmpUniverseVersion(
+      'test',
+      first.version.id,
+      activationAudit,
+    );
+    expect(approved.approvedBy).toBe('joshuai');
+    await expect(
+      pool.query(`update universe_version set approved_by = 'other' where id = $1`, [
+        first.version.id,
+      ]),
+    ).rejects.toThrow(/approval is one-way/);
+    await expect(
+      activateUniverseVersion('test', first.version.id, [], activationAudit),
+    ).rejects.toThrow(/exactly match the reviewed staged membership/);
+    await expect(
+      activateUniverseVersion(
+        'test',
+        first.version.id,
+        activationMembers.slice(0, 500),
+        activationAudit,
+      ),
+    ).rejects.toThrow(/exactly match the reviewed staged membership/);
+    const alteredMembers = [...activationMembers];
+    alteredMembers[0] = {
+      securityId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+      addedBy: 'ignored-at-fmp-activation',
+      selectionSource: 'fmp_sp500',
+    };
+    await expect(
+      activateUniverseVersion('test', first.version.id, alteredMembers, activationAudit),
+    ).rejects.toThrow(/exactly match the reviewed staged membership/);
+
+    const activated = await activateUniverseVersion(
+      'test',
+      first.version.id,
+      activationMembers,
+      activationAudit,
+    );
+    expect(activated).toMatchObject({
+      id: first.version.id,
+      status: 'active',
+      selectedCount: 501,
+      approvedBy: 'joshuai',
+    });
+    const { rows: activeMembership } = await pool.query<{ count: string }>(
+      `select count(*)::text as count from universe_member
+        where universe_version = $1 and enabled = true`,
+      [first.version.id],
+    );
+    expect(activeMembership[0]?.count).toBe('501');
+  });
+
+  it('rejects activation when a reviewed FMP snapshot has a stale parent', async () => {
+    await resetSchema(pool);
+    const configVersion = await insertConfig();
+    const { rows: existing } = await pool.query<{ id: string }>(
+      `insert into universe_version
+         (environment, config_version, status, selected_count, created_by, change_reason, activated_at)
+       values ('test', $1, 'active', 1, 'seed', 'parent A', now())
+       returning id`,
+      [configVersion],
+    );
+    const { rows: securities } = await pool.query<{ id: string; symbol: string; name: string }>(
+      `insert into security (symbol, name, exchange, asset_type, currency)
+       select case when n = 1 then 'NVDA' else 'S' || lpad(n::text, 3, '0') end,
+              case when n = 1 then 'NVIDIA Corporation' else 'Stale Company ' || n::text end,
+              'NASDAQ', 'equity', 'USD'
+         from generate_series(1, 501) as n
+       returning id, symbol, name`,
+    );
+    const providerCallId = await insertUniverseProviderCall(
+      {
+        operation: 'sp500_constituent',
+        requestFingerprint: 'stale-fixture',
+        statusCode: 200,
+        latencyMs: 10,
+        cacheStatus: 'miss',
+        itemsReturned: 501,
+        estimatedCostUsd: '0',
+        startedAt: new Date('2026-09-05T00:00:00.000Z'),
+        errorClass: null,
+      },
+      pool,
+    );
+    const staged = await stageFmpUniverseVersion({
+      environment: 'test',
+      sourceRetrievedAt: '2026-09-05T00:00:00.000Z',
+      sourcePayloadHash: 'd'.repeat(64),
+      providerCallId,
+      members: securities.map((security) => ({
+        securityId: security.id,
+        providerSymbol: security.symbol,
+        providerCompanyName: security.name,
+        constituentFirstAddedAt: null,
+      })),
+      actorId: 'joshuai',
+      requestId: 'stage-stale',
+      correlationId: 'corr-stale',
+    });
+    expect(staged.version.parentVersion).toBe(existing[0]?.id);
+
+    const successor = await pool.query<{ id: string }>(
+      `insert into universe_version
+         (environment, config_version, status, selected_count, parent_version,
+          created_by, change_reason)
+       values ('test', $1, 'draft', 0, $2, 'owner', 'parent B')
+       returning id`,
+      [configVersion, existing[0]?.id],
+    );
+    await activateUniverseVersion('test', successor.rows[0]!.id, [], {
+      actorId: 'owner',
+      actorRole: 'admin',
+      reason: 'Activate parent B',
+      requestId: 'activate-parent-b',
+      correlationId: 'corr-parent-b',
+    });
+    const approval = {
+      actorId: 'joshuai',
+      actorRole: 'admin',
+      reason: 'Approve stale fixture',
+      requestId: 'approve-stale',
+      correlationId: 'corr-approve-stale',
+    };
+    await approveFmpUniverseVersion('test', staged.version.id, approval);
+    await expect(
+      activateUniverseVersion(
+        'test',
+        staged.version.id,
+        securities.map((security) => ({
+          securityId: security.id,
+          addedBy: 'ignored',
+          selectionSource: 'fmp_sp500',
+        })),
+        approval,
+      ),
+    ).rejects.toThrow(/stale active parent/);
   });
 });

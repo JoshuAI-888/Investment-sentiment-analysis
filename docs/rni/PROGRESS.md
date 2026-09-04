@@ -72,7 +72,7 @@ The canonical matrix is [`INTEGRATION_PLAN.md`](INTEGRATION_PLAN.md) §10. Coord
 | Scope and branch isolation | `PASSED` | `RNI-00-CONTRACT.md`, path ownership and scoped legacy banners; PR #5 |
 | Source identity/persist-first/idempotency | `PASSED` | DATA merged at `254fe45`; crossed keys fail closed, source port returns committed IDs, concurrent outbox tests pass |
 | Reddit/X separation and combined honesty | `IN_PROGRESS` | ENGINE E01 source binding and SURFACE S02 Radar accepted; D-RNI-13 freezes source-separated cells; remaining pipeline/UI tasks open |
-| S&P 500/FMP universe migration | `READY_FOR_REVIEW` | integration commits `a7b13b6`, `e535624`; local PostgreSQL 501-member stage/replay and 600/601 gates pass |
+| S&P 500/FMP universe migration | `CHANGES_REQUESTED` | independent review found activation approval/membership, pre-fetch idempotency, exact-500, clean-bootstrap and lineage gaps; coordinator corrections in progress |
 | Model route and CI | `PASSED` | PR #2 route validation; PR #5 RNI path filter and green eval |
 | Toolchain reproducibility | `PASSED` | pinned pnpm 10.33 clean install plus PR #5 independent CI |
 | Retention and citation safety | `IN_PROGRESS` | DATA claim/source FK and ENGINE source/content binding findings resolved; full publication gate remains later work |
@@ -100,3 +100,5 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — accepted SURFACE S02 at `c4899b8` after its same-commit tracker was reconciled; coordinator typecheck, focused lint, contract 11/11, production build and Chromium desktop/narrow/keyboard 4/4 all passed.
 - 2026-09-05 — accepted ENGINE E02 corrections at `0e229d6`; partial-success signaling, tenant-safe stable identity and A→B→A latest-version semantics are covered by 20/20 independently rerun focused tests.
 - 2026-09-05 — accepted CR-SURFACE-03 as D-RNI-14; the additive security-detail read freezes exactly four cited dimensions per independently labelled platform and rejects missing, pooled, relabelled or uncited publishable data.
+- 2026-09-05 — independent review held I05/I06 on four P1 and two P2 universe findings: activation could alter/unapproved-stale membership, idempotency began after FMP, 500 rows passed, clean security bootstrap was absent, FMP lineage was DB-optional, and impossible dates passed structural validation.
+- 2026-09-05 — closed universe findings IR-01/03/05/06: FMP activation now requires one-way admin approval, exact stored membership and current parent; PostgreSQL requires complete provider lineage; exactly 500 and impossible dates fail; fresh DB activation/version tests pass 14/14.

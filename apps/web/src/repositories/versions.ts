@@ -138,12 +138,13 @@ export type NewUniverseVersion = {
   status?: 'draft' | 'staged';
   parentVersion?: string | null;
   selectionQuery?: unknown;
-  sourceProvider?: string | null;
-  sourceEndpoint?: string | null;
-  sourceRetrievedAt?: Date | string | null;
-  sourcePayloadHash?: string | null;
-  providerCallId?: string | null;
-  approvedBy?: string | null;
+  /** FMP versions must use stageFmpUniverseVersion so required lineage cannot be omitted. */
+  sourceProvider?: null;
+  sourceEndpoint?: null;
+  sourceRetrievedAt?: null;
+  sourcePayloadHash?: null;
+  providerCallId?: null;
+  approvedBy?: null;
 };
 
 export async function insertUniverseVersion(
@@ -395,10 +396,72 @@ export async function stageFmpUniverseVersion(
   });
 }
 
+/** Record the human approval on a staged FMP snapshot without activating or altering it. */
+export async function approveFmpUniverseVersion(
+  environment: string,
+  versionId: string,
+  audit: ActivationAudit,
+): Promise<UniverseVersion> {
+  if (audit.actorRole !== 'admin') {
+    throw new Error('FMP universe approval requires an admin actor');
+  }
+  return withTransaction(async (tx) => {
+    await tx.query('select pg_advisory_xact_lock(hashtext($1))', [`universe:${environment}`]);
+    const { rows } = await tx.query(
+      `update universe_version
+          set approved_by = $3
+        where id = $1 and environment = $2 and status = 'staged'
+          and source_provider = 'fmp' and approved_by is null
+      returning ${UNIVERSE_COLUMNS}`,
+      [versionId, environment, audit.actorId],
+    );
+    const approved = rows[0];
+    if (approved === undefined) {
+      const { rows: existing } = await tx.query(
+        `select ${UNIVERSE_COLUMNS} from universe_version where id = $1 and environment = $2`,
+        [versionId, environment],
+      );
+      const version = existing[0];
+      if (version !== undefined) {
+        const parsed = universeVersion.parse(camelizeRow(version as Record<string, unknown>));
+        if (
+          parsed.status === 'staged' &&
+          parsed.sourceProvider === 'fmp' &&
+          parsed.approvedBy === audit.actorId
+        ) {
+          return parsed;
+        }
+      }
+      throw new Error(
+        `universe_version ${versionId} is not an unapproved staged FMP version in ${environment}`,
+      );
+    }
+
+    await tx.query(
+      `insert into audit_event
+         (actor_id, actor_role, action, object_type, object_id, environment, reason,
+          after_value, result, request_id, correlation_id)
+       values ($1, $2, 'approve', 'universe_version', $3, $4, $5, $6,
+               'success', $7, $8)`,
+      [
+        audit.actorId,
+        audit.actorRole,
+        versionId,
+        environment,
+        audit.reason,
+        JSON.stringify(approved),
+        audit.requestId,
+        audit.correlationId,
+      ],
+    );
+    return universeVersion.parse(camelizeRow(approved as Record<string, unknown>));
+  });
+}
+
 /**
- * Materialise membership and activate. **Membership is materialised at activation** so a later
- * catalogue or profile change cannot silently alter a historical universe version — which is
- * what makes ADR-015's "historical results are never rewritten" true rather than aspirational.
+ * Activate one immutable successor. Legacy draft membership is materialised here. FMP snapshots
+ * are different: staging already materialises the reviewed membership, so activation verifies
+ * the caller's IDs against that stored set and never inserts or rewrites them.
  */
 export async function activateUniverseVersion(
   environment: string,
@@ -415,18 +478,79 @@ export async function activateUniverseVersion(
   return withTransaction(async (tx) => {
     await tx.query('select pg_advisory_xact_lock(hashtext($1))', [`universe:${environment}`]);
 
+    const { rows: targetRows } = await tx.query(
+      `select ${UNIVERSE_COLUMNS} from universe_version
+        where id = $1 and environment = $2
+        for update`,
+      [versionId, environment],
+    );
+    const targetRow = targetRows[0];
+    if (targetRow === undefined) {
+      throw new Error(`universe_version ${versionId} was not found in ${environment}`);
+    }
+    const target = universeVersion.parse(camelizeRow(targetRow as Record<string, unknown>));
+    if (target.status !== 'draft' && target.status !== 'staged') {
+      throw new Error(
+        `universe_version ${versionId} is not a draft or staged version in ${environment}`,
+      );
+    }
+
     const previous = await tx.query(
       `select ${UNIVERSE_COLUMNS} from universe_version where environment = $1 and status = 'active'`,
       [environment],
     );
+    const previousId = (previous.rows[0] as { id?: string } | undefined)?.id ?? null;
+    const isFmp = target.sourceProvider === 'fmp';
 
-    for (const member of members) {
-      await tx.query(
-        `insert into universe_member (universe_version, security_id, added_by, selection_source)
-         values ($1, $2, $3, $4)
-         on conflict (universe_version, security_id) do nothing`,
-        [versionId, member.securityId, member.addedBy, member.selectionSource],
+    if (isFmp) {
+      if (target.status !== 'staged' || target.approvedBy === null) {
+        throw new Error(`FMP universe_version ${versionId} must be staged and approved first`);
+      }
+      if (audit.actorRole !== 'admin' || target.approvedBy !== audit.actorId) {
+        throw new Error(
+          `FMP universe_version ${versionId} must be activated by its recorded admin approver`,
+        );
+      }
+      if (target.parentVersion !== previousId) {
+        throw new Error(
+          `FMP universe_version ${versionId} was reviewed against a stale active parent`,
+        );
+      }
+
+      const { rows: storedMembers } = await tx.query<{ security_id: string }>(
+        `select security_id from universe_member
+          where universe_version = $1 and enabled = true
+          order by security_id`,
+        [versionId],
       );
+      const storedIds = storedMembers.map(({ security_id }) => security_id);
+      const suppliedIds = members.map(({ securityId }) => securityId).sort();
+      if (
+        storedIds.length !== target.selectedCount ||
+        storedIds.length < 501 ||
+        storedIds.length > UNIVERSE_MAX_SYMBOLS
+      ) {
+        throw new Error(
+          `FMP universe_version ${versionId} stored membership does not match selected_count or completeness bounds`,
+        );
+      }
+      if (
+        suppliedIds.length !== storedIds.length ||
+        suppliedIds.some((securityId, index) => securityId !== storedIds[index])
+      ) {
+        throw new Error(
+          `FMP universe_version ${versionId} activation members must exactly match the reviewed staged membership`,
+        );
+      }
+    } else {
+      for (const member of members) {
+        await tx.query(
+          `insert into universe_member (universe_version, security_id, added_by, selection_source)
+           values ($1, $2, $3, $4)
+           on conflict (universe_version, security_id) do nothing`,
+          [versionId, member.securityId, member.addedBy, member.selectionSource],
+        );
+      }
     }
 
     await tx.query(
@@ -435,11 +559,16 @@ export async function activateUniverseVersion(
     );
 
     const { rows } = await tx.query(
-      `update universe_version
-          set status = 'active', activated_at = now(), selected_count = $3
-        where id = $1 and environment = $2 and status in ('draft', 'staged')
+      isFmp
+        ? `update universe_version
+              set status = 'active', activated_at = now()
+            where id = $1 and environment = $2 and status = 'staged'
+          returning ${UNIVERSE_COLUMNS}`
+        : `update universe_version
+              set status = 'active', activated_at = now(), selected_count = $3
+            where id = $1 and environment = $2 and status in ('draft', 'staged')
       returning ${UNIVERSE_COLUMNS}`,
-      [versionId, environment, members.length],
+      isFmp ? [versionId, environment] : [versionId, environment, members.length],
     );
 
     const activated = rows[0];

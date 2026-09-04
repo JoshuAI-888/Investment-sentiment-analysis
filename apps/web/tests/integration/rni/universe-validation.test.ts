@@ -52,6 +52,7 @@ describe('FMP S&P 500 universe validation', () => {
   it.each([
     ['empty', fixture(0), 'partial_payload'],
     ['partial', fixture(499), 'partial_payload'],
+    ['exactly 500', fixture(500), 'partial_payload'],
     ['over ceiling', fixture(601), 'over_ceiling'],
   ])('rejects a %s provider response', (_name, value, issue) => {
     const result = validate(value);
@@ -95,5 +96,17 @@ describe('FMP S&P 500 universe validation', () => {
     expect(result.issues.map(({ code }) => code)).toEqual(
       expect.arrayContaining(['unresolved_symbol', 'ambiguous_symbol']),
     );
+  });
+
+  it('rejects an impossible constituent first-added calendar date', () => {
+    const value = fixture(501);
+    value.constituents[0] = { ...value.constituents[0]!, dateFirstAdded: '2026-99-99' };
+    const result = validate(value);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.issues).toContainEqual({
+      code: 'invalid_first_added_at',
+      symbols: ['NVDA'],
+    });
   });
 });

@@ -17,8 +17,10 @@
 | I02D | Resolve CR-SURFACE-03 security-detail dimension read | `PASSED` | D-RNI-14; additive complete/cited per-platform dimension shape; focused 13 pass, full contract 83 pass/22 DB-skipped |
 | I03 | Expand CI path filters for RNI prompts/agents/evals | `MERGED` | PR #5; actual `tests/eval/rni` path triggered and passed |
 | I04 | Pin/verify pnpm 10.33.0 and build-script policy | `PASSED` | Clean frozen install and PR #5 web/scorer CI passed |
-| I05 | Add forward universe migration and 600-member ceiling | `READY_FOR_REVIEW` | Clean + forward PostgreSQL migration tests pass; 600 accepted and 601 rejected in DB and Zod |
-| I06 | Build FMP sync composition and minimal Settings route wiring | `READY_FOR_REVIEW` | 501-member fixture stages once; partial/duplicate/unresolved responses fail closed; admin route, build, and PostgreSQL gates pass |
+| I05 | Add forward universe migration and 600-member ceiling | `READY_FOR_REVIEW` | IR-01/03/05/06 closed; focused validation 9 pass and fresh PostgreSQL activation/version gates 14 pass |
+| I06 | Build FMP sync composition and minimal Settings route wiring | `CHANGES_REQUESTED` | Coordinator correcting pre-fetch idempotency, exact-500/date validation and clean security bootstrap |
+| I06R1 | Close universe activation, lineage and validation review findings | `PASSED` | One-way approval, stored-member/current-parent activation, lineage constraint, exact-500/date tests; PostgreSQL 14/14 |
+| I06R2 | Add durable pre-fetch sync command and clean security bootstrap | `NOT_STARTED` | One-fetch replay/failure audit/hash binding plus clean 501-security import test required |
 | I07 | Compose DATA repositories and ENGINE services | `NOT_STARTED` | Integration contract tests |
 | I08 | Compose SURFACE routes/nav/API with auth | `NOT_STARTED` | Authenticated preview e2e |
 | I09 | Wire QStash jobs/manual idempotent refresh | `NOT_STARTED` | Signed redelivery/double-click tests |
@@ -152,6 +154,7 @@
 | `docs/features/RNI-00-CONTRACT.md`, `docs/MEMORY.md` | Record the non-poolable Radar read rule as D-RNI-13 | `84dca87` | contract/doc review |
 | `apps/web/src/rni/contracts/index.ts`, `src/rni/testing/reference-fixtures.ts` | Resolve CR-SURFACE-03 with complete, cited, per-platform dimension reads | `CURRENT` | typecheck; lint; RNI contract 13 pass; full contract 83 pass/22 DB-skipped |
 | `docs/features/RNI-00-CONTRACT.md`, `docs/MEMORY.md` | Record the security-detail dimension rule as D-RNI-14 | `CURRENT` | contract/doc review |
+| `apps/web/migrations/0024_rni_universe_upgrade.sql`, `src/repositories/versions.ts`, `src/rni/universe/validate.ts` | Close activation, lineage and completeness review findings | `CURRENT` | typecheck; lint; validation 9; fresh PostgreSQL universe/versions 14 |
 
 ## Review findings
 
@@ -169,6 +172,12 @@
 | ER-05 | P1 | `RESOLVED` | X authors are unsalted SHA-256 hashes of mutable usernames rather than tenant-scoped hashes of stable identity | `0e229d6` omits identity by default and permits only an injected tenant policy over stable provider author ID, with tenant/rename/privacy tests |
 | ER-06 | P1 | `RESOLVED` | X content-version candidates do not identify exactly one latest interpretation version and A→B→A leaves B latest | `0e229d6` separates persistence versions from one latest interpretation candidate and records ordered A→B→A transitions |
 | SR-04 | P2 | `RESOLVED` | S02's first commit left its task/evidence/handoff record stale and did not identify the actual browser gate | `c4899b8` amends the task commit with exact type, lint, contract, build and Chromium evidence plus complete files/risks/handoff |
+| IR-01 | P1 | `RESOLVED` | Universe activation can publish an unapproved, stale-parent or caller-altered FMP snapshot and can diverge selected count from stored members | FMP approval is one-way; activation requires the recorded admin, current parent, exact stored-member set and count; negative DB tests pass |
+| IR-02 | P1 | `OPEN` | FMP synchronization claims idempotency only after the external provider call and payload-hash reuse does not bind a new key | I06R2: durable command claim before fetch, terminal replay record and audit for every outcome |
+| IR-03 | P1 | `RESOLVED` | An exactly 500-row FMP response passes the contract's greater-than-500 completeness gate | Minimum is 501 and the 500-row boundary test fails closed |
+| IR-04 | P1 | `OPEN` | A clean deployment has only the 100-security legacy seed and cannot resolve a complete current FMP snapshot | I06R2: add a governed versioned security-master import/bootstrap and clean 501-member database test |
+| IR-05 | P2 | `RESOLVED` | Database columns allow an FMP universe version without endpoint, retrieval time, payload hash or provider-call lineage | Migration 0024 conditionally requires the full FMP lineage tuple; generic repository input cannot create FMP versions; direct insert fails |
+| IR-06 | P2 | `RESOLVED` | Structurally valid but impossible constituent dates can reach PostgreSQL as unhandled timestamp errors | Validation requires an actual round-tripping calendar date and reports affected symbols; impossible-date test passes |
 
 ## Open risks/blockers
 
@@ -236,6 +245,19 @@
   S03, implement the fixture service method, and render dimensions only from the fixed Reddit/X
   detail records. The live DATA projection remains I07/I08 integration work.
 
+## I06R1 handoff
+
+- **Files changed:** migration `0024`, universe version repository, FMP validation, activation and
+  validation integration tests, and coordinator trackers.
+- **Behaviour:** FMP lineage is mandatory in PostgreSQL; exactly 500 constituents and impossible
+  dates fail validation; approval is a one-way staged lifecycle action; activation requires the
+  recorded admin approver, the still-current parent, and exact equality between caller IDs,
+  stored membership and immutable selected count.
+- **Verification:** typecheck and focused lint pass; validation 9/9; fresh disposable PostgreSQL
+  universe-upgrade plus legacy version/activation suites 14/14.
+- **Risk/handoff:** I06 remains changes-requested until I06R2 claims idempotency before the FMP
+  call and provides the clean 501-security bootstrap/import path. No frozen contract changed.
+
 ## I05 handoff
 
 - **Files changed:** `apps/web/migrations/0024_rni_universe_upgrade.sql`,
@@ -264,10 +286,11 @@
   one adapter unit test, and this tracker.
 - **Behaviour:** the admin-only, same-origin POST command requires an idempotency key, retrieves
   FMP's current constituent response through the governed wrapper, persists the provider-call
-  identity, resolves every constituent against active canonical securities, requires 500–600
+  identity, resolves every constituent against active canonical securities, requires 501–600
   unique members including NVDA, and creates an immutable staged version with impact preview and
   member lineage. Provider, partial, duplicate, unresolved, or ambiguous outcomes never replace
-  the active universe. Replays by request key or payload hash return the original staged version.
+  the active universe. The stage helper reuses a request key or payload hash; I06R2 adds the
+  required durable claim before the external call and binds every terminal outcome to the key.
 - **Verification:** `pnpm lint`; `pnpm typecheck`; `pnpm test:unit` (1,175 pass);
   `pnpm test:contract` (78 pass, 22 database-dependent skipped); focused RNI service/route tests
   (16 pass); disposable PostgreSQL migration/staging tests (4 pass) and shared versions tests
@@ -276,5 +299,5 @@
 - **Risk/handoff:** the authenticated live FMP entitlement/capability probe and ephemeral Neon
   migration remain G7/G6 gates. The Settings page only identifies the governed preset and staging
   rule in this slice; activation UI/composition remains separate and must require `joshuai` in
-  production. The active security master must already contain unambiguous records for every FMP
-  constituent before a live candidate can stage.
+  production. I06R2 must provide the governed clean-deployment security-master bootstrap before
+  live synchronization can be considered complete.

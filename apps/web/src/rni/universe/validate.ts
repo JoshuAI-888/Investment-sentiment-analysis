@@ -5,7 +5,7 @@ import {
 } from '../contracts';
 import type { FmpSp500Constituent } from '../../adapters/fmp-universe';
 
-export const RNI_SP500_MIN_MEMBERS = 500;
+export const RNI_SP500_MIN_MEMBERS = 501;
 
 export type UniverseSecurity = {
   readonly id: string;
@@ -27,6 +27,7 @@ export type FmpUniverseValidationIssue =
   | { readonly code: 'over_ceiling'; readonly count: number }
   | { readonly code: 'duplicate_symbol'; readonly symbols: readonly string[] }
   | { readonly code: 'missing_nvda' }
+  | { readonly code: 'invalid_first_added_at'; readonly symbols: readonly string[] }
   | { readonly code: 'unresolved_symbol'; readonly symbols: readonly string[] }
   | { readonly code: 'ambiguous_symbol'; readonly symbols: readonly string[] };
 
@@ -49,9 +50,16 @@ function companyKey(value: string): string {
     .replace(/[^A-Z0-9]/gu, '');
 }
 
-function firstAddedAt(value: string | null | undefined): string | null {
-  if (value === undefined || value === null || !/^\d{4}-\d{2}-\d{2}$/u.test(value)) return null;
-  return `${value}T00:00:00.000Z`;
+function firstAddedAt(value: string | null | undefined):
+  | { readonly valid: true; readonly value: string | null }
+  | { readonly valid: false } {
+  if (value === undefined || value === null) return { valid: true, value: null };
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(value)) return { valid: false };
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+    return { valid: false };
+  }
+  return { valid: true, value: parsed.toISOString() };
 }
 
 export function validateAndResolveFmpUniverse(input: {
@@ -85,6 +93,7 @@ export function validateAndResolveFmpUniverse(input: {
 
   const unresolved: string[] = [];
   const ambiguous: string[] = [];
+  const invalidFirstAddedAt: string[] = [];
   const resolved: ResolvedFmpUniverseMember[] = [];
   const candidates: RniUniverseSnapshotCandidate['members'] = [];
 
@@ -105,6 +114,8 @@ export function validateAndResolveFmpUniverse(input: {
     }
     const security = matches[0];
     if (security === undefined) continue;
+    const constituentFirstAddedAt = firstAddedAt(constituent.dateFirstAdded);
+    if (!constituentFirstAddedAt.valid) invalidFirstAddedAt.push(key);
     candidates.push({
       ticker: symbolKey(security.symbol),
       companyName: security.name,
@@ -115,7 +126,9 @@ export function validateAndResolveFmpUniverse(input: {
       securityId: security.id,
       providerSymbol: constituent.symbol,
       providerCompanyName: constituent.name,
-      constituentFirstAddedAt: firstAddedAt(constituent.dateFirstAdded),
+      constituentFirstAddedAt: constituentFirstAddedAt.valid
+        ? constituentFirstAddedAt.value
+        : null,
     });
   }
 
@@ -124,6 +137,12 @@ export function validateAndResolveFmpUniverse(input: {
   }
   if (ambiguous.length > 0) {
     issues.push({ code: 'ambiguous_symbol', symbols: [...new Set(ambiguous)].sort() });
+  }
+  if (invalidFirstAddedAt.length > 0) {
+    issues.push({
+      code: 'invalid_first_added_at',
+      symbols: [...new Set(invalidFirstAddedAt)].sort(),
+    });
   }
   if (issues.length > 0) return { ok: false, issues };
 
