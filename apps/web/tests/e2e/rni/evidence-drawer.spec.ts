@@ -1,6 +1,37 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('RNI evidence drawer', () => {
+  test('uses unique dialog controls for repeated citations and keeps keyboard focus in the drawer', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/rni');
+
+    const controls = await page
+      .locator('[data-rni-citation-id="00000000-0000-4000-8000-000000000014"]')
+      .evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-controls')));
+    expect(controls).toHaveLength(8);
+    expect(new Set(controls).size).toBe(controls.length);
+
+    const trigger = page
+      .locator('[data-rni-radar-card="NVDA"] [data-rni-platform="reddit"] [data-rni-citation-id]')
+      .first();
+    await trigger.click();
+    const dialog = page.locator('[role="dialog"]');
+    const close = dialog.getByRole('button', { name: 'Close evidence' });
+    const sourceLink = dialog.getByRole('link', { name: 'Open canonical source' });
+    await expect(close).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(sourceLink).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(close).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(sourceLink).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+
   test('resolves an X Radar citation through its platform-bound bounded source evidence', async ({
     page,
   }) => {
