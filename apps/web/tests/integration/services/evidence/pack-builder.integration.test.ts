@@ -57,6 +57,11 @@ describe.skipIf(url === undefined)('buildEvidencePack — integration', () => {
       relevanceScore: null,
       publishedAt: new Date('2026-09-01T00:00:00Z'),
       availableAt: new Date('2026-09-01T00:05:00Z'),
+      // Pinned, not left to the real wall clock: the recurring defect flagged repeatedly
+      // elsewhere in this codebase's history (evidence.test.ts, attention.test.ts twice,
+      // market.test.ts once) — an `ingestedAt` that defaults to `now()` only stays before this
+      // test's hardcoded `asOfInstant` (below) until the real clock catches up to it.
+      ingestedAt: new Date('2026-09-01T00:00:00Z'),
       lastCheckedAt: null,
       availability: 'unchecked',
       licenseClass: 'own_collected',
