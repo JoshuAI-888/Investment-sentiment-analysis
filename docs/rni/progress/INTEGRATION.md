@@ -158,7 +158,7 @@
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
 | ENGINE | `E06_APPROVED` | E06 based on `098f010`; must rebase to current integration before E07 | builder serialized unit 1,269 + contract 97/22 skipped + integration 44/390 skipped + eval 3/3; coordinator typecheck/lint, focused 18/18 and diff check | yes | E01–E06 accepted through `ecbf049`; ER-07/08 closed; lane remains held |
-| SURFACE | `S08_UNBLOCKED` | must rebase to current I02F1 correction | builder S07 typecheck/lint/contract/build/guard and Chromium 4/4 twice; coordinator I02F1 type/lint, RNI 15/15 and full contract 85/22 skipped | yes | S01–S07 accepted through `babd940`; CR-SURFACE-05 accepted as corrected D-RNI-18; S08 may start after rebase |
+| SURFACE | `S08_CHANGES_REQUESTED` | yes at `573d7be` | coordinator typecheck/lint, RNI contract 15/15, production build and current Chromium 1/1 | yes | SR-09–12 open: client fixture coupling, hardcoded/unbounded search, hidden canonical impact and incomplete lane record; S01–S07 remain accepted |
 
 ## Live/deployment gates
 
@@ -219,6 +219,10 @@
 | SR-06 | P1 | `RESOLVED` | S07 revealed scope only after submission and permanently reused one key per scope | `55b01ef` previews ticker/full scope before action and uses a new key for each intentional request |
 | SR-07 | P1 | `RESOLVED` | S07's 25 ms fixture made double-submit browser coverage timing-dependent | `a28121e` injects a deferred command and proves both controls remain disabled until explicit release; Chromium 4/4 twice |
 | SR-08 | P1 | `RESOLVED` | S07 emitted its deferred fixture harness as an unguarded production route | `babd940` forces request-time evaluation and returns not-found outside validated fixture mode; guard test passes |
+| SR-09 | P1 | `OPEN` | S08 constructs the fixture universe service inside the production client component, leaving I08 no server-side live-composition seam | Keep fixture composition in the lane page, make the UI data-only and drive query reads through a server boundary replaceable by I08 |
+| SR-10 | P1 | `OPEN` | Fixture search hardcodes exact MSFT tokens, ignores limit and does not parse the frozen query/result | Search an explicit active-member fixture catalogue by case-insensitive ticker/company substring, enforce parsed limit/hasMore and test partial/empty/over-limit cases |
+| SR-11 | P1 | `OPEN` | Staged Settings discards canonical added/removed identities and renders counts only | Render ticker/company/exchange additions and removals with explicit none state; assert PLTR and version distinction in Chromium |
+| SR-12 | P1 | `OPEN` | S08 claims READY without its required test row, task record, risks, resolved blocker, commits or current handoff | Reconcile the complete lane record in the corrective S08 commit |
 | IR-01 | P1 | `RESOLVED` | Universe activation can publish an unapproved, stale-parent or caller-altered FMP snapshot and can diverge selected count from stored members | FMP approval is one-way; activation requires the recorded admin, current parent, exact stored-member set and count; negative DB tests pass |
 | IR-02 | P1 | `RESOLVED` | FMP synchronization claims idempotency only after the external provider call and payload-hash reuse does not bind a new key | Command is committed before fetch; concurrent/later replay performs one fetch per key; expected and unexpected terminal outcomes retain audit and provider/payload/version lineage |
 | IR-03 | P1 | `RESOLVED` | An exactly 500-row FMP response passes the contract's greater-than-500 completeness gate | Minimum is 501 and the 500-row boundary test fails closed |
@@ -268,6 +272,7 @@
 | `CURRENT` | Resolve CR-SURFACE-05 with read-only universe selection boundary | typecheck; focused lint; RNI contract 15/15; full contract 85/22 skipped |
 | `CURRENT` | Review ENGINE E06 platform analytics | typecheck; focused lint; focused unit/contract/eval 17/17; ER-07 returned |
 | `CURRENT` | Accept corrected ENGINE E06 platform analytics | typecheck; focused lint; focused unit/contract/eval 18/18; branch diff check; ownership/base review |
+| `CURRENT` | Review SURFACE S08 universe settings | typecheck; focused lint; RNI contract 15/15; production build; Chromium 1/1; SR-09–12 returned |
 | `CURRENT` | Close I02F universe-read P1 review findings | typecheck; focused lint; RNI contract 15/15; full contract 85/22 skipped; independent re-review READY at `098f010` |
 
 ## Coordinator notes
@@ -330,6 +335,9 @@
   attention, but cannot manufacture effective source/community breadth for sentiment or confidence.
 - ENGINE E06 is accepted at `ecbf049`: positive-weight traces now govern effective independence,
   breadth, concentration and freshness, while raw distinct-source attention remains unchanged.
+- SURFACE S08 `43f261a` is held on SR-09–12 despite its 1/1 happy path: the UI must remain live-
+  composable, the fixture search must enforce the frozen bound, canonical impact must be visible,
+  and the same commit must carry complete lane evidence.
 - I02F1 closes ICR-01/02 with an explicit legacy/FMP active union, a 501-member FMP floor and
   impossible over-add/remove rejection. Surface must use the superseding commit, not `03f8afc`.
 
