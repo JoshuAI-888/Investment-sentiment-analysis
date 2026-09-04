@@ -2,17 +2,17 @@
 
 **Writer:** coordinator/integrator only  
 **Branch:** `feat/rni-integration-demo`  
-**Status:** `READY`
+**Status:** `CONTRACT_PR_PENDING`
 
 ## Tasks
 
 | ID | Task | Status | Acceptance evidence |
 |---|---|---|---|
-| I00 | Refresh `main`, inspect dirty state and repeat pinned clean gate | `READY` | Preflight transcript/CI link |
-| I01 | Review and merge `fix/require-ai-model-routes-live-mode` | `READY` | Merge SHA |
-| I02 | Freeze RNI contracts, fixtures, routes and migration allocation | `NOT_STARTED` | Contract PR/CI/merge SHA |
-| I03 | Expand CI path filters for RNI prompts/agents/evals | `NOT_STARTED` | Intentional trigger proof |
-| I04 | Pin/verify pnpm 10.33.0 and build-script policy | `NOT_STARTED` | Clean frozen install/build |
+| I00 | Refresh `main`, inspect dirty state and repeat pinned clean gate | `LOCAL_PASS_CI_PENDING` | Base `6fb1a28`; full local gate passed |
+| I01 | Review and merge `fix/require-ai-model-routes-live-mode` | `MERGED` | PR #2, `09ad439` |
+| I02 | Freeze RNI contracts, fixtures, routes and migration allocation | `PASS_ON_MERGE` | Contract source SHA `9908eda` |
+| I03 | Expand CI path filters for RNI prompts/agents/evals | `PASS_ON_MERGE` | `.github/workflows/ci.yml` includes actual `tests/eval/rni` path |
+| I04 | Pin/verify pnpm 10.33.0 and build-script policy | `LOCAL_PASS_CI_PENDING` | Clean frozen install, lint, typecheck, test and build passed |
 | I05 | Add forward universe migration and 600-member ceiling | `NOT_STARTED` | Forward/clean migration tests |
 | I06 | Build FMP sync composition and minimal Settings route wiring | `NOT_STARTED` | >500 fixture + invalid-response tests |
 | I07 | Compose DATA repositories and ENGINE services | `NOT_STARTED` | Integration contract tests |
@@ -24,18 +24,18 @@
 
 ## Contract-freeze checklist
 
-- [ ] `RniPlatform` and coverage modes.
-- [ ] Source and bounded-content schemas.
-- [ ] Four dimensions and stance values.
-- [ ] Reddit/X platform-slice lifecycle.
-- [ ] Cross-source statuses and no-fallback rule.
-- [ ] Citation/publication contract.
-- [ ] Metric names, units and insufficient states.
-- [ ] FMP universe sync and 600 safety ceiling.
-- [ ] `RniReadService` plus command ports.
-- [ ] Comparative, divergence, partial and FMP fixtures.
-- [ ] Stable errors, API routes and migration allocations.
-- [ ] CI RNI path filters.
+- [x] `RniPlatform` and coverage modes.
+- [x] Source and bounded-content schemas.
+- [x] Four dimensions and stance values.
+- [x] Reddit/X platform-slice lifecycle.
+- [x] Cross-source statuses and no-fallback rule.
+- [x] Citation/publication contract.
+- [x] Metric names, units and insufficient states.
+- [x] FMP universe sync and 600 safety ceiling.
+- [x] `RniReadService` plus command request.
+- [x] Comparative, partial and FMP fixtures/contracts.
+- [x] Stable errors, API routes and migration allocations.
+- [x] CI RNI path filters.
 
 ## Contract requests
 
@@ -68,7 +68,9 @@
 
 | File | Reason | Commit | Verified by |
 |---|---|---|---|
-| — | — | — | — |
+| `.github/workflows/ci.yml` | Route actual RNI agent/prompt/eval paths into judge job | `f8a54c1` | workflow review; PR CI pending |
+| `apps/web/scripts/check-copy.ts`, `scripts/checks/copy.ts` | Scan RNI UI and allow only required standalone heading | `f8a54c1` | unit tests and `check:copy` pass |
+| `docs/**`, `README.md`, `CLAUDE.md`, root `AGENTS.md` | Scoped precedence and non-clashing lane guidance | `f8a54c1` | local-link validation and adversarial review |
 
 ## Review findings
 
@@ -86,10 +88,12 @@
 
 | SHA | Summary | Tests |
 |---|---|---|
-| — | — | — |
+| `f8a54c1` | Full RNI specification pack, ownership, fixture, copy/CI convergence | lint; full tests; build; copy and calculation checks |
+| `9908eda` | Frozen typed contract additions and contract cases | typecheck; contract (77 passed, 22 database-dependent skipped locally) |
 
 ## Coordinator notes
 
 - Never make another lane's code change to “save time”; return findings to that lane while its context is warm.
 - Merge sequentially even though building is parallel.
 - Update master progress after each merge or gate transition.
+- DATA/ENGINE/SURFACE must not branch until the contract source SHA is visible on `main` with green CI.

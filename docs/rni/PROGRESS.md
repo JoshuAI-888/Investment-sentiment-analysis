@@ -9,22 +9,22 @@
 
 | Field | Value |
 |---|---|
-| Overall | `READY` |
-| Current gate | `G0_REPO_PREFLIGHT` |
+| Overall | `CONTRACT_FROZEN_ON_MERGE` |
+| Current gate | `G3_DATA / G4_ENGINE / G5_SURFACE` after this branch reaches `main` |
 | Target | approved overnight RNI vertical slice |
 | Base branch | `main` |
 | Base SHA | `6fb1a28a` (current `main` at contract-branch creation) |
 | Route prerequisite | merged to `main` in PR #2 (`09ad439`) |
-| Contract-freeze SHA | not yet created |
+| Contract-freeze SHA | `9908edacdbfd1fbdf628d701153f2ab8ec16c6c3` (effective once merged to `main`) |
 | Production approval | not requested |
 
 ## Gates
 
 | Gate | Status | Owner | Evidence / blocker |
 |---|---|---|---|
-| G0 repository preflight | `READY` | coordinator | Remote CI was green at inspection; repeat clean pinned install |
-| G1 model-route branch merged | `READY` | coordinator | Owner decision: merge |
-| G2 RNI contract frozen | `NOT_STARTED` | coordinator | Must merge before builders start |
+| G0 repository preflight | `LOCAL_PASS_CI_PENDING` | coordinator | pnpm 10.33 frozen install, lint, typecheck, full test, build and checks passed; database cases await PR CI |
+| G1 model-route branch merged | `PASSED` | coordinator | PR #2, main commit `09ad439` |
+| G2 RNI contract frozen | `PASS_ON_MERGE` | coordinator | Typed contract/fixtures/tests at `9908eda`; builders still wait for this branch on `main` |
 | G3 DATA accepted | `NOT_STARTED` | DATA + reviewer | Depends G2 |
 | G4 ENGINE accepted | `NOT_STARTED` | ENGINE + reviewer | Depends G2; live composition depends G3 |
 | G5 SURFACE accepted | `NOT_STARTED` | SURFACE + reviewer | Depends G2; fixture service permitted |
@@ -39,7 +39,7 @@
 | DATA | `feat/rni-data-source-first` | `NOT_STARTED` | `DATA.md` | — |
 | ENGINE | `feat/rni-engine-live-slice` | `NOT_STARTED` | `ENGINE.md` | — |
 | SURFACE | `feat/rni-surface-demo` | `NOT_STARTED` | `SURFACE.md` | — |
-| INTEGRATION | `feat/rni-integration-demo` | `READY` | `INTEGRATION.md` | — |
+| INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | contract: `9908eda` |
 
 ## Confirmed product decisions
 
@@ -69,12 +69,12 @@ The canonical matrix is [`INTEGRATION_PLAN.md`](INTEGRATION_PLAN.md) §10. Coord
 
 | Risk group | Status | Evidence |
 |---|---|---|
-| Scope and branch isolation | `READY` | — |
+| Scope and branch isolation | `PASSED_ON_MERGE` | `RNI-00-CONTRACT.md`, path ownership and scoped legacy banners |
 | Source identity/persist-first/idempotency | `NOT_STARTED` | — |
 | Reddit/X separation and combined honesty | `NOT_STARTED` | — |
 | S&P 500/FMP universe migration | `NOT_STARTED` | — |
-| Model route and CI | `READY` | — |
-| Toolchain reproducibility | `READY` | — |
+| Model route and CI | `PASSED_ON_MERGE` | PR #2 route validation; RNI eval path filter in contract branch |
+| Toolchain reproducibility | `LOCAL_PASS_CI_PENDING` | pinned pnpm 10.33 clean install and full local gates |
 | Retention and citation safety | `NOT_STARTED` | — |
 | Cost and 500+ symbol workload | `NOT_STARTED` | — |
 | Authentication/deployment | `READY` | — |
@@ -90,3 +90,4 @@ The canonical matrix is [`INTEGRATION_PLAN.md`](INTEGRATION_PLAN.md) §10. Coord
 Append one line per material transition; do not erase history.
 
 - 2026-09-05 — specification and owner decisions complete; build not yet started.
+- 2026-09-05 — contract pack, typed schemas, comparative fixture, copy-lint convergence and CI routing frozen at `9908eda`; DATA/ENGINE/SURFACE remain blocked until this branch merges to `main`.
