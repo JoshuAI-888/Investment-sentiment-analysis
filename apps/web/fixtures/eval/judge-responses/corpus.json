@@ -23,7 +23,7 @@
     "violations": [],
     "rationale": "States the direction the stored metrics show, every narrative claim traces to the cited evidence text, and avoids causal or predictive language beyond what the sample supports (pack sarcasm-01)."
   },
-  "Reddit-observed sample of comments from the subreddits polled: the GME discussion this window is dominated by sarcastic and self-mocking language, so no confident stance direction is reported (sample adequacy 0.40). What to monitor next: whether commentary tone shifts away from irony toward substantive claims.": {
+  "Watched-account sample, collected around a price trigger: the COIN posts this window are dominated by sarcastic commentary about its correlation with Bitcoin, so no confident stance direction is reported (sample adequacy 0.40). What to monitor next: whether the tone shifts from irony toward substantive claims.": {
     "c1": 5,
     "c2": 5,
     "c3": 5,
@@ -39,7 +39,7 @@
     "violations": [],
     "rationale": "States the direction the stored metrics show, every narrative claim traces to the cited evidence text, and avoids causal or predictive language beyond what the sample supports (pack ticker-collision-01)."
   },
-  "Reddit-observed sample of comments from the subreddits polled: two mentions of \"$meta\" were excluded as unrelated word collisions rather than references to Meta. Among the five items retained as genuinely about Meta, the sampled stance leans mildly bullish (shrunk score 0.31, n=5).": {
+  "Reddit-observed sample of comments from the subreddits polled: two generic, self-referential uses of the word \"meta\" were excluded as unrelated to the company. Among the five items retained as genuinely about Meta, the sampled stance leans mildly bullish (shrunk score 0.34, n=5).": {
     "c1": 5,
     "c2": 5,
     "c3": 5,
@@ -55,7 +55,7 @@
     "violations": [],
     "rationale": "States the direction the stored metrics show, every narrative claim traces to the cited evidence text, and avoids causal or predictive language beyond what the sample supports (pack conflicting-01)."
   },
-  "Two sampling frames disagree this window. The Reddit-observed sample leans bullish on DIS (shrunk score 0.41, n=3), while the curated Substack publication set leans bearish over the same window (shrunk score -0.39, n=3). The two are reported separately rather than blended, and no single confident direction is asserted from combining them.": {
+  "Two sampling frames disagree this window. The Reddit-observed sample leans bullish on PYPL (shrunk score 0.36, n=3), citing Venmo monetization and buyback pace, while the curated Substack publication set leans bearish over the same window (shrunk score -0.33, n=3), citing Apple Pay and Cash App competitive pressure on take rate. The two are reported separately rather than blended, and no single confident direction is asserted from combining them.": {
     "c1": 5,
     "c2": 5,
     "c3": 5,

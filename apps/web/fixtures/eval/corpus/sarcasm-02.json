@@ -2,9 +2,9 @@
   "id": "sarcasm-02",
   "bucket": "sarcasm_ambiguity",
   "pack": {
-    "id": "46ff4b50-b3ba-48ef-be70-5a225aeb26ad",
-    "securityId": "2bb75420-75e5-4982-bb69-ffedc60555e8",
-    "retrievalQuery": "security_id = 2bb75420-75e5-4982-bb69-ffedc60555e8, axes = [reddit]",
+    "id": "0ed8e225-b670-43ef-869a-eba521b70946",
+    "securityId": "4b04ddeb-15cc-4c48-be55-8827e152cbcd",
+    "retrievalQuery": "security_id = 4b04ddeb-15cc-4c48-be55-8827e152cbcd, axes = [x]",
     "retrievalWindow": {
       "from": "2026-08-01T00:00:00.000Z",
       "to": "2026-08-08T00:00:00.000Z"
@@ -12,18 +12,18 @@
     "items": [
       {
         "item": {
-          "id": "112379b1-c269-480f-b28a-c9cf292e8f0a",
-          "securityId": "2bb75420-75e5-4982-bb69-ffedc60555e8",
+          "id": "edcb3596-672e-4c8f-a1c0-bf51e1fb5ca0",
+          "securityId": "4b04ddeb-15cc-4c48-be55-8827e152cbcd",
           "evidenceType": "social_result",
-          "provider": "reddit",
-          "title": "GME to the moon 🚀🙄",
-          "snippet": "Sure, this is definitely going to the moon this time. Totally not sarcastic.",
+          "provider": "x",
+          "title": "COIN pumping again",
+          "snippet": "Oh sure, COIN is \"decoupling from crypto\" this time — definitely not just following Bitcoin up 3% like every other time.",
           "sourceUrl": null,
           "publisher": null,
           "authorRef": null,
           "stanceLabel": null,
           "stanceScore": null,
-          "relevanceScore": "0.86",
+          "relevanceScore": "0.84",
           "publishedAt": "2026-08-01T00:00:00.000Z",
           "availableAt": "2026-08-01T00:00:00.000Z",
           "ingestedAt": "2026-08-01T00:00:00.000Z",
@@ -31,10 +31,10 @@
           "availability": "available",
           "licenseClass": "standard",
           "coverageClass": "sampled",
-          "rawHash": "46a891edf9c84146b2bf8779ad2accf300000000000000000000000000000000",
+          "rawHash": "4fb76659f71d40599ccdf0e261ead4ff00000000000000000000000000000000",
           "metadata": {}
         },
-        "axis": "reddit",
+        "axis": "x",
         "relevant": true,
         "relevanceMethodVersion": "relevance.filter@1",
         "stanceConfidence": "0.2",
@@ -45,18 +45,18 @@
       },
       {
         "item": {
-          "id": "830e710c-f6bf-4e53-9970-09250151ca44",
-          "securityId": "2bb75420-75e5-4982-bb69-ffedc60555e8",
+          "id": "27b1ac04-6249-4fbe-ac84-515dfd7e4a17",
+          "securityId": "4b04ddeb-15cc-4c48-be55-8827e152cbcd",
           "evidenceType": "social_result",
-          "provider": "reddit",
-          "title": "Oh great, more GME news",
-          "snippet": "Can't wait for another 'this changes everything' headline that changes nothing.",
+          "provider": "x",
+          "title": "watched account: COIN take",
+          "snippet": "Another \"this cycle is different\" post about COIN. Groundbreaking analysis as always.",
           "sourceUrl": null,
           "publisher": null,
           "authorRef": null,
           "stanceLabel": null,
           "stanceScore": null,
-          "relevanceScore": "0.82",
+          "relevanceScore": "0.81",
           "publishedAt": "2026-08-01T00:00:00.000Z",
           "availableAt": "2026-08-01T00:00:00.000Z",
           "ingestedAt": "2026-08-01T00:00:00.000Z",
@@ -64,10 +64,10 @@
           "availability": "available",
           "licenseClass": "standard",
           "coverageClass": "sampled",
-          "rawHash": "63f7fa6a1f5949d7b1477ea5a6b8dee900000000000000000000000000000000",
+          "rawHash": "e14feba4335f46b48d4a4c6013c71d2d00000000000000000000000000000000",
           "metadata": {}
         },
-        "axis": "reddit",
+        "axis": "x",
         "relevant": true,
         "relevanceMethodVersion": "relevance.filter@1",
         "stanceConfidence": "0.2",
@@ -78,45 +78,12 @@
       },
       {
         "item": {
-          "id": "df59c499-abdf-4b08-8c6e-b317cf583b7c",
-          "securityId": "2bb75420-75e5-4982-bb69-ffedc60555e8",
+          "id": "1ef2c6ed-308d-40ce-b346-71f0d6cdf3e7",
+          "securityId": "4b04ddeb-15cc-4c48-be55-8827e152cbcd",
           "evidenceType": "social_result",
-          "provider": "reddit",
-          "title": "GME bagholders unite",
-          "snippet": "Diamond hands, right? Right guys? ...guys?",
-          "sourceUrl": null,
-          "publisher": null,
-          "authorRef": null,
-          "stanceLabel": null,
-          "stanceScore": null,
-          "relevanceScore": "0.80",
-          "publishedAt": "2026-08-01T00:00:00.000Z",
-          "availableAt": "2026-08-01T00:00:00.000Z",
-          "ingestedAt": "2026-08-01T00:00:00.000Z",
-          "lastCheckedAt": null,
-          "availability": "available",
-          "licenseClass": "standard",
-          "coverageClass": "sampled",
-          "rawHash": "b74cb63c53e340569769be176b863e3700000000000000000000000000000000",
-          "metadata": {}
-        },
-        "axis": "reddit",
-        "relevant": true,
-        "relevanceMethodVersion": "relevance.filter@1",
-        "stanceConfidence": "0.2",
-        "flags": [
-          "sarcasm"
-        ],
-        "excludedReason": null
-      },
-      {
-        "item": {
-          "id": "42b17c8b-075b-4222-87eb-d662cd0770dd",
-          "securityId": "2bb75420-75e5-4982-bb69-ffedc60555e8",
-          "evidenceType": "social_result",
-          "provider": "reddit",
-          "title": "GME thread",
-          "snippet": "Yeah sure, \"fundamentals\" lol, this is a casino and we all know it.",
+          "provider": "x",
+          "title": "COIN volatility commentary",
+          "snippet": "Wow, a 15% swing on COIN — truly shocking for a company whose entire business is volatility.",
           "sourceUrl": null,
           "publisher": null,
           "authorRef": null,
@@ -130,10 +97,10 @@
           "availability": "available",
           "licenseClass": "standard",
           "coverageClass": "sampled",
-          "rawHash": "881070bfc40b4082b425ee6a79412b9400000000000000000000000000000000",
+          "rawHash": "f8f9a7d9457f46a584e1a86f0ebc3c9d00000000000000000000000000000000",
           "metadata": {}
         },
-        "axis": "reddit",
+        "axis": "x",
         "relevant": true,
         "relevanceMethodVersion": "relevance.filter@1",
         "stanceConfidence": "0.2",
@@ -144,18 +111,18 @@
       },
       {
         "item": {
-          "id": "1f5a36eb-b79a-4d7e-af9e-4f8b803da2fb",
-          "securityId": "2bb75420-75e5-4982-bb69-ffedc60555e8",
+          "id": "53e23c2c-9628-41d8-9bdd-caa41fc45e33",
+          "securityId": "4b04ddeb-15cc-4c48-be55-8827e152cbcd",
           "evidenceType": "social_result",
-          "provider": "reddit",
-          "title": "GME daily discussion",
-          "snippet": "Another day, another \"just wait for the squeeze\" post.",
+          "provider": "x",
+          "title": "COIN adoption narrative",
+          "snippet": "Sure, \"mainstream adoption\" is definitely why the stock moves exactly like the BTC chart. Definitely not correlation.",
           "sourceUrl": null,
           "publisher": null,
           "authorRef": null,
           "stanceLabel": null,
           "stanceScore": null,
-          "relevanceScore": "0.77",
+          "relevanceScore": "0.78",
           "publishedAt": "2026-08-01T00:00:00.000Z",
           "availableAt": "2026-08-01T00:00:00.000Z",
           "ingestedAt": "2026-08-01T00:00:00.000Z",
@@ -163,10 +130,43 @@
           "availability": "available",
           "licenseClass": "standard",
           "coverageClass": "sampled",
-          "rawHash": "ac45fd5c2faf4ec99f6455b4c57f442000000000000000000000000000000000",
+          "rawHash": "57c69640f9294a87b38dbbe68e76619c00000000000000000000000000000000",
           "metadata": {}
         },
-        "axis": "reddit",
+        "axis": "x",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.2",
+        "flags": [
+          "sarcasm"
+        ],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "076bcb2b-5513-49ae-8dc1-89fe4555ca08",
+          "securityId": "4b04ddeb-15cc-4c48-be55-8827e152cbcd",
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "COIN earnings reaction",
+          "snippet": "Love how every COIN thread has three people insisting they \"called it\" — never mind the fourteen who did not.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.76",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "e4f739f8c6164362aeb4d9598c213d0500000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "x",
         "relevant": true,
         "relevanceMethodVersion": "relevance.filter@1",
         "stanceConfidence": "0.2",
@@ -178,68 +178,66 @@
     ],
     "frames": [
       {
-        "axis": "reddit",
-        "frameStatement": "observed sample of comments from the subreddits polled — not a sample of retail investors.",
+        "axis": "x",
+        "frameStatement": "watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
         "window": {
           "from": "2026-08-01T00:00:00.000Z",
           "to": "2026-08-08T00:00:00.000Z"
         },
         "retrievedCount": 6,
         "usedCount": 5,
-        "subredditsPolled": [
-          "wallstreetbets"
-        ],
-        "treeComplete": true
+        "watchlistVersion": "x-watchlist-v1",
+        "triggerEventId": "trigger-coin-price-move-001"
       }
     ],
     "createdAt": "2026-08-08T00:00:00.000Z"
   },
   "labels": [
     {
-      "itemId": "112379b1-c269-480f-b28a-c9cf292e8f0a",
+      "itemId": "edcb3596-672e-4c8f-a1c0-bf51e1fb5ca0",
       "expectedStance": null,
       "expectedRelevant": true,
-      "note": "sarcastic tone — no confident direction can be read from the text"
+      "note": "sarcastic tone on the watched-account sample — no confident direction can be read from the text"
     },
     {
-      "itemId": "830e710c-f6bf-4e53-9970-09250151ca44",
+      "itemId": "27b1ac04-6249-4fbe-ac84-515dfd7e4a17",
       "expectedStance": null,
       "expectedRelevant": true,
-      "note": "sarcastic tone — no confident direction can be read from the text"
+      "note": "sarcastic tone on the watched-account sample — no confident direction can be read from the text"
     },
     {
-      "itemId": "df59c499-abdf-4b08-8c6e-b317cf583b7c",
+      "itemId": "1ef2c6ed-308d-40ce-b346-71f0d6cdf3e7",
       "expectedStance": null,
       "expectedRelevant": true,
-      "note": "sarcastic tone — no confident direction can be read from the text"
+      "note": "sarcastic tone on the watched-account sample — no confident direction can be read from the text"
     },
     {
-      "itemId": "42b17c8b-075b-4222-87eb-d662cd0770dd",
+      "itemId": "53e23c2c-9628-41d8-9bdd-caa41fc45e33",
       "expectedStance": null,
       "expectedRelevant": true,
-      "note": "sarcastic tone — no confident direction can be read from the text"
+      "note": "sarcastic tone on the watched-account sample — no confident direction can be read from the text"
     },
     {
-      "itemId": "1f5a36eb-b79a-4d7e-af9e-4f8b803da2fb",
+      "itemId": "076bcb2b-5513-49ae-8dc1-89fe4555ca08",
       "expectedStance": null,
       "expectedRelevant": true,
-      "note": "sarcastic tone — no confident direction can be read from the text"
+      "note": "sarcastic tone on the watched-account sample — no confident direction can be read from the text"
     }
   ],
   "expectedOutcome": "unclear_no_direction",
   "acceptableClaims": [
-    "Reddit-observed comments for GME this window carry heavy sarcasm; no confident stance direction is reportable."
+    "Watched-account X posts about COIN this window carry heavy sarcasm about correlation with Bitcoin; no confident stance direction is reportable."
   ],
   "requiredAbstentions": [
-    "stance.gme.formal_score"
+    "stance.coin.formal_score"
   ],
   "storedMetrics": [
     {
-      "metricId": "sentiment.reddit.sampleAdequacy",
+      "metricId": "sentiment.x.sampleAdequacy",
       "display": "0.40"
     }
   ],
-  "referenceAnswer": "Reddit-observed sample of comments from the subreddits polled: the GME discussion this window is dominated by sarcastic and self-mocking language, so no confident stance direction is reported (sample adequacy 0.40). What to monitor next: whether commentary tone shifts away from irony toward substantive claims.",
+  "referenceAnswer": "Watched-account sample, collected around a price trigger: the COIN posts this window are dominated by sarcastic commentary about its correlation with Bitcoin, so no confident stance direction is reported (sample adequacy 0.40). What to monitor next: whether the tone shifts from irony toward substantive claims.",
   "labelledBy": "F12 lane-build starter corpus (hand-authored fixture for harness machinery, 04-BUILD-LOOP.md scoping note) — NOT the D-35 ≥30-pack production corpus",
   "labelledAt": "2026-09-04T00:00:00.000Z",
   "frozen": true

@@ -78,5 +78,15 @@
       "Cites Ford dealer-margin commentary that belongs to a different pack entirely, not this run's evidence."
     ],
     "rationale": "The answer's claim does not follow from the cited evidence text alone: Cites Ford dealer-margin commentary that belongs to a different pack entirely, not this run's evidence."
+  },
+  "Reddit-observed sample of comments from the subreddits polled: as of 2026-08-25, reflecting the very latest chatter, the sampled stance for NVDA runs bullish (shrunk score 0.62, n=5). Most comments point to continued datacenter demand and the recent guidance raise as the reason sentiment stayed positive. What to monitor next: whether the next earnings call sustains the same demand commentary.": {
+    "c1": 2,
+    "c2": 2,
+    "c3": 2,
+    "c4": 2,
+    "violations": [
+      "Restates the answer's freshness as 2026-08-25 — more than two weeks after every cited item's availableAt (2026-08-01) — misstating how current the underlying evidence actually is (05-TEST-STRATEGY.md §6 item 8)."
+    ],
+    "rationale": "The answer's stated freshness does not match the cited evidence's dates: Restates the answer's freshness as 2026-08-25 — more than two weeks after every cited item's availableAt (2026-08-01) — misstating how current the underlying evidence actually is (05-TEST-STRATEGY.md §6 item 8)."
   }
 }
