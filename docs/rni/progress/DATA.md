@@ -15,7 +15,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 |---|---|---|---|
 | D01 | Canonical `rni_source_item` and retrieval/content tables | `READY_FOR_REVIEW` | Migration `0020`; 7 PostgreSQL repository/constraint tests pass |
 | D02 | Source-security links and four-dimension observations | `READY_FOR_REVIEW` | Migration `0021`; multi-ticker and four-dimension tests pass |
-| D03 | Claims, citations, themes, narratives and relationships | `NOT_STARTED` | No dangling citation/claim test |
+| D03 | Claims, citations, themes, narratives and relationships | `BLOCKED` | Relational lineage 4/4 pass; pgvector and frozen ports await CR-DATA-002/003 |
 | D04 | Independent Reddit/X `run_source_slice` persistence | `NOT_STARTED` | Platform-isolation constraints |
 | D05 | Cross-source summary persistence without component mutation | `NOT_STARTED` | Divergence/partial-state repository test |
 | D06 | Idempotent/concurrent inserts and transactional outbox | `NOT_STARTED` | Concurrent upsert + crash test |
@@ -57,6 +57,23 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 - **Handoff:** ENGINE may rely on the frozen mention/observation shapes; coordinator should review
   CR-DATA-001 before binding the persistence boundary.
 
+### D03 — Claims, citations, themes, narratives and relationships
+
+- **Status:** `BLOCKED` (relational slice complete; pgvector-dependent completion blocked).
+- **Files:** `apps/web/migrations/0022_rni_claims_narratives.sql`,
+  `apps/web/src/rni/repositories/claims-narratives.ts`,
+  `apps/web/tests/integration/rni-persistence/claims-narratives.test.ts`, and this progress file.
+- **Tests:** TypeScript; targeted ESLint; D03 PostgreSQL integration (`4/4`); combined D01-D03
+  PostgreSQL regression (`16/16`); `git diff --check`.
+- **Result:** claims, citations, themes, narrative memberships, and comparative relationships are
+  append-only and foreign-keyed to persisted source/observation lineage; dangling and mismatched
+  citations/claims fail closed.
+- **Blocker:** first observed 2026-09-05; CR-DATA-002 (missing frozen persistence types/port) and
+  CR-DATA-003 (direct pgvector requirement conflicts with deployment/integration deferral).
+- **Owner / attempted mitigation / next check:** coordinator; completed and tested the unaffected
+  relational schema and concrete adapter without editing frozen contracts; resolve before adding
+  embedding storage or exposing the adapter to ENGINE.
+
 ## Required invariants
 
 - One external source row, many security links and observations.
@@ -73,6 +90,8 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | ID | Status | Request | Impact |
 |---|---|---|---|
 | CR-DATA-001 | `READY` | Freeze a source-persistence repository port that accepts `RniSourceItem` and returns the committed source identity plus idempotency outcome. | ENGINE persist-first workflow cannot bind to DATA without importing a DATA-private concrete adapter. |
+| CR-DATA-002 | `READY` | Freeze claim, citation, theme, and narrative persistence schemas/ports. | D03 relational schema can proceed, but ENGINE integration cannot depend on DATA-private shapes. |
+| CR-DATA-003 | `READY` | Reconcile the assignment's pgvector requirement with `DEPLOY.md`/`INTEGRATION_PLAN.md`, which defer pgvector for this slice. | Determines whether migration `0022` may require `vector` in preview/production. |
 
 ### CR-DATA-001 — Source-persistence repository port
 
@@ -93,6 +112,39 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
   adapter both accept the same `RniSourceItem`; duplicate delivery returns the original committed
   source ID, and semantic work receives no ID until the transaction commits.
 
+### CR-DATA-002 — Claim and narrative persistence contracts
+
+- **Current behaviour:** the frozen contract defines `RniComparativeRelation` and a citation read
+  shape, but no claim, claim-citation, theme, narrative, membership, embedding, or write-port
+  schemas.
+- **Requested change:** add additive frozen persistence types and one repository port for the D03
+  objects required by ENGINE.
+- **Justification:** DATA can enforce relational lineage privately, but ENGINE otherwise must
+  import DATA-private types or duplicate them, creating an undeclared cross-lane API.
+- **Affected lanes:** DATA, ENGINE, SURFACE read models, and INTEGRATION composition.
+- **Compatibility impact:** additive; existing frozen source/observation/summary types remain
+  unchanged.
+- **Recommended acceptance test:** one claim and citation round-trip through a fake and concrete
+  port; deleting or mismatching the source/claim edge fails; an opposing claim cannot join the
+  same narrative membership by identity accident.
+
+### CR-DATA-003 — pgvector deployment scope
+
+- **Current behaviour:** this DATA assignment includes pgvector-backed narrative data, while
+  `docs/rni/DEPLOY.md` §1/§4 and `docs/rni/INTEGRATION_PLAN.md` C11 explicitly defer pgvector for
+  the overnight slice.
+- **Requested change:** confirm that migration `0022` may enable `vector` and persist typed claim
+  embeddings, or narrow the assignment to a non-vector placeholder for this release.
+- **Justification:** enabling a database extension is a durable deployment prerequisite and
+  cross-lane assumption; silently selecting either side would violate the build loop.
+- **Affected lanes:** DATA migration/tests, ENGINE clustering, INTEGRATION Neon preview and
+  deployment verification.
+- **Compatibility impact:** requiring `vector` makes migration `0022` fail closed on databases
+  where the extension is unavailable; deferral requires the embedding repository to abstain.
+- **Recommended acceptance test:** clean migration on an ephemeral Neon branch with `vector`
+  available, exact cosine query over fixed embeddings, and explicit migration failure when the
+  extension prerequisite is missing.
+
 ## Test evidence
 
 | Suite | Status | Command/run link | Notes |
@@ -100,7 +152,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | migration clean apply | `READY_FOR_REVIEW` | targeted D01 Vitest | Fresh schema applied through `0020`; 7/7 pass |
 | migration forward apply | `NOT_STARTED` | — | D09 lane gate |
 | repository unit | `READY_FOR_REVIEW` | typecheck + targeted ESLint | No errors |
-| database integration | `READY_FOR_REVIEW` | targeted D01-D02 Vitest | 12/12 pass against PostgreSQL |
+| database integration | `READY_FOR_REVIEW` | targeted D01-D03 Vitest | 16/16 relational tests pass against PostgreSQL |
 | concurrency/idempotency | `NOT_STARTED` | — | D06 owns concurrent/outbox cases |
 | repository required gate | `NOT_STARTED` | — | D09 lane gate |
 
@@ -115,13 +167,15 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | Since | Status | Blocker | Owner | Attempted mitigation | Next check |
 |---|---|---|---|---|---|
 | 2026-09-05 | `READY` | CR-DATA-001: no frozen persistence repository port | coordinator | Concrete DATA adapter uses only frozen `RniSourceItem`; no contract edit made | Before ENGINE persistence binding |
+| 2026-09-05 | `BLOCKED` | CR-DATA-002/003: D03 types/port and pgvector deployment scope unresolved | coordinator | Completed relational lineage and tests without changing contracts or enabling vector | Before D03 embedding storage / ENGINE binding |
 
 ## Commits
 
 | SHA | Summary | Tests |
 |---|---|---|
 | 3c0cc56 | D01 canonical source-first schema and repository | Typecheck, targeted lint, PostgreSQL 7/7 |
-| this commit | D02 multi-security links and observations | Typecheck, targeted lint, PostgreSQL 12/12 |
+| bae4e9f | D02 multi-security links and observations | Typecheck, targeted lint, PostgreSQL 12/12 |
+| this commit | D03 relational claim/citation/narrative slice | Typecheck, targeted lint, PostgreSQL 16/16; vector blocked |
 
 ## Handoff
 
@@ -130,11 +184,11 @@ RNI LANE     DATA
 BRANCH       feat/rni-data-source-first
 BASE SHA     86ec5b4757f45cbe96c651f413e8ff1109fef279
 STATUS       PARTIAL
-TASKS        2/9; D03-D09 incomplete
-TESTS        D01-D02 PostgreSQL integration 12/12; typecheck/lint pass
-CONTRACT     CR-DATA-001
-RISKS        frozen write port pending; concurrency/outbox deferred to D06
-FILES        migrations 0020-0021; source/observation repositories; D01-D02 tests; DATA.md
-COMMITS      3c0cc56 (D01); this commit (D02)
+TASKS        2/9; D03 blocked, D04-D09 incomplete
+TESTS        D01-D03 relational PostgreSQL integration 16/16; typecheck/lint pass
+CONTRACT     CR-DATA-001, CR-DATA-002, CR-DATA-003
+RISKS        D03 pgvector/port blocked; concurrency/outbox deferred to D06
+FILES        migrations 0020-0022; source/observation/claim repositories; D01-D03 tests; DATA.md
+COMMITS      3c0cc56 (D01); bae4e9f (D02); this commit (D03 relational)
 DEMO PROOF   one comparative source persists distinct bullish NVDA and bearish AMD observations
 ```
