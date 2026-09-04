@@ -1,0 +1,312 @@
+{
+  "id": "ticker-collision-02",
+  "bucket": "ticker_collision",
+  "pack": {
+    "id": "e27482d9-133e-4322-a02f-26ead8cfeaef",
+    "securityId": "7c2aa4bf-31a1-4cf8-9201-b6ab33f5e90a",
+    "retrievalQuery": "security_id = 7c2aa4bf-31a1-4cf8-9201-b6ab33f5e90a, axes = [reddit]",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-08T00:00:00.000Z"
+    },
+    "items": [
+      {
+        "item": {
+          "id": "a5aa56ff-4dba-4c48-a2a4-069df6a46568",
+          "securityId": "7c2aa4bf-31a1-4cf8-9201-b6ab33f5e90a",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "press meta to pay respects",
+          "snippet": "lol meta in the chat",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.05",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "7c74cc999c304ad99aa1aca8510d01f800000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": false,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": null,
+        "flags": [
+          "ticker_collision"
+        ],
+        "excludedReason": "matched cashtag $meta without a corroborating company-name reference"
+      },
+      {
+        "item": {
+          "id": "64dbdca2-67ee-4538-a5b3-026a6374f3b2",
+          "securityId": "7c2aa4bf-31a1-4cf8-9201-b6ab33f5e90a",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "that's a meta in my book",
+          "snippet": "Giving this class an meta, total waste of time.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.04",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "291028fd9e00429d805a0d2a6419623d00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": false,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": null,
+        "flags": [
+          "ticker_collision"
+        ],
+        "excludedReason": "matched cashtag $meta without a corroborating company-name reference"
+      },
+      {
+        "item": {
+          "id": "5ff85f32-7b12-4eb1-9502-7e40d74bba56",
+          "securityId": "7c2aa4bf-31a1-4cf8-9201-b6ab33f5e90a",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Meta earnings call notes",
+          "snippet": "Meta guidance held steady this quarter, nothing dramatic.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "neutral",
+          "stanceScore": "0.08",
+          "relevanceScore": "0.75",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "0b9b0237d03f4e5ea0e4e740b1c3418300000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "46030a3c-22a5-49ab-aede-51555a723e5c",
+          "securityId": "7c2aa4bf-31a1-4cf8-9201-b6ab33f5e90a",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Meta dealer margins",
+          "snippet": "Dealer feedback on Meta has been cautiously positive this month.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.55",
+          "relevanceScore": "0.79",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "72b6a7da870f4fa788105cf8adf151a300000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "747db2cc-4ba8-404d-9d6b-78d86527a8af",
+          "securityId": "7c2aa4bf-31a1-4cf8-9201-b6ab33f5e90a",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Meta product cycle",
+          "snippet": "Meta's new lineup is getting decent reviews so far.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.58",
+          "relevanceScore": "0.81",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "1481c0809ca142f389917869812329af00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "2eccd526-19bb-427d-b916-d2eb677c40cb",
+          "securityId": "7c2aa4bf-31a1-4cf8-9201-b6ab33f5e90a",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Meta union talks",
+          "snippet": "Labor negotiations at Meta appear to be moving without major disruption.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "neutral",
+          "stanceScore": "0.06",
+          "relevanceScore": "0.72",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "ebe4613dfbb94213bc267f2bee93765300000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "910a76ae-154f-4b44-a0f3-8415f27585be",
+          "securityId": "7c2aa4bf-31a1-4cf8-9201-b6ab33f5e90a",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Meta analyst thread",
+          "snippet": "A few analysts nudged Meta price targets up slightly this week.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.52",
+          "relevanceScore": "0.77",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "9a7ad4394252470987f914d5fcb8f34100000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      }
+    ],
+    "frames": [
+      {
+        "axis": "reddit",
+        "frameStatement": "observed sample of comments from the subreddits polled — not a sample of retail investors.",
+        "window": {
+          "from": "2026-08-01T00:00:00.000Z",
+          "to": "2026-08-08T00:00:00.000Z"
+        },
+        "retrievedCount": 9,
+        "usedCount": 5,
+        "subredditsPolled": [
+          "stocks"
+        ],
+        "treeComplete": true
+      }
+    ],
+    "createdAt": "2026-08-08T00:00:00.000Z"
+  },
+  "labels": [
+    {
+      "itemId": "a5aa56ff-4dba-4c48-a2a4-069df6a46568",
+      "expectedStance": null,
+      "expectedRelevant": false,
+      "note": "cashtag collision with the common word \"meta\""
+    },
+    {
+      "itemId": "64dbdca2-67ee-4538-a5b3-026a6374f3b2",
+      "expectedStance": null,
+      "expectedRelevant": false,
+      "note": "cashtag collision with the common word \"meta\""
+    },
+    {
+      "itemId": "5ff85f32-7b12-4eb1-9502-7e40d74bba56",
+      "expectedStance": "neutral",
+      "expectedRelevant": true,
+      "note": "genuinely about Meta"
+    },
+    {
+      "itemId": "46030a3c-22a5-49ab-aede-51555a723e5c",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuinely about Meta"
+    },
+    {
+      "itemId": "747db2cc-4ba8-404d-9d6b-78d86527a8af",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuinely about Meta"
+    },
+    {
+      "itemId": "2eccd526-19bb-427d-b916-d2eb677c40cb",
+      "expectedStance": "neutral",
+      "expectedRelevant": true,
+      "note": "genuinely about Meta"
+    },
+    {
+      "itemId": "910a76ae-154f-4b44-a0f3-8415f27585be",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuinely about Meta"
+    }
+  ],
+  "expectedOutcome": "stance_scored",
+  "acceptableClaims": [
+    "After the collision guard excludes non-company mentions of \"meta\", the remaining Reddit-observed sample for Meta leans mildly bullish (n=5)."
+  ],
+  "requiredAbstentions": [],
+  "storedMetrics": [
+    {
+      "metricId": "sentiment.reddit.shrunkScore",
+      "display": "0.31"
+    }
+  ],
+  "referenceAnswer": "Reddit-observed sample of comments from the subreddits polled: two mentions of \"$meta\" were excluded as unrelated word collisions rather than references to Meta. Among the five items retained as genuinely about Meta, the sampled stance leans mildly bullish (shrunk score 0.31, n=5).",
+  "labelledBy": "F12 lane-build starter corpus (hand-authored fixture for harness machinery, 04-BUILD-LOOP.md scoping note) — NOT the D-35 ≥30-pack production corpus",
+  "labelledAt": "2026-09-04T00:00:00.000Z",
+  "frozen": true
+}

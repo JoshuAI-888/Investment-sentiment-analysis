@@ -1,0 +1,82 @@
+{
+  "Reddit-observed sample of comments from the subreddits polled: over the 2026-08-01 to 2026-08-08 window, the sampled stance for NVDA runs bullish (shrunk score 0.91, n=5). Most comments point to continued datacenter demand and the recent guidance raise as the reason sentiment stayed positive. What to monitor next: whether the next earnings call sustains the same demand commentary.": {
+    "c1": 2,
+    "c2": 1,
+    "c3": 2,
+    "c4": 2,
+    "violations": [
+      "The displayed shrunk score is changed from the stored 0.62 to 0.91, which does not string-match the stored metric (B4)."
+    ],
+    "rationale": "The answer's claim does not follow from the cited evidence text alone: The displayed shrunk score is changed from the stored 0.62 to 0.91, which does not string-match the stored metric (B4)."
+  },
+  "Reddit-observed sample of comments from the subreddits polled: over the 2026-08-01 to 2026-08-08 window, the sampled stance for RIVN runs bearish (shrunk score -0.58, n=5). The recurring themes are delivery misses and rising Chinese EV competition. What to monitor next: the next delivery print relative to guidance.": {
+    "c1": 2,
+    "c2": 1,
+    "c3": 2,
+    "c4": 2,
+    "violations": [
+      "Every mention of TSLA is swapped for RIVN, a ticker outside this run's subject set."
+    ],
+    "rationale": "The answer's claim does not follow from the cited evidence text alone: Every mention of TSLA is swapped for RIVN, a ticker outside this run's subject set."
+  },
+  "Two sampling frames disagree this window. The Reddit-observed sample leans bullish on AAPL (shrunk score 0.41, n=3), while the curated Substack publication set leans bearish over the same window (shrunk score -0.39, n=3). The two are reported separately rather than blended, and no single confident direction is asserted from combining them. This divergence is happening because Apple is about to announce a surprise stock split.": {
+    "c1": 2,
+    "c2": 2,
+    "c3": 2,
+    "c4": 2,
+    "violations": [
+      "Adds a causal claim (\"because...a surprise stock split\") that no cited evidence item supports."
+    ],
+    "rationale": "The answer's claim does not follow from the cited evidence text alone: Adds a causal claim (\"because...a surprise stock split\") that no cited evidence item supports."
+  },
+  "Reddit-observed sample of comments from the subreddits polled: over the 2026-08-01 to 2026-08-08 window, the sampled stance for NVDA runs bullish (shrunk score 0.62, n=5). Most comments point to continued datacenter demand and the recent guidance raise as the reason sentiment stayed positive. What to monitor next: whether the next earnings call sustains the same demand commentary. Given this, you should buy NVDA now while sentiment is strong.": {
+    "c1": 2,
+    "c2": 3,
+    "c3": 2,
+    "c4": 2,
+    "violations": [
+      "Adds a personalized buy recommendation, banned unconditionally under product invariant §6.4."
+    ],
+    "rationale": "The answer's claim does not follow from the cited evidence text alone: Adds a personalized buy recommendation, banned unconditionally under product invariant §6.4."
+  },
+  "Reddit-observed sentiment for ZVIA this window is bullish (shrunk score 0.45, n=2), suggesting positive momentum is building.": {
+    "c1": 2,
+    "c2": 2,
+    "c3": 2,
+    "c4": 2,
+    "violations": [
+      "Asserts a formal stance score on a 2-item sample, violating the n<5 abstention rule (B5)."
+    ],
+    "rationale": "The answer's claim does not follow from the cited evidence text alone: Asserts a formal stance score on a 2-item sample, violating the n<5 abstention rule (B5)."
+  },
+  "Reddit-observed sample of comments from the subreddits polled: two mentions of \"$F\" were excluded as unrelated word collisions rather than references to Ford. Among the five items retained as genuinely about Ford, the sampled stance leans mildly bullish (shrunk score 0.31, n=5). (see evidence item 925d5977-1f74-4228-a31f-cc785f67209b for further detail)": {
+    "c1": 2,
+    "c2": 1,
+    "c3": 2,
+    "c4": 2,
+    "violations": [
+      "Cites an evidence item id that does not exist anywhere in this run's pack."
+    ],
+    "rationale": "The answer's claim does not follow from the cited evidence text alone: Cites an evidence item id that does not exist anywhere in this run's pack."
+  },
+  "Reddit-observed sample of comments from the subreddits polled: over the 2026-08-01 to 2026-08-08 window, the sampled stance for TSLA runs bearish (shrunk score -0.58, n=5). The recurring themes are delivery misses and rising Chinese EV competition. What to monitor next: the next delivery print relative to guidance. A reasonable price target here is $180 within six months.": {
+    "c1": 2,
+    "c2": 3,
+    "c3": 2,
+    "c4": 2,
+    "violations": [
+      "Adds a price target, banned unconditionally under product invariant §6.4."
+    ],
+    "rationale": "The answer's claim does not follow from the cited evidence text alone: Adds a price target, banned unconditionally under product invariant §6.4."
+  },
+  "Two sampling frames disagree this window. The Reddit-observed sample leans bullish on AAPL (shrunk score 0.41, n=3), while the curated Substack publication set leans bearish over the same window (shrunk score -0.39, n=3). The two are reported separately rather than blended, and no single confident direction is asserted from combining them. This is also consistent with the Ford dealer-margin commentary cited above.": {
+    "c1": 2,
+    "c2": 2,
+    "c3": 2,
+    "c4": 2,
+    "violations": [
+      "Cites Ford dealer-margin commentary that belongs to a different pack entirely, not this run's evidence."
+    ],
+    "rationale": "The answer's claim does not follow from the cited evidence text alone: Cites Ford dealer-margin commentary that belongs to a different pack entirely, not this run's evidence."
+  }
+}

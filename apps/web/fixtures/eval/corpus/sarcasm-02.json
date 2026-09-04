@@ -1,0 +1,246 @@
+{
+  "id": "sarcasm-02",
+  "bucket": "sarcasm_ambiguity",
+  "pack": {
+    "id": "46ff4b50-b3ba-48ef-be70-5a225aeb26ad",
+    "securityId": "2bb75420-75e5-4982-bb69-ffedc60555e8",
+    "retrievalQuery": "security_id = 2bb75420-75e5-4982-bb69-ffedc60555e8, axes = [reddit]",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-08T00:00:00.000Z"
+    },
+    "items": [
+      {
+        "item": {
+          "id": "112379b1-c269-480f-b28a-c9cf292e8f0a",
+          "securityId": "2bb75420-75e5-4982-bb69-ffedc60555e8",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "GME to the moon 🚀🙄",
+          "snippet": "Sure, this is definitely going to the moon this time. Totally not sarcastic.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.86",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "46a891edf9c84146b2bf8779ad2accf300000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.2",
+        "flags": [
+          "sarcasm"
+        ],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "830e710c-f6bf-4e53-9970-09250151ca44",
+          "securityId": "2bb75420-75e5-4982-bb69-ffedc60555e8",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Oh great, more GME news",
+          "snippet": "Can't wait for another 'this changes everything' headline that changes nothing.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.82",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "63f7fa6a1f5949d7b1477ea5a6b8dee900000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.2",
+        "flags": [
+          "sarcasm"
+        ],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "df59c499-abdf-4b08-8c6e-b317cf583b7c",
+          "securityId": "2bb75420-75e5-4982-bb69-ffedc60555e8",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "GME bagholders unite",
+          "snippet": "Diamond hands, right? Right guys? ...guys?",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.80",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "b74cb63c53e340569769be176b863e3700000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.2",
+        "flags": [
+          "sarcasm"
+        ],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "42b17c8b-075b-4222-87eb-d662cd0770dd",
+          "securityId": "2bb75420-75e5-4982-bb69-ffedc60555e8",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "GME thread",
+          "snippet": "Yeah sure, \"fundamentals\" lol, this is a casino and we all know it.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.79",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "881070bfc40b4082b425ee6a79412b9400000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.2",
+        "flags": [
+          "sarcasm"
+        ],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "1f5a36eb-b79a-4d7e-af9e-4f8b803da2fb",
+          "securityId": "2bb75420-75e5-4982-bb69-ffedc60555e8",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "GME daily discussion",
+          "snippet": "Another day, another \"just wait for the squeeze\" post.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.77",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "ac45fd5c2faf4ec99f6455b4c57f442000000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.2",
+        "flags": [
+          "sarcasm"
+        ],
+        "excludedReason": null
+      }
+    ],
+    "frames": [
+      {
+        "axis": "reddit",
+        "frameStatement": "observed sample of comments from the subreddits polled — not a sample of retail investors.",
+        "window": {
+          "from": "2026-08-01T00:00:00.000Z",
+          "to": "2026-08-08T00:00:00.000Z"
+        },
+        "retrievedCount": 6,
+        "usedCount": 5,
+        "subredditsPolled": [
+          "wallstreetbets"
+        ],
+        "treeComplete": true
+      }
+    ],
+    "createdAt": "2026-08-08T00:00:00.000Z"
+  },
+  "labels": [
+    {
+      "itemId": "112379b1-c269-480f-b28a-c9cf292e8f0a",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "sarcastic tone — no confident direction can be read from the text"
+    },
+    {
+      "itemId": "830e710c-f6bf-4e53-9970-09250151ca44",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "sarcastic tone — no confident direction can be read from the text"
+    },
+    {
+      "itemId": "df59c499-abdf-4b08-8c6e-b317cf583b7c",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "sarcastic tone — no confident direction can be read from the text"
+    },
+    {
+      "itemId": "42b17c8b-075b-4222-87eb-d662cd0770dd",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "sarcastic tone — no confident direction can be read from the text"
+    },
+    {
+      "itemId": "1f5a36eb-b79a-4d7e-af9e-4f8b803da2fb",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "sarcastic tone — no confident direction can be read from the text"
+    }
+  ],
+  "expectedOutcome": "unclear_no_direction",
+  "acceptableClaims": [
+    "Reddit-observed comments for GME this window carry heavy sarcasm; no confident stance direction is reportable."
+  ],
+  "requiredAbstentions": [
+    "stance.gme.formal_score"
+  ],
+  "storedMetrics": [
+    {
+      "metricId": "sentiment.reddit.sampleAdequacy",
+      "display": "0.40"
+    }
+  ],
+  "referenceAnswer": "Reddit-observed sample of comments from the subreddits polled: the GME discussion this window is dominated by sarcastic and self-mocking language, so no confident stance direction is reported (sample adequacy 0.40). What to monitor next: whether commentary tone shifts away from irony toward substantive claims.",
+  "labelledBy": "F12 lane-build starter corpus (hand-authored fixture for harness machinery, 04-BUILD-LOOP.md scoping note) — NOT the D-35 ≥30-pack production corpus",
+  "labelledAt": "2026-09-04T00:00:00.000Z",
+  "frozen": true
+}

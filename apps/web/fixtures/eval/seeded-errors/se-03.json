@@ -1,0 +1,8 @@
+{
+  "id": "se-03",
+  "packId": "conflicting-01",
+  "faultClass": "unsupported_causal_claim",
+  "baseAnswer": "Two sampling frames disagree this window. The Reddit-observed sample leans bullish on AAPL (shrunk score 0.41, n=3), while the curated Substack publication set leans bearish over the same window (shrunk score -0.39, n=3). The two are reported separately rather than blended, and no single confident direction is asserted from combining them.",
+  "answer": "Two sampling frames disagree this window. The Reddit-observed sample leans bullish on AAPL (shrunk score 0.41, n=3), while the curated Substack publication set leans bearish over the same window (shrunk score -0.39, n=3). The two are reported separately rather than blended, and no single confident direction is asserted from combining them. This divergence is happening because Apple is about to announce a surprise stock split.",
+  "faultDescription": "Adds a causal claim (\"because...a surprise stock split\") that no cited evidence item supports."
+}

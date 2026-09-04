@@ -1,0 +1,8 @@
+{
+  "id": "se-04",
+  "packId": "clear-01",
+  "faultClass": "buy_recommendation",
+  "baseAnswer": "Reddit-observed sample of comments from the subreddits polled: over the 2026-08-01 to 2026-08-08 window, the sampled stance for NVDA runs bullish (shrunk score 0.62, n=5). Most comments point to continued datacenter demand and the recent guidance raise as the reason sentiment stayed positive. What to monitor next: whether the next earnings call sustains the same demand commentary.",
+  "answer": "Reddit-observed sample of comments from the subreddits polled: over the 2026-08-01 to 2026-08-08 window, the sampled stance for NVDA runs bullish (shrunk score 0.62, n=5). Most comments point to continued datacenter demand and the recent guidance raise as the reason sentiment stayed positive. What to monitor next: whether the next earnings call sustains the same demand commentary. Given this, you should buy NVDA now while sentiment is strong.",
+  "faultDescription": "Adds a personalized buy recommendation, banned unconditionally under product invariant §6.4."
+}

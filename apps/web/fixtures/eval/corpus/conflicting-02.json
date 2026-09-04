@@ -1,0 +1,289 @@
+{
+  "id": "conflicting-02",
+  "bucket": "conflicting_source",
+  "pack": {
+    "id": "5513c35c-b385-4683-857d-917a5d2cfa68",
+    "securityId": "8aaf359b-df61-4051-b2c9-b8fbba142d47",
+    "retrievalQuery": "security_id = 8aaf359b-df61-4051-b2c9-b8fbba142d47, axes = [reddit, substack]",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-08T00:00:00.000Z"
+    },
+    "items": [
+      {
+        "item": {
+          "id": "b7715bc0-5d1e-437a-8e42-2c08ba05921f",
+          "securityId": "8aaf359b-df61-4051-b2c9-b8fbba142d47",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "DIS bull case",
+          "snippet": "DIS growth numbers looked solid this quarter, staying long.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.70",
+          "relevanceScore": "0.85",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "3e5aa9d5022b44debe843a6d218e91db00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.6",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "cbf6c282-277d-4f0e-80ce-18afaa087fd7",
+          "securityId": "8aaf359b-df61-4051-b2c9-b8fbba142d47",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Added more DIS",
+          "snippet": "Bought the dip on DIS, still like the story here.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.66",
+          "relevanceScore": "0.82",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "2aa54a1ece104bc0b5df989f4297a88e00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.6",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "68ba6bc9-b0cc-4b6f-904d-7dadc518b2ae",
+          "securityId": "8aaf359b-df61-4051-b2c9-b8fbba142d47",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "DIS thread: still bullish",
+          "snippet": "DIS product pipeline looks strong into next year.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.63",
+          "relevanceScore": "0.80",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "16e973cf0e944ccab607c729be87dbcd00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.6",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "57c3a04e-a4fb-410e-86bc-843b197a7b39",
+          "securityId": "8aaf359b-df61-4051-b2c9-b8fbba142d47",
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "Why we are cautious on DIS",
+          "snippet": "DIS's margin trajectory looks worse than the headline growth number suggests.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bearish",
+          "stanceScore": "0.65",
+          "relevanceScore": "0.83",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "eaa28f7534d24ef5b9a507624857d04300000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.55",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "472ad32e-f66d-42ba-9745-6c1bab4b3c85",
+          "securityId": "8aaf359b-df61-4051-b2c9-b8fbba142d47",
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "DIS: the bear case, updated",
+          "snippet": "Competitive pressure on DIS is intensifying faster than guidance implies.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bearish",
+          "stanceScore": "0.61",
+          "relevanceScore": "0.81",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "13b38a6283c142a2b81733af6535749100000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.55",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "f400912c-6294-4dae-9e79-0381279f0c0e",
+          "securityId": "8aaf359b-df61-4051-b2c9-b8fbba142d47",
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "DIS valuation note",
+          "snippet": "We trimmed DIS on valuation even though the quarter was fine.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bearish",
+          "stanceScore": "0.58",
+          "relevanceScore": "0.79",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "df7433fe6d6140aeb83299b70b4ccfe200000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.55",
+        "flags": [],
+        "excludedReason": null
+      }
+    ],
+    "frames": [
+      {
+        "axis": "reddit",
+        "frameStatement": "observed sample of comments from the subreddits polled — not a sample of retail investors.",
+        "window": {
+          "from": "2026-08-01T00:00:00.000Z",
+          "to": "2026-08-08T00:00:00.000Z"
+        },
+        "retrievedCount": 5,
+        "usedCount": 3,
+        "subredditsPolled": [
+          "stocks"
+        ],
+        "treeComplete": true
+      },
+      {
+        "axis": "substack",
+        "frameStatement": "curated publication set, selected on the basis recorded in config version {v}.",
+        "window": {
+          "from": "2026-08-01T00:00:00.000Z",
+          "to": "2026-08-08T00:00:00.000Z"
+        },
+        "retrievedCount": 4,
+        "usedCount": 3,
+        "publicationSetVersion": "substack-publications-v1",
+        "selectionBasis": "sector coverage (D-29)"
+      }
+    ],
+    "createdAt": "2026-08-08T00:00:00.000Z"
+  },
+  "labels": [
+    {
+      "itemId": "b7715bc0-5d1e-437a-8e42-2c08ba05921f",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuine bullish reddit stance"
+    },
+    {
+      "itemId": "cbf6c282-277d-4f0e-80ce-18afaa087fd7",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuine bullish reddit stance"
+    },
+    {
+      "itemId": "68ba6bc9-b0cc-4b6f-904d-7dadc518b2ae",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuine bullish reddit stance"
+    },
+    {
+      "itemId": "57c3a04e-a4fb-410e-86bc-843b197a7b39",
+      "expectedStance": "bearish",
+      "expectedRelevant": true,
+      "note": "genuine bearish substack stance"
+    },
+    {
+      "itemId": "472ad32e-f66d-42ba-9745-6c1bab4b3c85",
+      "expectedStance": "bearish",
+      "expectedRelevant": true,
+      "note": "genuine bearish substack stance"
+    },
+    {
+      "itemId": "f400912c-6294-4dae-9e79-0381279f0c0e",
+      "expectedStance": "bearish",
+      "expectedRelevant": true,
+      "note": "genuine bearish substack stance"
+    }
+  ],
+  "expectedOutcome": "mixed_no_confident_direction",
+  "acceptableClaims": [
+    "Reddit-observed sample leans bullish on DIS while the curated Substack publication set leans bearish over the same window — the two frames disagree and are reported separately, not blended into one confident direction."
+  ],
+  "requiredAbstentions": [
+    "stance.dis.blended_composite"
+  ],
+  "storedMetrics": [
+    {
+      "metricId": "sentiment.reddit.shrunkScore",
+      "display": "0.41"
+    },
+    {
+      "metricId": "sentiment.substack.shrunkScore",
+      "display": "-0.39"
+    }
+  ],
+  "referenceAnswer": "Two sampling frames disagree this window. The Reddit-observed sample leans bullish on DIS (shrunk score 0.41, n=3), while the curated Substack publication set leans bearish over the same window (shrunk score -0.39, n=3). The two are reported separately rather than blended, and no single confident direction is asserted from combining them.",
+  "labelledBy": "F12 lane-build starter corpus (hand-authored fixture for harness machinery, 04-BUILD-LOOP.md scoping note) — NOT the D-35 ≥30-pack production corpus",
+  "labelledAt": "2026-09-04T00:00:00.000Z",
+  "frozen": true
+}
