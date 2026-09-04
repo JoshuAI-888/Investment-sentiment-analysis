@@ -97,8 +97,8 @@
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
-| ENGINE | `E02_CHANGES_REQUESTED` | no | builder focused 16, unit 1,200, contract 80/22 skipped; coordinator semantic review pending corrections | yes | E01 `b3e8220` accepted; E02 `3b73f25` held on ER-04–06 |
-| SURFACE | `S01_APPROVED` | yes through I02B | contract 9 + fixture Playwright 2 pass | yes | S01 `71010bd` approved; S02 unblocked by I02C and remains held for lane completion/order |
+| ENGINE | `E02_APPROVED` | no; rebase required before E03 | builder full unit 1,204 + contract 80/22 skipped; coordinator focused 20, typecheck and lint pass | yes | E01 `b3e8220` and E02 correction `0e229d6` accepted; ER-04–06 closed; lane remains held |
+| SURFACE | `S02_APPROVED` | yes through I02C (`4ab744e`) | builder + coordinator: typecheck, lint, contract 11, build, Chromium 4/4 | yes | S01 `71010bd` and S02 `c4899b8` approved; lane remains held for completion/order |
 
 ## Live/deployment gates
 
@@ -140,13 +140,14 @@
 | DR-02 | P1 | `RESOLVED` | Citation FK does not require the cited source to equal its claim source | `cb60846` adds the composite claim/source FK and mismatch test |
 | DR-03 | P1 | `RESOLVED` | Concrete runs accept nonexistent config/universe version strings | `cb60846` uses bigint version FKs and seeds real version lineage in tests |
 | DR-04 | P2 | `RESOLVED` | Terminal tombstone timestamp/reason remain directly mutable at the database boundary | `cb60846` makes all terminal tombstone fields immutable and tests direct SQL rejection |
-| DR-05 | P1 | `OPEN` | Narrative membership can attach a claim for one security to a narrative for another security | Returned to DATA; require same-security DB enforcement, explicit null/global rule and negative integration test |
+| DR-05 | P1 | `RESOLVED` | Narrative membership can attach a claim for one security to a narrative for another security | `5926601` enforces same-security membership, with null/global membership limited to null/global claims, and adds the opposing-security negative test |
 | ER-01 | P1 | `RESOLVED` | Model-supplied excerpt/time is not bound to the exact consulted Web Search source | `58e5828` requires exact consulted URL and full field-scoped citations; `b3e8220` closes partial-span overlap |
 | ER-02 | P1 | `RESOLVED` | A multi-call response can omit one action's source trace and still succeed | `58e5828` validates every action and fails closed on malformed/incomplete traces |
 | ER-03 | P2 | `RESOLVED` | Prompt-injection fixture starts after provider generation but was described as an end-to-end guard | Claim narrowed to tool/output handling; pre-generation model resistance is explicitly E10 eval scope |
-| ER-04 | P1 | `OPEN` | Existing X adapter reports usable partial responses out-of-band, but the RNI port erases that signal and may label the slice complete | Return to ENGINE; preserve and forward partial completeness through the port and test a usable partial payload |
-| ER-05 | P1 | `OPEN` | X authors are unsalted SHA-256 hashes of mutable usernames rather than tenant-scoped hashes of stable identity | Return to ENGINE; inject approved stable-ID hashing or omit the hash; add tenant/rename privacy tests |
-| ER-06 | P1 | `OPEN` | X content-version candidates do not identify exactly one latest interpretation version and A→B→A leaves B latest | Return to ENGINE; separate persistence history from latest candidates and test reversion semantics |
+| ER-04 | P1 | `RESOLVED` | Existing X adapter reports usable partial responses out-of-band, but the RNI port erases that signal and may label the slice complete | `0e229d6` intercepts and forwards per-call violations, propagates completeness and maps usable partial data to a partial slice |
+| ER-05 | P1 | `RESOLVED` | X authors are unsalted SHA-256 hashes of mutable usernames rather than tenant-scoped hashes of stable identity | `0e229d6` omits identity by default and permits only an injected tenant policy over stable provider author ID, with tenant/rename/privacy tests |
+| ER-06 | P1 | `RESOLVED` | X content-version candidates do not identify exactly one latest interpretation version and A→B→A leaves B latest | `0e229d6` separates persistence versions from one latest interpretation candidate and records ordered A→B→A transitions |
+| SR-04 | P2 | `RESOLVED` | S02's first commit left its task/evidence/handoff record stale and did not identify the actual browser gate | `c4899b8` amends the task commit with exact type, lint, contract, build and Chromium evidence plus complete files/risks/handoff |
 
 ## Open risks/blockers
 
@@ -169,6 +170,8 @@
 | `264ea9c` | Resolve remaining initial lane contract requests and freeze citation lookup | lint; typecheck; RNI contract 9 pass; full contract 79 pass/22 DB-skipped |
 | `84dca87` | Accept CR-SURFACE-02 and freeze non-poolable Radar pagination | typecheck; focused/full lint; RNI contract 11 pass; full contract 81 pass/22 DB-skipped |
 | `254fe45` | Merge accepted DATA lane into integration | coordinator typecheck; full contract 81 pass/22 DB-skipped; fresh PostgreSQL DATA 41/41 |
+| `2607140` | Record DATA lane acceptance and close G3 | coordinator review and merged verification evidence |
+| `6470823` | Record ENGINE E02 review findings | semantic review against source coverage, privacy and content-version requirements |
 
 ## Coordinator notes
 
@@ -196,9 +199,18 @@
   is clean, and the merged state passes typecheck, the full contract suite and all 41 DATA tests
   against a fresh disposable PostgreSQL cluster. CR-DATA-002 remains deliberately deferred until
   I07 has ENGINE E05's concrete consumer.
-- ENGINE E02 `3b73f25` is held on ER-04–06. The ordinary success/failure and source-isolation
-  tests pass, but integration must not erase partial provider coverage, violate the tenant-salted
-  author policy, or enqueue more than the final content version for interpretation.
+- ENGINE E02 `3b73f25` was initially held on ER-04–06: integration could not erase partial
+  provider coverage, violate the tenant-salted author policy, or enqueue more than the final
+  content version for interpretation.
+- ENGINE E02 corrections are accepted at `0e229d6`; ER-04–06 are closed. Coordinator focused
+  unit/contract tests pass 20/20 with clean typecheck and lint. Before E03, ENGINE must rebase on
+  current integration so persist-first workflow uses the merged DATA repositories and frozen
+  commit-returning source port rather than a lane-local substitute.
+- SURFACE S02 is accepted at `c4899b8`. It consumes only the frozen Radar page, keeps Reddit/X
+  counts, freshness, coverage and confidence visibly separate, and preserves divergent/partial
+  combined states. Coordinator typecheck, focused lint, contract 11/11, production build and
+  Chromium desktop/narrow/keyboard tests 4/4 pass. The branch remains unmerged until the lane is
+  complete and the prescribed DATA→ENGINE→SURFACE order permits it.
 
 ## I05 handoff
 
