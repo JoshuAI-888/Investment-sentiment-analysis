@@ -1,15 +1,22 @@
 /**
- * F12 §4.3: the judge sees only the answer, the evidence text, and the stored metric values —
- * never the synthesiser's prompt or reasoning. This proves `buildJudgeInput`'s construction
- * cannot leak a synthesis-prompt-shaped string into the judge's input, by trying to smuggle one
- * in through every field the function actually accepts and confirming none of it survives.
+ * F12 §4.3: the judge sees only the answer, the evidence (text, id, dates), and the stored
+ * metric values — never the synthesiser's prompt or reasoning. Proves `buildJudgeInput`'s
+ * construction by planting a canary in every field it actually reads and confirming it
+ * surfaces only where expected, and in every field it does *not* read and confirming it never
+ * surfaces at all.
+ *
+ * **Review finding (lane-review round 1 finding 5).** The previous version of this test checked
+ * `buildJudgeInput.length === 1` (parameter *count*, not fields) and asserted a canary that was
+ * never inserted anywhere doesn't appear in the output — an assertion that is unconditionally
+ * true regardless of what the function does, so the test could never fail. Replaced below with
+ * assertions that plant the canary through real inputs and would fail if the implementation
+ * leaked (or dropped) the wrong field.
  */
 import { describe, expect, it } from 'vitest';
 import { buildJudgeInput } from '../../../../src/services/eval/judge';
 import type { ClassifiedItem } from '../../../../src/contracts/evidence-pack';
 
-const SYNTHESIS_PROMPT_CANARY =
-  'SYSTEM PROMPT: you are a helpful financial research assistant, chain-of-thought: first I will consider bullish factors...';
+const CANARY = 'CANARY-3f9a1c-should-only-appear-where-expected';
 
 function item(overrides: Partial<ClassifiedItem['item']> = {}): ClassifiedItem {
   return {
@@ -26,9 +33,9 @@ function item(overrides: Partial<ClassifiedItem['item']> = {}): ClassifiedItem {
       stanceLabel: 'bullish',
       stanceScore: '0.8',
       relevanceScore: '0.9',
-      publishedAt: new Date(),
-      availableAt: new Date(),
-      ingestedAt: new Date(),
+      publishedAt: new Date('2026-08-01T00:00:00.000Z'),
+      availableAt: new Date('2026-08-01T00:00:00.000Z'),
+      ingestedAt: new Date('2026-08-01T00:00:00.000Z'),
       lastCheckedAt: null,
       availability: 'available',
       licenseClass: 'standard',
@@ -47,33 +54,82 @@ function item(overrides: Partial<ClassifiedItem['item']> = {}): ClassifiedItem {
 }
 
 describe('buildJudgeInput blindness', () => {
-  it('has no parameter through which a synthesis prompt could be threaded', () => {
-    // The function's own arity/shape is the enforcement: only answerText, items and
-    // storedMetrics are accepted. There is no fourth "context" or "prompt" field to abuse.
-    expect(buildJudgeInput.length).toBe(1);
-  });
-
-  it('never surfaces the synthesis-prompt canary even when it appears in the answer text itself is not the point — the canary must never enter via items or metrics either', () => {
+  it('carries a canary planted in an item title into evidence[].text, and nowhere else', () => {
     const input = buildJudgeInput({
-      answerText: 'NVDA sentiment is bullish this window (shrunk score 0.62, n=5).',
-      items: [item({ title: 'genuine title', snippet: 'genuine snippet, not a prompt' })],
-      storedMetrics: [{ metricId: 'sentiment.reddit.shrunkScore', display: '0.62' }],
+      answerText: 'answer with no canary',
+      items: [item({ title: CANARY, snippet: 'plain snippet' })],
+      storedMetrics: [{ metricId: 'm', display: '0.5' }],
     });
-
-    const serialized = JSON.stringify(input);
-    expect(serialized).not.toContain(SYNTHESIS_PROMPT_CANARY);
-    expect(serialized).not.toContain('SYSTEM PROMPT');
-    expect(serialized).not.toContain('chain-of-thought');
+    expect(input.evidence[0]!.text).toContain(CANARY);
+    expect(input.answerText).not.toContain(CANARY);
+    expect(JSON.stringify(input.storedMetrics)).not.toContain(CANARY);
   });
 
-  it('only ever includes item title/snippet text, never the retrieval query or frame disclosures', () => {
+  it('carries a canary planted in an item snippet into evidence[].text', () => {
+    const input = buildJudgeInput({
+      answerText: 'answer',
+      items: [item({ title: 'plain title', snippet: CANARY })],
+      storedMetrics: [],
+    });
+    expect(input.evidence[0]!.text).toContain(CANARY);
+  });
+
+  it('carries a canary planted in storedMetrics.display into storedMetrics, and nowhere else', () => {
     const input = buildJudgeInput({
       answerText: 'answer',
       items: [item()],
+      storedMetrics: [{ metricId: 'm', display: CANARY }],
+    });
+    expect(input.storedMetrics[0]!.display).toBe(CANARY);
+    expect(input.evidence.every((e) => !e.text.includes(CANARY))).toBe(true);
+    expect(input.answerText).not.toContain(CANARY);
+  });
+
+  it('carries a canary planted in the answer text into answerText only', () => {
+    const input = buildJudgeInput({
+      answerText: CANARY,
+      items: [item()],
+      storedMetrics: [{ metricId: 'm', display: '0.5' }],
+    });
+    expect(input.answerText).toBe(CANARY);
+    expect(input.evidence.every((e) => !e.text.includes(CANARY))).toBe(true);
+    expect(JSON.stringify(input.storedMetrics)).not.toContain(CANARY);
+  });
+
+  it('never surfaces a canary planted in metadata, sourceUrl, publisher, authorRef or rawHash — fields buildJudgeInput does not read', () => {
+    const input = buildJudgeInput({
+      answerText: 'answer',
+      items: [
+        item({
+          metadata: { synthesisReasoning: CANARY },
+          sourceUrl: 'https://example.com/canary-path',
+          publisher: CANARY,
+          authorRef: CANARY,
+          rawHash: CANARY.padEnd(64, '0'),
+        }),
+      ],
       storedMetrics: [],
     });
-    // The evidence text is exactly title + snippet, nothing about how the pack was retrieved.
-    expect(input.evidenceText).toEqual(['NVDA thread — genuine evidence text']);
+    const serialized = JSON.stringify(input);
+    expect(serialized).not.toContain(CANARY);
+    expect(serialized).not.toContain('example.com/canary-path');
+  });
+
+  it('exposes each evidence item\'s id and dates (needed to detect a fabricated citation or a stale-date claim), never anything else about retrieval', () => {
+    const input = buildJudgeInput({
+      answerText: 'answer',
+      items: [
+        item({
+          id: '99999999-9999-9999-9999-999999999999',
+          publishedAt: new Date('2026-07-15T00:00:00.000Z'),
+          availableAt: new Date('2026-07-16T00:00:00.000Z'),
+        }),
+      ],
+      storedMetrics: [],
+    });
+    expect(input.evidence[0]!.id).toBe('99999999-9999-9999-9999-999999999999');
+    expect(input.evidence[0]!.publishedAt).toEqual(new Date('2026-07-15T00:00:00.000Z'));
+    expect(input.evidence[0]!.availableAt).toEqual(new Date('2026-07-16T00:00:00.000Z'));
   });
 
   it('omits a null snippet rather than rendering the literal string "null"', () => {
@@ -82,7 +138,7 @@ describe('buildJudgeInput blindness', () => {
       items: [item({ snippet: null })],
       storedMetrics: [],
     });
-    expect(input.evidenceText[0]).toBe('NVDA thread');
-    expect(input.evidenceText[0]).not.toContain('null');
+    expect(input.evidence[0]!.text).toBe('NVDA thread');
+    expect(input.evidence[0]!.text).not.toContain('null');
   });
 });

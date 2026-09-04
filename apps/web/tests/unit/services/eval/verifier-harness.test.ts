@@ -71,4 +71,25 @@ describe('measureVerifier', () => {
     expect(seenBase).toBe(true);
     expect(seenFaulted).toBe(true);
   });
+
+  /**
+   * Lane-review round 1 finding 6's exact repro: three seeded-error fixtures, but only two
+   * *distinct* clean base answers (two fixtures inject different faults into the same clean
+   * answer). `goodCount` must reflect the two distinct answers, not the three fixtures — and
+   * the false-positive rate must be computed over that same denominator.
+   */
+  it('dedupes by baseAnswer when computing B8 — a shared clean answer across multiple seeded entries is counted once', () => {
+    const sharedBase = 'shared clean answer text';
+    const answers = [
+      seeded('se-01', 'pack-1', sharedBase, 'faulted variant one'),
+      seeded('se-02', 'pack-1', sharedBase, 'faulted variant two'),
+      seeded('se-03', 'pack-2', 'a different clean answer', 'faulted variant three'),
+    ];
+    // Flags the shared base answer (a real false positive) but not the other one.
+    const verify: Verifier = (answerText) => ({ flagged: answerText === sharedBase, reasons: [] });
+    const measurement = measureVerifier(answers, verify);
+    expect(measurement.seededCount).toBe(3);
+    expect(measurement.goodCount).toBe(2); // two DISTINCT base answers, not three seeded entries
+    expect(measurement.falsePositiveRate).toBe('0.5000'); // 1 of 2 distinct base answers, not 1 of 3
+  });
 });

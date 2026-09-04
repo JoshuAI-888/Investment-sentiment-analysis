@@ -2,8 +2,22 @@ import { describe, expect, it } from 'vitest';
 import {
   CALIBRATION_SAMPLE_SIZE,
   computeCalibration,
+  reduceToScalar,
   sampleForCalibration,
 } from '../../../../src/services/eval/calibration';
+
+describe('reduceToScalar', () => {
+  it('averages the four axes — the same rubric MT-11 asks the owner to hand-score on', () => {
+    expect(reduceToScalar({ c1: 5, c2: 5, c3: 5, c4: 5 })).toBe(5);
+    expect(reduceToScalar({ c1: 4, c2: 5, c3: 4, c4: 4 })).toBeCloseTo(4.25, 10);
+  });
+
+  it('is exact for a mean that does not terminate in binary floating point', () => {
+    // (4+4+3+4)/4 = 3.75 exactly; the point is the computation goes through decimal.js, not a
+    // raw float division, matching gate.ts's own axisMean discipline (lane-review round 1).
+    expect(reduceToScalar({ c1: 4, c2: 4, c3: 3, c4: 4 })).toBe(3.75);
+  });
+});
 
 describe('sampleForCalibration', () => {
   it('never mutates the input pool', () => {

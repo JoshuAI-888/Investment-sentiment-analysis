@@ -18,8 +18,8 @@ function record(overrides: Partial<EvalRunRecord> = {}): EvalRunRecord {
     modelRoute: { judgeModelId: 'judge-model', judgeModelVersion: '2026-09-01', temperature: 0 },
     tierC: {
       passed: true,
-      perAxisMean: { c1: 5, c2: 5, c3: 5, c4: 5 },
-      overallMean: 5,
+      perAxisMean: { c1: '5.0000', c2: '5.0000', c3: '5.0000', c4: '5.0000' },
+      overallMean: '5.0000',
       c2Floor: 3,
       c2Failures: [],
       tierBViolationCount: 0,
@@ -27,6 +27,7 @@ function record(overrides: Partial<EvalRunRecord> = {}): EvalRunRecord {
     },
     verifier: null,
     calibration: null,
+    stanceD1: null,
     ...overrides,
   };
 }
@@ -78,22 +79,22 @@ describe('createFileEvalResultStore', () => {
 
 describe('compareRuns', () => {
   it('flags an unexplained movement when the score moves without a model-route change', () => {
-    const previous = record({ tierC: { ...record().tierC, overallMean: 4.5 } });
-    const current = record({ tierC: { ...record().tierC, overallMean: 4.0 } });
+    const previous = record({ tierC: { ...record().tierC, overallMean: '4.5000' } });
+    const current = record({ tierC: { ...record().tierC, overallMean: '4.0000' } });
     const comparison = compareRuns(previous, current);
     expect(comparison.modelRouteChanged).toBe(false);
     expect(comparison.unexplainedMovement).toBe(true);
-    expect(comparison.overallMeanDelta).toBeCloseTo(-0.5, 10);
+    expect(comparison.overallMeanDelta).toBe('-0.5000');
   });
 
   it('does not flag a movement as unexplained when the model route changed', () => {
     const previous = record({
       modelRoute: { judgeModelId: 'judge-a', judgeModelVersion: 'v1', temperature: 0 },
-      tierC: { ...record().tierC, overallMean: 4.5 },
+      tierC: { ...record().tierC, overallMean: '4.5000' },
     });
     const current = record({
       modelRoute: { judgeModelId: 'judge-b', judgeModelVersion: 'v1', temperature: 0 },
-      tierC: { ...record().tierC, overallMean: 4.0 },
+      tierC: { ...record().tierC, overallMean: '4.0000' },
     });
     const comparison = compareRuns(previous, current);
     expect(comparison.modelRouteChanged).toBe(true);
@@ -101,9 +102,18 @@ describe('compareRuns', () => {
   });
 
   it('does not flag a tiny, within-tolerance movement as unexplained', () => {
-    const previous = record({ tierC: { ...record().tierC, overallMean: 4.5 } });
-    const current = record({ tierC: { ...record().tierC, overallMean: 4.505 } });
+    const previous = record({ tierC: { ...record().tierC, overallMean: '4.5000' } });
+    const current = record({ tierC: { ...record().tierC, overallMean: '4.5050' } });
     const comparison = compareRuns(previous, current);
     expect(comparison.unexplainedMovement).toBe(false);
+  });
+
+  it('computes deltas as exact decimal strings, never via implicit string-to-number coercion', () => {
+    const previous = record({ tierC: { ...record().tierC, perAxisMean: { c1: '4.0000', c2: '4.0000', c3: '4.0000', c4: '4.0000' } } });
+    const current = record({ tierC: { ...record().tierC, perAxisMean: { c1: '4.3300', c2: '4.0000', c3: '4.0000', c4: '4.0000' } } });
+    const comparison = compareRuns(previous, current);
+    expect(typeof comparison.perAxisDelta.c1).toBe('string');
+    expect(comparison.perAxisDelta.c1).toBe('0.3300');
+    expect(comparison.perAxisDelta.c2).toBe('0.0000');
   });
 });

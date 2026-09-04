@@ -4,7 +4,14 @@ import type { JudgeInput, JudgeResponse } from '../../../../src/services/eval/co
 
 const INPUT: JudgeInput = {
   answerText: 'NVDA sentiment is bullish this window (shrunk score 0.62, n=5).',
-  evidenceText: ['NVDA earnings beat again — datacenter revenue keeps climbing'],
+  evidence: [
+    {
+      id: '11111111-1111-1111-1111-111111111111',
+      text: 'NVDA earnings beat again — datacenter revenue keeps climbing',
+      publishedAt: new Date('2026-08-01T00:00:00.000Z'),
+      availableAt: new Date('2026-08-01T00:00:00.000Z'),
+    },
+  ],
   storedMetrics: [{ metricId: 'sentiment.reddit.shrunkScore', display: '0.62' }],
 };
 

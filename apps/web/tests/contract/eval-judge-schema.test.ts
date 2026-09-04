@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { judgeInput, judgeResponse } from '../../src/services/eval/contracts';
+import { judgeEvidenceItem, judgeInput, judgeResponse } from '../../src/services/eval/contracts';
+
+const VALID_EVIDENCE = {
+  id: '11111111-1111-1111-1111-111111111111',
+  text: 'item text',
+  publishedAt: new Date('2026-08-01T00:00:00.000Z'),
+  availableAt: new Date('2026-08-01T00:00:00.000Z'),
+};
 
 const VALID_RESPONSE = { c1: 5, c2: 4, c3: 5, c4: 3, violations: [], rationale: 'grounded in the cited evidence' };
 
@@ -30,16 +37,36 @@ describe('judgeResponse schema', () => {
   });
 });
 
+describe('judgeEvidenceItem schema', () => {
+  it('accepts a well-formed evidence item, including a null publishedAt', () => {
+    expect(judgeEvidenceItem.safeParse(VALID_EVIDENCE).success).toBe(true);
+    expect(judgeEvidenceItem.safeParse({ ...VALID_EVIDENCE, publishedAt: null }).success).toBe(true);
+  });
+
+  it('rejects a missing id — the judge needs it to detect a fabricated or unrelated citation', () => {
+    const { id: _id, ...withoutId } = VALID_EVIDENCE;
+    expect(judgeEvidenceItem.safeParse(withoutId).success).toBe(false);
+  });
+
+  it('requires a non-null availableAt — the judge needs it to detect a stale-date claim', () => {
+    expect(judgeEvidenceItem.safeParse({ ...VALID_EVIDENCE, availableAt: null }).success).toBe(false);
+  });
+});
+
 describe('judgeInput schema', () => {
   it('accepts a well-formed input with no stored metrics', () => {
     expect(
-      judgeInput.safeParse({ answerText: 'answer', evidenceText: ['item text'], storedMetrics: [] }).success,
+      judgeInput.safeParse({ answerText: 'answer', evidence: [VALID_EVIDENCE], storedMetrics: [] }).success,
     ).toBe(true);
   });
 
   it('rejects an empty answerText', () => {
     expect(
-      judgeInput.safeParse({ answerText: '', evidenceText: ['item text'], storedMetrics: [] }).success,
+      judgeInput.safeParse({ answerText: '', evidence: [VALID_EVIDENCE], storedMetrics: [] }).success,
     ).toBe(false);
+  });
+
+  it('accepts an empty evidence array (a thin-evidence pack may carry none)', () => {
+    expect(judgeInput.safeParse({ answerText: 'answer', evidence: [], storedMetrics: [] }).success).toBe(true);
   });
 });
