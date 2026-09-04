@@ -21,6 +21,9 @@ const CONFIG_COLUMNS =
 
 const UNIVERSE_COLUMNS =
   'id, environment, config_version, status, parent_version, selected_count, selection_query, impact_preview, source_provider, source_endpoint, source_retrieved_at, source_payload_hash, provider_call_id, created_by, change_reason, created_at, activated_at, approved_by';
+const QUALIFIED_UNIVERSE_COLUMNS = UNIVERSE_COLUMNS.split(', ')
+  .map((column) => `uv.${column}`)
+  .join(', ');
 
 export type NewConfigVersion = {
   environment: string;
@@ -178,6 +181,218 @@ export async function countUniverseVersions(
     [environment],
   );
   return Number(rows[0]?.count ?? '0');
+}
+
+export type UniverseProviderCallInput = {
+  readonly operation: string;
+  readonly requestFingerprint: string;
+  readonly statusCode: number | null;
+  readonly latencyMs: number;
+  readonly cacheStatus: string;
+  readonly itemsReturned: number | null;
+  readonly estimatedCostUsd: string;
+  readonly startedAt: Date;
+  readonly errorClass: string | null;
+};
+
+export async function insertUniverseProviderCall(
+  input: UniverseProviderCallInput,
+  db: Queryable = getPool(),
+): Promise<string> {
+  const { rows } = await db.query<{ id: string }>(
+    `insert into provider_call_log
+       (provider, operation, request_fingerprint, status_code, latency_ms, cache_status,
+        items_returned, estimated_cost_usd, started_at, error_class)
+     values ('fmp', $1, $2, $3, $4, $5, $6, $7, $8, $9)
+     returning id`,
+    [
+      input.operation,
+      input.requestFingerprint,
+      input.statusCode,
+      input.latencyMs,
+      input.cacheStatus,
+      input.itemsReturned,
+      input.estimatedCostUsd,
+      input.startedAt,
+      input.errorClass,
+    ],
+  );
+  const id = rows[0]?.id;
+  if (id === undefined) throw new Error('provider_call_log insert returned no row');
+  return id;
+}
+
+export type StageFmpUniverseMember = {
+  readonly securityId: string;
+  readonly providerSymbol: string;
+  readonly providerCompanyName: string;
+  readonly constituentFirstAddedAt: string | null;
+};
+
+export type StageFmpUniverseInput = {
+  readonly environment: string;
+  readonly sourceRetrievedAt: string;
+  readonly sourcePayloadHash: string;
+  readonly providerCallId: string;
+  readonly members: readonly StageFmpUniverseMember[];
+  readonly actorId: string;
+  readonly requestId: string;
+  readonly correlationId: string;
+};
+
+export type StageFmpUniverseOutcome = {
+  readonly version: UniverseVersion;
+  readonly memberCount: number;
+  readonly reused: boolean;
+  readonly impactPreview: {
+    readonly addedSecurityIds: readonly string[];
+    readonly removedSecurityIds: readonly string[];
+  };
+};
+
+/** Creates an immutable staged FMP snapshot. It never activates or mutates the current version. */
+export async function stageFmpUniverseVersion(
+  input: StageFmpUniverseInput,
+): Promise<StageFmpUniverseOutcome> {
+  return withTransaction(async (tx) => {
+    await tx.query('select pg_advisory_xact_lock(hashtext($1))', [
+      `universe-fmp-stage:${input.environment}`,
+    ]);
+
+    const requested = await tx.query(
+      `select ${QUALIFIED_UNIVERSE_COLUMNS}
+         from audit_event ae
+         join universe_version uv on uv.id::text = ae.object_id
+        where ae.environment = $1
+          and ae.action = 'stage'
+          and ae.object_type = 'universe_version'
+          and ae.request_id = $2
+        order by ae.occurred_at desc
+        limit 1`,
+      [input.environment, input.requestId],
+    );
+    const existing =
+      requested.rows[0] === undefined
+        ? await tx.query(
+            `select ${UNIVERSE_COLUMNS}
+               from universe_version
+              where environment = $1 and source_provider = 'fmp' and source_payload_hash = $2`,
+            [input.environment, input.sourcePayloadHash],
+          )
+        : requested;
+    const existingRow = existing.rows[0];
+    if (existingRow !== undefined) {
+      const version = universeVersion.parse(camelizeRow(existingRow as Record<string, unknown>));
+      const impact = version.impactPreview as {
+        addedSecurityIds?: readonly string[];
+        removedSecurityIds?: readonly string[];
+      };
+      return {
+        version,
+        memberCount: version.selectedCount,
+        reused: true,
+        impactPreview: {
+          addedSecurityIds: impact.addedSecurityIds ?? [],
+          removedSecurityIds: impact.removedSecurityIds ?? [],
+        },
+      };
+    }
+
+    const { rows: configs } = await tx.query<{ id: string }>(
+      `select id from config_version where environment = $1 and status = 'active'`,
+      [input.environment],
+    );
+    const configVersion = configs[0]?.id;
+    if (configVersion === undefined) {
+      throw new Error(`No active config_version in ${input.environment}`);
+    }
+
+    const { rows: activeVersions } = await tx.query<{ id: string }>(
+      `select id from universe_version where environment = $1 and status = 'active'`,
+      [input.environment],
+    );
+    const parentVersion = activeVersions[0]?.id ?? null;
+    const { rows: activeMembers } =
+      parentVersion === null
+        ? { rows: [] as { security_id: string }[] }
+        : await tx.query<{ security_id: string }>(
+            `select security_id from universe_member
+              where universe_version = $1 and enabled = true`,
+            [parentVersion],
+          );
+    const priorIds = new Set(activeMembers.map(({ security_id }) => security_id));
+    const nextIds = new Set(input.members.map(({ securityId }) => securityId));
+    const addedSecurityIds = [...nextIds].filter((id) => !priorIds.has(id)).sort();
+    const removedSecurityIds = [...priorIds].filter((id) => !nextIds.has(id)).sort();
+    const impactPreview = { addedSecurityIds, removedSecurityIds };
+
+    const { rows } = await tx.query(
+      `insert into universe_version
+         (environment, config_version, status, parent_version, selected_count, selection_query,
+          impact_preview, source_provider, source_endpoint, source_retrieved_at,
+          source_payload_hash, provider_call_id, created_by, change_reason)
+       values ($1, $2, 'staged', $3, $4, $5, $6, 'fmp', '/stable/sp500-constituent',
+               $7, $8, $9, $10, $11)
+       returning ${UNIVERSE_COLUMNS}`,
+      [
+        input.environment,
+        configVersion,
+        parentVersion,
+        input.members.length,
+        JSON.stringify({ preset: 'sp500_fmp_current' }),
+        JSON.stringify(impactPreview),
+        input.sourceRetrievedAt,
+        input.sourcePayloadHash,
+        input.providerCallId,
+        input.actorId,
+        `Staged current S&P 500 membership from FMP (${input.sourceRetrievedAt})`,
+      ],
+    );
+    const stagedRow = rows[0];
+    if (stagedRow === undefined) throw new Error('universe_version stage insert returned no row');
+    const version = universeVersion.parse(camelizeRow(stagedRow as Record<string, unknown>));
+
+    for (const member of input.members) {
+      await tx.query(
+        `insert into universe_member
+           (universe_version, security_id, added_by, selection_source, provider_symbol,
+            provider_company_name, constituent_first_added_at)
+         values ($1, $2, $3, 'fmp_sp500', $4, $5, $6)`,
+        [
+          version.id,
+          member.securityId,
+          input.actorId,
+          member.providerSymbol,
+          member.providerCompanyName,
+          member.constituentFirstAddedAt,
+        ],
+      );
+    }
+
+    await tx.query(
+      `insert into audit_event
+         (actor_id, actor_role, action, object_type, object_id, environment, reason,
+          after_value, result, request_id, correlation_id)
+       values ($1, 'admin', 'stage', 'universe_version', $2, $3, $4, $5,
+               'success', $6, $7)`,
+      [
+        input.actorId,
+        version.id,
+        input.environment,
+        'Stage validated FMP S&P 500 candidate for human approval',
+        JSON.stringify({ selectedCount: input.members.length, ...impactPreview }),
+        input.requestId,
+        input.correlationId,
+      ],
+    );
+
+    return {
+      version,
+      memberCount: input.members.length,
+      reused: false,
+      impactPreview,
+    };
+  });
 }
 
 /**

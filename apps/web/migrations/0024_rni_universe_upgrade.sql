@@ -27,10 +27,14 @@ comment on constraint universe_version_max_symbols_check on universe_version is
   'D-RNI-06. 600 is a safety ceiling for a complete current S&P 500 snapshot, including ordinary constituent share classes and composition churn; configured limits may be lower, never higher.';
 
 comment on column universe_version.source_payload_hash is
-  'SHA-256 of the exact FMP constituent response used to derive this immutable candidate. Historical non-FMP versions remain null.';
+  'SHA-256 of the validated FMP constituent JSON payload used to derive this immutable candidate. Historical non-FMP versions remain null.';
 
 comment on column universe_version.approved_by is
   'Immutable approval recorded on the successor version before activation. The append-only trigger deliberately does not permit this field to change.';
+
+create unique index universe_version_fmp_snapshot_unique
+  on universe_version (environment, source_provider, source_payload_hash)
+  where source_provider = 'fmp' and source_payload_hash is not null;
 
 alter table universe_member
   drop constraint universe_member_source_check;

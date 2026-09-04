@@ -2,7 +2,7 @@
 
 **Writer:** coordinator/integrator only  
 **Branch:** `feat/rni-integration-demo`  
-**Status:** `READY_FOR_REVIEW`
+**Status:** `IN_PROGRESS`
 
 ## Tasks
 
@@ -11,11 +11,11 @@
 | I00 | Refresh `main`, inspect dirty state and repeat pinned clean gate | `PASSED` | PR #5 CI and Vercel preview green on merged base |
 | I01 | Review and merge `fix/require-ai-model-routes-live-mode` | `MERGED` | PR #2, `09ad439` |
 | I02 | Freeze RNI contracts, fixtures, routes and migration allocation | `MERGED` | PR #5 merge `dd28ea2`; source SHA `9908eda` |
-| I02A | Resolve CR-DATA-001 source-persistence port | `READY_FOR_REVIEW` | Additive frozen contract; fake-port duplicate delivery returns the committed identity |
+| I02A | Resolve CR-DATA-001 source-persistence port | `READY_FOR_REVIEW` | `6b67657`; additive frozen contract; fake-port duplicate delivery returns the committed identity |
 | I03 | Expand CI path filters for RNI prompts/agents/evals | `MERGED` | PR #5; actual `tests/eval/rni` path triggered and passed |
 | I04 | Pin/verify pnpm 10.33.0 and build-script policy | `PASSED` | Clean frozen install and PR #5 web/scorer CI passed |
 | I05 | Add forward universe migration and 600-member ceiling | `READY_FOR_REVIEW` | Clean + forward PostgreSQL migration tests pass; 600 accepted and 601 rejected in DB and Zod |
-| I06 | Build FMP sync composition and minimal Settings route wiring | `NOT_STARTED` | >500 fixture + invalid-response tests |
+| I06 | Build FMP sync composition and minimal Settings route wiring | `READY_FOR_REVIEW` | 501-member fixture stages once; partial/duplicate/unresolved responses fail closed; admin route, build, and PostgreSQL gates pass |
 | I07 | Compose DATA repositories and ENGINE services | `NOT_STARTED` | Integration contract tests |
 | I08 | Compose SURFACE routes/nav/API with auth | `NOT_STARTED` | Authenticated preview e2e |
 | I09 | Wire QStash jobs/manual idempotent refresh | `NOT_STARTED` | Signed redelivery/double-click tests |
@@ -42,7 +42,7 @@
 
 | ID | From | Status | Decision | Affected lanes | Contract SHA |
 |---|---|---|---|---|---|
-| CR-DATA-001 | DATA | `ACCEPTED` | Freeze additive commit-returning persistence port; concrete DATA adapter must pass the same duplicate-delivery semantics | DATA, ENGINE, INTEGRATION | I02A task commit |
+| CR-DATA-001 | DATA | `ACCEPTED` | Freeze additive commit-returning persistence port; concrete DATA adapter must pass the same duplicate-delivery semantics | DATA, ENGINE, INTEGRATION | `6b67657` |
 
 ### CR-DATA-001 decision
 
@@ -89,8 +89,11 @@
 | `docs/**`, `README.md`, `CLAUDE.md`, root `AGENTS.md` | Scoped precedence and non-clashing lane guidance | `f8a54c1` | local-link validation and adversarial review |
 | `apps/web/migrations/0024_rni_universe_upgrade.sql` | Preserve historical universes while adding FMP lineage and raising the hard ceiling to 600 | `a7b13b6` | clean + forward PostgreSQL cases |
 | `apps/web/src/contracts/config.ts`, `src/repositories/versions.ts` | Keep typed and application activation ceilings aligned with migration `0024` | `a7b13b6` | lint, typecheck, unit and integration suites |
-| `apps/web/src/rni/contracts/index.ts`, `src/rni/testing/reference-fixtures.ts` | Resolve CR-DATA-001 with one commit-returning source-persistence boundary | I02A task commit | RNI contract test + full contract suite |
-| `docs/features/RNI-00-CONTRACT.md`, `docs/MEMORY.md` | Record the accepted cross-lane persistence rule as D-RNI-08 | I02A task commit | contract/doc review |
+| `apps/web/src/rni/contracts/index.ts`, `src/rni/testing/reference-fixtures.ts` | Resolve CR-DATA-001 with one commit-returning source-persistence boundary | `6b67657` | RNI contract test + full contract suite |
+| `docs/features/RNI-00-CONTRACT.md`, `docs/MEMORY.md` | Record the accepted cross-lane persistence rule as D-RNI-08 | `6b67657` | contract/doc review |
+| `apps/web/migrations/0024_rni_universe_upgrade.sql`, `src/repositories/versions.ts` | Make FMP snapshot staging immutable, auditable, payload-idempotent, and independent of activation | I06 task commit | disposable PostgreSQL 501-member stage/replay test |
+| `apps/web/src/adapters/fmp-universe.ts`, `src/rni/universe/**`, `app/api/rni/universe/sync/route.ts` | Compose authenticated FMP retrieval, strict validation, security-master resolution, and admin-only staging | I06 task commit | adapter/unit, service/route integration, lint, typecheck, production build |
+| `apps/web/app/(admin)/admin/settings/universe/page.tsx` | Identify the FMP-current preset and preserve separate human-approved activation on the existing Settings route | I06 task commit | `check:copy`; production build route manifest |
 
 ## Review findings
 
@@ -114,7 +117,8 @@
 | `353021d` | Merge concurrent password-auth PR #4 while preserving both decision logs | lint; typecheck; contract; production build |
 | `dd28ea2` | PR #5 contract-freeze merge to `main` | GitHub web/scorer/eval and Vercel preview green |
 | `a7b13b6` | Forward-only universe lineage schema and 600-member ceiling | lint; typecheck; unit 1,172; contract 77 pass/22 DB-skipped; integration 358 pass/2 transient timing failures, both files green on immediate rerun (72 pass); I05 DB cases 3/3 pass |
-| I02A task commit | Accept CR-DATA-001 and freeze the commit-returning persistence port | lint; typecheck; RNI contract 8 pass; full contract 78 pass/22 DB-skipped |
+| `6b67657` | Accept CR-DATA-001 and freeze the commit-returning persistence port | lint; typecheck; RNI contract 8 pass; full contract 78 pass/22 DB-skipped |
+| I06 task commit | Stage validated current FMP S&P 500 snapshots without activating them | lint; typecheck; unit 1,175; contract 78 pass/22 DB-skipped; RNI service/route 16 pass; PostgreSQL universe 4 pass + versions 9 pass; `check:copy`; production build |
 
 ## Coordinator notes
 
@@ -127,6 +131,11 @@
 - CR-DATA-001 is accepted as D-RNI-08. Builders should rebase/cherry-pick the I02A contract commit
   before implementing the concrete DATA port or ENGINE E03; neither lane should define a local
   substitute interface.
+- I06 uses the existing security master as the only identity authority. It records every FMP
+  attempt in `provider_call_log`, rejects incomplete or ambiguous responses before a version is
+  created, and only stages an immutable candidate. No code path in this task activates it.
+- The database tests that reset the shared public schema must run serially. A parallel diagnostic
+  invocation collided during schema reset; the isolated universe and versions gates both passed.
 
 ## I05 handoff
 
@@ -145,3 +154,28 @@
 - **Risk/handoff:** run migration `0024` on an ephemeral Neon branch before preview. I06 must
   populate the new lineage fields and fail closed before creating a staged version; production
   activation remains human-owned by `joshuai`.
+
+## I06 handoff
+
+- **Files changed:** `apps/web/src/adapters/fmp-universe.ts`,
+  `apps/web/src/rni/universe/{composition,sync,validate}.ts`,
+  `apps/web/app/api/rni/universe/sync/route.ts`,
+  `apps/web/app/(admin)/admin/settings/universe/page.tsx`,
+  `apps/web/src/repositories/versions.ts`, migration `0024`, four focused integration tests,
+  one adapter unit test, and this tracker.
+- **Behaviour:** the admin-only, same-origin POST command requires an idempotency key, retrieves
+  FMP's current constituent response through the governed wrapper, persists the provider-call
+  identity, resolves every constituent against active canonical securities, requires 500–600
+  unique members including NVDA, and creates an immutable staged version with impact preview and
+  member lineage. Provider, partial, duplicate, unresolved, or ambiguous outcomes never replace
+  the active universe. Replays by request key or payload hash return the original staged version.
+- **Verification:** `pnpm lint`; `pnpm typecheck`; `pnpm test:unit` (1,175 pass);
+  `pnpm test:contract` (78 pass, 22 database-dependent skipped); focused RNI service/route tests
+  (16 pass); disposable PostgreSQL migration/staging tests (4 pass) and shared versions tests
+  (9 pass); `pnpm check:copy`; `pnpm build` with `/api/rni/universe/sync` and
+  `/admin/settings/universe` in the route manifest.
+- **Risk/handoff:** the authenticated live FMP entitlement/capability probe and ephemeral Neon
+  migration remain G7/G6 gates. The Settings page only identifies the governed preset and staging
+  rule in this slice; activation UI/composition remains separate and must require `joshuai` in
+  production. The active security master must already contain unambiguous records for every FMP
+  constituent before a live candidate can stage.

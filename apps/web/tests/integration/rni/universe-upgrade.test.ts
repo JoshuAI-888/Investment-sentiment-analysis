@@ -5,7 +5,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type pg from 'pg';
 import { UNIVERSE_MAX_SYMBOLS, universeVersion } from '../../../src/contracts/config';
 import { loadMigrations } from '../../../src/repositories/migrate';
+import {
+  insertUniverseProviderCall,
+  stageFmpUniverseVersion,
+} from '../../../src/repositories/versions';
 import { databaseUrl, makePool, resetSchema } from '../helpers/db';
+import { closePool, getPool } from '../../../src/repositories/client';
 
 const url = databaseUrl();
 const WEB_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
@@ -44,9 +49,11 @@ describe.skipIf(url === undefined)('I05 — forward RNI universe migration', () 
 
   beforeAll(() => {
     pool = makePool();
+    if (url !== undefined) getPool(url);
   });
 
   afterAll(async () => {
+    await closePool();
     await pool?.end();
   });
 
@@ -189,5 +196,81 @@ describe.skipIf(url === undefined)('I05 — forward RNI universe migration', () 
         [versions[0]?.id, securities[0]?.id],
       ),
     ).resolves.toBeDefined();
+  });
+
+  it('stages 501 resolved members idempotently without changing the active universe', async () => {
+    await resetSchema(pool);
+    const configVersion = await insertConfig();
+    const { rows: existing } = await pool.query<{ id: string }>(
+      `insert into universe_version
+         (environment, config_version, status, selected_count, created_by, change_reason, activated_at)
+       values ('test', $1, 'active', 1, 'seed', 'historical active universe', now())
+       returning id`,
+      [configVersion],
+    );
+    const activeId = existing[0]?.id;
+
+    const { rows: securities } = await pool.query<{ id: string; symbol: string; name: string }>(
+      `insert into security (symbol, name, exchange, asset_type, currency)
+       select case when n = 1 then 'NVDA' else 'T' || lpad(n::text, 3, '0') end,
+              case when n = 1 then 'NVIDIA Corporation' else 'Company ' || n::text end,
+              'NASDAQ', 'equity', 'USD'
+         from generate_series(1, 501) as n
+       returning id, symbol, name`,
+    );
+    const providerCallId = await insertUniverseProviderCall(
+      {
+        operation: 'sp500_constituent',
+        requestFingerprint: 'fixture-fingerprint',
+        statusCode: 200,
+        latencyMs: 10,
+        cacheStatus: 'miss',
+        itemsReturned: 501,
+        estimatedCostUsd: '0',
+        startedAt: new Date('2026-09-05T00:00:00.000Z'),
+        errorClass: null,
+      },
+      pool,
+    );
+    const input = {
+      environment: 'test',
+      sourceRetrievedAt: '2026-09-05T00:00:00.000Z',
+      sourcePayloadHash: 'b'.repeat(64),
+      providerCallId,
+      members: securities.map((security) => ({
+        securityId: security.id,
+        providerSymbol: security.symbol,
+        providerCompanyName: security.name,
+        constituentFirstAddedAt: '2020-01-01T00:00:00.000Z',
+      })),
+      actorId: 'joshuai',
+      requestId: 'sync-1',
+      correlationId: 'corr-1',
+    };
+
+    const first = await stageFmpUniverseVersion(input);
+    const replay = await stageFmpUniverseVersion({ ...input, requestId: 'sync-2' });
+    const sameRequestDifferentPayload = await stageFmpUniverseVersion({
+      ...input,
+      sourcePayloadHash: 'c'.repeat(64),
+    });
+
+    expect(first).toMatchObject({ memberCount: 501, reused: false });
+    expect(replay).toMatchObject({ memberCount: 501, reused: true });
+    expect(replay.version.id).toBe(first.version.id);
+    expect(sameRequestDifferentPayload).toMatchObject({ reused: true });
+    expect(sameRequestDifferentPayload.version.id).toBe(first.version.id);
+    const { rows: active } = await pool.query<{ id: string }>(
+      `select id from universe_version where environment = 'test' and status = 'active'`,
+    );
+    expect(active[0]?.id).toBe(activeId);
+    const { rows: counts } = await pool.query<{ versions: string; members: string; audits: string }>(
+      `select
+         (select count(*) from universe_version)::text as versions,
+         (select count(*) from universe_member where universe_version = $1)::text as members,
+         (select count(*) from audit_event where object_id = $1::text and action = 'stage')::text as audits`,
+      [first.version.id],
+    );
+    expect(counts[0]).toEqual({ versions: '2', members: '501', audits: '1' });
   });
 });

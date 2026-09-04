@@ -18,8 +18,8 @@ export default async function Page() {
     <RouteShell
       route="/admin/settings/universe"
       title="Universe"
-      owner="F15 (SURFACE)"
-      note="The 100 most-discussed on Reddit, ranked via ApeWisdom (D-30)."
+      owner="RNI INTEGRATION"
+      note="S&P 500 — FMP current. Synchronization stages an immutable impact preview; activation remains a separate joshuai-approved action."
     />
   );
 }
