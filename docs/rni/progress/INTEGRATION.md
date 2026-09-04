@@ -8,7 +8,7 @@
 
 | ID | Task | Status | Acceptance evidence |
 |---|---|---|---|
-| I00 | Refresh `main`, inspect dirty state and repeat pinned clean gate | `LOCAL_PASS_CI_PENDING` | Base `6fb1a28`; full local gate passed |
+| I00 | Refresh `main`, inspect dirty state and repeat pinned clean gate | `LOCAL_PASS_CI_PENDING` | Base `e4570e3` merged at `353021d`; local gates rerun |
 | I01 | Review and merge `fix/require-ai-model-routes-live-mode` | `MERGED` | PR #2, `09ad439` |
 | I02 | Freeze RNI contracts, fixtures, routes and migration allocation | `PASS_ON_MERGE` | Contract source SHA `9908eda` |
 | I03 | Expand CI path filters for RNI prompts/agents/evals | `PASS_ON_MERGE` | `.github/workflows/ci.yml` includes actual `tests/eval/rni` path |
@@ -90,6 +90,7 @@
 |---|---|---|
 | `f8a54c1` | Full RNI specification pack, ownership, fixture, copy/CI convergence | lint; full tests; build; copy and calculation checks |
 | `9908eda` | Frozen typed contract additions and contract cases | typecheck; contract (77 passed, 22 database-dependent skipped locally) |
+| `353021d` | Merge concurrent password-auth PR #4 while preserving both decision logs | lint; typecheck; contract; production build |
 
 ## Coordinator notes
 

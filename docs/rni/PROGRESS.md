@@ -13,7 +13,7 @@
 | Current gate | `G3_DATA / G4_ENGINE / G5_SURFACE` after this branch reaches `main` |
 | Target | approved overnight RNI vertical slice |
 | Base branch | `main` |
-| Base SHA | `6fb1a28a` (current `main` at contract-branch creation) |
+| Base SHA | `e4570e3` merged into the contract branch at `353021d` |
 | Route prerequisite | merged to `main` in PR #2 (`09ad439`) |
 | Contract-freeze SHA | `9908edacdbfd1fbdf628d701153f2ab8ec16c6c3` (effective once merged to `main`) |
 | Production approval | not requested |
@@ -91,3 +91,4 @@ Append one line per material transition; do not erase history.
 
 - 2026-09-05 — specification and owner decisions complete; build not yet started.
 - 2026-09-05 — contract pack, typed schemas, comparative fixture, copy-lint convergence and CI routing frozen at `9908eda`; DATA/ENGINE/SURFACE remain blocked until this branch merges to `main`.
+- 2026-09-05 — merged concurrent password-auth PR #4 (`e4570e3`) into the contract branch, preserved D-37/D-38 and all D-RNI decisions, then reran lint, typecheck, contract and production build successfully.
