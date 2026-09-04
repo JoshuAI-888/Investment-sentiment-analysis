@@ -306,6 +306,17 @@ momentum) early. It is ~2 days against data that already exists and it is the ch
 falsification of this project.
 **Status:** ✓ Locked.
 
+**Superseded 2026-09-04 — the port is abandoned, not fulfilled.** The owner reset the
+repository's git history and `archive/finsent/` — the source this decision ports from — was
+dropped in that reset, confirmed deliberate. There is nothing left to port `{engine,pit}.py` or
+its two test files from. **F12's evaluation harness now has to be built from scratch** when F12
+is picked up (PIT correctness, cross-sectional IC, Newey–West t, decay curve,
+momentum-residualised IC, horizon-normalised P&L — the same capability list, just without a
+donor implementation). Challenge 1 (drift vs. 12-1 momentum) is also no longer runnable as "cheap
+against data that already exists," since the code that ran it is gone; it would need to be
+re-derived independently if still wanted. This decision's *reasoning* stays correct — the
+capability list is still right — only its *mechanism* (port, not build) no longer has a source.
+
 ### D-19 — F13 valuation and F14 scenario governance defer past v1
 30–38 hours locked under D-04 for a different product. Nothing in the 2026-09-03 intent asks for
 DCF or peer valuation. **F05's Inspector still serves J5** — "show me exactly how this number was
