@@ -18,7 +18,7 @@
 | I03 | Expand CI path filters for RNI prompts/agents/evals | `MERGED` | PR #5; actual `tests/eval/rni` path triggered and passed |
 | I04 | Pin/verify pnpm 10.33.0 and build-script policy | `PASSED` | Clean frozen install and PR #5 web/scorer CI passed |
 | I05 | Add forward universe migration and 600-member ceiling | `PASSED` | Independent re-review passed IR-01/03/05/06; focused validation 9 and fresh PostgreSQL activation/version gates 14 pass |
-| I06 | Build FMP sync composition and minimal Settings route wiring | `READY_FOR_REVIEW` | I06R4 retains post-dispatch provider identity and proves insert-then-conflict rollback in PostgreSQL |
+| I06 | Build FMP sync composition and minimal Settings route wiring | `PASSED` | Independent final review READY at `5950b53`; affected PostgreSQL 23/23 and focused 26/26 pass |
 | I06R1 | Close universe activation, lineage and validation review findings | `PASSED` | One-way approval, stored-member/current-parent activation, lineage constraint, exact-500/date tests; PostgreSQL 14/14 |
 | I06R2 | Add durable pre-fetch sync command and clean security bootstrap | `PASSED` | Pre-fetch claim, concurrent/replay one-fetch, terminal audits/lineage and clean 501-security import pass |
 | I06R3 | Make command abandonment and stage completion fail-closed | `PASSED` | D-RNI-16; active conflict, stale terminalization, atomic rollback, invalid replay and bootstrap integrity tests pass |
@@ -121,7 +121,7 @@
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
 | ENGINE | `E03_APPROVED` | yes through I02D (`ce80424`) | builder serialized unit 1,223 + contract 88/22 skipped; coordinator focused E03 17/17 and typecheck pass | yes | E01–E03 accepted through `1597eea`; E04 active; lane remains held |
-| SURFACE | `S03_APPROVED` | yes through I02D (`ce80424`) | builder typecheck/lint/contract/build/Chromium 6/6; coordinator typecheck and contract 13/13 | yes | S01–S03 accepted through `b85d9c7`; S04 active; lane remains held |
+| SURFACE | `S04_APPROVED` | yes through I02D (`ce80424`) | builder typecheck/lint/contract/build/Chromium 9/9; coordinator repeated typecheck/lint/contract 13/13 and Chromium 9/9 | yes | S01–S04 accepted through `6c0df68`; S05 active; lane remains held |
 
 ## Live/deployment gates
 
@@ -174,6 +174,7 @@
 | ER-05 | P1 | `RESOLVED` | X authors are unsalted SHA-256 hashes of mutable usernames rather than tenant-scoped hashes of stable identity | `0e229d6` omits identity by default and permits only an injected tenant policy over stable provider author ID, with tenant/rename/privacy tests |
 | ER-06 | P1 | `RESOLVED` | X content-version candidates do not identify exactly one latest interpretation version and A→B→A leaves B latest | `0e229d6` separates persistence versions from one latest interpretation candidate and records ordered A→B→A transitions |
 | SR-04 | P2 | `RESOLVED` | S02's first commit left its task/evidence/handoff record stale and did not identify the actual browser gate | `c4899b8` amends the task commit with exact type, lint, contract, build and Chromium evidence plus complete files/risks/handoff |
+| SR-05 | P1 | `RESOLVED` | S04 evidence dialogs reused citation-derived DOM IDs and lacked complete keyboard focus handling | `6c0df68` uses per-instance controls and proves focus entry/containment/Escape/restoration in Chromium 9/9 |
 | IR-01 | P1 | `RESOLVED` | Universe activation can publish an unapproved, stale-parent or caller-altered FMP snapshot and can diverge selected count from stored members | FMP approval is one-way; activation requires the recorded admin, current parent, exact stored-member set and count; negative DB tests pass |
 | IR-02 | P1 | `RESOLVED` | FMP synchronization claims idempotency only after the external provider call and payload-hash reuse does not bind a new key | Command is committed before fetch; concurrent/later replay performs one fetch per key; expected and unexpected terminal outcomes retain audit and provider/payload/version lineage |
 | IR-03 | P1 | `RESOLVED` | An exactly 500-row FMP response passes the contract's greater-than-500 completeness gate | Minimum is 501 and the 500-row boundary test fails closed |
@@ -211,8 +212,9 @@
 | `6470823` | Record ENGINE E02 review findings | semantic review against source coverage, privacy and content-version requirements |
 | `86db21e` | Close I06R2 with durable pre-fetch commands and governed security bootstrap | typecheck; focused lint; unit 1,179; contract 83 pass/22 DB-skipped; fresh PostgreSQL affected universe/version gates 17/17 |
 | `CURRENT` | Record ENGINE E03 and SURFACE S03 coordinator acceptance | coordinator focused E03 17/17; typecheck; RNI contract 13/13; ownership/base/diff review |
-| `CURRENT` | Close I06R3 command lifecycle and atomicity findings | focused 42; unit 1,179; contract 83/22 skipped; fresh PostgreSQL affected 22; full integration 429/433 then failed-file 71/72 and isolated timing case pass |
-| `CURRENT` | Close I06R4 provider-lineage and rollback-evidence findings | typecheck; focused lint; fresh PostgreSQL command/bootstrap 9/9 |
+| `58eef41` | Close I06R3 command lifecycle and atomicity findings | focused 42; unit 1,179; contract 83/22 skipped; fresh PostgreSQL affected 22; full integration 429/433 then failed-file 71/72 and isolated timing case pass |
+| `5950b53` | Close I06R4 provider-lineage and rollback-evidence findings | typecheck; focused lint; focused 26/26; fresh PostgreSQL affected 23/23; independent READY |
+| `CURRENT` | Accept SURFACE S04 evidence drawer and keyboard correction | typecheck; focused lint; RNI contract 13/13; Chromium 9/9; ownership/base/diff review |
 
 ## Coordinator notes
 
@@ -298,8 +300,8 @@
   before a later CIK/exchange ambiguity and prove the whole security/import/member/audit write set
   rolls back.
 - **Verification:** typecheck and focused lint pass; fresh PostgreSQL command/bootstrap suite 9/9.
-- **Risk/handoff:** the external entitlement/source-rights/forward-migration gates remain; no
-  frozen contract changed. I06 is ready for final independent re-review.
+- **Risk/handoff:** independent final review returned READY with no actionable findings. The
+  external entitlement/source-rights/forward-migration gates remain; no frozen contract changed.
 
 ## I06R2 handoff
 
@@ -373,5 +375,6 @@
 - **Risk/handoff:** the authenticated live FMP entitlement/capability probe and ephemeral Neon
   migration remain G7/G6 gates. The Settings page only identifies the governed preset and staging
   rule in this slice; activation UI/composition remains separate and must require `joshuai` in
-  production. I06R2 must provide the governed clean-deployment security-master bootstrap before
-  live synchronization can be considered complete.
+  production. I06R2–R4 now provide the governed clean-deployment bootstrap, durable command,
+  atomic stage completion, abandoned-command recovery and retained provider-call lineage; final
+  independent review returned READY at `5950b53`.

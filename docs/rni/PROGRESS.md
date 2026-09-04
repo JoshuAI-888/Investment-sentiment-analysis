@@ -27,7 +27,7 @@
 | G2 RNI contract frozen | `PASSED` | coordinator | PR #5 merged at `dd28ea2`; typed source contract at `9908eda` |
 | G3 DATA accepted | `PASSED` | DATA + reviewer | merged sequentially at `254fe45`; coordinator type/contract plus fresh PostgreSQL DATA 41/41 pass |
 | G4 ENGINE accepted | `IN_PROGRESS` | ENGINE + reviewer | E01–E03 accepted through `1597eea`; E04–E10 remain |
-| G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01–S03 accepted through `b85d9c7`; S04–S10 remain |
+| G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01–S04 accepted through `6c0df68`; S05–S10 remain |
 | G6 integrated preview | `NOT_STARTED` | coordinator | Depends G3–G5 |
 | G7 live Reddit/X/FMP gates | `NOT_STARTED` | coordinator + joshuai | Depends G6 and configured credentials |
 | G8 production approval | `NOT_STARTED` | joshuai | Depends all prior gates |
@@ -38,8 +38,8 @@
 |---|---|---|---|---|
 | DATA | `feat/rni-data-source-first` | `MERGED_TO_INTEGRATION` | `DATA.md` | lane `5926601`; merge `254fe45` |
 | ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01–E03 accepted | `ENGINE.md` | `1597eea` |
-| SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01–S03 accepted | `SURFACE.md` | `b85d9c7` |
-| INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I06R2 universe review corrections (D-RNI-15; current task commit) |
+| SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01–S04 accepted | `SURFACE.md` | `6c0df68` |
+| INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I06 passed at `5950b53`; current coordinator record follows |
 
 ## Confirmed product decisions
 
@@ -72,7 +72,7 @@ The canonical matrix is [`INTEGRATION_PLAN.md`](INTEGRATION_PLAN.md) §10. Coord
 | Scope and branch isolation | `PASSED` | `RNI-00-CONTRACT.md`, path ownership and scoped legacy banners; PR #5 |
 | Source identity/persist-first/idempotency | `PASSED` | DATA merged at `254fe45`; crossed keys fail closed, source port returns committed IDs, concurrent outbox tests pass |
 | Reddit/X separation and combined honesty | `IN_PROGRESS` | ENGINE E01 source binding and SURFACE S02 Radar accepted; D-RNI-13 freezes source-separated cells; remaining pipeline/UI tasks open |
-| S&P 500/FMP universe migration | `READY_FOR_REVIEW` | I05 passed; I06R4 retains post-dispatch provider identity and proves transactional bootstrap rollback |
+| S&P 500/FMP universe migration | `PASSED` | I05/I06 independently accepted; affected PostgreSQL 23/23, focused 26/26; deployment gates remain G6/G7 |
 | Model route and CI | `PASSED` | PR #2 route validation; PR #5 RNI path filter and green eval |
 | Toolchain reproducibility | `PASSED` | pinned pnpm 10.33 clean install plus PR #5 independent CI |
 | Retention and citation safety | `IN_PROGRESS` | DATA claim/source FK and ENGINE source/content binding findings resolved; full publication gate remains later work |
@@ -106,3 +106,5 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — accepted ENGINE E03 at `1597eea` after coordinator base/ownership review and focused 17/17 rerun; accepted SURFACE S03 at `b85d9c7` after D-RNI-14 consumption review, typecheck and RNI contract 13/13. Builders advanced to E04/S04; lane merges remain held.
 - 2026-09-05 — independent re-review passed I05 and held I06 on abandoned running commands plus non-atomic stage/terminal persistence. I06R3 opened for audited no-redispatch stale terminalization, atomic staging, and missing database branch coverage.
 - 2026-09-05 — closed I06 re-review IR-07–10 as D-RNI-16: active duplicates return retry timing without refetch, abandoned claims terminalize without redispatch, staging and command success are atomic, and PostgreSQL covers invalid replay plus bootstrap conflicts/immutability. I06 is ready for final re-review.
+- 2026-09-05 — closed final I06 findings at `5950b53`: provider attempts bind transactionally before adapter return and survive post-dispatch abandonment; insert-then-conflict bootstrap rollback is self-contained. Independent review returned READY, so I05/I06 and the universe implementation risk pass; external migration/entitlement/source-rights checks remain G6/G7.
+- 2026-09-05 — accepted SURFACE S04 at `6c0df68` after returning duplicate dialog IDs and incomplete keyboard focus as SR-05; coordinator typecheck/lint/contract 13/13 and Chromium provenance/accessibility 9/9 pass. SURFACE advanced to S05 and remains unmerged.
