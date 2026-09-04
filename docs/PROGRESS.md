@@ -88,6 +88,13 @@ done. Separately, **MT-15 is now fully confirmed by the owner**: 13 Substack pub
 10 of 11 GICS sectors (Utilities a disclosed gap after two research passes found nothing that
 clears the weekly-cadence bar). See `DEPLOY.md` MT-15 and `MEMORY.md` **B-30**/**D-36**.
 
+**2026-09-04 — MT-06 resolved (D-39).** LLM access is provisioned in Vercel: `AI_GATEWAY_API_KEY`,
+`MODEL_TRANSPORT_DEFAULT=vercel_gateway` and the three D-34 task routes are set, owner-confirmed.
+Not independently verified by this session — Vercel's API doesn't expose secret values, only that
+the project deploys cleanly with no runtime errors in the last 7 days. **F10, F11 and F12 are now
+unblocked** and await lane allocation at the Wave 2 gate; a live-mode misconfiguration will still
+surface via F01 §4.2's existing boot assertion. See `MEMORY.md` D-39.
+
 **Next work, in order:**
 
 1. **`DEPLOY.md` MT-13** — file the Reddit application. **Confirmed unfiled on 2026-09-03.** Free,
@@ -174,9 +181,9 @@ F10's corpora arrived.
 
 | ID | Feature | Wave | Status | Blocker |
 |---|---|---|---|---|
-| F10 | Evidence and stance pipeline | 3 | `blocked` | **MT-06.** Reworked: real corpora, three sampling frames |
-| F11 | Research agent and verifier | 3 | `blocked` | **MT-06.** Now also the **measurement path** for F21 |
-| F12 | Evaluation harness and judge | 3 | `blocked` | **MT-06** and **OQ-7.** Extended with Tier D; ports finsent's harness (D-18) |
+| F10 | Evidence and stance pipeline | 3 | `not started` | **MT-06 resolved 2026-09-04 (D-39).** Reworked: real corpora, three sampling frames. Awaiting lane allocation at the Wave 2 gate |
+| F11 | Research agent and verifier | 3 | `not started` | **MT-06 resolved 2026-09-04 (D-39).** Now also the **measurement path** for F21. Awaiting lane allocation |
+| F12 | Evaluation harness and judge | 3 | `not started` | **MT-06 resolved 2026-09-04 (D-39); OQ-7 closed by D-35.** No named blocker left. Extended with Tier D; evaluation harness built from scratch, not ported (D-18 superseded) |
 | F21 | MCP server and MCP Apps surface | 3 | `not started` | — **New (D-10).** Placed at the Wave 3 exit, not after Wave 5 |
 
 Status values: `not started` · `in progress` · `in review` · `merged` · `blocked` · `deferred`

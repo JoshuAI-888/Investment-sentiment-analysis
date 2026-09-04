@@ -908,6 +908,28 @@ create.before` does — `live`-mode only — so in fixture/e2e mode any address 
 auto-provisions, matching self-service sign-up's own fixture behavior and needing no separate
 test seam.
 
+### D-39 — MT-06 confirmed: LLM access is provisioned in Vercel
+
+**Closes MT-06.** The owner confirmed 2026-09-04 that `AI_GATEWAY_API_KEY`,
+`MODEL_TRANSPORT_DEFAULT=vercel_gateway` and the three D-34 task routes (`AI_MODEL_FAST`,
+`AI_MODEL_SYNTHESIS`, `AI_MODEL_VERIFY`, the last on a different vendor from synthesis) are set
+in Vercel. This was **the largest single remaining blocker** — it gated F10, F11 and F12 in full.
+
+**What this session could and could not verify, and why the distinction is recorded rather than
+smoothed over.** Vercel's project API (checked via the Vercel MCP tools) confirmed the project
+exists, its latest deployment built and deployed cleanly, and no runtime errors have fired in the
+trailing 7 days — but that API does not expose environment-variable *values*, so none of that is
+evidence the keys are correct, only that nothing has crashed on their absence yet. **The real
+check is F01 §4.2's boot assertion** (`env.ts`, commit `09ad439`, "require the three AI model
+routes when `PROVIDER_MODE=live`"), which already exists and will fail loudly the first time a
+live LLM call is attempted against a misconfigured route. Recorded this way, deliberately, so
+that a future boot failure reads as *this task reopening* rather than as a fresh, unexplained
+defect.
+
+**F10, F11, F12 are unblocked** for lane allocation at the Wave 2 gate. **RNI's ENGINE workstream
+was never gated on this** — D-RNI-05 defaults RNI's own routes to OpenAI Direct, not the Gateway,
+so its blockers are unaffected by this decision either way.
+
 ---
 
 ## 2. Rulings made during review

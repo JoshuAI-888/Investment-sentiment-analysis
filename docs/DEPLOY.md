@@ -25,7 +25,7 @@ top**: it is the only remaining item whose lead time is outside the owner's cont
 | 3 | **MT-04 — create the QStash schedule** | Re-scoped to **Wave 1**: MT-08 runs on it. Needs a stable deploy URL first, which is the only reason it is not higher |
 | ✅ | ~~MT-07's symbol list~~ | **Done 2026-09-03.** Ranking pulled, ETFs excluded, committed as `migrations/seed/universe-v1.json` (B-21) |
 | 5 | **MT-08 — start the collector** | Still the highest-value outcome in the plan, but **not executable until F04 and F16a exist** (`PROGRESS.md`). It is a milestone, not a task you can do this afternoon |
-| 6 | **MT-06 — set the LLM keys** | Transport decided (Vercel AI Gateway, D-34); the keys and the different-vendor verify route are still to provision. Unblocks Wave 3 |
+| ✅ | ~~MT-06 — set the LLM keys~~ | **Resolved 2026-09-04 (D-39).** Owner-confirmed provisioned in Vercel; not independently verified (Vercel's API doesn't expose secret values). Unblocks Wave 3 |
 | ✅ | ~~MT-00~~ · ~~MT-07 size~~ · ~~MT-12~~ · ~~MT-14~~ · ~~MT-01~~ | Closed by **D-26** (admin email), **D-27**/**D-30** (universe), **D-32** (budgets, X at zero), **D-31** (daily bars), **D-25** (flatten) |
 
 **Why MT-08 dropped from first to fifth, and it is not a change of priority.** Under D-16 a
@@ -309,10 +309,30 @@ to consider the Basic tier (`01-PRODUCT-SPEC.md` §5).
 
 ---
 
-## MT-06 🔴 — Provision LLM access
+## MT-06 ✅ — RESOLVED 2026-09-04 (D-39)
+
+**Owner-confirmed: LLM access is provisioned in Vercel.** `AI_GATEWAY_API_KEY`,
+`MODEL_TRANSPORT_DEFAULT=vercel_gateway` and the three task routes below are set.
+
+**Not independently verified by this session, and that distinction matters.** Vercel's project
+API does not expose environment-variable *values* — this session confirmed the project exists,
+its latest deployment builds clean, and no runtime errors have fired in the last 7 days, but that
+is consistent with the keys being set and does not prove their contents are correct (right vendor
+split on `AI_MODEL_VERIFY`, a route pointed at a retired model ID, etc.). **F01 §4.2's boot
+assertion** (`env.ts`, commit `09ad439`) already requires all three `AI_MODEL_*` routes whenever
+`PROVIDER_MODE=live`, so a real misconfiguration will surface the first time a live LLM call is
+attempted — treat a failure there as this task reopening, not as a new defect.
+
+**F10, F11 and F12 are unblocked.** (RNI's ENGINE workstream was never gated on this one — D-RNI-05
+defaults RNI's own routes to OpenAI Direct, not the Gateway.)
+
+<details><summary>Original task, retained for the record</summary>
+
+### MT-06 (resolved) — Provision LLM access
 
 **Blocks:** F10, F11, F12 — the entire agentic research feature, i.e. the product's thesis.
-**Status:** **not provisioned.** This is the largest single blocker in the plan.
+**Status (at the time this was written):** **not provisioned.** The largest single blocker in
+the plan.
 
 **Transport decided 2026-09-03 (D-34): Vercel AI Gateway.** Set `AI_GATEWAY_API_KEY` and
 `MODEL_TRANSPORT_DEFAULT=vercel_gateway`. One integration, unified spend visibility, provider
@@ -342,6 +362,8 @@ config, not in code.
 | `AI_MODEL_VERIFY` | verification and the judge | **a different vendor from synthesis** (D-34) — a model checking itself is not a check, and same-vendor models share blind spots |
 
 Set a spend limit at the provider as a backstop independent of the application's own budgets.
+
+</details>
 
 ---
 
@@ -824,7 +846,7 @@ as-is, exactly as listed in the table above.
 | MT-03 | Confirm Neon (**Launch tier**, D-33) / Upstash / Vercel | 🟡 | ☐ |
 | MT-04 | Create the QStash schedule — **re-scoped to Wave 1** (was Wave 4); MT-08 runs on it | 🔴 | ☐ |
 | MT-05 | Confirm provider keys and quotas | 🟡 | ☐ |
-| MT-06 | **Provision LLM access** — transport decided (Vercel AI Gateway, D-34); keys still to set | 🔴 | ☐ |
+| MT-06 | ~~Provision LLM access~~ — transport (Vercel AI Gateway, D-34) and keys both set, owner-confirmed | ✅ | ☑ **D-39** |
 | MT-07 | Initial universe = **100** (D-27); symbol list pulled and committed, ETFs excluded (B-21) | ✅ | ☑ **fully resolved** |
 | **MT-08** | **START THE COLLECTOR — today. Corpus lost is not recoverable (D-16)** | 🔴🔴 | ☐ |
 | **MT-13** | **File the Reddit Data API application — confirmed NOT FILED; now the longest pole** | 🔴🔴 | ☐ |
