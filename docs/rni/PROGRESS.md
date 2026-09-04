@@ -39,7 +39,7 @@
 | DATA | `feat/rni-data-source-first` | `CHANGES_REQUESTED` | `DATA.md` | — |
 | ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01 accepted | `ENGINE.md` | `b3e8220`, awaiting lane completion/order |
 | SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01 accepted | `SURFACE.md` | `71010bd`, awaiting lane completion/order |
-| INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I02C Radar contract, pending commit |
+| INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I02C Radar contract `84dca87` |
 
 ## Confirmed product decisions
 
