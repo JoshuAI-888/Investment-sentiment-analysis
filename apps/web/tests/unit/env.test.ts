@@ -16,6 +16,9 @@ const VALID_LIVE: Record<string, string> = {
   X_BEARER_TOKEN: 'x-bearer',
   MODEL_TRANSPORT_DEFAULT: 'vercel_gateway',
   AI_GATEWAY_API_KEY: 'gateway',
+  AI_MODEL_FAST: 'openai/gpt-5-mini',
+  AI_MODEL_SYNTHESIS: 'anthropic/claude-opus-5',
+  AI_MODEL_VERIFY: 'openai/gpt-5.2',
   QSTASH_TOKEN: 'qstash',
   QSTASH_CURRENT_SIGNING_KEY: 'current',
   QSTASH_NEXT_SIGNING_KEY: 'next',
@@ -47,6 +50,9 @@ const REQUIRED_IN_LIVE_MODE = [
   'RESEND_API_KEY',
   'RESEND_FROM',
   'BETTER_AUTH_SECRET',
+  'AI_MODEL_FAST',
+  'AI_MODEL_SYNTHESIS',
+  'AI_MODEL_VERIFY',
 ] as const;
 
 describe('env schema', () => {
