@@ -154,7 +154,7 @@
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
-| ENGINE | `E05_APPROVED` | yes through integration `6309b62`; next task rebases to `fec8c46` | builder serialized unit 1,254 + contract 93/22 skipped + integration 44/390 skipped + eval 2/2; coordinator typecheck/lint and focused 15/15 | yes | E01–E05 accepted through `5d9b8f3`; E06 active; lane remains held |
+| ENGINE | `E06_CHANGES_REQUESTED` | E06 based on `fec8c46`; must rebase to `03f8afc` before E07 | builder E06 focused 17/17 plus repository gates; coordinator typecheck/lint and focused 17/17 | yes | ER-07 open: zero-weight observations can satisfy the independent-source/confidence breadth gates; E01–E05 remain accepted |
 | SURFACE | `S08_UNBLOCKED` | must rebase to current I02F contract | builder S07 typecheck/lint/contract/build/guard and Chromium 4/4 twice; coordinator I02F type/lint, RNI 15/15 and full contract 85/22 skipped | yes | S01–S07 accepted through `babd940`; CR-SURFACE-05 accepted as D-RNI-18; S08 may start after rebase |
 
 ## Live/deployment gates
@@ -207,6 +207,7 @@
 | ER-04 | P1 | `RESOLVED` | Existing X adapter reports usable partial responses out-of-band, but the RNI port erases that signal and may label the slice complete | `0e229d6` intercepts and forwards per-call violations, propagates completeness and maps usable partial data to a partial slice |
 | ER-05 | P1 | `RESOLVED` | X authors are unsalted SHA-256 hashes of mutable usernames rather than tenant-scoped hashes of stable identity | `0e229d6` omits identity by default and permits only an injected tenant policy over stable provider author ID, with tenant/rename/privacy tests |
 | ER-06 | P1 | `RESOLVED` | X content-version candidates do not identify exactly one latest interpretation version and A→B→A leaves B latest | `0e229d6` separates persistence versions from one latest interpretation candidate and records ordered A→B→A transitions |
+| ER-07 | P1 | `OPEN` | A zero-weight second source/group/community can satisfy the independent-source floor and remove single-source confidence caps while only one source contributes effective evidence | ENGINE must derive effective independence/breadth from positive-weight traces and add the mixed positive/zero regression before E06 acceptance |
 | SR-04 | P2 | `RESOLVED` | S02's first commit left its task/evidence/handoff record stale and did not identify the actual browser gate | `c4899b8` amends the task commit with exact type, lint, contract, build and Chromium evidence plus complete files/risks/handoff |
 | SR-05 | P1 | `RESOLVED` | S04 evidence dialogs reused citation-derived DOM IDs and lacked complete keyboard focus handling | `6c0df68` uses per-instance controls and proves focus entry/containment/Escape/restoration in Chromium 9/9 |
 | SR-06 | P1 | `RESOLVED` | S07 revealed scope only after submission and permanently reused one key per scope | `55b01ef` previews ticker/full scope before action and uses a new key for each intentional request |
@@ -259,6 +260,7 @@
 | `CURRENT` | Accept ENGINE E05 target-isolated semantic classifier | typecheck; focused lint; unit/contract/eval 15/15; ownership/base/diff review |
 | `CURRENT` | Accept SURFACE S07 idempotent manual-refresh controls | typecheck; focused lint; RNI contract 14/14; guard 1/1; deterministic Chromium 4/4 twice |
 | `CURRENT` | Resolve CR-SURFACE-05 with read-only universe selection boundary | typecheck; focused lint; RNI contract 15/15; full contract 85/22 skipped |
+| `CURRENT` | Review ENGINE E06 platform analytics | typecheck; focused lint; focused unit/contract/eval 17/17; ER-07 returned |
 
 ## Coordinator notes
 
@@ -316,6 +318,8 @@
   conflict rollback and append-only import mappings. I06 is ready for independent re-review.
 - CR-SURFACE-05 is accepted as D-RNI-18. SURFACE must rebase the I02F contract before S08 and may
   consume only the reference active/search/staged values; live repository composition remains I08.
+- ENGINE E06 `3d6688e` is held on ER-07: raw zero-weight observations may remain visible in raw
+  attention, but cannot manufacture effective source/community breadth for sentiment or confidence.
 
 ## I02F handoff
 
