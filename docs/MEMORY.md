@@ -924,6 +924,20 @@ An exact same-key replay returns the original run and preview without a second e
 the key for a different scope fails closed. S07 may implement fixture-backed controls against this
 interface; I09 owns its durable job/queue and HTTP composition.
 
+### D-RNI-18 — Universe selection reads active membership and immutable staged impact
+
+**Resolves CR-SURFACE-05, 2026-09-05.** A separate read-only `RniUniverseReadService` exposes the
+current FMP universe metadata and canonical NVDA default, a case-insensitive ticker/company search
+bounded to 50 members of that exact active version, and a requested immutable staged preview.
+Search never reads the broader security catalogue or calls FMP. An empty query is only a bounded
+initial list, not an unbounded export.
+
+The staged response carries distinct active and staged version identities, retrieval times and
+payload hashes, requires the staged version to name the displayed active parent, and returns the
+complete unique, disjoint canonical additions and removals. Those changes must reconcile exactly
+from active to staged member count. The service has no mutation, approval or activation method;
+I08 composes repository reads and existing D-RNI-06 human-governed activation remains unchanged.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

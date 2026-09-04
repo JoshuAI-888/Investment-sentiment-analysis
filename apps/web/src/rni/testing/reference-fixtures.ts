@@ -10,6 +10,9 @@ import type {
   RniSecurityObservation,
   RniSourceCommitResult,
   RniSourceItem,
+  RniActiveUniverse,
+  RniStagedUniversePreview,
+  RniUniverseSearchResult,
 } from '../contracts';
 
 const hashA = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
@@ -32,6 +35,8 @@ export const rniFixtureIds = {
   redditCitation: '00000000-0000-4000-8000-000000000014',
   searchQuery: '00000000-0000-4000-8000-000000000015',
   xCitation: '00000000-0000-4000-8000-000000000016',
+  msft: '00000000-0000-4000-8000-000000000017',
+  pltr: '00000000-0000-4000-8000-000000000018',
 } as const;
 
 export const comparativeSource: RniSourceItem = {
@@ -319,6 +324,59 @@ export const referenceRadarPage: RniRadarPage = {
     },
   ],
   nextCursor: null,
+};
+
+const referenceActiveUniverseVersion = {
+  id: '100',
+  status: 'active' as const,
+  parentVersion: '99',
+  securityCount: 503,
+  source: 'fmp_sp500_constituent' as const,
+  retrievedAt: '2026-09-04T23:30:00.000Z',
+  payloadSha256: hashA,
+  createdAt: '2026-09-04T23:31:00.000Z',
+};
+
+export const referenceActiveUniverse: RniActiveUniverse = {
+  version: referenceActiveUniverseVersion,
+  defaultSecurity: referenceRadarPage.rows[0]!.security,
+};
+
+export const referenceUniverseSearchResult: RniUniverseSearchResult = {
+  version: referenceActiveUniverseVersion,
+  query: 'micro',
+  members: [
+    {
+      id: rniFixtureIds.msft,
+      ticker: 'MSFT',
+      companyName: 'Microsoft Corporation',
+      exchange: 'NASDAQ',
+    },
+  ],
+  hasMore: false,
+};
+
+export const referenceStagedUniversePreview: RniStagedUniversePreview = {
+  activeVersion: referenceActiveUniverseVersion,
+  stagedVersion: {
+    id: '101',
+    status: 'staged',
+    parentVersion: referenceActiveUniverseVersion.id,
+    securityCount: 504,
+    source: 'fmp_sp500_constituent',
+    retrievedAt: '2026-09-05T00:30:00.000Z',
+    payloadSha256: hashB,
+    createdAt: '2026-09-05T00:31:00.000Z',
+  },
+  added: [
+    {
+      id: rniFixtureIds.pltr,
+      ticker: 'PLTR',
+      companyName: 'Palantir Technologies Inc.',
+      exchange: 'NASDAQ',
+    },
+  ],
+  removed: [],
 };
 
 export const referenceSecurityDetail: RniSecurityDetail = {

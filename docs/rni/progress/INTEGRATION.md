@@ -16,6 +16,7 @@
 | I02C | Resolve CR-SURFACE-02 Radar read shape | `PASSED` | `84dca87`; D-RNI-13; additive cursor page with security identity and non-poolable Reddit/X/combined cells; contract 81 pass |
 | I02D | Resolve CR-SURFACE-03 security-detail dimension read | `PASSED` | D-RNI-14; additive complete/cited per-platform dimension shape; focused 13 pass, full contract 83 pass/22 DB-skipped |
 | I02E | Resolve CR-SURFACE-04 idempotent manual-refresh command boundary | `PASSED` | D-RNI-17; additive intent-only request and server-resolved accepted/duplicate result; contract 14/14 |
+| I02F | Resolve CR-SURFACE-05 active-universe and staged-preview reads | `PASSED` | D-RNI-18; separate read-only service, bounded search and count-reconciled immutable impact; RNI 15/15, full contract 85/22 skipped |
 | I03 | Expand CI path filters for RNI prompts/agents/evals | `MERGED` | PR #5; actual `tests/eval/rni` path triggered and passed |
 | I04 | Pin/verify pnpm 10.33.0 and build-script policy | `PASSED` | Clean frozen install and PR #5 web/scorer CI passed |
 | I05 | Add forward universe migration and 600-member ceiling | `PASSED` | Independent re-review passed IR-01/03/05/06; focused validation 9 and fresh PostgreSQL activation/version gates 14 pass |
@@ -41,7 +42,7 @@
 - [x] Citation/publication contract.
 - [x] Metric names, units and insufficient states.
 - [x] FMP universe sync and 600 safety ceiling.
-- [x] `RniReadService` plus command request.
+- [x] `RniReadService`, universe reads and command request.
 - [x] Comparative, partial and FMP fixtures/contracts.
 - [x] Stable errors, API routes and migration allocations.
 - [x] CI RNI path filters.
@@ -58,6 +59,7 @@
 | CR-SURFACE-02 | SURFACE | `ACCEPTED` | Add a cursor-paginated Radar page with run lineage, security identity, two non-poolable platform-labelled cells, and explicit pending/aligned/divergent/partial/insufficient cross-source state | DATA, ENGINE, SURFACE, INTEGRATION | `84dca87` / D-RNI-13 |
 | CR-SURFACE-03 | SURFACE | `ACCEPTED` | Add a bounded security-detail read with canonical identity and exactly four cited dimension assignments for each independently labelled platform | DATA, ENGINE, SURFACE, INTEGRATION | `ce80424` / D-RNI-14 |
 | CR-SURFACE-04 | SURFACE | `ACCEPTED` | Add an idempotent manual-refresh command boundary for ticker/full scope; server owns auth/audit/active config/universe/model/window resolution and returns one durable run identity plus resolved preview | ENGINE, SURFACE, INTEGRATION | D-RNI-17 / current I02E commit |
+| CR-SURFACE-05 | SURFACE | `ACCEPTED` | Add a separate read-only universe service for active metadata/default, bounded any-member search, and immutable staged impact preview; no provider or activation access | DATA, SURFACE, INTEGRATION | D-RNI-18 / current I02F commit |
 
 ### CR-DATA-001 decision
 
@@ -131,13 +133,29 @@
 - **Acceptance:** typecheck/focused lint pass; RNI contract 14/14 and full contract 84 pass with 22
   database-only skips.
 
+### CR-SURFACE-05 decision
+
+- **Current behaviour:** frozen universe candidate values supported synchronization, but surfaces
+  could not read current membership, select NVDA by contract, search beyond Radar results or show
+  an immutable staged impact without reaching into integration-owned repositories.
+- **Decision:** accept a separate additive `RniUniverseReadService`. It exposes the active FMP
+  version and NVDA default, case-insensitive ticker/company search over only that version with a
+  50-member ceiling, and a staged preview whose full canonical add/remove sets reconcile counts.
+- **Compatibility:** existing `RniReadService`, commands and candidate transport are unchanged.
+  The new service cannot call a provider, synchronize, approve or activate a version.
+- **Affected lanes:** SURFACE consumes the reference values for S08; INTEGRATION composes live
+  repository reads at I08; DATA storage ownership is unchanged.
+- **Acceptance:** the fixture contract returns NVDA, finds non-Radar MSFT from uppercase company
+  search and rejects staged identity/parent/count inconsistencies; typecheck/lint, RNI 15/15 and
+  full contract 85 pass with 22 database-only skips.
+
 ## Lane intake
 
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
 | ENGINE | `E05_APPROVED` | yes through integration `6309b62`; next task rebases to `fec8c46` | builder serialized unit 1,254 + contract 93/22 skipped + integration 44/390 skipped + eval 2/2; coordinator typecheck/lint and focused 15/15 | yes | E01–E05 accepted through `5d9b8f3`; E06 active; lane remains held |
-| SURFACE | `S07_APPROVED` | yes at integration `fec8c46` | builder typecheck/lint/contract/build/guard and Chromium 4/4 twice; coordinator repeated typecheck/lint/contract 14/14, guard 1/1 and Chromium 4/4 twice | yes | S01–S07 accepted through `babd940`; S08 active; lane remains held |
+| SURFACE | `S08_UNBLOCKED` | must rebase to current I02F contract | builder S07 typecheck/lint/contract/build/guard and Chromium 4/4 twice; coordinator I02F type/lint, RNI 15/15 and full contract 85/22 skipped | yes | S01–S07 accepted through `babd940`; CR-SURFACE-05 accepted as D-RNI-18; S08 may start after rebase |
 
 ## Live/deployment gates
 
@@ -240,6 +258,7 @@
 | `CURRENT` | Resolve CR-SURFACE-04 with idempotent manual-refresh command | typecheck; focused lint; RNI contract 14/14; full contract 84/22 skipped |
 | `CURRENT` | Accept ENGINE E05 target-isolated semantic classifier | typecheck; focused lint; unit/contract/eval 15/15; ownership/base/diff review |
 | `CURRENT` | Accept SURFACE S07 idempotent manual-refresh controls | typecheck; focused lint; RNI contract 14/14; guard 1/1; deterministic Chromium 4/4 twice |
+| `CURRENT` | Resolve CR-SURFACE-05 with read-only universe selection boundary | typecheck; focused lint; RNI contract 15/15; full contract 85/22 skipped |
 
 ## Coordinator notes
 
@@ -295,6 +314,20 @@
   retry timing, abandoned claims terminalize without redispatch, and staging plus command success
   are atomic. PostgreSQL also proves invalid replay lineage, compatible bootstrap reuse,
   conflict rollback and append-only import mappings. I06 is ready for independent re-review.
+- CR-SURFACE-05 is accepted as D-RNI-18. SURFACE must rebase the I02F contract before S08 and may
+  consume only the reference active/search/staged values; live repository composition remains I08.
+
+## I02F handoff
+
+- **Files changed:** frozen RNI contracts and reference fixtures; RNI contract test; product
+  contract; D-RNI-18; coordinator trackers.
+- **Behaviour:** the additive universe service returns active FMP metadata with NVDA as default,
+  bounded case-insensitive active-member search and a distinct immutable staged child whose
+  complete add/remove sets reconcile its count. It exposes no provider or mutation operation.
+- **Verification:** typecheck and focused lint pass; RNI contract 15/15; full contract 85 pass with
+  22 database-only skips.
+- **Risk/handoff:** I08 must project these reads from the active/staged repository state and retain
+  version binding across each response. SURFACE owns fixture/UI/browser coverage after rebasing.
 
 ## I06R3 handoff
 

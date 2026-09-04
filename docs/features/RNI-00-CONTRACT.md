@@ -219,6 +219,16 @@ resolved scope preview; reusing a key for different scope fails instead of start
 work. A ticker preview resolves canonical security/company/exchange identity, while a full preview
 binds the active universe version and a positive count no greater than the frozen 600 ceiling.
 
+`RniUniverseReadService` is the separate read-only boundary for universe Settings and security
+selection. `getActiveUniverse()` returns the current FMP version metadata and canonical NVDA
+default. `searchActiveUniverse(query)` performs a case-insensitive ticker/company search only
+within that active version, returns at most 50 canonical identities, and reports whether more
+matches exist; an empty query is the bounded initial member list. `getStagedUniversePreview(id)`
+returns a distinct immutable staged child together with its active parent and the complete,
+disjoint canonical additions/removals. The impact must reconcile exactly to the staged member
+count. Version IDs, retrieval time and payload hash bind both snapshots. This interface exposes
+no FMP call, sync, approval or activation operation.
+
 ## 11. Publication and test gates
 
 A claim publishes only when every claim citation resolves to a persisted source item, belongs to

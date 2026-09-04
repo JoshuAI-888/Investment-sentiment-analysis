@@ -422,6 +422,129 @@ export const rniRadarSecurity = z
   .strict();
 export type RniRadarSecurity = z.infer<typeof rniRadarSecurity>;
 
+const rniUniverseVersionReadFields = {
+  id: z.string().min(1),
+  securityCount: z.number().int().positive().max(RNI_UNIVERSE_MAX_SYMBOLS),
+  source: z.literal('fmp_sp500_constituent'),
+  retrievedAt: rniIsoTimestamp,
+  payloadSha256: rniSha256,
+  createdAt: rniIsoTimestamp,
+};
+
+export const rniActiveUniverseVersion = z
+  .object({
+    ...rniUniverseVersionReadFields,
+    status: z.literal('active'),
+    parentVersion: z.string().min(1).nullable(),
+  })
+  .strict();
+export type RniActiveUniverseVersion = z.infer<typeof rniActiveUniverseVersion>;
+
+export const rniStagedUniverseVersion = z
+  .object({
+    ...rniUniverseVersionReadFields,
+    status: z.literal('staged'),
+    parentVersion: z.string().min(1),
+  })
+  .strict();
+export type RniStagedUniverseVersion = z.infer<typeof rniStagedUniverseVersion>;
+
+export const rniActiveUniverse = z
+  .object({
+    version: rniActiveUniverseVersion,
+    defaultSecurity: rniRadarSecurity,
+  })
+  .strict()
+  .refine((universe) => universe.defaultSecurity.ticker === 'NVDA', {
+    message: 'The active RNI universe default security must be NVDA',
+    path: ['defaultSecurity', 'ticker'],
+  });
+export type RniActiveUniverse = z.infer<typeof rniActiveUniverse>;
+
+export const rniUniverseSearchQuery = z
+  .object({
+    query: z.string().trim().max(100).default(''),
+    limit: z.number().int().min(1).max(50).default(20),
+  })
+  .strict();
+export type RniUniverseSearchQuery = z.input<typeof rniUniverseSearchQuery>;
+
+export const rniUniverseSearchResult = z
+  .object({
+    version: rniActiveUniverseVersion,
+    query: z.string().trim().max(100),
+    members: z.array(rniRadarSecurity).max(50),
+    hasMore: z.boolean(),
+  })
+  .strict()
+  .superRefine((result, context) => {
+    const memberIds = result.members.map(({ id }) => id);
+    if (new Set(memberIds).size !== memberIds.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['members'],
+        message: 'An active-universe search cannot repeat a security',
+      });
+    }
+    if (result.members.length > result.version.securityCount) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['members'],
+        message: 'Search results cannot exceed active-universe membership',
+      });
+    }
+  });
+export type RniUniverseSearchResult = z.infer<typeof rniUniverseSearchResult>;
+
+export const rniStagedUniversePreview = z
+  .object({
+    activeVersion: rniActiveUniverseVersion,
+    stagedVersion: rniStagedUniverseVersion,
+    added: z.array(rniRadarSecurity).max(RNI_UNIVERSE_MAX_SYMBOLS),
+    removed: z.array(rniRadarSecurity).max(RNI_UNIVERSE_MAX_SYMBOLS),
+  })
+  .strict()
+  .superRefine((preview, context) => {
+    if (preview.activeVersion.id === preview.stagedVersion.id) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['stagedVersion', 'id'],
+        message: 'A staged universe must be distinct from the active universe',
+      });
+    }
+    if (preview.stagedVersion.parentVersion !== preview.activeVersion.id) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['stagedVersion', 'parentVersion'],
+        message: 'A staged preview must be based on the displayed active universe',
+      });
+    }
+    const addedIds = preview.added.map(({ id }) => id);
+    const removedIds = preview.removed.map(({ id }) => id);
+    if (
+      new Set(addedIds).size !== addedIds.length ||
+      new Set(removedIds).size !== removedIds.length ||
+      addedIds.some((id) => removedIds.includes(id))
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['added'],
+        message: 'Staged additions and removals must be unique and disjoint',
+      });
+    }
+    if (
+      preview.activeVersion.securityCount + preview.added.length - preview.removed.length !==
+      preview.stagedVersion.securityCount
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['stagedVersion', 'securityCount'],
+        message: 'The staged count must equal active membership plus the complete impact',
+      });
+    }
+  });
+export type RniStagedUniversePreview = z.infer<typeof rniStagedUniversePreview>;
+
 export const rniRadarPlatformCell = z
   .object({
     platform: rniPlatform,
@@ -650,6 +773,13 @@ export interface RniReadService {
   getSecuritySummary(runId: string, securityId: string): Promise<RniCombinedSummary>;
   getCitation(citationId: string): Promise<RniCitation>;
   getEvidence(sourceItemId: string): Promise<RniSourceItem>;
+}
+
+/** Read-only current membership and immutable staged impact; provider and activation stay private. */
+export interface RniUniverseReadService {
+  getActiveUniverse(): Promise<RniActiveUniverse>;
+  searchActiveUniverse(query: RniUniverseSearchQuery): Promise<RniUniverseSearchResult>;
+  getStagedUniversePreview(versionId: string): Promise<RniStagedUniversePreview>;
 }
 
 /**

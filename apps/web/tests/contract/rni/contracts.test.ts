@@ -14,9 +14,14 @@ import {
   rniSecurityObservation,
   rniSourceCommitResult,
   rniSourceItem,
+  rniActiveUniverse,
+  rniStagedUniversePreview,
+  rniUniverseSearchQuery,
+  rniUniverseSearchResult,
   rniUniverseSnapshotCandidate,
   type RniSourcePersistencePort,
   type RniReadService,
+  type RniUniverseReadService,
 } from '@/rni/contracts';
 import {
   comparativeCitation,
@@ -27,6 +32,9 @@ import {
   independentPlatformSlices,
   partialCombinedSummary,
   referenceRadarPage,
+  referenceActiveUniverse,
+  referenceStagedUniversePreview,
+  referenceUniverseSearchResult,
   referenceSecurityDetail,
   comparativeSourceCommit,
   comparativeSourceDuplicateCommit,
@@ -322,6 +330,77 @@ describe('RNI frozen contracts', () => {
         },
       }),
     ).toThrow();
+  });
+
+  it('freezes bounded active-universe search and immutable staged impact reads', async () => {
+    const fake: RniUniverseReadService = {
+      getActiveUniverse: async () => rniActiveUniverse.parse(referenceActiveUniverse),
+      searchActiveUniverse: async (input) => {
+        const query = rniUniverseSearchQuery.parse(input);
+        const members = referenceUniverseSearchResult.members.filter(({ ticker, companyName }) =>
+          `${ticker} ${companyName}`
+            .toLocaleLowerCase('en-US')
+            .includes(query.query.toLocaleLowerCase('en-US')),
+        );
+        return rniUniverseSearchResult.parse({
+          ...referenceUniverseSearchResult,
+          query: query.query,
+          members: members.slice(0, query.limit),
+        });
+      },
+      getStagedUniversePreview: async (versionId) => {
+        if (versionId !== referenceStagedUniversePreview.stagedVersion.id) {
+          throw new Error('staged universe not found');
+        }
+        return rniStagedUniversePreview.parse(referenceStagedUniversePreview);
+      },
+    };
+
+    const active = await fake.getActiveUniverse();
+    const nonRadarMatch = await fake.searchActiveUniverse({ query: 'MICRO' });
+    const preview = await fake.getStagedUniversePreview('101');
+
+    expect(active.defaultSecurity.ticker).toBe('NVDA');
+    expect(nonRadarMatch.members.map(({ ticker }) => ticker)).toEqual(['MSFT']);
+    expect(nonRadarMatch.version.id).toBe(active.version.id);
+    expect(preview.stagedVersion.id).not.toBe(preview.activeVersion.id);
+    expect(preview.stagedVersion.parentVersion).toBe(preview.activeVersion.id);
+    expect(preview.stagedVersion.securityCount).toBe(
+      preview.activeVersion.securityCount + preview.added.length - preview.removed.length,
+    );
+    expect(() =>
+      rniActiveUniverse.parse({
+        ...referenceActiveUniverse,
+        defaultSecurity: referenceRadarPage.rows[1]!.security,
+      }),
+    ).toThrow(/default security must be NVDA/u);
+    expect(() =>
+      rniStagedUniversePreview.parse({
+        ...referenceStagedUniversePreview,
+        stagedVersion: {
+          ...referenceStagedUniversePreview.stagedVersion,
+          id: referenceStagedUniversePreview.activeVersion.id,
+        },
+      }),
+    ).toThrow(/distinct from the active universe/u);
+    expect(() =>
+      rniStagedUniversePreview.parse({
+        ...referenceStagedUniversePreview,
+        stagedVersion: {
+          ...referenceStagedUniversePreview.stagedVersion,
+          parentVersion: '99',
+        },
+      }),
+    ).toThrow(/displayed active universe/u);
+    expect(() =>
+      rniStagedUniversePreview.parse({
+        ...referenceStagedUniversePreview,
+        stagedVersion: {
+          ...referenceStagedUniversePreview.stagedVersion,
+          securityCount: referenceStagedUniversePreview.activeVersion.securityCount,
+        },
+      }),
+    ).toThrow(/complete impact/u);
   });
 
   it('rejects an over-600-member FMP universe candidate', () => {
