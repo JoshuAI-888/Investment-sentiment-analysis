@@ -1,10 +1,10 @@
 'use client';
 
 import { useActionState } from 'react';
-import { signInAction } from './actions';
+import { signUpAction } from './actions';
 
-export function SignInForm() {
-  const [state, formAction, pending] = useActionState(signInAction, { ok: true });
+export function SignUpForm() {
+  const [state, formAction, pending] = useActionState(signUpAction, { ok: true, message: '' });
 
   return (
     <form action={formAction} className="mt-6 space-y-4">
@@ -29,7 +29,22 @@ export function SignInForm() {
           id="password"
           name="password"
           type="password"
-          autoComplete="current-password"
+          autoComplete="new-password"
+          minLength={12}
+          required
+          className="mt-1 w-full rounded border border-neutral-300 px-3 py-2 text-sm"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-neutral-700" htmlFor="confirmPassword">
+          Confirm password
+        </label>
+        <input
+          id="confirmPassword"
+          name="confirmPassword"
+          type="password"
+          autoComplete="new-password"
+          minLength={12}
           required
           className="mt-1 w-full rounded border border-neutral-300 px-3 py-2 text-sm"
         />
@@ -39,9 +54,11 @@ export function SignInForm() {
         disabled={pending}
         className="rounded bg-neutral-900 px-4 py-2 text-sm text-white disabled:opacity-50"
       >
-        {pending ? 'Signing in…' : 'Sign in'}
+        {pending ? 'Creating…' : 'Create account'}
       </button>
-      {!state.ok ? <p className="text-sm text-red-700">{state.message}</p> : null}
+      {state.message !== '' ? (
+        <p className={`text-sm ${state.ok ? 'text-green-700' : 'text-red-700'}`}>{state.message}</p>
+      ) : null}
     </form>
   );
 }

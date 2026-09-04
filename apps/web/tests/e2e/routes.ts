@@ -28,8 +28,9 @@ export type PageRoute = { readonly path: string; readonly source: string };
  * path.startsWith('/admin'))`) filters it straight back out — `/dashboard` is a `requireUser()`
  * "member+" surface (F07 §4.6), not an admin-only one, so it never matched that filter and the
  * entry added zero real coverage. `/dashboard` gets its own, dedicated, unconditional case
- * instead: `auth.spec.ts`'s "F02 — sign-in" describe block's "full sign-in reaches the
- * dashboard" test, which now also asserts the real page content rendered (`data-route`), the
+ * instead: `auth.spec.ts`'s "F02 — sign-up and sign-in" describe
+ * block's "sign-up, verify, and sign in with a password all reach the dashboard" test, which
+ * also asserts the real page content rendered (`data-route`), the
  * same way the admin-positive suite asserts real content for `/admin/*`. Unlike
  * `tests/e2e/dashboard.spec.ts`'s five-states suite, that test needs no `DATABASE_URL` — a
  * cold-start dashboard reads Redis only, never Postgres (`assemble.ts`) — so it is not part of
@@ -55,6 +56,9 @@ export type PageRoute = { readonly path: string; readonly source: string };
  */
 export const PAGE_ROUTES: readonly PageRoute[] = [
   { path: '/sign-in', source: '(auth)/sign-in' },
+  { path: '/sign-up', source: '(auth)/sign-up' },
+  { path: '/forgot-password', source: '(auth)/forgot-password' },
+  { path: '/reset-password', source: '(auth)/reset-password' },
   { path: '/privacy', source: '(legal)/privacy' },
   { path: '/terms', source: '(legal)/terms' },
   { path: '/settings/calculations', source: '(app)/settings/calculations' },
@@ -104,8 +108,8 @@ export type ApiRoute = { readonly path: string; readonly method: 'GET' | 'POST';
  * lives in `tests/e2e/dashboard.spec.ts`, which does not currently run in CI (see that file's
  * top-of-file comment — F07 review finding 3). `GET /api/dashboard` (new in F07, not a former
  * fixture route) has its own, unconditional coverage instead — the "GET /api/dashboard requires
- * a session, then answers a signed-in one" case in `auth.spec.ts`'s "F02 — sign-in" describe
- * block, added for the same reason `/dashboard` itself is not in `GATED_PAGE_ROUTES` above: it
+ * a session, then answers a signed-in one" case in `auth.spec.ts`'s "F02 — sign-up and sign-in"
+ * describe block, added for the same reason `/dashboard` itself is not in `GATED_PAGE_ROUTES` above: it
  * needs no `DATABASE_URL` and is not gated behind the CI gap this comment names.
  *
  * **F09 removes two more: `GET /api/search` and `GET /api/ticker/NVDA/snapshot`.** Both now

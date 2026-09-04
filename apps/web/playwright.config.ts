@@ -35,11 +35,22 @@ export default defineConfig({
           // a real admin session reaches admin content (lane-review: nothing previously did) —
           // every other e2e test uses a random or `Date.now()`-suffixed address, so this fixed
           // one is never accidentally matched by a "non-admin" test.
+          //
+          // `BETTER_AUTH_URL: baseURL` matters as of the email+password flow: Better Auth builds
+          // absolute verification/reset-password links from this value
+          // (`src/services/auth/instance.ts`'s `baseURL`), and a session cookie is host-scoped —
+          // set on whatever host a link's origin names, not the path alone. Left unset, `env.ts`
+          // falls back to `APP_BASE_URL`'s default (`http://localhost:3000`), a *different* host
+          // from Playwright's own `127.0.0.1` `baseURL` above even on the identical port, so a
+          // cookie set by `page.goto()`-ing a mailed link would silently not apply to any
+          // relative-path navigation this suite makes afterwards. The old OTP flow never hit
+          // this: nothing in it ever built an absolute, `baseURL`-derived URL a browser had to
+          // navigate to.
           command: `pnpm exec next start --port ${PORT}`,
           url: baseURL,
           reuseExistingServer: !process.env.CI,
           timeout: 120_000,
-          env: { PROVIDER_MODE: 'fixture', ADMIN_EMAIL_ALLOWLIST: 'e2e-admin@example.com' },
+          env: { PROVIDER_MODE: 'fixture', ADMIN_EMAIL_ALLOWLIST: 'e2e-admin@example.com', BETTER_AUTH_URL: baseURL },
         },
       }),
 });

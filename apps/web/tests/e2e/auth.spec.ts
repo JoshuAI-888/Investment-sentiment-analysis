@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import type { APIRequestContext } from '@playwright/test';
+import type { APIRequestContext, Page } from '@playwright/test';
 import { GATED_PAGE_ROUTES } from './routes';
 
 const ADMIN_PAGES = GATED_PAGE_ROUTES.filter((route) => route.path.startsWith('/admin'));
@@ -11,87 +11,85 @@ const ADMIN_API_ROUTES = [
   { path: '/api/admin/universe', method: 'GET' as const },
 ];
 
+/** ≥ 12 chars — `emailAndPassword.minPasswordLength` (`src/services/auth/instance.ts`). */
+const PASSWORD = 'correct horse battery staple';
+
 /**
- * `expect(page.getByLabel('Enter the six-digit code')).toBeVisible()` proves the *UI* has
- * moved past the request step, but Next.js's server-action response can settle a beat before
- * `rememberFixtureOtp` (`src/services/auth/fixture-otp-store.ts`) has actually run in the
- * server process this `request` context talks to over its own connection — an ordering gap of
- * single-digit milliseconds, never observable outside a test that reads the value back over a
- * second connection the instant the first one settles. It is not observable in `live` mode at
- * all: there, the value travels by email, which takes low-single-digit seconds to arrive, so no
- * real client could ever race it. `expect.poll` absorbs exactly that gap without weakening what
- * is asserted — a code must still exist, and the assertion still fails hard if it never appears.
+ * Reads back the verification/reset link `readFixtureLink` recorded instead of mailing it
+ * (`src/services/auth/fixture-link-store.ts`). `expect.poll`-style retry absorbs the same
+ * single-digit-millisecond ordering gap `auth.spec.ts` always had to absorb for the OTP store —
+ * a Next.js server action's response can settle a beat before the write actually lands.
  */
-/**
- * `exclude` matters whenever the same email requests a second code in one test (rotate-on-
- * resend, or sign back in after deleting the account): the store still holds the *previous*
- * OTP until the new `sendVerificationOTP` call overwrites it, so "non-null" alone would happily
- * hand back a stale, already-used code and the eventual `Verify` click would fail silently,
- * waiting forever for a redirect that this now-invalid code will never earn.
- */
-async function readFixtureOtp(
-  request: APIRequestContext,
-  email: string,
-  exclude?: string,
-): Promise<string> {
+async function readFixtureLink(request: APIRequestContext, email: string): Promise<string> {
   const deadline = Date.now() + 2000;
-  let lastOtp: string | null = null;
+  let lastUrl: string | null = null;
 
   while (Date.now() < deadline) {
-    const response = await request.get(`/api/auth/fixture-otp?email=${encodeURIComponent(email)}`);
+    const response = await request.get(`/api/auth/fixture-link?email=${encodeURIComponent(email)}`);
     expect(response.status()).toBe(200);
-    const body = (await response.json()) as { otp: string | null };
-    lastOtp = body.otp;
-    if (lastOtp !== null && lastOtp !== exclude) return lastOtp;
+    const body = (await response.json()) as { url: string | null };
+    lastUrl = body.url;
+    if (lastUrl !== null) return lastUrl;
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
 
-  expect(lastOtp, `no fresh OTP was ever recorded for ${email} within 2s`).not.toBeNull();
-  expect(lastOtp, `the OTP for ${email} never rotated past the previous, already-used one`).not.toBe(exclude);
-  return lastOtp as string;
+  expect(lastUrl, `no fresh verification/reset link was ever recorded for ${email} within 2s`).not.toBeNull();
+  return lastUrl as string;
 }
 
-test.describe('F02 — sign-in', () => {
-  test('full sign-in reaches the dashboard', async ({ page, request }) => {
-    const email = `e2e-full-sign-in-${Date.now()}@example.com`;
+/**
+ * Creates the account, clicks its verification link, and lands signed in —
+ * `emailVerification.autoSignInAfterVerification` (`instance.ts`) sets the session cookie the
+ * moment the link is visited, so no separate password sign-in is needed to reach `/dashboard`
+ * from here. Every address used across this suite is unique, so sign-up never collides with an
+ * account created by a different test.
+ */
+async function signUpAndVerify(page: Page, request: APIRequestContext, email: string, password = PASSWORD): Promise<void> {
+  await page.goto('/sign-up');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByLabel('Confirm password').fill(password);
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.getByText(/Check your email/)).toBeVisible();
 
-    await page.goto('/sign-in');
-    await page.getByLabel('Email').fill(email);
-    await page.getByRole('button', { name: 'Send code' }).click();
-    await expect(page.getByLabel('Enter the six-digit code')).toBeVisible();
+  const verifyUrl = await readFixtureLink(request, email);
+  await page.goto(verifyUrl);
+  await page.goto('/dashboard');
+}
 
-    const otp = await readFixtureOtp(request, email);
-    await page.getByLabel('Enter the six-digit code').fill(otp);
-    await page.getByRole('button', { name: 'Verify' }).click();
+/** The real sign-in form, password auth's own path to a session — distinct from the auto-sign-in verification gives. */
+async function signIn(page: Page, email: string, password = PASSWORD): Promise<void> {
+  await page.goto('/sign-in');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.waitForURL('**/dashboard');
+}
 
-    await page.waitForURL('**/dashboard');
+test.describe('F02 — sign-up and sign-in', () => {
+  test('sign-up, verify, and sign in with a password all reach the dashboard', async ({ page, request }) => {
+    const email = `e2e-full-sign-up-${Date.now()}@example.com`;
+
+    await signUpAndVerify(page, request, email);
     expect(new URL(page.url()).pathname).toBe('/dashboard');
-    // F07 review finding 3: `/dashboard` is deliberately not in `GATED_PAGE_ROUTES`
-    // (`routes.ts`'s own comment explains why — it is a `requireUser()` surface, not an
-    // admin-only one, so the admin-positive suite below is the wrong home for it). This is its
-    // real, dedicated coverage instead — asserting the actual page rendered, not merely that
-    // the URL changed, the same way the admin-positive suite asserts real content for
-    // `/admin/*` rather than just a redirect having not happened.
     await expect(page.locator('[data-route="/dashboard"]')).toBeVisible();
+
+    // The verification link auto-signs in, but the password itself must independently work too
+    // — sign out and use the real sign-in form.
+    await page.goto('/settings/account');
+    await page.getByRole('button', { name: 'Sign out' }).click();
+    await page.waitForURL('**/sign-in');
+
+    await signIn(page, email);
+    expect(new URL(page.url()).pathname).toBe('/dashboard');
   });
 
   test('GET /api/dashboard requires a session, then answers a signed-in one', async ({ page, request }) => {
-    // F07 review finding 3(b): `GET /api/dashboard` had no coverage in any configuration —
-    // `routes.spec.ts`'s generic fixture-state loop excludes it (F07 removed it from
-    // `API_ROUTES`, `routes.ts`'s own comment explains why) and `dashboard.spec.ts`'s suite does
-    // not run in CI (that file's top-of-file comment). This case needs no `DATABASE_URL` — a
-    // cold-start dashboard read touches only Redis (`assemble.ts`) — so it runs unconditionally.
     const unauthenticated = await request.get('/api/dashboard');
     expect(unauthenticated.status()).toBe(401);
 
     const email = `e2e-api-dashboard-${Date.now()}@example.com`;
-    await page.goto('/sign-in');
-    await page.getByLabel('Email').fill(email);
-    await page.getByRole('button', { name: 'Send code' }).click();
-    const otp = await readFixtureOtp(request, email);
-    await page.getByLabel('Enter the six-digit code').fill(otp);
-    await page.getByRole('button', { name: 'Verify' }).click();
-    await page.waitForURL('**/dashboard');
+    await signUpAndVerify(page, request, email);
 
     const response = await page.request.get('/api/dashboard');
     expect(response.status()).toBe(200);
@@ -117,73 +115,107 @@ test.describe('F02 — sign-in', () => {
     expect(unauthenticated.status()).toBe(401);
   });
 
-  test('three wrong codes invalidate the code, even the correct one afterwards', async ({ page, request }) => {
-    const email = `e2e-three-strikes-${Date.now()}@example.com`;
+  test('a wrong password is refused; the correct one still works afterwards', async ({ page, request }) => {
+    const email = `e2e-wrong-password-${Date.now()}@example.com`;
+    await signUpAndVerify(page, request, email);
+    await page.goto('/settings/account');
+    await page.getByRole('button', { name: 'Sign out' }).click();
+    await page.waitForURL('**/sign-in');
 
     await page.goto('/sign-in');
     await page.getByLabel('Email').fill(email);
-    await page.getByRole('button', { name: 'Send code' }).click();
-    await expect(page.getByLabel('Enter the six-digit code')).toBeVisible();
-
-    const otp = await readFixtureOtp(request, email);
-    const wrong = otp === '000000' ? '111111' : '000000';
-
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      await page.getByLabel('Enter the six-digit code').fill(wrong);
-      await page.getByRole('button', { name: 'Verify' }).click();
-      await expect(page.getByText(/wrong or has expired|Too many wrong codes/)).toBeVisible();
-    }
-
-    // The 4th attempt, with the code that was actually correct, must still be refused — the
-    // attempt cap invalidated it, not just the three wrong guesses.
-    await page.getByLabel('Enter the six-digit code').fill(otp);
-    await page.getByRole('button', { name: 'Verify' }).click();
-    await expect(page.getByText(/wrong or has expired|Too many wrong codes/)).toBeVisible();
+    await page.getByLabel('Password').fill('the-wrong-password-entirely');
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page.getByText('That email or password is wrong.')).toBeVisible();
     expect(new URL(page.url()).pathname).not.toBe('/dashboard');
+
+    await signIn(page, email);
+    expect(new URL(page.url()).pathname).toBe('/dashboard');
   });
 
-  test('the account-enumeration probe: an allowlisted-looking and an arbitrary address get the same response shape', async ({
+  test('an unverified account cannot sign in until the verification link is clicked', async ({ page, request }) => {
+    const email = `e2e-unverified-${Date.now()}@example.com`;
+
+    await page.goto('/sign-up');
+    await page.getByLabel('Email').fill(email);
+    await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
+    await page.getByLabel('Confirm password').fill(PASSWORD);
+    await page.getByRole('button', { name: 'Create account' }).click();
+    await expect(page.getByText(/Check your email/)).toBeVisible();
+
+    // No verification click yet — the password is correct, but the account cannot sign in.
+    await page.goto('/sign-in');
+    await page.getByLabel('Email').fill(email);
+    await page.getByLabel('Password').fill(PASSWORD);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page.getByText(/verification link/)).toBeVisible();
+    expect(new URL(page.url()).pathname).not.toBe('/dashboard');
+
+    const verifyUrl = await readFixtureLink(request, email);
+    await page.goto(verifyUrl);
+    await signIn(page, email);
+    expect(new URL(page.url()).pathname).toBe('/dashboard');
+  });
+
+  // "sign-up refuses a non-allowlisted address" is not exercisable here: the allowlist gate on
+  // account creation (`isAccountCreationAllowed`, `src/services/auth/allowlist.ts`) is
+  // `live`-mode only, by design — see `instance.ts`'s doc comment on why, and the non-admin
+  // suite below for the test seam that decision exists to preserve. Covered instead at the unit
+  // level (`tests/unit/services/auth/allowlist.test.ts`).
+
+  test('the password-reset request: an allowlisted-looking and an arbitrary address get the same response shape', async ({
     request,
   }) => {
-    const first = await request.post('/api/auth/email-otp/send-verification-otp', {
-      data: { email: 'looks-allowlisted@example.com', type: 'sign-in' },
+    const first = await request.post('/api/auth/request-password-reset', {
+      data: { email: 'looks-allowlisted@example.com', redirectTo: '/reset-password' },
     });
-    const second = await request.post('/api/auth/email-otp/send-verification-otp', {
-      data: { email: `arbitrary-${Date.now()}@example.com`, type: 'sign-in' },
+    const second = await request.post('/api/auth/request-password-reset', {
+      data: { email: `arbitrary-${Date.now()}@example.com`, redirectTo: '/reset-password' },
     });
 
     expect(first.status()).toBe(second.status());
     expect(await first.json()).toEqual(await second.json());
+  });
+
+  test('forgot password → reset link → sign in with the new password', async ({ page, request }) => {
+    const email = `e2e-reset-${Date.now()}@example.com`;
+    await signUpAndVerify(page, request, email);
+    await page.goto('/settings/account');
+    await page.getByRole('button', { name: 'Sign out' }).click();
+    await page.waitForURL('**/sign-in');
+
+    await page.goto('/forgot-password');
+    await page.getByLabel('Email').fill(email);
+    await page.getByRole('button', { name: 'Send reset link' }).click();
+    await expect(page.getByText(/reset link is on its way/)).toBeVisible();
+
+    const resetUrl = await readFixtureLink(request, email);
+    const newPassword = 'a completely different passphrase';
+    await page.goto(resetUrl);
+    await page.getByLabel('New password', { exact: true }).fill(newPassword);
+    await page.getByLabel('Confirm new password').fill(newPassword);
+    await page.getByRole('button', { name: 'Set password' }).click();
+    await page.waitForURL('**/sign-in');
+
+    await signIn(page, email, newPassword);
+    expect(new URL(page.url()).pathname).toBe('/dashboard');
   });
 });
 
 test.describe('F02 — every operator route refuses a signed-in, non-admin session (Wave 1 exit gate)', () => {
   test.beforeEach(async ({ page, request }) => {
     // `playwright.config.ts` sets `ADMIN_EMAIL_ALLOWLIST` to exactly one fixed address,
-    // `e2e-admin@example.com` (see the admin-session suite below), so any address that is not
-    // that literal string — every address generated here, by construction — signs in
-    // successfully but matches no allowlist entry. That is exactly "a non-allowlisted address",
-    // reachable without a live Resend call. Do not switch this to a fixed address: doing so risks
-    // colliding with the one allowlisted address below and turning this suite's "refuses a
-    // non-admin" into "an admin was refused", passing on the wrong premise (found by a second
-    // lane-review pass, after `ADMIN_EMAIL_ALLOWLIST` stopped being unset here).
-    //
-    // `Date.now()` alone is not unique enough here: this `beforeEach` runs once per test in
-    // both loops below (~11 tests), which Playwright can start in the same millisecond across
-    // workers. Two tests racing on the identical email means whichever's `sendVerificationOTP`
-    // lands second overwrites the fixture store's entry, and the first test's `readFixtureOtp`
-    // can read back a code for a request it never made — `Verify` then either fails outright or
-    // waits forever for a `/dashboard` redirect that code was never going to earn, exactly the
-    // `waitForURL` timeout this suite intermittently hit. The random suffix removes the
-    // collision instead of just making it rarer.
+    // `e2e-admin@example.com` (see the admin-session suite below). Any address that is not that
+    // literal string still signs up successfully here: `isAccountCreationAllowed`
+    // (`src/services/auth/allowlist.ts`) only enforces the allowlist in `live` mode — e2e runs
+    // in fixture mode, deliberately (see `instance.ts`'s doc comment), which is what makes it
+    // possible to build a genuinely signed-in, non-allowlisted session here at all. Do not switch
+    // this to a fixed address: doing so risks colliding with the one allowlisted address below
+    // and turning "refuses a non-admin" into "an admin was refused", passing on the wrong
+    // premise. `Date.now()` alone is also not unique enough across parallel workers, hence the
+    // random suffix too.
     const email = `e2e-non-admin-${Date.now()}-${Math.random().toString(36).slice(2, 10)}@example.com`;
-    await page.goto('/sign-in');
-    await page.getByLabel('Email').fill(email);
-    await page.getByRole('button', { name: 'Send code' }).click();
-    const otp = await readFixtureOtp(request, email);
-    await page.getByLabel('Enter the six-digit code').fill(otp);
-    await page.getByRole('button', { name: 'Verify' }).click();
-    await page.waitForURL('**/dashboard');
+    await signUpAndVerify(page, request, email);
   });
 
   for (const route of ADMIN_PAGES) {
@@ -196,9 +228,6 @@ test.describe('F02 — every operator route refuses a signed-in, non-admin sessi
 
   for (const route of ADMIN_API_ROUTES) {
     test(`route handler ${route.method} ${route.path} refuses`, async ({ page }) => {
-      // `page.request`, not the bare `request` fixture: it shares `page`'s cookie jar, which is
-      // what makes this "a signed-in, non-admin call" rather than merely an unauthenticated one
-      // (both return 401 today, but only the former is the property this suite names).
       const response =
         route.method === 'GET' ? await page.request.get(route.path) : await page.request.post(route.path);
       expect(response.status()).toBe(401);
@@ -208,46 +237,29 @@ test.describe('F02 — every operator route refuses a signed-in, non-admin sessi
 
 test.describe('F02 — a real admin session reaches every gated route', () => {
   // The negative-auth suite above proves every operator route refuses a signed-in, non-admin
-  // session — but nothing previously proved the mirror: that a signed-in, *allowlisted* session
-  // is actually let through. `playwright.config.ts` sets `ADMIN_EMAIL_ALLOWLIST` to exactly this
-  // address for that reason. Found by lane-review: `requireAdmin()`'s only two tested outcomes
-  // were "unauthenticated" and "authenticated but refused" — replacing its body with an
-  // unconditional throw would have passed every existing test, including this file's own
-  // negative-auth suite, which passes *harder* under that regression.
-  //
-  // **Serial, deliberately.** The allowlist is exactly one fixed address (there is only one
-  // admin, D-11), so every test here signs in as the same email — unlike the non-admin suite's
-  // `Date.now()`-plus-random addresses, there is no unique-address escape from the exact race
-  // that suite's own comment documents (`fullyParallel` workers racing `sendVerificationOTP`
-  // against the fixture store for one identifier).
+  // session; this is the mirror. `playwright.config.ts` sets `ADMIN_EMAIL_ALLOWLIST` to exactly
+  // this address. Serial, and signed up once in `beforeAll`: unlike password-less OTP, a
+  // password sign-in does not invalidate anything on reuse, so every test after the first can
+  // just sign in again with the same credential rather than re-registering.
   test.describe.configure({ mode: 'serial' });
 
-  // Every test signs back in as the same fixed admin address, so — exactly like "account
-  // deletion"'s `signIn()` below — each `beforeEach` must exclude the previous test's already-
-  // used code. Without it, `readFixtureOtp`'s "non-null" check happily hands back that stale
-  // code the instant it is still sitting in the fixture store, and `Verify` fails silently on a
-  // code that was correct for a sign-in this test never made.
-  let previousOtp: string | undefined;
+  test.beforeAll(async ({ browser }) => {
+    // `beforeAll` has no test-scoped `page` fixture, so a throwaway browser context stands in —
+    // only used to run the one-time sign-up-and-verify; every actual test below gets its own.
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await signUpAndVerify(page, context.request, 'e2e-admin@example.com');
+    await context.close();
+  });
 
-  test.beforeEach(async ({ page, request }) => {
-    const email = 'e2e-admin@example.com';
-    await page.goto('/sign-in');
-    await page.getByLabel('Email').fill(email);
-    await page.getByRole('button', { name: 'Send code' }).click();
-    const otp = await readFixtureOtp(request, email, previousOtp);
-    previousOtp = otp;
-    await page.getByLabel('Enter the six-digit code').fill(otp);
-    await page.getByRole('button', { name: 'Verify' }).click();
-    await page.waitForURL('**/dashboard');
+  test.beforeEach(async ({ page }) => {
+    await signIn(page, 'e2e-admin@example.com');
   });
 
   for (const route of ADMIN_PAGES) {
     test(`page ${route.path} renders its real content, not a redirect or a refusal`, async ({ page }) => {
       const response = await page.goto(route.path);
       expect(response?.status()).toBe(200);
-      // Also closes the F01-route-existence gap `routes.ts` documents: an unauthenticated visit
-      // to this same path 200s and renders `[data-state="fixture"]` too, from `/sign-in` after
-      // the redirect — so the path check is what proves this response is the page itself.
       expect(new URL(page.url()).pathname).toBe(route.path);
       await expect(page.locator('[data-state="fixture"]').first()).toBeVisible();
       await expect(page.getByText('Not authorized')).toHaveCount(0);
@@ -266,30 +278,18 @@ test.describe('F02 — a real admin session reaches every gated route', () => {
 });
 
 test.describe('F02 — account deletion', () => {
-  test('deletion then sign-in creates a fresh account', async ({ page, request }) => {
+  test('deletion then sign-up creates a fresh account', async ({ page, request }) => {
     const email = `e2e-delete-then-return-${Date.now()}@example.com`;
-    let previousOtp: string | undefined;
 
-    async function signIn() {
-      await page.goto('/sign-in');
-      await page.getByLabel('Email').fill(email);
-      await page.getByRole('button', { name: 'Send code' }).click();
-      const otp = await readFixtureOtp(request, email, previousOtp);
-      previousOtp = otp;
-      await page.getByLabel('Enter the six-digit code').fill(otp);
-      await page.getByRole('button', { name: 'Verify' }).click();
-      await page.waitForURL('**/dashboard');
-    }
-
-    await signIn();
+    await signUpAndVerify(page, request, email);
     await page.goto('/settings/account');
     await page.getByRole('button', { name: 'Delete my account' }).click();
     await page.getByRole('button', { name: 'Confirm delete' }).click();
     await page.waitForURL('**/sign-in');
 
-    // Signing in again with the same address must work exactly like the first time — a fresh
-    // account, not an error about a deleted one.
-    await signIn();
+    // Deletion removes the user row entirely — signing back in needs a fresh sign-up, exactly
+    // like the first time, not an error about a deleted account.
+    await signUpAndVerify(page, request, email);
     expect(new URL(page.url()).pathname).toBe('/dashboard');
   });
 });

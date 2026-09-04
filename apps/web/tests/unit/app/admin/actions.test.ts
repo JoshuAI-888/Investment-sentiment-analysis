@@ -12,9 +12,10 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/services/auth/instance';
-import { readFixtureOtp, clearFixtureOtpStore } from '@/services/auth/fixture-otp-store';
+import { readFixtureLink } from '@/services/auth/fixture-link-store';
 import { env } from '@/env';
 
+const PASSWORD = 'correct horse battery staple';
 let currentCookie = '';
 
 vi.mock('next/headers', () => ({
@@ -24,12 +25,14 @@ vi.mock('next/headers', () => ({
 const { refreshDataSources } = await import('../../../../app/(admin)/admin/actions');
 
 async function signIn(email: string): Promise<void> {
-  await auth.api.sendVerificationOTP({ body: { email, type: 'sign-in' } });
-  const otp = readFixtureOtp(email);
-  if (otp === null) throw new Error('test setup: no fixture OTP was recorded');
-  const response = await auth.api.signInEmailOTP({ body: { email, otp }, asResponse: true });
+  await auth.api.signUpEmail({ body: { email, password: PASSWORD, name: email } });
+  const verifyUrl = readFixtureLink(email);
+  if (verifyUrl === null) throw new Error('test setup: no fixture verification link was recorded');
+  const token = new URL(verifyUrl).searchParams.get('token');
+  if (token === null) throw new Error('test setup: verification link carried no token');
+  const response = await auth.api.verifyEmail({ query: { token }, asResponse: true });
   const setCookie = response.headers.get('set-cookie');
-  if (setCookie === null) throw new Error('test setup: sign-in did not set a session cookie');
+  if (setCookie === null) throw new Error('test setup: verification did not set a session cookie');
   currentCookie = setCookie.split(';')[0] ?? '';
 }
 
@@ -37,7 +40,6 @@ describe('refreshDataSources — requireAdmin() is genuinely called, not decorat
   const originalAllowlist = env.ADMIN_EMAIL_ALLOWLIST;
 
   beforeEach(() => {
-    clearFixtureOtpStore();
     currentCookie = '';
   });
 

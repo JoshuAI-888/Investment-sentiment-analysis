@@ -11,7 +11,7 @@ function isSeedState(value: unknown): value is SeedState {
 
 /**
  * **Test-only. 404s in every mode except `fixture`.** Same guard, same reasoning, as
- * `api/auth/fixture-otp/route.ts` (F02): a real deployment always runs `live`
+ * `api/auth/fixture-link/route.ts` (F02): a real deployment always runs `live`
  * (`env.ts` validates `PROVIDER_MODE` at process start), so there is no environment variable
  * that makes this route reachable in production. See `src/services/dashboard/testing.ts` for
  * why the e2e suite needs a seam here rather than driving every state through the real
