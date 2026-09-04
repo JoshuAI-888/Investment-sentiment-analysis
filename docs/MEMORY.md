@@ -1071,6 +1071,101 @@ against the frozen state.
 
 ---
 
+### D-43 — F10, F11, F12 merged: evidence pipeline, research agent, evaluation harness
+
+**Merged 2026-09-04**, all three built in parallel worktrees against D-42's frozen contracts,
+each through one full adversarial `lane-review` round with every finding fixed and
+regression-tested before merge. DoD: F10 9/11, F11 9/13, F12 5/10 — the unchecked items in each
+are named with a trigger, not silently dropped; see `progress/f10-lane.md`, `f11-lane.md`,
+`f12-lane.md` for the itemized lists. Merge order was F10 → F11 → F12, matching the dependency
+chain each spec's own Contracts section names.
+
+**`frameDisclosure.truncated` added to the frozen contract at merge time.** F10's build surfaced
+a real gap: `evidenceForSecurity`'s own `truncated` flag (a scan-window lower-bound signal
+`repositories/evidence.ts` is explicit must never be silently undisclosed) had nowhere to go on
+`FrameDisclosure`, since the freeze didn't anticipate it. Added as a required field, wired through
+`frames.ts`, and threaded through every fixture pack that predated it (F10's own tests, F11's
+inline test fixtures, F12's ten frozen corpus packs) — mechanical follow-up commits, no other
+content changed in any of them.
+
+**Three lanes independently built three different `ModelClient`-shaped abstractions**, because
+none existed in `src/contracts/` and the architecture doc's own version (§4.6) predates D-21 and
+is missing the `relevance`/`entity_collision_guard` tasks entirely. This was found independently
+by both the F10 and F11 lane-reviews, and the F10 reviewer compared all three directly:
+
+| | F10 (`services/evidence/model-client.ts`) | F11 (`services/research/model-client.ts`) | F12 (`services/eval/judge.ts`) |
+|---|---|---|---|
+| Layer | Transport (`generate({system,user,model,…}) → {raw, usage}`) | Validated (`classify`/`synthesize`/`verify`, zod schema in, typed out) | Judge-specific port, injectable |
+| Usage/cost | Captured (`ModelGenerateResult.usage`) | Was dropped, now estimates from token counts (own fix, D-20 budget wiring) | N/A (judge is a rubric call, not priced the same way) |
+| Outage vs. bad shape | Distinguished (`ModelBackendUnavailable` → abstain, D-13) | Both collapse to a generic `Error` | N/A |
+| Vendor-split (D-34) | Not enforced (caller supplies model per call) | Enforced at construction | N/A — judge is definitionally a separate route already |
+
+**Ruling: not consolidated now.** They sit at different layers and don't collide in practice — no
+shared code path requires them to be identical, and each lane stayed inside its own paths. Forcing
+convergence at this merge would mean reopening two already-reviewed lanes for a refactor with no
+behavioral bug behind it. **Recorded as named technical debt with a direction, not left open-ended**:
+a future `src/contracts/model-client.ts` (SPINE-owned) should take F10's `ModelBackend` as the
+transport port (it already has the usage/cost and outage-vs-bad-shape distinctions the others
+lack) with F11's schema-validating `ModelClient` implemented over it. Trigger: the next feature
+that needs a fourth model-calling abstraction, or a dedicated SPINE pass — whichever comes first.
+This is the same pattern already accepted for `ScoreResult`/`ScorerIdentity` living in
+`adapters/scorer.ts` instead of `src/contracts/scoring.ts`.
+
+**F12's two DoD-required MEMORY.md entries** (its own DoD item 10 says the judge's known
+limitation must be recorded here, not only in the spec):
+
+- **The LLM judge is systematically forgiving of fluent, well-cited, subtly-wrong prose**
+  (`05-TEST-STRATEGY.md` §5.3). Its output is a gate, not evidence of quality — kept honest only
+  by seeded-error adversarial validation (a judge scoring a seeded-error answer ≥4 on C2 is itself
+  a defect, and F12's harness tests for exactly this) and the one-time human calibration
+  (`DEPLOY.md` MT-11, Spearman ≥0.7 or the thresholds are raised, still pending — no hand-scores
+  exist yet).
+- **F12's eval-run storage is a file-based, append-only JSON-lines store**
+  (`services/eval/result-store.ts`), not a database table — `src/repositories/` and `migrations/`
+  are SPINE's and out of this temporary lane's scope. A durable `eval_run` table is a drop-in
+  future replacement behind the same `EvalResultStore` port.
+
+**CI widened separately** (outside any lane's owned paths, handled directly): the `eval` job's PR
+path filter matched none of F10/F11/F12's actual paths — meaning a PR that weakened the Tier C
+gate or a corpus label would have passed CI green, which is exactly what F12 §7.4's own review
+step asks a human to catch by hand. Widened the filter and added the nightly trigger F12 §4.6
+already specified but that never existed.
+
+**What is still genuinely outstanding, not silently dropped** — the real work `F10`/`F11`/`F12`'s
+partial status leaves for a future pass:
+
+- **Persistence.** No `src/repositories/research.ts` exists; F11's research runs, events and
+  claims live in an in-memory `Map` today (a real deploy loses every run on restart — disclosed
+  loudly in `composition.ts`, and the "runs survive reload" DoD item is correctly left unchecked
+  because of it). `repositories/evidence.ts` likewise has no `updateEvidenceAvailability`-shaped
+  write, so F10's availability-checker logic has nowhere to persist its decisions yet.
+- **Real integration.** F11's evidence-gathering and per-subject-metrics reads are dev-fixture
+  placeholders, clearly named as such — swapping in F10's real pack builder and a real metrics
+  query (also missing from `repositories/calculations.ts`) needs no orchestrator change, since
+  the ports are already the contract.
+- **F12's real corpus.** The 10-pack starter corpus (2 per bucket, one X-axis pack added this
+  round) and 9-answer seeded-error set prove the harness mechanics; the real ≥30-pack / ≥40-answer
+  production sets (D-35 methodology) need real human labelling and are not attempted here. Tier
+  D1 (per-axis stance macro-F1) is now computed for real but its current numbers are artifacts of
+  a hand-authored starter corpus, not a measurement.
+- **Live-model verification.** No live call was made against the Vercel AI Gateway in any lane
+  (per `04-BUILD-LOOP.md` §2.3 — fixtures before live calls). `GatewayModelBackend`/
+  `createGatewayModelClient` compile and pass their own unit tests against a fake transport, but
+  are unproven against a real endpoint.
+- **D-18/Tier-D4's backtest harness** (PIT correctness, cross-sectional IC, Newey–West t, decay
+  curve, momentum-residualised IC, horizon-normalised P&L) is confirmed **not** part of F12's own
+  ten-item DoD — `01-PRODUCT-SPEC.md` Tier D already dates it "~2027, runnable ~12 months after
+  the collector starts," matching `PROGRESS.md`'s Wave-gates table. `CLAUDE.md`'s "must be built
+  from scratch when F12 is picked up" line refers to this same eventual, separate deliverable —
+  not a gap in this merge.
+
+**Verification of the merged state:** full unit suite (129 files, 1434 tests), contract suite (115
+passed / 22 DB-skipped), integration suite (21 passed / 341 DB-skipped), `test:eval` (6/6, real
+gate-breaking cases included), typecheck, lint and `next build` all green on `main`'s lineage
+(`claude/remaining-work-analysis-z6uecn`).
+
+---
+
 ## 2. Rulings made during review
 
 Each closes a finding in `00-ADVERSARIAL-REVIEW.md`. Rationale is there; recorded here so a

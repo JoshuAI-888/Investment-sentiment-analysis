@@ -109,6 +109,13 @@ F19). `src/contracts/evidence-pack.ts` freezes `EvidencePack`/`ClassifiedItem` o
 already-merged `evidence.ts`/`research.ts` contracts; migration `0014` adds the missing
 `abstained` research-run state. See "Wave 3 lanes" below and `MEMORY.md` D-41/D-42.
 
+**2026-09-04 — F10, F11 and F12 merged (D-43).** Built in parallel worktrees against the frozen
+contracts, one adversarial review round each, all findings fixed. DoD: F10 9/11, F11 9/13, F12
+5/10 — genuinely outstanding items (persistence, real F10↔F11 integration, F12's real ≥30-pack
+corpus, live-model verification) are named with triggers, not dropped. **F21 is now unblocked for
+lane allocation** (it depends on F12 and F20, both merged) — not allocated this session. See
+"Wave 3 lanes" below and `MEMORY.md` D-43.
+
 **Next work, in order:**
 
 1. **`DEPLOY.md` MT-13** — file the Reddit application. **Confirmed unfiled on 2026-09-03.** Free,
@@ -188,26 +195,31 @@ rather than lettered so the two never read as the same thing.
 > total of **160–210 h**. The gap predates the lane split and is unresolved — treat the lane
 > figures above as the registry's own numbers, not as a schedule.
 
-## Wave 3 lanes (allocated 2026-09-04, D-42)
+## Wave 3 lanes (allocated 2026-09-04, D-42; all three merged 2026-09-04, D-43)
 
 The Wave 2 gate is certified (D-41), so `06-PARALLEL-LANES.md` §1b's "full three-lane parallelism
 begins at the Wave 2 gate" condition is met. **Three temporary lanes**, scoped like RNI's
 DATA/ENGINE/SURFACE rather than the legacy SPINE/COLLECT/SURFACE partition (F10/F11/F12 don't fit
 that split without every lane touching `src/contracts/`) — see `MEMORY.md` D-42 for the frozen
-contracts (`src/contracts/evidence-pack.ts`) and the path map. In flight as of this entry: all
-three `lane-build` agents dispatched in parallel.
+contracts (`src/contracts/evidence-pack.ts`) and the path map.
+
+**All three built in parallel worktrees, each through one full adversarial review round, merged
+in dependency order (F10 → F11 → F12).** See `MEMORY.md` D-43 for the full record — the
+`ModelClient` convergence decision, the two F12 judge/store limitations required in this file by
+F12's own DoD, and the itemized list of what's still genuinely outstanding (persistence, real F10↔F11
+integration, F12's real ≥30-pack corpus, live-model verification).
 
 | ID | Feature | Wave | Status | Lane | Notes |
 |---|---|---|---|---|---|
-| F10 | Evidence and stance pipeline | 3 | `in progress` | F10-lane | `src/services/evidence/`. Consumes frozen `EvidencePack`/`ClassifiedItem` |
-| F11 | Research agent and verifier | 3 | `in progress` | F11-lane | `src/services/research/`, `app/api/research/**`. Consumes F10's output contract |
-| F12 | Evaluation harness and judge | 3 | `in progress` | F12-lane | `src/services/eval/`, `tests/eval/`. Consumes F10 and F11's output contracts |
+| F10 | Evidence and stance pipeline | 3 | `merged` 2026-09-04 | F10-lane | 9/11 DoD. Deferred: F12-corpus-gated B1/B2/B5; availability-checker persistence (no repository write exists) |
+| F11 | Research agent and verifier | 3 | `merged` 2026-09-04 | F11-lane | 9/13 DoD. Deferred: real (non-in-memory) persistence; F12-corpus-gated B3/B4/B6/B7/B8; total-30s-p95 measurement (needs F19) |
+| F12 | Evaluation harness and judge | 3 | `merged` 2026-09-04 | F12-lane | 5/10 DoD. Deferred: the real ≥30-pack/≥40-answer corpus and a real Tier C/B7/B8 run (need F10+F11 live plus human labelling); D4 backtest harness confirmed out of scope (~2027, per `01-PRODUCT-SPEC.md` Tier D) |
 
 ## Not yet allocated to a lane
 
 | ID | Feature | Wave | Status | Blocker |
 |---|---|---|---|---|
-| F21 | MCP server and MCP Apps surface | 3 | `not started` | — **New (D-10).** Placed at the Wave 3 exit, not after Wave 5. Depends on F12, F20 — allocate once F12 merges |
+| F21 | MCP server and MCP Apps surface | 3 | `not started` | — **New (D-10).** Placed at the Wave 3 exit, not after Wave 5. **Unblocked for lane allocation 2026-09-04** — F12 and F20 both merged (D-43) — not yet allocated |
 
 Status values: `not started` · `in progress` · `in review` · `merged` · `blocked` · `deferred`
 
@@ -228,7 +240,7 @@ Status values: `not started` · `in progress` · `in review` · `merged` · `blo
 |---|---|---|
 | 1 | Walking skeleton **through the scoring boundary and the PIT store**: Reddit → raw store → queue → pinned scorer → analytics → artifact → Inspector → replay. CI green on both deploy targets. Scorer determinism and outage-abstention proven. Look-ahead guard fires. Collector live. Growth measured in MB/month. **OTP sign-in works and a non-allowlisted address is refused every operator route** (F02 — added 2026-09-03; this row omitted it while `03-ROADMAP.md`'s Wave 1 exit gate required it) | not reached |
 | 2 | Dashboard, leaderboard and ticker page on live data; every number inspectable; **per-axis thresholds re-derived**; A2–A6 pass | **certified 2026-09-04 (D-41)** — A4/A5/A6 pass; A2/A3 named as a disclosed exception, no measuring instrument until F19 (Wave 4–5) |
-| 3 | Research streams, verifies, abstains; Tier B passes; Tier C judge gate passes; **Tier D1–D3 pass**; A1 passes; **F21 exposes the tool surface with no corpus leak** | not reached |
+| 3 | Research streams, verifies, abstains; Tier B passes; Tier C judge gate passes; **Tier D1–D3 pass**; A1 passes; **F21 exposes the tool surface with no corpus leak** | not reached — F10/F11/F12 merged 2026-09-04 (D-43), harness mechanics proven, but the gate itself needs the real ≥30-pack corpus, a live Tier B/C/D run, real F10↔F11 integration and F21 (not yet allocated) |
 | 4 | Operator negative-auth and dispatcher idempotency pass; config/universe changes versioned with working rollback; trigger thresholds operator-editable and audited | not reached |
 | 5 | Source §20 DoD (less the multi-tenant items D-11 voids) + Tiers A, B, C, D1–D3 | not reached |
 | **—** | **Tier D4 promotion** — not part of "done". Runnable ~12 months after the collector starts | **~2027** |
