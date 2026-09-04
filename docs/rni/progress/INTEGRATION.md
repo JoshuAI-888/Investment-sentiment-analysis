@@ -120,8 +120,8 @@
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
-| ENGINE | `E04_APPROVED` | yes at integration `6309b62` | builder serialized unit 1,238 + contract 91/22 skipped + eval 1/1; coordinator typecheck/lint and focused 19/19 | yes | E01–E04 accepted through `59a936f`; E05 active; lane remains held |
-| SURFACE | `S05_APPROVED` | yes through I02D (`ce80424`) | builder typecheck/lint/contract/build/Chromium 10/10; coordinator repeated typecheck/lint/contract 13/13 and Chromium 10/10 | yes | S01–S05 accepted through `d4c1a09`; S06 active; lane remains held |
+| ENGINE | `E04_APPROVED` | yes at integration `6309b62` | builder serialized unit 1,242 + contract 91/22 skipped + integration 44/390 skipped + eval 1/1; coordinator typecheck/lint and focused 19/19 | yes | E01–E04 accepted through final-base `4f57f01`; E05 active; lane remains held |
+| SURFACE | `S06_APPROVED` | yes through I02D (`ce80424`) | builder typecheck/lint/contract/build/Chromium 11/11; coordinator repeated typecheck/lint/contract 13/13 and Chromium 11/11 | yes | S01–S06 accepted through `ffd5119`; S07 active; lane remains held |
 
 ## Live/deployment gates
 
@@ -217,6 +217,7 @@
 | `CURRENT` | Accept SURFACE S04 evidence drawer and keyboard correction | typecheck; focused lint; RNI contract 13/13; Chromium 9/9; ownership/base/diff review |
 | `CURRENT` | Accept SURFACE S05 bounded lineage explorer | typecheck; focused lint; RNI contract 13/13; Chromium 10/10; ownership/base/diff review |
 | `CURRENT` | Accept ENGINE E04 security resolution and comparative relations | typecheck; focused lint; unit/contract/eval 19/19; ownership/base/diff review |
+| `CURRENT` | Accept SURFACE S06 independent source-state matrix | typecheck; focused lint; RNI contract 13/13; Chromium 11/11; ownership/base/diff review |
 
 ## Coordinator notes
 

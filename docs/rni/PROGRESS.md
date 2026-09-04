@@ -26,8 +26,8 @@
 | G1 model-route branch merged | `PASSED` | coordinator | PR #2, main commit `09ad439` |
 | G2 RNI contract frozen | `PASSED` | coordinator | PR #5 merged at `dd28ea2`; typed source contract at `9908eda` |
 | G3 DATA accepted | `PASSED` | DATA + reviewer | merged sequentially at `254fe45`; coordinator type/contract plus fresh PostgreSQL DATA 41/41 pass |
-| G4 ENGINE accepted | `IN_PROGRESS` | ENGINE + reviewer | E01–E04 accepted through `59a936f`; E05–E10 remain |
-| G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01–S05 accepted through `d4c1a09`; S06–S10 remain |
+| G4 ENGINE accepted | `IN_PROGRESS` | ENGINE + reviewer | E01–E04 accepted through final-base `4f57f01`; E05–E10 remain |
+| G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01–S06 accepted through `ffd5119`; S07–S10 remain |
 | G6 integrated preview | `NOT_STARTED` | coordinator | Depends G3–G5 |
 | G7 live Reddit/X/FMP gates | `NOT_STARTED` | coordinator + joshuai | Depends G6 and configured credentials |
 | G8 production approval | `NOT_STARTED` | joshuai | Depends all prior gates |
@@ -37,8 +37,8 @@
 | Workstream | Branch | Status | Progress file | Latest accepted commit |
 |---|---|---|---|---|
 | DATA | `feat/rni-data-source-first` | `MERGED_TO_INTEGRATION` | `DATA.md` | lane `5926601`; merge `254fe45` |
-| ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01–E04 accepted | `ENGINE.md` | `59a936f` |
-| SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01–S05 accepted | `SURFACE.md` | `d4c1a09` |
+| ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01–E04 accepted | `ENGINE.md` | `4f57f01` |
+| SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01–S06 accepted | `SURFACE.md` | `ffd5119` |
 | INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I06 passed at `5950b53`; current coordinator record follows |
 
 ## Confirmed product decisions
@@ -109,4 +109,5 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — closed final I06 findings at `5950b53`: provider attempts bind transactionally before adapter return and survive post-dispatch abandonment; insert-then-conflict bootstrap rollback is self-contained. Independent review returned READY, so I05/I06 and the universe implementation risk pass; external migration/entitlement/source-rights checks remain G6/G7.
 - 2026-09-05 — accepted SURFACE S04 at `6c0df68` after returning duplicate dialog IDs and incomplete keyboard focus as SR-05; coordinator typecheck/lint/contract 13/13 and Chromium provenance/accessibility 9/9 pass. SURFACE advanced to S05 and remains unmerged.
 - 2026-09-05 — accepted SURFACE S05 at `d4c1a09`: frozen read-service traversal exposes only citation-linked bounded evidence and canonical URLs, while unavailable X stays explicitly uncited. Coordinator typecheck/lint/contract 13/13 and complete focused Chromium 10/10 pass; SURFACE advanced to S06 and remains unmerged.
-- 2026-09-05 — accepted ENGINE E04 at rebased `59a936f`: committed bounded evidence is the sole public resolution entry, exact security resolution requires a versioned ambiguity policy, and comparative relations fail closed on IDs/spans before deterministic canonicalization. Coordinator typecheck/lint and unit/contract/eval 19/19 pass; ENGINE advanced to E05 and remains unmerged.
+- 2026-09-05 — accepted ENGINE E04 at final-base `4f57f01` (implementation reviewed at pre-amend `59a936f`): committed bounded evidence is the sole public resolution entry, exact security resolution requires a versioned ambiguity policy, and comparative relations fail closed on IDs/spans before deterministic canonicalization. Coordinator typecheck/lint and unit/contract/eval 19/19 pass; ENGINE advanced to E05 and remains unmerged.
+- 2026-09-05 — accepted SURFACE S06 at `ffd5119`: run and source state remain independently labelled for Reddit/X across partial, refreshing, stale, failed, unpublished and empty fixtures; in-progress sources expose no derived combined result. Coordinator typecheck/lint/contract 13/13 and Chromium 11/11 pass; SURFACE advanced to S07 and remains unmerged.
