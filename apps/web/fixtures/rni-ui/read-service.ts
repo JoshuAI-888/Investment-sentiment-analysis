@@ -10,6 +10,7 @@ import type {
   RniManualRefreshRequest,
   RniManualRefreshResult,
   RniActiveUniverse,
+  RniRadarSecurity,
   RniStagedUniversePreview,
   RniUniverseReadService,
   RniUniverseSearchQuery,
@@ -29,8 +30,8 @@ import {
   rniFixtureIds,
   referenceActiveUniverse,
   referenceStagedUniversePreview,
-  referenceUniverseSearchResult,
 } from '@/rni/testing/reference-fixtures';
+import { rniUniverseSearchQuery, rniUniverseSearchResult } from '@/rni/contracts';
 
 const FIXTURE_TIME = '2026-09-05T00:08:00.000Z';
 const STALE_TIME = '2026-08-25T00:08:00.000Z';
@@ -41,6 +42,39 @@ const FAILED_SUMMARY_ID = '00000000-0000-4000-8000-000000000021';
 const UNPUBLISHED_SUMMARY_ID = '00000000-0000-4000-8000-000000000022';
 const X_CITATION_ID = rniFixtureIds.xCitation;
 const HASH_C = 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc';
+const FIXTURE_ACTIVE_UNIVERSE_MEMBERS = [
+  referenceActiveUniverse.defaultSecurity,
+  {
+    id: rniFixtureIds.msft,
+    ticker: 'MSFT',
+    companyName: 'Microsoft Corporation',
+    exchange: 'NASDAQ',
+  },
+  {
+    id: rniFixtureIds.amd,
+    ticker: 'AMD',
+    companyName: 'Advanced Micro Devices, Inc.',
+    exchange: 'NASDAQ',
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000201',
+    ticker: 'AAPL',
+    companyName: 'Apple Inc.',
+    exchange: 'NASDAQ',
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000202',
+    ticker: 'AMZN',
+    companyName: 'Amazon.com, Inc.',
+    exchange: 'NASDAQ',
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000203',
+    ticker: 'META',
+    companyName: 'Meta Platforms, Inc.',
+    exchange: 'NASDAQ',
+  },
+] as const satisfies readonly RniRadarSecurity[];
 
 export type RniUiFixtureState =
   | 'complete'
@@ -469,25 +503,26 @@ export class FixtureRniUniverseReadService implements RniUniverseReadService {
     return copy(referenceActiveUniverse);
   }
   async searchActiveUniverse(query: RniUniverseSearchQuery): Promise<RniUniverseSearchResult> {
-    const requestedQuery = query.query?.trim() ?? '';
-    const normalized = requestedQuery.toLowerCase();
-    if (normalized === 'micro' || normalized === 'msft' || normalized === 'microsoft') {
-      return copy({ ...referenceUniverseSearchResult, query: requestedQuery });
-    }
-    if (!normalized || 'nvda nvidia corporation'.includes(normalized)) {
-      return copy({
+    const parsedQuery = rniUniverseSearchQuery.parse(query);
+    const normalized = parsedQuery.query.toLowerCase();
+    const matches = FIXTURE_ACTIVE_UNIVERSE_MEMBERS.filter(
+      (member) =>
+        member.ticker.toLowerCase().includes(normalized) ||
+        member.companyName.toLowerCase().includes(normalized),
+    );
+    const members = matches.slice(0, parsedQuery.limit);
+
+    return copy(
+      rniUniverseSearchResult.parse({
         version: referenceActiveUniverse.version,
-        query: requestedQuery,
-        members: [referenceActiveUniverse.defaultSecurity],
-        hasMore: false,
-      });
-    }
-    return copy({
-      version: referenceActiveUniverse.version,
-      query: requestedQuery,
-      members: [],
-      hasMore: false,
-    });
+        query: parsedQuery.query,
+        members,
+        hasMore:
+          matches.length > members.length ||
+          (normalized.length === 0 &&
+            members.length < referenceActiveUniverse.version.securityCount),
+      }),
+    );
   }
   async getStagedUniversePreview(versionId: string): Promise<RniStagedUniversePreview> {
     if (versionId !== referenceStagedUniversePreview.stagedVersion.id) {

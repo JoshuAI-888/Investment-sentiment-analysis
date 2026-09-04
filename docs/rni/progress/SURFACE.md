@@ -3,7 +3,7 @@
 **Writer:** SURFACE builder only  
 **Branch:** `feat/rni-surface-demo`  
 **Depends on:** merged RNI contract-freeze SHA; fixture-backed `RniReadService`  
-**Status:** `IN_PROGRESS` — S08 S&P 500 search and staged-universe preview in progress
+**Status:** `IN_PROGRESS` — S01–S08 ready for coordinator review; S09–S10 not started
 
 ## Owned paths
 
@@ -19,8 +19,8 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | S04 | Evidence drawer with platform-labelled canonical citations       | `READY_FOR_MERGE` | Coordinator accepted `6c0df68`             |
 | S05 | Raw data/lineage explorer                                        | `READY_FOR_MERGE` | Coordinator accepted `d4c1a09`             |
 | S06 | Per-platform freshness, run progress and partial/failure states  | `READY_FOR_MERGE` | Coordinator accepted `ffd5119`             |
-| S07 | Manual ticker/full refresh controls and double-submit prevention | `READY_FOR_REVIEW` | SR-08 guarded fixture/browser acceptance passed |
-| S08 | S&P 500 search, NVDA default and universe Settings components    | `READY_FOR_REVIEW` | D-RNI-18 fixture/browser acceptance passed |
+| S07 | Manual ticker/full refresh controls and double-submit prevention | `READY_FOR_MERGE` | Coordinator accepted through `babd940` |
+| S08 | S&P 500 search, NVDA default and universe Settings components    | `READY_FOR_REVIEW` | SR-09–SR-13 correction verified |
 | S09 | Route/model display and Direct/Gateway future-run setting        | `NOT_STARTED`     | Setting/history immutability test          |
 | S10 | Accessibility, responsive and full SURFACE handoff               | `NOT_STARTED`     | Required audits and lane report            |
 
@@ -68,6 +68,7 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | S06 browser/state matrix      | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:3006 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts tests/e2e/rni/security-detail.spec.ts tests/e2e/rni/evidence-drawer.spec.ts tests/e2e/rni/raw-data-explorer.spec.ts tests/e2e/rni/state-matrix.spec.ts --project=chromium`                                                                                 | Chromium passed 11/11: per-platform freshness, partial/unavailable, refreshing/pending, stale, failed, and unpublished state coverage.                               |
 | S07 component/contract        | `PASSED`      | `apps/web/node_modules/.bin/tsc --noEmit`; `apps/web/node_modules/.bin/eslint fixtures/rni-ui/read-service.ts src/rni/ui/ManualRefreshControls.tsx src/rni/ui/ManualRefreshFixtureHarness.tsx src/rni/ui/renderFixtureOnly.ts 'app/(rni)/rni/refresh/page.tsx' 'app/(rni)/rni/refresh/fixture/page.tsx' tests/e2e/rni/read-service.spec.ts tests/e2e/rni/manual-refresh.spec.ts tests/e2e/rni/manual-refresh-fixture-guard.spec.ts`; `apps/web/node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism` | Typecheck and focused lint passed; frozen RNI contract suite passed (14/14). |
 | S07 build/browser             | `PASSED`      | `apps/web/node_modules/.bin/next build`; `E2E_BASE_URL=http://127.0.0.1:3008 apps/web/node_modules/.bin/playwright test tests/e2e/rni/manual-refresh-fixture-guard.spec.ts --project=chromium`; `E2E_BASE_URL=http://127.0.0.1:3008 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/manual-refresh.spec.ts --project=chromium` (run twice) | The guarded fixture page is dynamic; fixture/live guard coverage passed, and both fixture-mode Chromium runs passed 4/4 with deferred pending-state release, pre-submit previews, exact replay, distinct later intent/run, 501 preview, native status semantics, and 375px no-overflow. |
+| S08 correction | `PASSED` | `tsc --noEmit`; scoped eslint; contracts; build; diff check; focused Chromium | Contracts 15/15; Chromium 3/3 includes keyboard search, staged impact, responsive fit, and legacy active presentation. |
 | repository required gate      | `NOT_STARTED` | —                                                                                                                                                                                                                                                                                                                                                                                                        | —                                                                                                                                                                    |
 
 ## Review findings
@@ -81,13 +82,15 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | SR-06 | P1       | `RESOLVED` | S07 showed scope only after submission and reused a fixed key for all later refreshes in the same scope. | Both resolved previews now appear before action and are attached to their controls; a new UUID is created per intentional submission, while fixture exact-key replay remains independently tested. |
 | SR-07 | P1       | `RESOLVED` | A 25ms fixture delay allowed the browser to miss the pending window while asserting its sibling control was disabled. | A browser-fixture harness injects a deferred frozen command service and explicitly releases each promise after both disabled controls are asserted; the exact suite passed twice. |
 | SR-08 | P1       | `RESOLVED` | The deferred browser harness was exposed by an unguarded production App Router page. | The fixture page is forced dynamic and checks validated `env.PROVIDER_MODE` at request time; the fixture-only renderer rejects live mode and the page maps that rejection to `notFound()` before the client harness renders. |
+| SR-09–SR-13 | P1/P2 | `RESOLVED` | S08 client fixture composition, non-generic search, incomplete staged impact, stale tracker, and no keyboard/live result status. | Server page composes frozen reads; UI is props-only; fixture search parses/bounds generic active members; staged identities/empty states, status, keyboard Chromium, and tracker evidence are complete. |
+| SR-14 | P2 | `RESOLVED` | Legacy active-universe presentation was untested. | `presentActiveUniverseVersion` drives rendered source/retrieval copy and direct test covers the legacy/null-retrieval branch. |
 
 ## Open risks/blockers
 
 | Since      | Status     | Blocker                                                                                                        | Owner                          | Attempted mitigation                                                                               | Next check                               |
 | ---------- | ---------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------- | ---------------------------------------- |
 | 2026-09-05 | `OPEN`     | Fixture-only `/rni` composition requires the integration read service before live-data use.                    | INTEGRATION / SURFACE          | S04 resolves every displayed citation through the frozen read service and bounded source evidence. | Integration composition review           |
-| 2026-09-05 | `BLOCKED`  | S08 needs frozen reads for active-member search and a staged-universe preview.                                  | DATA / INTEGRATION / SURFACE   | Recorded CR-SURFACE-05; did not add direct FMP, repository, sync, activation, or API access.       | Coordinator disposition of CR-SURFACE-05 |
+| 2026-09-05 | `RESOLVED` | S08 needed frozen reads for active-member search and a staged-universe preview. | INTEGRATION / SURFACE | D-RNI-18 provides additive read-only universe service; S08 uses it only. | Coordinator review of S08 |
 | 2026-09-05 | `RESOLVED` | S07 needed a typed idempotent refresh command, which frozen reads could not express.                            | INTEGRATION / SURFACE          | D-RNI-17 (`fec8c46`) froze the additive command boundary; S07 fixture tests cover exact replay and crossed-key rejection. | Coordinator review of S07 |
 | 2026-09-05 | `RESOLVED` | Static citation anchors did not provide citation → source → evidence provenance.                               | SURFACE                        | S04 renders platform-labelled evidence drawers from the frozen citation and evidence reads.        | Coordinator review of S04                |
 | 2026-09-05 | `RESOLVED` | S03 needed four per-platform dimension assignments, which the previous frozen `RniReadService` could not read. | DATA / ENGINE / INTEGRATION    | D-RNI-14 added `getSecurityDetail`; S03 uses it without direct repository access.                  | Coordinator review of S03                |
@@ -104,7 +107,9 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 | `6c0df68` | S04 dialog accessibility correction            | typecheck; lint; contract 13; build; Chromium Playwright 9  |
 | `d4c1a09` | S05 raw-data and lineage explorer              | typecheck; lint; contract 13; build; Chromium Playwright 10 |
 | `ffd5119` | S06 run and source-state matrix                | typecheck; lint; contract 13; build; Chromium Playwright 11 |
-| `CURRENT` | S07 fixture refresh controls                   | typecheck; lint; contract 14; build; Chromium Playwright 4 |
+| `f7e481e` | S07 final refresh controls | typecheck; lint; contract 14; build; Chromium Playwright 4 |
+| `e12472d` | S08 universe settings feature | typecheck; lint; contract 15; build; Chromium 2 |
+| `CURRENT` | S08 universe settings correction | typecheck; lint; contract 15; build; Chromium 3 |
 
 ## S01 delivery record
 
@@ -162,18 +167,26 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 - **Risk:** the harness is fixture-only and unavailable outside validated fixture mode. I09 must compose server-side authentication, CSRF, audit, durable queueing, and live `RniCommandService`; SURFACE must not add those cross-lane concerns.
 - **Handoff:** ready for coordinator review. S08–S10 remain `NOT_STARTED`.
 
+## S08 delivery record
+
+- **Files changed:** fixture universe read service, `/rni/settings/universe`, `UniverseSettings`, focused S08 browser tests, and this tracker.
+- **Result:** server composition uses only frozen `RniUniverseReadService`; the UI is presentation-only. Active NVDA default, parsed bounded case-insensitive search, source/retrieval, staged version impact identities, and explicit empty removals are displayed.
+- **Verification:** coordinator independently passed typecheck, scoped lint, contracts 15/15, build, diff check, and focused Chromium 3/3 including Tab → type → submit, live search status, MSFT, PLTR, 375px fit, and legacy active presentation.
+- **Risk:** fixture composition only; I08 owns live repository/FMP composition and activation remains outside SURFACE.
+- **Handoff:** S08 ready for coordinator review; S09 remains `NOT_STARTED`.
+
 ## Handoff
 
 ```text
 RNI LANE     SURFACE
 BRANCH       feat/rni-surface-demo
-BASE SHA     fec8c46
-STATUS       S01–S07 ready for coordinator review; S08 blocked on CR-SURFACE-05; S09–S10 not started
-TASKS        S01–S06 ready for merge; S07 ready for review; S08 blocked; S09–S10 not started
-TESTS        typecheck: pass; focused lint: pass; RNI contract: 14 pass; production build: pass; Chromium Playwright: 4 pass twice (S07 focused)
-CONTRACT     CR-SURFACE-01 accepted at 264ea9c; CR-SURFACE-02 accepted at 84dca87; CR-SURFACE-03 accepted as D-RNI-14 at ce80424; CR-SURFACE-04 accepted as D-RNI-17 at fec8c46
-RISKS        Fixture-only command composition; I09 owns live auth/CSRF/audit/queue wiring; S08 needs an additive universe read boundary
-FILES        apps/web/fixtures/rni-ui/read-service.ts; apps/web/app/(rni)/rni/page.tsx; apps/web/src/rni/ui/RetailRadar.tsx; apps/web/app/(rni)/rni/security/nvda/page.tsx; apps/web/src/rni/ui/SecurityDetail.tsx; apps/web/app/(rni)/rni/explorer/nvda/page.tsx; apps/web/src/rni/ui/RawDataExplorer.tsx; apps/web/app/(rni)/rni/status/page.tsx; apps/web/src/rni/ui/RniStateMatrix.tsx; apps/web/app/(rni)/rni/refresh/page.tsx; apps/web/app/(rni)/rni/refresh/fixture/page.tsx; apps/web/src/rni/ui/ManualRefreshControls.tsx; apps/web/src/rni/ui/ManualRefreshFixtureHarness.tsx; apps/web/src/rni/ui/renderFixtureOnly.ts; apps/web/src/rni/ui/EvidenceCitation.tsx; apps/web/src/rni/ui/evidence.ts; apps/web/tests/e2e/rni/read-service.spec.ts; apps/web/tests/e2e/rni/radar.spec.ts; apps/web/tests/e2e/rni/security-detail.spec.ts; apps/web/tests/e2e/rni/evidence-drawer.spec.ts; apps/web/tests/e2e/rni/raw-data-explorer.spec.ts; apps/web/tests/e2e/rni/state-matrix.spec.ts; apps/web/tests/e2e/rni/manual-refresh.spec.ts; apps/web/tests/e2e/rni/manual-refresh-fixture-guard.spec.ts; docs/rni/progress/SURFACE.md
-COMMITS      98a1064; 903a9da; ec80ba1; b85d9c7; 8bedac8; 6c0df68; d4c1a09; ffd5119; CURRENT (S07 controls; see branch HEAD)
-DEMO PROOF   `/rni/refresh` makes a fixture-backed NVDA/full-universe request against the frozen command service, keeps controls disabled while pending, and displays the durable result plus resolved scope preview without live queue or API access
+BASE SHA     ee47959
+STATUS       S01–S07 ready for merge; S08 ready for review; S09–S10 not started
+TASKS        S01–S07 ready for merge; S08 ready for review; S09–S10 not started
+TESTS        typecheck: pass; focused lint: pass; RNI contract: 15 pass; production build: pass; Chromium: S07 4 pass twice; S08 3 pass
+CONTRACT     CR-SURFACE-01–05 accepted; CR-SURFACE-05 resolved by D-RNI-18
+RISKS        Fixture-only composition; I08 owns live universe repository/FMP composition and activation; I09 owns live refresh command composition
+FILES        apps/web/fixtures/rni-ui/read-service.ts; apps/web/app/(rni)/rni/settings/universe/page.tsx; apps/web/src/rni/ui/UniverseSettings.tsx; apps/web/tests/e2e/rni/universe-settings.spec.ts; apps/web/app/(rni)/rni/refresh/page.tsx; apps/web/src/rni/ui/ManualRefreshControls.tsx; docs/rni/progress/SURFACE.md
+COMMITS      S07 401d2f7, 63d42d8, fb58989, f7e481e; S08 e12472d, CURRENT
+DEMO PROOF   `/rni/settings/universe` shows NVDA default, keyboard active-member search, source/retrieval, and immutable staged PLTR impact without activation access
 ```
