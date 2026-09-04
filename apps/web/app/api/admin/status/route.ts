@@ -1,21 +1,43 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin, UnauthenticatedError, UnauthorizedError, PasswordChangeRequiredError } from '@/services/auth';
+import {
+  requireAdmin,
+  UnauthenticatedError,
+  UnauthorizedError,
+  PasswordChangeRequiredError,
+} from '@/services/auth';
+import { getAdminOverview } from '@/services/admin/reads';
 
-/** F02 §4.4: `requireAdmin()` called in this route handler's own body. Fixture state until F15 (SURFACE) lands beyond auth (F01 §4.6). */
+/**
+ * F15 §4.8 — the `/admin` overview. Cheap, independently-fetchable panels (config/universe
+ * status, open-issue count, recent audit activity) rather than one heavy aggregate — the
+ * "streams independently" requirement is honoured by keeping each read small, not by adding a
+ * caching layer this build did not have time to wire (reported under Deferred).
+ */
 export async function GET() {
   try {
     await requireAdmin();
   } catch (error) {
-    if (error instanceof UnauthenticatedError || error instanceof UnauthorizedError || error instanceof PasswordChangeRequiredError) {
+    if (
+      error instanceof UnauthenticatedError ||
+      error instanceof UnauthorizedError ||
+      error instanceof PasswordChangeRequiredError
+    ) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
     throw error;
   }
 
+  const { config, universe, openIssueCount, recentAudit } = await getAdminOverview();
+
   return NextResponse.json({
-    state: 'fixture',
+    state: 'ready',
     route: '/api/admin/status',
-    owner: 'F15 (SURFACE)',
-    data: null,
+    config: config === null ? null : { id: config.id, activatedAt: config.activatedAt, changeReason: config.changeReason },
+    universe:
+      universe === null
+        ? null
+        : { id: universe.id, activatedAt: universe.activatedAt, selectedCount: universe.selectedCount },
+    openIssueCount,
+    recentAudit,
   });
 }
