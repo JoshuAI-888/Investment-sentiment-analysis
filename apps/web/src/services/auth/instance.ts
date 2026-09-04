@@ -148,6 +148,24 @@ export function createAuthInstance(deps: AuthInstanceDeps = {}) {
         // "self-service, confirmed, and idempotent" describes.
         enabled: true,
       },
+      /**
+       * D-38 — the "welcome1" seeded-account path (`seed-account.ts`). `input: false` means
+       * no signed-in user can set or clear this on themselves through the public
+       * `sign-up`/`update-user` endpoints' request bodies (Better Auth throws `FIELD_NOT_ALLOWED`
+       * if a caller tries) — the only two writers are `seed-account.ts`'s
+       * `provisionSeedAccountIfEligible` (sets it, via `internalAdapter.createUser`, bypassing
+       * the route layer this restriction lives in) and `clearMustChangePassword` (clears it, same
+       * bypass). `input: false` does not hide the field from session/user *output* — Better
+       * Auth's output serialization is unconditional on `additionalFields`, only *input* parsing
+       * checks this flag — so `getSession()` still sees the real value (`session.ts`).
+       */
+      additionalFields: {
+        mustChangePassword: {
+          type: 'boolean',
+          defaultValue: false,
+          input: false,
+        },
+      },
     },
     /**
      * The allowlist gate for account creation — see this file's own doc comment above for why

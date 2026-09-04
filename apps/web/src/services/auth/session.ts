@@ -22,6 +22,8 @@ export type Session = {
   readonly email: string;
   readonly sessionId: string;
   readonly expiresAt: string;
+  /** D-38 — true for a "welcome1" seeded account that has not set its own password yet. */
+  readonly mustChangePassword: boolean;
 };
 
 /** `null` when there is no valid session — never throws for the "not signed in" case. */
@@ -34,6 +36,7 @@ export async function getSession(): Promise<Session | null> {
     email: result.user.email,
     sessionId: result.session.id,
     expiresAt: result.session.expiresAt.toISOString(),
+    mustChangePassword: result.user.mustChangePassword,
   };
 }
 
@@ -51,10 +54,26 @@ export class UnauthorizedError extends Error {
   }
 }
 
+/**
+ * D-38 — thrown by `requireUser()` for a signed-in session whose password still needs changing.
+ * Deliberately **not** a subtype of `UnauthenticatedError`/`UnauthorizedError`: this is a session
+ * in good standing, just mid-onboarding, and every call site distinguishes it with its own
+ * `redirect('/change-password')` rather than folding it into "not signed in" or "not admin".
+ * `/change-password` itself never reaches this — it calls `getSession()` directly, not
+ * `requireUser()`, since triggering this error is exactly the state that page exists to resolve.
+ */
+export class PasswordChangeRequiredError extends Error {
+  constructor() {
+    super('Password must be changed before continuing.');
+    this.name = 'PasswordChangeRequiredError';
+  }
+}
+
 /** Throws `UnauthenticatedError` rather than returning `null` — every real caller needs a user. */
 export async function requireUser(): Promise<Session> {
   const session = await getSession();
   if (session === null) throw new UnauthenticatedError();
+  if (session.mustChangePassword) throw new PasswordChangeRequiredError();
   return session;
 }
 

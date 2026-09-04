@@ -793,6 +793,58 @@ this reason (found running the new e2e suite: `page.goto(verifyUrl)` landed a va
 cookie that a subsequent relative-path `page.goto('/dashboard')` never carried, because the
 mailed link's host and Playwright's own host differed even on the same port).
 
+### D-38 — Multi-account is allowlist-driven (already largely built); a seeded `welcome1` credential adds a second onboarding path alongside D-37's self-service one
+
+**"Is it hard to allow multiple accounts?" — no, mostly already done.** `ADMIN_EMAIL_ALLOWLIST`
+(`env.ts`'s `emailAllowlist` schema) was always comma-separated and every authorization check
+(`isAllowlisted`, `requireAdmin`) already iterates it — adding a teammate has never needed a code
+change, only a longer env var. What this decision actually adds is a second way for an
+allowlisted address to *get* its first credential, at the owner's request.
+
+**The two onboarding paths, explicitly, since D-37 already built one:**
+
+1. **Self-service** (D-37): visit `/sign-up`, choose a password, verify by clicking a mailed
+   link. Requires the real mailbox to be reachable.
+2. **Seeded** (D-38, new): sign in at `/sign-in` with the known constant `welcome1`. If the
+   address is allowlisted (in `live` mode) and has no account yet, one is created on the spot —
+   pre-verified, no mailed link at all — signed in immediately, and flagged so every protected
+   route redirects to `/change-password` until a real password is set. Owner-specified exact
+   string, not a generated one: the point is a credential that can be told to a teammate directly
+   ("your login is X, temporary password is `welcome1`"), not one requiring a side channel.
+
+**Why a known, shared password is an acceptable trade-off here, named rather than hidden.**
+Anyone who knows both an allowlisted address and the string `welcome1` can claim that account
+before its intended owner does — this is the well-understood cost of every default-password
+onboarding scheme (the same one Windows, Jira, and most enterprise software accept), not a new
+category of risk this codebase invented. It is mitigated by the same fact D-28 already leans on:
+the address itself is assumed public, so the operator's actual secret is telling the *right
+person* the credential quickly, same as any temporary password. `changePassword`
+(`flow.ts`) revokes every other session on a successful change specifically to close the "someone
+else raced me to it" window the moment the real owner sets their own password.
+
+**Structurally, `mustChangePassword` is unreachable by the client that would benefit most from
+forging it.** It is declared `input: false` (`instance.ts`) — the public `sign-up`/`update-user`
+endpoints refuse to set or clear it from a request body at all (Better Auth throws
+`FIELD_NOT_ALLOWED`). The only two writers are `seed-account.ts`'s
+`provisionSeedAccountIfEligible` (sets it) and `clearMustChangePassword` (clears it, reached only
+after `auth.api.changePassword` has independently verified the caller's current password) — both
+go through `auth.$context.internalAdapter` directly, bypassing the route layer `input: false`
+restricts, which is exactly why that restriction is safe rather than merely decorative.
+
+**The gate is enforced in `requireUser()` itself, not per-page.** A new `PasswordChangeRequiredError`
+(`session.ts`) is thrown there, alongside `UnauthenticatedError`, so every one of F02's existing
+call sites — all fifteen pages and eleven API route handlers that already had to catch
+`UnauthenticatedError` per §4.4's non-negotiable — catches this the same way, redirecting to
+`/change-password` (pages) or answering 401 (API routes). `/change-password` itself calls
+`getSession()` directly, never `requireUser()`, since triggering that error is exactly the state
+the page exists to resolve.
+
+**Reuses D-37's `isAccountCreationAllowed` fixture-mode bypass, deliberately, for the same
+reason.** `provisionSeedAccountIfEligible` calls the same allowlist check `databaseHooks.user.
+create.before` does — `live`-mode only — so in fixture/e2e mode any address plus `welcome1`
+auto-provisions, matching self-service sign-up's own fixture behavior and needing no separate
+test seam.
+
 ---
 
 ## 2. Rulings made during review

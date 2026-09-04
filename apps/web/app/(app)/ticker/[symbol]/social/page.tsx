@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { requireUser, UnauthenticatedError } from '@/services/auth';
+import { requireUser, UnauthenticatedError, PasswordChangeRequiredError } from '@/services/auth';
 import { assembleTickerSnapshot } from '@/services/ticker/snapshot';
 import { SearchBox } from '@/ui/ticker/SearchBox';
 import { TickerHeaderCard } from '@/ui/ticker/TickerHeaderCard';
@@ -30,6 +30,7 @@ export default async function Page({ params }: { params: Promise<{ symbol: strin
     await requireUser();
   } catch (error) {
     if (error instanceof UnauthenticatedError) redirect('/sign-in');
+    if (error instanceof PasswordChangeRequiredError) redirect('/change-password');
     throw error;
   }
 

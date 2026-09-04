@@ -202,6 +202,117 @@ test.describe('F02 — sign-up and sign-in', () => {
   });
 });
 
+/** D-38's known initial credential — `src/services/auth/seed-account.ts`'s `WELCOME_PASSWORD`. */
+const WELCOME_PASSWORD = 'welcome1';
+
+test.describe('F02 — D-38: the "welcome1" seeded-account path', () => {
+  test('a nonexistent address signs in on the first attempt with welcome1, and is forced to change it', async ({
+    page,
+  }) => {
+    const email = `e2e-welcome1-${Date.now()}@example.com`;
+
+    await page.goto('/sign-in');
+    await page.getByLabel('Email').fill(email);
+    await page.getByLabel('Password').fill(WELCOME_PASSWORD);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+
+    // Signed in, but every protected route redirects here instead of rendering — not just the
+    // dashboard, proving this is `requireUser()`'s own gate, not a special case on one page.
+    await page.waitForURL('**/change-password');
+    await expect(page.getByText(/temporary password/)).toBeVisible();
+
+    const otherProtectedPage = await page.goto('/settings/account');
+    expect(otherProtectedPage?.status()).toBe(200);
+    expect(new URL(page.url()).pathname).toBe('/change-password');
+
+    const newPassword = 'a genuinely new chosen password';
+    await page.goto('/change-password');
+    await page.getByLabel('Current password').fill(WELCOME_PASSWORD);
+    await page.getByLabel('New password', { exact: true }).fill(newPassword);
+    await page.getByLabel('Confirm new password').fill(newPassword);
+    await page.getByRole('button', { name: 'Set password' }).click();
+    await page.waitForURL('**/dashboard');
+
+    // The flag is genuinely cleared, not just bypassed for this one session: sign out, and both
+    // the old temporary password and a plain re-visit to a protected page behave normally now.
+    await page.goto('/settings/account');
+    await page.getByRole('button', { name: 'Sign out' }).click();
+    await page.waitForURL('**/sign-in');
+
+    await page.goto('/sign-in');
+    await page.getByLabel('Email').fill(email);
+    await page.getByLabel('Password').fill(WELCOME_PASSWORD);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page.getByText('That email or password is wrong.')).toBeVisible();
+
+    await signIn(page, email, newPassword);
+    expect(new URL(page.url()).pathname).toBe('/dashboard');
+  });
+
+  test('a wrong, non-welcome1 password against a nonexistent address is refused outright, no account created', async ({
+    page,
+  }) => {
+    const email = `e2e-welcome1-wrong-${Date.now()}@example.com`;
+
+    await page.goto('/sign-in');
+    await page.getByLabel('Email').fill(email);
+    await page.getByLabel('Password').fill('not-the-welcome-password-at-all');
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page.getByText('That email or password is wrong.')).toBeVisible();
+    expect(new URL(page.url()).pathname).toBe('/sign-in');
+
+    // Nothing was created by the wrong guess — welcome1 still works, exactly like a fresh address.
+    await page.goto('/sign-in');
+    await page.getByLabel('Email').fill(email);
+    await page.getByLabel('Password').fill(WELCOME_PASSWORD);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.waitForURL('**/change-password');
+  });
+
+  test('a self-service, already-verified account is unaffected by a stray welcome1 attempt', async ({
+    page,
+    request,
+  }) => {
+    const email = `e2e-welcome1-real-account-${Date.now()}@example.com`;
+    await signUpAndVerify(page, request, email);
+    await page.goto('/settings/account');
+    await page.getByRole('button', { name: 'Sign out' }).click();
+    await page.waitForURL('**/sign-in');
+
+    await page.goto('/sign-in');
+    await page.getByLabel('Email').fill(email);
+    await page.getByLabel('Password').fill(WELCOME_PASSWORD);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page.getByText('That email or password is wrong.')).toBeVisible();
+
+    // The real password still works — the guess did not overwrite or otherwise touch the account.
+    await signIn(page, email);
+    expect(new URL(page.url()).pathname).toBe('/dashboard');
+  });
+
+  test('a signed-in user with no pending password change can still visit /change-password voluntarily', async ({
+    page,
+    request,
+  }) => {
+    const email = `e2e-voluntary-change-${Date.now()}@example.com`;
+    await signUpAndVerify(page, request, email);
+
+    const newPassword = 'a different voluntarily-chosen password';
+    await page.goto('/change-password');
+    await page.getByLabel('Current password').fill(PASSWORD);
+    await page.getByLabel('New password', { exact: true }).fill(newPassword);
+    await page.getByLabel('Confirm new password').fill(newPassword);
+    await page.getByRole('button', { name: 'Set password' }).click();
+    await page.waitForURL('**/dashboard');
+
+    await page.goto('/settings/account');
+    await page.getByRole('button', { name: 'Sign out' }).click();
+    await page.waitForURL('**/sign-in');
+    await signIn(page, email, newPassword);
+    expect(new URL(page.url()).pathname).toBe('/dashboard');
+  });
+});
+
 test.describe('F02 — every operator route refuses a signed-in, non-admin session (Wave 1 exit gate)', () => {
   test.beforeEach(async ({ page, request }) => {
     // `playwright.config.ts` sets `ADMIN_EMAIL_ALLOWLIST` to exactly one fixed address,

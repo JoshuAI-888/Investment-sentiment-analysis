@@ -11,7 +11,7 @@ function isAction(value: unknown): value is Action {
 
 /**
  * **Test-only. 404s in every mode except `fixture`.** Same guard as
- * `api/dashboard/e2e-seed/route.ts` (F07) and `api/auth/fixture-otp/route.ts` (F02) — see
+ * `api/dashboard/e2e-seed/route.ts` (F07) and `api/auth/fixture-link/route.ts` (F02) — see
  * `src/services/ticker/testing.ts` for why F09's e2e suite needs this seam.
  */
 export async function POST(request: Request) {

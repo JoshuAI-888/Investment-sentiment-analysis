@@ -25,7 +25,7 @@ function isValidState(value: unknown): value is ValidState {
 }
 
 /**
- * **Test-only. 404s in every mode except `fixture`.** Same guard as `api/auth/fixture-otp` (F02)
+ * **Test-only. 404s in every mode except `fixture`.** Same guard as `api/auth/fixture-link` (F02)
  * and `api/dashboard/e2e-seed` (F07) — see `src/services/attention/testing.ts` for why F08's e2e
  * suite needs a seam here rather than driving every state through a live ApeWisdom fixture.
  */

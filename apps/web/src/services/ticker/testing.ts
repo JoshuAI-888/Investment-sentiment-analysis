@@ -1,7 +1,7 @@
 /**
  * Test-only ticker-page fixture seeding. **Never reachable outside `PROVIDER_MODE=fixture`** —
  * the route that calls this (`app/api/ticker/e2e-seed/route.ts`) 404s in every other mode, the
- * same guard `api/auth/fixture-otp/route.ts` (F02) and `api/dashboard/e2e-seed/route.ts` (F07)
+ * same guard `api/auth/fixture-link/route.ts` (F02) and `api/dashboard/e2e-seed/route.ts` (F07)
  * already establish.
  *
  * **Why this exists at all.** F09's e2e suite needs a security with real, computable attention/

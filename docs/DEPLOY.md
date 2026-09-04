@@ -47,6 +47,15 @@ ADMIN_EMAIL_ALLOWLIST="joshuaifang@gmail.com"
 boot assertion logs it at startup — that assertion exists so a later regression appears in the
 deployment log rather than at the first admin click.
 
+**Now that this is multi-address-capable (D-38): every address in `ADMIN_EMAIL_ALLOWLIST` gets
+its account the moment someone signs in there with `welcome1`** — no separate provisioning step.
+Add an address here and it exists as soon as someone uses it; there is no "invite" to send beyond
+telling them the address and that starting password. **Change it to a real password immediately**
+— `/change-password` forces this on first sign-in, but the account is live and signed-in with the
+shared credential from the moment `welcome1` is entered until that happens. Do not leave a newly
+added address unused for long with nobody told about it: anyone else who already knows both the
+address and `welcome1` can claim it first (`../MEMORY.md` D-38's accepted trade-off).
+
 <details><summary>Original task, retained for the record</summary>
 
 ### MT-00 (resolved) — Confirm the administrator email
