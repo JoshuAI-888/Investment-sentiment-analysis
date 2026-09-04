@@ -53,7 +53,7 @@
 | CR-DATA-004 | DATA | `RESOLVED_NO_CHANGE` | I06 synchronizer owns duplicate, completeness, NVDA, ambiguous, and unresolved validation; transport schema remains structural | DATA, INTEGRATION | `e535624` + `264ea9c` |
 | CR-SURFACE-01 | SURFACE | `ACCEPTED` | Add `RniReadService.getCitation(citationId)` returning frozen `RniCitation`; evidence remains a second source-ID read | DATA, SURFACE, INTEGRATION | `264ea9c` |
 | CR-SURFACE-02 | SURFACE | `ACCEPTED` | Add a cursor-paginated Radar page with run lineage, security identity, two non-poolable platform-labelled cells, and explicit pending/aligned/divergent/partial/insufficient cross-source state | DATA, ENGINE, SURFACE, INTEGRATION | `84dca87` / D-RNI-13 |
-| CR-SURFACE-03 | SURFACE | `ACCEPTED` | Add a bounded security-detail read with canonical identity and exactly four cited dimension assignments for each independently labelled platform | DATA, ENGINE, SURFACE, INTEGRATION | `CURRENT` / D-RNI-14 |
+| CR-SURFACE-03 | SURFACE | `ACCEPTED` | Add a bounded security-detail read with canonical identity and exactly four cited dimension assignments for each independently labelled platform | DATA, ENGINE, SURFACE, INTEGRATION | `ce80424` / D-RNI-14 |
 
 ### CR-DATA-001 decision
 
@@ -118,8 +118,8 @@
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
-| ENGINE | `E02_APPROVED` | no; rebase required before E03 | builder full unit 1,204 + contract 80/22 skipped; coordinator focused 20, typecheck and lint pass | yes | E01 `b3e8220` and E02 correction `0e229d6` accepted; ER-04–06 closed; lane remains held |
-| SURFACE | `S02_APPROVED` | yes through I02C (`4ab744e`) | builder + coordinator: typecheck, lint, contract 11, build, Chromium 4/4 | yes | S01 `71010bd` and S02 `c4899b8` approved; lane remains held for completion/order |
+| ENGINE | `E03_APPROVED` | yes through I02D (`ce80424`) | builder serialized unit 1,223 + contract 88/22 skipped; coordinator focused E03 17/17 and typecheck pass | yes | E01–E03 accepted through `1597eea`; E04 active; lane remains held |
+| SURFACE | `S03_APPROVED` | yes through I02D (`ce80424`) | builder typecheck/lint/contract/build/Chromium 6/6; coordinator typecheck and contract 13/13 | yes | S01–S03 accepted through `b85d9c7`; S04 active; lane remains held |
 
 ## Live/deployment gates
 
@@ -202,7 +202,8 @@
 | `254fe45` | Merge accepted DATA lane into integration | coordinator typecheck; full contract 81 pass/22 DB-skipped; fresh PostgreSQL DATA 41/41 |
 | `2607140` | Record DATA lane acceptance and close G3 | coordinator review and merged verification evidence |
 | `6470823` | Record ENGINE E02 review findings | semantic review against source coverage, privacy and content-version requirements |
-| `CURRENT` | Close I06R2 with durable pre-fetch commands and governed security bootstrap | typecheck; focused lint; unit 1,179; contract 83 pass/22 DB-skipped; fresh PostgreSQL affected universe/version gates 17/17 |
+| `86db21e` | Close I06R2 with durable pre-fetch commands and governed security bootstrap | typecheck; focused lint; unit 1,179; contract 83 pass/22 DB-skipped; fresh PostgreSQL affected universe/version gates 17/17 |
+| `CURRENT` | Record ENGINE E03 and SURFACE S03 coordinator acceptance | coordinator focused E03 17/17; typecheck; RNI contract 13/13; ownership/base/diff review |
 
 ## Coordinator notes
 
@@ -249,6 +250,11 @@
   and binds terminal provider/payload/version lineage; the reviewed profile import bootstraps a
   clean 501–600-security canonical master without activating a universe. I05/I06 are ready for
   independent re-review.
+- ENGINE E03 is accepted at `1597eea`: the portable stage uses the frozen commit-returning source
+  port, checkpoints only DATA's durable identity and covers lease/budget/retry/hash/crash rules;
+  coordinator focused tests pass 17/17. SURFACE S03 is accepted at `b85d9c7`: the fixture detail
+  consumes D-RNI-14 and renders four independently cited dimensions per platform; typecheck and
+  RNI contract 13/13 pass. Both lanes remain unmerged and advance to E04/S04.
 
 ## I06R2 handoff
 

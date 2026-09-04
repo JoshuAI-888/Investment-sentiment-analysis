@@ -26,8 +26,8 @@
 | G1 model-route branch merged | `PASSED` | coordinator | PR #2, main commit `09ad439` |
 | G2 RNI contract frozen | `PASSED` | coordinator | PR #5 merged at `dd28ea2`; typed source contract at `9908eda` |
 | G3 DATA accepted | `PASSED` | DATA + reviewer | merged sequentially at `254fe45`; coordinator type/contract plus fresh PostgreSQL DATA 41/41 pass |
-| G4 ENGINE accepted | `IN_PROGRESS` | ENGINE + reviewer | E01 accepted at `b3e8220`; E02 corrections accepted at `0e229d6`; E03–E10 remain |
-| G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01–S02 accepted; CR-SURFACE-03 accepted as D-RNI-14 and S03 unblocked; S03–S10 remain |
+| G4 ENGINE accepted | `IN_PROGRESS` | ENGINE + reviewer | E01–E03 accepted through `1597eea`; E04–E10 remain |
+| G5 SURFACE accepted | `IN_PROGRESS` | SURFACE + reviewer | S01–S03 accepted through `b85d9c7`; S04–S10 remain |
 | G6 integrated preview | `NOT_STARTED` | coordinator | Depends G3–G5 |
 | G7 live Reddit/X/FMP gates | `NOT_STARTED` | coordinator + joshuai | Depends G6 and configured credentials |
 | G8 production approval | `NOT_STARTED` | joshuai | Depends all prior gates |
@@ -37,8 +37,8 @@
 | Workstream | Branch | Status | Progress file | Latest accepted commit |
 |---|---|---|---|---|
 | DATA | `feat/rni-data-source-first` | `MERGED_TO_INTEGRATION` | `DATA.md` | lane `5926601`; merge `254fe45` |
-| ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01–E02 accepted | `ENGINE.md` | `0e229d6`, must rebase current integration before E03 |
-| SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01–S02 accepted, S03 unblocked | `SURFACE.md` | S03 blocker `57fd90c`; rebase D-RNI-14 before implementation |
+| ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01–E03 accepted | `ENGINE.md` | `1597eea` |
+| SURFACE | `feat/rni-surface-demo` | `IN_PROGRESS`; S01–S03 accepted | `SURFACE.md` | `b85d9c7` |
 | INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I06R2 universe review corrections (D-RNI-15; current task commit) |
 
 ## Confirmed product decisions
@@ -103,3 +103,4 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — independent review held I05/I06 on four P1 and two P2 universe findings: activation could alter/unapproved-stale membership, idempotency began after FMP, 500 rows passed, clean security bootstrap was absent, FMP lineage was DB-optional, and impossible dates passed structural validation.
 - 2026-09-05 — closed universe findings IR-01/03/05/06: FMP activation now requires one-way admin approval, exact stored membership and current parent; PostgreSQL requires complete provider lineage; exactly 500 and impossible dates fail; fresh DB activation/version tests pass 14/14.
 - 2026-09-05 — closed IR-02/04 as D-RNI-15: a durable command claim now precedes FMP dispatch and replays terminal outcomes with lineage; a reviewed hash-bound FMP profile import bootstraps a clean 501-security master. I05/I06 are ready for independent re-review.
+- 2026-09-05 — accepted ENGINE E03 at `1597eea` after coordinator base/ownership review and focused 17/17 rerun; accepted SURFACE S03 at `b85d9c7` after D-RNI-14 consumption review, typecheck and RNI contract 13/13. Builders advanced to E04/S04; lane merges remain held.
