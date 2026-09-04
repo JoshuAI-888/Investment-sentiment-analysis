@@ -13,11 +13,27 @@ import { API_ROUTES, PAGE_ROUTES } from './routes';
  * behaviour — rendering at all, with the right `data-route` — is still covered below by "the
  * intercepted Inspector renders in the drawer slot on a soft navigation", which does not depend
  * on which of the two states it lands in.
+ *
+ * **F17 excludes `/architecture` and `/architecture/calculations` the same way, for the same
+ * reason.** `loadArchitectureView` (`services/architecture/view.ts`) renders
+ * `data-state="fixture"` only when no database is configured, and `data-state="ready"` (real
+ * manifest, real public-safe projection, real persisted worked examples) once one is — the
+ * identical fixture/real duality `/calculations/calc_fixture` already established this filter
+ * for, not a new shape of exception. Their real, database-configured behaviour is covered in
+ * `tests/e2e/architecture.spec.ts` instead, which also covers everything that renders with no
+ * database at all (the manifest topology needs none) unconditionally.
  */
+const DUAL_STATE_PAGE_ROUTES = new Set(['/calculations/calc_fixture', '/architecture', '/architecture/calculations']);
 const PAGE_ROUTES_FOR_THIS_RUN =
   process.env['DATABASE_URL'] === undefined
     ? PAGE_ROUTES
-    : PAGE_ROUTES.filter((route) => route.path !== '/calculations/calc_fixture');
+    : PAGE_ROUTES.filter((route) => !DUAL_STATE_PAGE_ROUTES.has(route.path));
+
+/** `GET /api/architecture` is the same fixture/real duality — see `routes.ts`'s own note. */
+const API_ROUTES_FOR_THIS_RUN =
+  process.env['DATABASE_URL'] === undefined
+    ? API_ROUTES
+    : API_ROUTES.filter((route) => route.path !== '/api/architecture');
 
 test.describe('every route in source §6.2 renders a fixture state', () => {
   for (const route of PAGE_ROUTES_FOR_THIS_RUN) {
@@ -36,7 +52,7 @@ test.describe('every route in source §6.2 renders a fixture state', () => {
     });
   }
 
-  for (const route of API_ROUTES) {
+  for (const route of API_ROUTES_FOR_THIS_RUN) {
     test(`route handler ${route.method} ${route.path} (${route.source})`, async ({ request }) => {
       const response =
         route.method === 'GET' ? await request.get(route.path) : await request.post(route.path);
