@@ -11,7 +11,7 @@ import {
   rniStance,
   rniUnitDecimal,
 } from '@/rni/contracts';
-import { hashRniModelInput } from '@/rni/model-input';
+import { hashRniModelInput } from '@/rni/agents/model-input';
 import type {
   RniCitationProposal,
   RniClassifiedClaim,

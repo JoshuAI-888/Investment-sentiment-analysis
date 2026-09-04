@@ -30,7 +30,7 @@ import {
   serializeRniModelInput,
   serializeRniModelInputJson,
   type RniSerializedModelInput,
-} from '../../src/rni/model-input';
+} from '../../src/rni/agents/model-input';
 import { z } from 'zod';
 
 export type RniPromptTask =

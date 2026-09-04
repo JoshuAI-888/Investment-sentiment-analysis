@@ -6,7 +6,7 @@ import {
   type RniModelTransportRequest,
 } from '@/rni/agents';
 import type { RniSecurityMention, RniSourceItem } from '@/rni/contracts';
-import { hashRniSerializedModelInput } from '@/rni/model-input';
+import { hashRniSerializedModelInput } from '@/rni/agents/model-input';
 import {
   classifyPersistedSecurityObservations,
   type RniClassificationPolicy,

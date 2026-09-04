@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { serializeRniModelInput } from '../model-input';
+import { serializeRniModelInput } from '../agents/model-input';
 import { canonicalizeRedditUrl, isRedditHost } from './reddit-url';
 import type {
   ConsultedSource,

@@ -21,7 +21,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 | E06 | Platform-specific deterministic analytics and confidence | `COMPLETE` | 18 focused tests: decimal golden vectors, platform/security isolation, positive-weight independent-source/breadth gates, half-open windows, low/zero bases, baseline winsorization/abstention, confidence readiness/caps, canonical replay/tamper; coordinator accepted, current rebased correction `2f0df02` |
 | E07 | Reddit/X convergence and agreement/divergence facts | `COMPLETE` | 21 focused tests: aligned/divergent/magnitude and dimension differences, scale imbalance without pooling, partial/unavailable/pending/insufficient/stale/unknown states, deterministic replay/tamper and frozen combined-state compatibility; coordinator accepted, current rebased `7c7fae4` |
 | E08 | Verification, challenger and three-part cited synthesis | `COMPLETE` | 46 focused tests: point-in-time claim-specific social corroboration/counterevidence, exact persisted claim and distinct model-invocation lineage, active rights/canonical URL validation, strongest countercase, no-model terminal paths, citation completeness, injection containment and deterministic replay; independent review PASS; coordinator accepted, current rebased correction `1a0b157` |
-| E09 | RNI model routes, prompts and caching-compatible stable prefixes | `READY_FOR_REVIEW` | Rebased onto `00e0d23`; ER-15–ER-18 closed; E09 19/19, E08 46/46, discovery 16/16 and classifier 16/16; fresh independent read-only re-review PASS with no P0/P1/P2; prior premature pass claim replaced by this verified result |
+| E09 | RNI model routes, prompts and caching-compatible stable prefixes | `READY_FOR_REVIEW` | Rebased onto `25023b9`; ER-15–ER-19 closed; E09 19/19, E08 46/46, discovery 16/16 and classifier 16/16; fresh independent read-only re-review PASS with no P0/P1/P2; E10 untouched |
 | E10 | RNI eval suite and full ENGINE handoff | `NOT_STARTED` | CI-trigger and lane report evidence |
 
 ## Required invariants
@@ -97,9 +97,9 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 | analytics golden/replay | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/analytics/platform-analytics.test.ts tests/contract/rni/platform-analytics.test.ts tests/eval/rni/platform-analytics.eval.test.ts --no-file-parallelism` | 3 files, 18/18 passed; coordinator accepted |
 | cross-source isolation | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/convergence/platform-convergence.test.ts tests/contract/rni/platform-convergence.test.ts tests/eval/rni/platform-convergence.eval.test.ts` | 3 files, 21/21 passed; independent re-review READY with no P0/P1/P2 findings; coordinator accepted |
 | prompt injection/citations | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/agents/cited-synthesis.test.ts tests/contract/rni/cited-synthesis.test.ts tests/eval/rni/cited-synthesis.eval.test.ts --no-file-parallelism` | 3 files, 46/46 passed; independent review PASS with no runtime/test P0/P1/P2; coordinator accepted; D-RNI-19 accepted durable composition for I07 |
-| model routing/prompt registry | `READY_FOR_REVIEW` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/agents/model-router.test.ts tests/contract/rni/model-router.test.ts --no-file-parallelism` | 2 files, 19/19 passed; ER-15–ER-18 adversarial/history/telemetry/hash coverage; E08 regression 46/46; discovery 16/16; classifier 16/16; independent re-review PASS with no P0/P1/P2 |
+| model routing/prompt registry | `READY_FOR_REVIEW` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/agents/model-router.test.ts tests/contract/rni/model-router.test.ts --no-file-parallelism` | 19/19 passed; ER-17 hostile failure-record sanitization and ER-19 owned-path correction; E08 46/46, discovery 16/16, classifier 16/16; independent re-review PASS with no P0/P1/P2 |
 | RNI eval | `NOT_STARTED` | — | — |
-| repository required gate | `READY_FOR_REVIEW` | `corepack pnpm --dir apps/web typecheck`; scoped ESLint; `git diff --check` | Current ER-15–ER-18 correction typecheck, scoped lint and diff check passed; prior full-repository E09 gate remains recorded below and is not represented as a fresh run |
+| repository required gate | `READY_FOR_REVIEW` | `corepack pnpm --dir apps/web typecheck`; scoped ESLint; `git diff --check` | Fresh ER-17/ER-19 correction typecheck, scoped lint and diff check passed; affected 97/97 passed |
 
 ## Review findings
 
@@ -148,8 +148,9 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 | E09-R1-01 / ER-14 | P1 | `CLOSED` | Only verifier/challenger calls crossed the governed router while discovery, relationship and classifier inference could bypass the immutable selected route | Registered all five active ENGINE tasks; added a Direct/Gateway Web Search composition and bounded relationship/classifier adapters over the same immutable run configuration and recorder; public contract tests pin every task and prove a Gateway discovery run never touches Direct |
 | E09-R1-02 / ER-15 | P1 | `CLOSED` | Literal closing tags in source/company text could spoof the generic or discovery dynamic-input boundary | Current prompts encode canonical JSON as base64url inside one byte-length-prefixed envelope; source text cannot emit another effective tag, and adversarial generic/discovery tests decode the payload and prove exactly one opening/closing boundary |
 | E09-R1-03 / ER-16 | P1 | `CLOSED` | Reconstructed discovery-v1 and verification-v1 requests could silently inherit a current serializer or prompt/schema bytes | Each `(task, promptVersion)` owns immutable stable-prefix and input serializers; exact accepted discovery-v1 instruction/input and verification-v1 policy/schema/input fixtures are compared byte-for-byte after successors exist |
-| E09-R1-04 / ER-17 | P1 | `CLOSED` | Billed post-response model-drift, forbidden-tool and structured-output failures discarded parsed response telemetry, including discovery failures after a valid Responses envelope | Generic and discovery failed finalization now retain sanitized response/provider/model/revision, token/cache usage, latency, cost and available tool/citation trace without output content; model-drift, tool-trace and structured-output/schema failures are asserted before the original error propagates |
+| E09-R1-04 / ER-17 | P1 | `CLOSED` | Failed finalization persisted raw provider/Zod error messages that can contain attacker-controlled keys, credentials, URLs or payload excerpts even though billed telemetry is sanitized | Generic and discovery record only six allowlisted failure codes with fixed messages of at most 61 characters; hostile keys/values, fake secrets, URLs and provider text remain only on the original transient error, while field-allowlisted billed telemetry is retained without raw output |
 | E09-R2-01 / ER-18 | P1 | `CLOSED` | Classifier observations hashed insertion-order JSON while the router dispatched sorted JSON, allowing lineage divergence | Classifier observation and router dispatch share one canonical serializer/hash; a routed two-security regression proves each persisted observation hash equals its exact recorded dispatched-input hash and binds its distinct model-call ID |
+| E09-R3-01 / ER-19 | P1 | `CLOSED` | Shared serializer was added at `apps/web/src/rni/model-input.ts`, outside every ENGINE-owned subtree in §3.3 | Serializer now exists only at `apps/web/src/rni/agents/model-input.ts`; all imports resolve to the owned subtree and no ownership expansion was requested |
 
 ## Open risks/blockers
 
@@ -462,9 +463,13 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 ### E09 — RNI model routes, prompts and caching-compatible stable prefixes
 
-- **Status:** `READY_FOR_REVIEW`; ER-15–ER-18 verification and independent read-only re-review
+- **Status:** `READY_FOR_REVIEW`; ER-15–ER-19 are closed and fresh independent read-only review
   passed with no P0/P1/P2; E10 not started.
-- **Slice:** Rebased onto coordinator integration `00e0d23` and closed ER-14–ER-18. The prompt
+- **Slice:** Rebased onto coordinator integration `25023b9`. ER-15, ER-16 and ER-18 remain closed;
+  the ER-17 follow-up replaces recorder-visible raw provider/Zod details with stable allowlisted
+  failure codes and bounded safe messages while rethrowing the original error transiently and
+  retaining sanitized billed telemetry. ER-19 moves the shared serializer into the owned
+  `agents/` subtree. The prompt
   registry now owns versioned Web Search discovery plus no-tool relationship, classifier,
   verifier and challenger definitions, strict output schemas/decoders and exact historical
   lookup. Task-specific deep-strict input parsers feed provider-neutral compositions over injected
@@ -476,8 +481,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
   citation/tool trace, including sanitized telemetry for billed failures. E04/E05 and E08 adapters
   all require the same integration-owned recorder.
 - **Files changed:** `apps/web/prompts/rni/registry.ts`,
-  `apps/web/src/rni/agents/{index,model-router}.ts`,
-  `apps/web/src/rni/model-input.ts`,
+  `apps/web/src/rni/agents/{index,model-input,model-router}.ts`,
   `apps/web/src/rni/discovery/openai-web-search.ts`,
   `apps/web/src/rni/observations/{classifier,relationships,types}.ts`,
   `apps/web/tests/unit/rni/agents/model-router.test.ts`,
@@ -488,9 +492,9 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
   classifier 16/16 passed (97/97 combined); typecheck, scoped ESLint and `git diff --check` passed.
   The previous full-repository correction gate was unit 1,341/1,341, contract 107 passed/22
   skipped, integration 44 passed/390 environment-gated skips and eval 7/7; it is retained as
-  historical evidence, not claimed as a fresh pass for this correction. The fresh independent
-  read-only re-review first found and closed discovery failure-telemetry loss, then returned PASS
-  with no P0/P1/P2. The earlier premature pass claim has been withdrawn and replaced by this run.
+  historical evidence, not claimed as a fresh pass for this correction. Fresh independent review
+  of the ER-17/ER-19 correction returned PASS with no P0/P1/P2 after independently rerunning 45/45
+  focused tests, typecheck and scoped lint.
 - **Models/prompts changed:** registered historical `rni-discovery-v1`, current
   `rni-discovery-v2`, `rni-relationship-v1`, `rni-classifier-v1`, historical
   `rni-verification-v1`, current `rni-verification-v2` and `rni-challenger-v1`, each with explicit
@@ -509,7 +513,9 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
   provider, unavailable Gateway, silent model drift, malformed/extra input or output, forbidden
   tools, and provider failure all fail closed with zero fallback and zero retry; started provider
   attempts are finalized durably on success and failure, with parsed provider telemetry retained
-  on billed post-response failures. Per-security classifier call IDs are
+  on billed post-response failures. Persisted failure details are one of six stable codes with
+  fixed messages of at most 72 characters; attacker/provider text stays only on the transient
+  rethrown error. Per-security classifier call IDs are
   stable UUID-shaped identities derived from SHA-256 of
   `(classification batch ID, source item ID, security ID)` before recorder start and are persisted
   on the matching observation. No deterministic analytics formula was added or changed in E09.
@@ -540,22 +546,23 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 | `7c7fae4` | E07 deterministic Reddit/X convergence facts without pooled metrics; coordinator accepted | focused 21/21; serialized unit 1,285/1,285; contract 100 passed/22 skipped; integration 44 passed/390 skipped; eval 5/5; typecheck/lint passed |
 | `1c7bca7` | E08 citation-gated verification, challenger and deterministic three-part synthesis | focused 31/31; serialized unit 1,311/1,311; contract 103 passed/22 skipped; integration 44 passed/390 skipped; eval 7/7; typecheck/lint passed; initial independent review PASS |
 | `1a0b157` | E08 D-RNI-19 point-in-time, claim/invocation lineage, rights and URL publication gates | post-rebase focused 46/46; serialized unit 1,326/1,326; contract 105 passed/22 skipped; integration 44 passed/390 skipped; eval 7/7; typecheck/lint/diff passed; final independent review PASS |
-| `bd3f1fa` | E09 immutable Direct/Gateway model router and stable prompt registry, rebased onto `00e0d23` | initial focused 11/11; combined E08 regression 57/57; repository gates passed; ER-14–ER-17 subsequently requested |
-| `260521f` | E09 five-task routing, strict versioned payloads, historical prompt lookup and durable failure lineage, rebased onto `00e0d23` | focused 17/17; E08 regression 46/46; extended affected regression 113/113; serialized unit 1,341/1,341; contract 107 passed/22 skipped; integration 44 passed/390 skipped; eval 7/7; typecheck/lint/diff passed; coordinator requested ER-15–ER-18 follow-up |
-| review commit | E09 encoded prompt boundary, exact legacy snapshots, billed-failure telemetry and classifier dispatch-hash parity | E09 19/19; E08 46/46; discovery 16/16; classifier 16/16; typecheck/scoped lint/diff passed; independent re-review PASS with no P0/P1/P2 |
+| `c1ff775` | E09 immutable Direct/Gateway model router and stable prompt registry, rebased onto `25023b9` | initial focused 11/11; combined E08 regression 57/57; repository gates passed; ER-14–ER-17 subsequently requested |
+| `94d1071` | E09 five-task routing, strict versioned payloads, historical prompt lookup and durable failure lineage, rebased onto `25023b9` | focused 17/17; E08 regression 46/46; extended affected regression 113/113; prior full repository gates passed |
+| `121306c` | E09 encoded prompt boundary, exact legacy snapshots, billed-failure telemetry and classifier dispatch-hash parity, rebased onto `25023b9` | E09 19/19; E08 46/46; discovery 16/16; classifier 16/16; coordinator requested ER-17 sanitization and ER-19 ownership follow-up |
+| review correction | E09 stable sanitized failure records and owned serializer path | affected 97/97; typecheck/scoped lint/diff passed; independent re-review PASS with no P0/P1/P2 |
 
 ## Handoff
 
 ```text
 RNI LANE     ENGINE
 BRANCH       feat/rni-engine-live-slice
-BASE SHA     00e0d23 (required coordinator integration head for ER-15–ER-18 correction)
+BASE SHA     25023b9 (required coordinator integration head for ER-17/ER-19 correction)
 STATUS       PARTIAL; E09 ready for coordinator review; E10 not started
 TASKS        8/10 complete; E01-E08 coordinator accepted; E09 ready for review; E10 not started
 TESTS        Current: E09 19/19; E08 46/46; discovery 16/16; classifier 16/16; typecheck/scoped lint/diff pass. Prior full E09 gate: unit 1,341/1,341; contract 107 passed/22 skipped; integration 44 passed/390 skipped; eval 7/7
 CONTRACT     CR-ENGINE-001 ACCEPTED_FOR_I07 by D-RNI-19 — durable persistence/composition remains I07/migration 0024 work
 RISKS        I07/I10 must persist/compose accepted model-call lineage and live transports; I10 owns D-RNI-21 concrete model/reasoning/budget enforcement; E10 owns live model-resistance eval and live cache evidence; live Web Search/X smokes pending approved credentials
 FILES        src/rni/{discovery,sources,workflow,observations,analytics,convergence,agents}/**; tests/unit/rni/{discovery,sources,workflow,observations,analytics,convergence,agents}/**; RNI contract/eval tests; docs/rni/progress/ENGINE.md
-COMMITS      E09 rebased commits bd3f1fa and 260521f plus this ER-15–ER-18 review commit; exact review SHA is reported in the coordinator handoff
+COMMITS      E09 rebased commits c1ff775, 94d1071 and 121306c plus this ER-17/ER-19 review correction; exact review SHA is reported in the coordinator handoff
 DEMO PROOF   citation-bound discovery through separate platform facts; E08 replays E07, corroborates catalysts only with claim-specific point-in-time persisted social evidence, selects one cited countercase and renders three citation-complete sections without pooled metrics or model prose
 ```

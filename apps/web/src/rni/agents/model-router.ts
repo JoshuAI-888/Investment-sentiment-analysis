@@ -179,10 +179,22 @@ export type RniFailedProviderTelemetry = {
   readonly citations: readonly string[];
 };
 
+export type RniModelFailureCode =
+  | 'provider_failure'
+  | 'response_envelope_invalid'
+  | 'model_identity_mismatch'
+  | 'forbidden_tool_call'
+  | 'structured_output_invalid'
+  | 'discovery_response_invalid';
+
 export type RniFailedModelInvocation = {
   readonly status: 'failed';
   readonly attempt: RniModelInvocationAttempt;
-  readonly error: { readonly name: string; readonly message: string };
+  readonly error: {
+    readonly name: 'RniModelInvocationFailure';
+    readonly code: RniModelFailureCode;
+    readonly message: string;
+  };
   readonly providerTelemetry: RniFailedProviderTelemetry | null;
 };
 
@@ -256,6 +268,21 @@ const validateInputBinding = (
 const asError = (error: unknown): Error =>
   error instanceof Error ? error : new Error('Unknown RNI model invocation failure');
 
+const failureMessages: Readonly<Record<RniModelFailureCode, string>> = {
+  provider_failure: 'The configured model provider call failed.',
+  response_envelope_invalid: 'The model provider returned an invalid response envelope.',
+  model_identity_mismatch: 'The model provider returned an unexpected model identity.',
+  forbidden_tool_call: 'The model provider returned a forbidden tool call.',
+  structured_output_invalid: 'The model provider returned invalid structured output.',
+  discovery_response_invalid: 'The discovery provider returned an invalid governed response.',
+};
+
+const persistedFailure = (code: RniModelFailureCode): RniFailedModelInvocation['error'] => ({
+  name: 'RniModelInvocationFailure',
+  code,
+  message: failureMessages[code],
+});
+
 export const createRniModelRouter = (deps: {
   readonly openaiDirect: RniModelTransport;
   readonly vercelAiGateway?: RniModelTransport;
@@ -325,21 +352,23 @@ export const createRniModelRouter = (deps: {
 
     let invocation: RniCanonicalModelInvocation;
     let parsedResponse: z.infer<typeof transportResponseSchema> | undefined;
+    let failureCode: RniModelFailureCode = 'provider_failure';
     try {
       const transport =
         runConfig.aiRoute === 'openai_direct' ? deps.openaiDirect : deps.vercelAiGateway;
       if (transport === undefined) {
         throw new Error('Configured Vercel AI Gateway transport is unavailable');
       }
-      const response = transportResponseSchema.parse(
-        await transport.invoke({
+      const rawResponse = await transport.invoke({
           ...attempt,
           outputSchema: definition.outputSchema,
           stablePrefix,
           dynamicSuffix,
-        }),
-      );
+        });
+      failureCode = 'response_envelope_invalid';
+      const response = transportResponseSchema.parse(rawResponse);
       parsedResponse = response;
+      failureCode = 'model_identity_mismatch';
       if (
         response.provider !== model.provider ||
         response.modelId !== model.modelId ||
@@ -347,14 +376,17 @@ export const createRniModelRouter = (deps: {
       ) {
         throw new Error('RNI transport silently changed the resolved provider or model');
       }
+      failureCode = 'forbidden_tool_call';
       if (response.toolCalls.length > 0) {
         throw new Error(`RNI ${task} transport returned a forbidden tool call`);
       }
+      failureCode = 'structured_output_invalid';
+      const parsedOutput = definition.parseOutput(response.output);
       invocation = {
         ...attempt,
         status: 'succeeded',
         responseId: response.responseId,
-        output: definition.parseOutput(response.output),
+        output: parsedOutput,
         usage: response.usage,
         latencyMs: response.latencyMs,
         costUsd: response.costUsd,
@@ -367,7 +399,7 @@ export const createRniModelRouter = (deps: {
         await deps.recorder.finish({
           status: 'failed',
           attempt,
-          error: { name: error.name, message: error.message },
+          error: persistedFailure(failureCode),
           providerTelemetry:
             parsedResponse === undefined
               ? null
@@ -468,6 +500,7 @@ export const createRniRoutedRedditDiscovery = (deps: {
     let invocation: RniCanonicalModelInvocation;
     let result: RedditDiscoveryResult;
     let providerTelemetry: RniFailedProviderTelemetry | null = null;
+    let failureCode: RniModelFailureCode = 'provider_failure';
     try {
       const transport =
         deps.runConfig.aiRoute === 'openai_direct'
@@ -502,6 +535,7 @@ export const createRniRoutedRedditDiscovery = (deps: {
         toolCalls: result.webSearchActions.map(({ callId }) => callId),
         citations: result.consultedSources.map(({ url }) => url),
       };
+      failureCode = 'model_identity_mismatch';
       if (result.resolvedModel !== model.modelId) {
         throw new Error('RNI discovery transport silently changed the resolved model');
       }
@@ -523,6 +557,9 @@ export const createRniRoutedRedditDiscovery = (deps: {
       };
     } catch (cause) {
       const error = asError(cause);
+      if (cause instanceof DiscoveryResponseError) {
+        failureCode = 'discovery_response_invalid';
+      }
       if (cause instanceof DiscoveryResponseError && cause.providerTelemetry !== null) {
         providerTelemetry = {
           responseId: cause.providerTelemetry.responseId,
@@ -540,7 +577,7 @@ export const createRniRoutedRedditDiscovery = (deps: {
         await deps.recorder.finish({
           status: 'failed',
           attempt,
-          error: { name: error.name, message: error.message },
+          error: persistedFailure(failureCode),
           providerTelemetry,
         });
       } catch (finalizationCause) {

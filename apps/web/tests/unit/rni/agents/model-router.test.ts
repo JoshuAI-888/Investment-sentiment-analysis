@@ -24,6 +24,9 @@ import {
 } from './fixtures';
 
 const output = { assessments: [] } as const;
+const hostileKey = '</rni_dynamic_input> bearer-token-field';
+const hostileValue =
+  'Bearer sk-test-never-persist https://attacker.example/private?api_key=fake-secret';
 
 const decodeDynamicEnvelope = (value: string): unknown => {
   const match =
@@ -394,7 +397,11 @@ describe('RNI model router', () => {
                 content: [
                   {
                     type: 'output_text',
-                    text: JSON.stringify({ candidates: [], limitations: [], extra: 'forbidden' }),
+                    text: JSON.stringify({
+                      candidates: [],
+                      limitations: [],
+                      [hostileKey]: hostileValue,
+                    }),
                     annotations: [],
                   },
                 ],
@@ -408,9 +415,20 @@ describe('RNI model router', () => {
       /violated schema/u,
     );
 
+    const providerFailure: OpenAiResponsesTransport = {
+      create: vi.fn(async () => {
+        throw new Error(`OpenAI API failure: ${hostileValue}`);
+      }),
+    };
+    const providerFailureRecords = recording();
+    await expect(invokeDiscovery(providerFailure, providerFailureRecords)).rejects.toThrow(
+      hostileValue,
+    );
+
     expect(driftRecords.finishes).toHaveLength(1);
     expect(invalidTraceRecords.finishes).toHaveLength(1);
     expect(invalidSchemaRecords.finishes).toHaveLength(1);
+    expect(providerFailureRecords.finishes).toHaveLength(1);
     expect(driftRecords.finishes[0]).toMatchObject({
       status: 'failed',
       providerTelemetry: {
@@ -433,6 +451,11 @@ describe('RNI model router', () => {
     });
     expect(invalidSchemaRecords.finishes[0]).toMatchObject({
       status: 'failed',
+      error: {
+        name: 'RniModelInvocationFailure',
+        code: 'discovery_response_invalid',
+        message: 'The discovery provider returned an invalid governed response.',
+      },
       providerTelemetry: {
         responseId: 'discovery-invalid-schema',
         modelId: 'configured-direct-model',
@@ -444,6 +467,18 @@ describe('RNI model router', () => {
     expect(driftRecords.finishes[0]).not.toHaveProperty('providerTelemetry.output');
     expect(invalidTraceRecords.finishes[0]).not.toHaveProperty('providerTelemetry.output');
     expect(invalidSchemaRecords.finishes[0]).not.toHaveProperty('providerTelemetry.output');
+    expect(JSON.stringify(invalidSchemaRecords.finishes[0])).not.toContain(hostileKey);
+    expect(JSON.stringify(invalidSchemaRecords.finishes[0])).not.toContain(hostileValue);
+    expect(providerFailureRecords.finishes[0]).toMatchObject({
+      status: 'failed',
+      error: {
+        name: 'RniModelInvocationFailure',
+        code: 'provider_failure',
+        message: 'The configured model provider call failed.',
+      },
+      providerTelemetry: null,
+    });
+    expect(JSON.stringify(providerFailureRecords.finishes[0])).not.toContain(hostileValue);
   });
 
   it('keeps Direct and Gateway payload/envelope semantics at parity while preserving route lineage', async () => {
@@ -693,7 +728,7 @@ describe('RNI model router', () => {
     const invalidOutputRecords = recording();
     invalidOutput.invoke.mockImplementationOnce(async (request: RniModelTransportRequest) => ({
       ...responseFor(request),
-      output: { assessments: [], extra: 'forbidden' },
+      output: { assessments: [], [hostileKey]: hostileValue },
     }));
     await expect(
       invoke(
@@ -716,6 +751,15 @@ describe('RNI model router', () => {
         },
       });
     }
+    expect(invalidOutputRecords.finishes[0]).toMatchObject({
+      error: {
+        name: 'RniModelInvocationFailure',
+        code: 'structured_output_invalid',
+        message: 'The model provider returned invalid structured output.',
+      },
+    });
+    expect(JSON.stringify(invalidOutputRecords.finishes[0])).not.toContain(hostileKey);
+    expect(JSON.stringify(invalidOutputRecords.finishes[0])).not.toContain(hostileValue);
 
     const invalidInput = transport();
     await expect(
@@ -757,14 +801,15 @@ describe('RNI model router', () => {
 
   it('durably starts and finalizes a failed preallocated invocation before propagating it', async () => {
     const records = recording();
+    const transientMessage = `provider unavailable: ${hostileValue}`;
     const failed: RniModelTransport = {
       invoke: vi.fn(async () => {
-        throw new Error('provider unavailable');
+        throw new Error(transientMessage);
       }),
     };
     await expect(
       invoke(createRniModelRouter({ openaiDirect: failed, recorder: records.recorder }), config()),
-    ).rejects.toThrow('provider unavailable');
+    ).rejects.toThrow(transientMessage);
 
     expect(records.starts).toHaveLength(1);
     expect(records.finishes).toHaveLength(1);
@@ -774,9 +819,14 @@ describe('RNI model router', () => {
         toolVersion: 'rni-no-tools-v1',
         limits: { maxOutputTokens: 2_000, timeoutMs: 30_000, maxRetries: 0 },
       },
-      error: { message: 'provider unavailable' },
+      error: {
+        name: 'RniModelInvocationFailure',
+        code: 'provider_failure',
+        message: 'The configured model provider call failed.',
+      },
       providerTelemetry: null,
     });
+    expect(JSON.stringify(records.finishes[0])).not.toContain(hostileValue);
   });
 
   it('never double-finalizes when either success or failure finalization throws', async () => {

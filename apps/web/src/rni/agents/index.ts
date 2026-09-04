@@ -13,6 +13,7 @@ export type {
   RniModelCallScope,
   RniModelInvocationAttempt,
   RniModelInvocationRecorder,
+  RniModelFailureCode,
   RniModelLimits,
   RniModelRouter,
   RniModelStage,
