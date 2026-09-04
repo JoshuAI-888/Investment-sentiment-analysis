@@ -22,6 +22,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | D07 | Bounded-content, tombstone and rejected-discovery states    | `READY_FOR_REVIEW` | Terminal status, timestamp, and reason are immutable; 3/3 pass               |
 | D08 | FMP >500-member fixture support for integration migration   | `READY_FOR_REVIEW` | 501-member and six invalid activation fixtures 4/4 pass                      |
 | D09 | Full DATA lane verification and handoff                     | `READY_FOR_REVIEW` | Latest-tip RNI 41/41; type/contract 103/103 green                            |
+| D10 | Atomic E05 semantic persistence adapter                      | `READY_FOR_REVIEW` | PostgreSQL D10 9/9 and full DATA 50/50 pass                                   |
 
 ## Task evidence
 
@@ -68,8 +69,9 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
   citations/claims fail closed, including a claim for source A cited through persisted source B.
   Membership security is null-safe: a security-specific narrative accepts only claims for that
   security, while a global narrative accepts only global (`security_id is null`) claims.
-- **Decision:** CR-DATA-002 is deferred to I07 composition until ENGINE E05 has a concrete
-  consumer. CR-DATA-003 is resolved: no vector extension or placeholder column is required.
+- **Decision:** CR-DATA-002 was deferred here and is now accepted for I07 as D-RNI-22; D10
+  implements that narrow port. CR-DATA-003 is resolved: no vector extension or placeholder column
+  is required.
 
 ### D04 — Independent Reddit/X platform slices
 
@@ -166,6 +168,25 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 - **Handoff:** no DATA blocker remains. The legacy clock race is reported for base-gate
   adjudication and no non-RNI source/test was edited.
 
+### D10 — Atomic E05 semantic persistence adapter
+
+- **Status:** `READY_FOR_REVIEW`
+- **Files:** `apps/web/src/rni/repositories/semantic-persistence.ts`,
+  `apps/web/tests/integration/rni-persistence/semantic-persistence.test.ts`, and this progress file.
+- **Tests:** focused PostgreSQL `9/9`; full serial DATA persistence `50/50`; TypeScript and scoped
+  ESLint pass; `git diff --check`, DATA ownership, exact-base, and frozen-contract checks pass.
+- **Result:** the D-RNI-22 port commits complete E05 output in one transaction. It retains
+  independent run membership and semantic-quality rows per source/security, claim dimensions,
+  claim-specific SHA-256 input identities, validated taxonomy lineage, and original-URL citation
+  provenance. Exact replay returns the original durable IDs as `duplicate`; crossed observation,
+  claim, citation, theme, membership, or noise content fails closed; any child failure rolls back
+  the complete semantic write. Transaction-scoped run/source serialization prevents concurrent
+  crossed classifications from committing a union of incompatible child sets.
+- **Risk:** no DATA blocker or new contract request remains. The adapter relies on the accepted,
+  integration-owned migration `0024` additions and does not modify that migration.
+- **Handoff:** INTEGRATION may compose `PostgresRniSemanticPersistence` behind the SQL-free I07
+  wrapper. Returned arrays are unique and deterministic; multi-ticker rows remain independent.
+
 ## Required invariants
 
 - One external source row, many security links and observations.
@@ -182,7 +203,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | ID          | Status     | Request                                                                                                | Impact                                                                                     |
 | ----------- | ---------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
 | CR-DATA-001 | `ACCEPTED` | Source-persistence port frozen by coordinator commit `6b67657`, now present in the rebased base.       | Concrete PostgreSQL adapter implements the accepted committed-ID/duplicate-flags boundary. |
-| CR-DATA-002 | `DEFERRED` | Keep claim/theme/narrative write shapes DATA-private until ENGINE E05 gives I07 a concrete consumer.   | Relational storage is reviewable; no premature broad frozen port.                          |
+| CR-DATA-002 | `ACCEPTED` | Narrow complete-E05 semantic commit port accepted as D-RNI-22 in coordinator base `b5294cf`.           | D10 implements the port without exposing DATA-private storage rows.                        |
 | CR-DATA-003 | `RESOLVED` | Pgvector remains explicitly deferred for this vertical slice.                                          | Migration `0022` requires neither the vector extension nor a placeholder column.           |
 | CR-DATA-004 | `RESOLVED` | I06/e535624 owns duplicate/count/NVDA/ambiguous/unresolved validation in the integration synchronizer. | No frozen universe candidate-schema change is required.                                    |
 
@@ -211,8 +232,9 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 
 ### CR-DATA-002 — Claim and narrative persistence contracts
 
-- **Resolution (2026-09-05):** deferred to I07 composition. DATA-private storage types remain
-  private until ENGINE E05 supplies a concrete consumer.
+- **Resolution (2026-09-05):** accepted for I07 as D-RNI-22 in coordinator base `b5294cf`.
+  `RniSemanticPersistencePort` accepts the complete validated E05 result and returns only durable
+  IDs; DATA-private storage types remain private.
 
 - **Original behaviour:** the frozen contract defined `RniComparativeRelation` and a citation read
   shape, but no claim, claim-citation, theme, narrative, membership, embedding, or write-port
@@ -274,7 +296,8 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | migration clean apply    | `READY_FOR_REVIEW` | D09 migration Vitest              | Clean apply through `0023`; pass                                                         |
 | migration forward apply  | `READY_FOR_REVIEW` | D09 migration Vitest              | Populated legacy schema preserved; pass                                                  |
 | repository unit          | `READY_FOR_REVIEW` | full ESLint + TypeScript + unit   | No errors; 1171/1171                                                                     |
-| database integration     | `READY_FOR_REVIEW` | DATA persistence + fixture Vitest | Post-rebase 41/41 D01-D09 tests pass                                                     |
+| database integration     | `READY_FOR_REVIEW` | DATA persistence + fixture Vitest | Post-D10 serial DATA 50/50 pass                                                         |
+| semantic persistence     | `READY_FOR_REVIEW` | D10 PostgreSQL Vitest             | Atomic/replay/mutation/precision/concurrency/rollback/lineage 9/9 pass                  |
 | concurrency/idempotency  | `READY_FOR_REVIEW` | D06 PostgreSQL Vitest             | 8 concurrent deliveries + forced rollback; 3/3 pass                                      |
 | repository required gate | `READY_FOR_REVIEW` | full unit/contract/integration    | Latest-tip type and contract 103/103 pass; prior full gate 396/397 with known clock race |
 
@@ -292,7 +315,6 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 
 | Since      | Status     | Blocker                                                               | Owner                       | Attempted mitigation                                                           | Next check             |
 | ---------- | ---------- | --------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------ | ---------------------- |
-| 2026-09-05 | `DEFERRED` | CR-DATA-002 broad write port awaits a concrete ENGINE E05 consumer    | I07 coordinator             | DATA-private relational storage and lineage are fully tested                   | At I07 composition     |
 | 2026-09-05 | `KNOWN`    | Legacy attention clock-race integration test fails outside DATA paths | coordinator / non-RNI owner | Full run: 396/397, expected computed 0 and received 1; no cross-lane edit made | Base-gate adjudication |
 
 ## Commits
@@ -311,20 +333,20 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | 79f4093     | First coordinator review fixes and renewed handoff    | DATA 40/40; unit 1171/1171; contract 100/100; integration 396/397 |
 | 413c9e7     | Null-safe narrative membership integrity correction   | D03 PostgreSQL 6/6; TypeScript pass                               |
 | 484304b     | Rebased migration rehearsal compatibility             | DATA 41/41; lint/type; contract 101/101                           |
-| this commit | Latest integration-tip evidence                       | DATA 41/41; TypeScript; contract 103/103                          |
+| this commit | D10 atomic E05 semantic persistence                    | D10 9/9; DATA 50/50; TypeScript; scoped lint                      |
 
 ## Handoff
 
 ```text
 RNI LANE     DATA
 BRANCH       feat/rni-data-source-first
-BASE SHA     4ab744e6cb96efb040c5b330f87a53e0ee046239 (current integration base)
+BASE SHA     b5294cf69b2b76ca2caf75bc23ae27daad945baa (current integration base)
 STATUS       READY_FOR_REVIEW
-TASKS        9/9 ready for coordinator re-review
-TESTS        latest-tip typecheck pass; contract 103/103; DATA 41/41; prior full integration 396/397 (known non-RNI clock race only)
-CONTRACT     CR-DATA-001 accepted; CR-DATA-002 deferred to I07; CR-DATA-003 and 004 resolved
-RISKS        broader D03 write port deferred; one known non-RNI integration clock race
-FILES        migrations 0020-0023; DATA repositories; RNI persistence tests/fixtures; accepted source-port contract files; DATA.md
-COMMITS      ea4f1f9 (D01); 01f0113 (D02); a5b8149 (D03); ff65d5f (D04); 279c142 (D05); 6537b92 (D06); 2a9ea7a (D07); 9c56bb0 (D08); 7f9153d (D09); 79f4093 (first review fixes); 413c9e7 (membership fix); 484304b (rebase rehearsal); this commit (latest-tip evidence)
+TASKS        10/10 ready for coordinator review
+TESTS        typecheck and scoped lint pass; D10 9/9; serial DATA 50/50; diff/ownership/contracts clean
+CONTRACT     CR-DATA-001 and 002 accepted; CR-DATA-003 and 004 resolved
+RISKS        no DATA blocker; one previously known non-RNI integration clock race
+FILES        migrations 0020-0023; DATA repositories; RNI persistence tests/fixtures; DATA.md; D10 consumes but does not edit migration 0024
+COMMITS      prior D01-D09 history plus this commit (D10 atomic semantic persistence)
 DEMO PROOF   one comparative source persists distinct bullish NVDA and bearish AMD observations
 ```
