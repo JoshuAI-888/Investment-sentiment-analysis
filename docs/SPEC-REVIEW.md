@@ -1,5 +1,9 @@
 # Spec Review — `barebones/` against the finalised intent
 
+> **RNI note (2026-09-05):** this remains a historical review of the legacy re-lock. RNI's
+> current fit assessment is `rni/INTEGRATION_PLAN.md`; its final hostile review is
+> `rni/ARCHITECTURAL_REVIEW.md`.
+
 **Written 2026-09-03.** Reviews `docs/` (nine documents, 19 feature specs) against the
 intent captured in `APPROACH-COMPARISON.md` §0. Companion to that report: it said *which*
 approach; this says *what has to change in the spec package* to build it.

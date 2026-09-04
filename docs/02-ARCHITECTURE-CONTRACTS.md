@@ -1,5 +1,10 @@
 # Architecture and Shared Contracts
 
+> **Scoped RNI addendum (2026-09-05):** the existing contracts remain binding outside RNI.
+> `features/RNI-00-CONTRACT.md` is binding within the RNI namespace and reconciles source-first
+> bounded persistence, per-security observations, independent Reddit/X slices, RNI-specific
+> OpenAI Direct routing, and forward migrations `0020–0024` with this application.
+
 **Status:** Binding. Every feature builds against this. Changes require a `MEMORY.md` entry
 and a coordinated update of every affected feature spec.
 **Source:** `reference/SOURCE-PRD-v1.5.md` §6–§11, amended by `00-ADVERSARIAL-REVIEW.md` and by

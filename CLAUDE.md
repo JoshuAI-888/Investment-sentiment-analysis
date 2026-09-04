@@ -20,6 +20,10 @@ in the current tree should reference it — see the note below for what that cha
 **Do not read `docs/reference/SOURCE-PRD-v1.5.md` in full** — 4,486 lines. The feature specs
 cite the sections that matter.
 
+For RNI work, use the separate cold start in `AGENTS.md` and `docs/rni/AGENTS.md`. The binding
+contract is `docs/features/RNI-00-CONTRACT.md`; it overrides legacy requirements only inside
+the RNI paths it names. Do not infer that an RNI exception changes the existing product.
+
 ## Build lanes
 
 | Lane | Owns | Features |

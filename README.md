@@ -4,9 +4,15 @@ An investment research dashboard that observes what social conversations, news a
 data say about ~100 tracked tickers — and shows the evidence honestly. Spec-driven and built
 by an agentic engineering loop; every number it renders is reproducible and labelled.
 
+The repository also contains an isolated **Retail Narrative Intelligence (RNI)** build lane for
+an S&P 500 universe. RNI keeps Reddit and X as independent sources, acquires Reddit evidence via
+OpenAI Web Search without a Reddit API dependency, persists bounded source evidence before
+interpretation, and presents Reddit sentiment, X sentiment and a cited combined summary. Start
+with [`docs/rni/README.md`](docs/rni/README.md); its contract applies only to RNI namespaces.
+
 ## What it does
 
-- **Three social axes, never blended** — Reddit (official Data API), X (governed watchlist,
+- **Legacy three-axis product, never blended** — Reddit (official Data API), X (governed watchlist,
   sampled only when a price move triggers it) and Substack (a curated publication set). Each
   carries its own sampling frame and disclosure, so no aggregate pretends to be platform-wide.
 - **News and market context** — Marketaux entity news sentiment, FMP market data (which is the
@@ -63,4 +69,3 @@ pnpm lint && pnpm typecheck && pnpm test
 pnpm build
 pnpm check:copy && pnpm check:bundle && pnpm check:calc-coverage
 ```
-

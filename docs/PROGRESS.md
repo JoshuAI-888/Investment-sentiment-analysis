@@ -1,5 +1,8 @@
 # Progress — index
 
+> **Separate RNI state:** RNI progress is intentionally isolated in `rni/PROGRESS.md` and
+> `rni/progress/*.md`. Those files do not change the legacy wave counters in this document.
+
 > **Amended 2026-09-03 by the parallel-lane split (D-24).** This file used to carry every
 > per-merge status write, which made it the single hottest file in the package and guaranteed
 > a merge conflict on every concurrent PR. Per-feature state now lives in three single-writer

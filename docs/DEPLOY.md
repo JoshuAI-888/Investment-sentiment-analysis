@@ -1,5 +1,10 @@
 # Deploy — Manual Tasks for the Owner
 
+> **RNI scope (2026-09-05):** use `rni/DEPLOY.md` for RNI. MT-13 and Reddit Data API approval
+> continue to gate the legacy collector but do **not** gate RNI, whose Reddit acquisition path is
+> OpenAI Web Search. RNI's live gates are OpenAI source-first capture, independent X access, FMP
+> S&P 500 entitlement/activation and `joshuai` production approval.
+
 Everything here needs a human. The build agent cannot do these, and it must not fake them —
 a stubbed key is a lie the tests will later believe.
 

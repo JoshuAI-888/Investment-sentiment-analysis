@@ -1,5 +1,10 @@
 # Parallel Lanes — running the build loop with subagents
 
+> **RNI ownership addendum (2026-09-05):** RNI uses temporary DATA, ENGINE and SURFACE lanes with
+> the non-overlapping path map in `rni/RNI_BUILD_LOOP.md`. The existing SPINE/COLLECT/SURFACE
+> ownership remains unchanged for non-RNI work. The coordinator still alone merges and writes
+> master state.
+
 **Status:** Binding. Decision `MEMORY.md` D-24.
 **Relationship to `04-BUILD-LOOP.md`:** that file defines the loop. This one defines **who runs
 which part of it** when more than one builder is working at once. Where they conflict, the loop

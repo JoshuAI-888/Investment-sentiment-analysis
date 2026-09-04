@@ -4,7 +4,11 @@ import { loadRegistry, readFiles, walk, WEB_ROOT } from './checks/load';
 import { report } from './checks/types';
 
 /** Where user-facing copy lives: the App Router tree and the shared UI components. */
-const SURFACES = [path.join(WEB_ROOT, 'app'), path.join(WEB_ROOT, 'src/ui')];
+const SURFACES = [
+  path.join(WEB_ROOT, 'app'),
+  path.join(WEB_ROOT, 'src/ui'),
+  path.join(WEB_ROOT, 'src/rni/ui'),
+];
 
 /**
  * Individual non-surface files that build a real user-facing string outside `app/`/`src/ui/` —
@@ -20,7 +24,10 @@ const SURFACES = [path.join(WEB_ROOT, 'app'), path.join(WEB_ROOT, 'src/ui')];
  */
 const EXTRA_FILES = [path.join(WEB_ROOT, 'src/services/attention/leaderboard.ts')];
 
-const paths = [...(await Promise.all(SURFACES.map((dir) => walk(dir, ['.ts', '.tsx'])))).flat(), ...EXTRA_FILES];
+const paths = [
+  ...(await Promise.all(SURFACES.map((dir) => walk(dir, ['.ts', '.tsx'])))).flat(),
+  ...EXTRA_FILES,
+];
 const files = await readFiles(paths);
 const methods = await loadRegistry();
 

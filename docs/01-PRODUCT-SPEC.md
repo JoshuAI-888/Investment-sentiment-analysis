@@ -1,5 +1,10 @@
 # Product Spec — Barebone Social Sentiment (LOCKED)
 
+> **Scoped RNI addendum (2026-09-05):** this specification remains locked for the existing
+> product. Within the paths and routes named by `features/RNI-00-CONTRACT.md`, that contract and
+> `rni/PRD.md` take precedence: Reddit uses OpenAI Web Search, X is independent, the output has
+> Reddit/X/combined sections, and the universe is the configurable current FMP S&P 500.
+
 **Status:** Locked 2026-09-03. **Re-locked 2026-09-03** against a materially changed owner
 intent — see `MEMORY.md` §1b (D-08…D-23) and `SPEC-REVIEW.md`. Changes require an entry in
 `MEMORY.md` with rationale.

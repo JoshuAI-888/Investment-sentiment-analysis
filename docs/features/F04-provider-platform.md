@@ -1,5 +1,8 @@
 # F04 — Provider Platform
 
+> **RNI scope:** Reddit acquisition is OpenAI Web Search with no Reddit API dependency; X is an
+> independent datasource using authorised access, never a fallback. See `RNI-00-CONTRACT.md`.
+
 **Wave:** 1 · **Lane:** **COLLECT** · **Estimate:** 18–24 h · **Depends on:** F01, F03
 
 ## 1. Purpose

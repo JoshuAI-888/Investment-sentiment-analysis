@@ -1,5 +1,8 @@
 # F15 — Governed Admin Control Plane
 
+> **RNI scope:** Settings controls future-run AI route, windows, schedules, S&P 500 membership
+> overrides, source groups, taxonomy and bounded deterministic parameters with audit/versioning.
+
 > **Amended 2026-09-03 by the re-lock.** **D-11:** heavily cut. The ~20-surface mutation UI, share grants and the issue queue are *multi-tenancy* infrastructure and are cut. Config/universe versioning, audit with actor and before/after, and rollback targets are *reproducibility* infrastructure and survive in full — they answer "what produced this number in March," which D-09 requires. **D-15:** the price-trigger thresholds are operator-editable, versioned and audited, because they govern X spend.
 > See `../MEMORY.md` §1b for the decisions and `../SPEC-REVIEW.md` for the reasoning.
 

@@ -1,5 +1,8 @@
 # F16 — Scheduler and Dispatcher
 
+> **RNI scope:** scheduled and manual requests enter one idempotent job path. Reddit and X have
+> independent checkpoints and converge only after both platform slices become terminal.
+
 > **Amended 2026-09-03 by the re-lock.** This feature was **not** unchanged, and the original
 > text contradicted the re-cut roadmap in two ways. **D-15:** the clock is no longer the only
 > thing that starts work — a market-data spike opens an X sampling window, so there are now two

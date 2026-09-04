@@ -1,5 +1,8 @@
 # F21 — MCP Server and MCP Apps Surface
 
+> **RNI scope:** the overnight RNI MCP is a read-only contract/skeleton backed by the same
+> authorised read service and citation gates as the portal. It introduces no mutation tools.
+
 **Wave:** 3 · **Lane:** unallocated — follows F12 directly at the Wave 3 exit · **Estimate:** 16–22 h · **Depends on:** F12, F20
 **Status:** see `../PROGRESS.md` (this file never records status)
 **Decision:** `../MEMORY.md` D-10. Placed at the **Wave 3 exit**, not after Wave 5.

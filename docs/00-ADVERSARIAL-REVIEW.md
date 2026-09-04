@@ -1,5 +1,9 @@
 # Adversarial Review — Source PRD v1.5
 
+> **RNI note (2026-09-05):** this remains the historical review of the legacy product. The
+> isolated Retail Narrative Intelligence lane has its own adversarial review and conflict
+> closure matrix in `rni/ARCHITECTURAL_REVIEW.md` and `rni/INTEGRATION_PLAN.md`.
+
 **Subject:** `reference/SOURCE-PRD-v1.5.md` (4,486 lines, dated 2026-09-03)
 **Reviewer posture:** hostile. The goal is to find the places where the document would
 have produced a build that fails, misleads, or cannot be finished — not to praise it.
