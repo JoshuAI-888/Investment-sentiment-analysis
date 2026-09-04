@@ -1,0 +1,33 @@
+{
+  "security": {
+    "id": "00000000-0000-0000-0000-0000000000b5",
+    "symbol": "OBSCR",
+    "companyName": "Obscure Micro-Cap Inc."
+  },
+  "items": [
+    {
+      "id": "50000000-0000-0000-0000-000000000001",
+      "securityId": "00000000-0000-0000-0000-0000000000b5",
+      "evidenceType": "social_result",
+      "provider": "reddit",
+      "title": "Anyone following OBSCR? Quiet name",
+      "snippet": "Anyone following OBSCR? Very quiet name, barely any discussion anywhere.",
+      "sourceUrl": "https://reddit.com/r/smallcaps/comments/thin1",
+      "publisher": null,
+      "authorRef": "hash-user-10",
+      "stanceLabel": "neutral",
+      "stanceScore": "0.20",
+      "relevanceScore": null,
+      "publishedAt": "2026-09-03T10:00:00Z",
+      "availableAt": "2026-09-03T10:05:00Z",
+      "ingestedAt": "2026-09-03T10:06:00Z",
+      "lastCheckedAt": null,
+      "availability": "unchecked",
+      "licenseClass": "own_collected",
+      "coverageClass": "licensed_sample",
+      "rawHash": "hash-thin-1",
+      "metadata": { "subreddit": "smallcaps", "treeComplete": true }
+    }
+  ],
+  "note": "F10 §7 risk table / 05-TEST-STRATEGY.md §5.1's thin-evidence bucket: one Reddit item, zero X, zero Substack. D-15: a quiet ticker legitimately generates no X trigger, so the X frame is empty by design, not by fault. B5's 'expected abstention' is F06's downstream call on the resulting sample size, not something this pack itself decides -- F10 only ensures the thin pack is honestly disclosed (retrievedCount=1 for reddit, 0/0 for x and substack) rather than papered over."
+}
