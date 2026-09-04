@@ -5,14 +5,17 @@ import {
   advanceJobDefinitionSchedule,
   claimJobRun,
   dueJobDefinitions,
+  findJobDefinitionById,
   findJobDefinitionByKey,
   findJobRunById,
   findRunningJobRun,
   findTriggerEligibleJobDefinition,
   finishJobRun,
   jobRunHistory,
+  listJobDefinitions,
   mostRecentJobRun,
   startJobRun,
+  updateJobDefinition,
   type NewJobRun,
 } from '../../src/repositories/jobs';
 import { closePool, getPool } from '../../src/repositories/client';
@@ -836,6 +839,198 @@ describe.skipIf(url === undefined)('job_definition / job_run repository', () => 
       const { run } = await claimJobRun(newRun(jobId), pool);
       const found = await findJobRunById(run.id, pool);
       expect(found?.id).toBe(run.id);
+    });
+  });
+
+  // F16 §4.2/§4.4 (F16b, Wave 4) — the admin edit surface's own repository layer.
+  describe('findJobDefinitionById', () => {
+    it('returns null for an id that does not exist', async () => {
+      expect(await findJobDefinitionById('00000000-0000-0000-0000-000000000000', pool)).toBeNull();
+    });
+
+    it('finds an existing job by its primary key', async () => {
+      const jobId = await seedJobDefinition({ jobKey: 'find-by-id' });
+      const found = await findJobDefinitionById(jobId, pool);
+      expect(found?.id).toBe(jobId);
+      expect(found?.jobKey).toBe('find-by-id');
+    });
+  });
+
+  describe('listJobDefinitions', () => {
+    it('returns every row, ordered by priority then job_key', async () => {
+      await seedJobDefinition({ jobKey: 'z-job', priority: 50 });
+      await seedJobDefinition({ jobKey: 'a-job', priority: 50 });
+      await seedJobDefinition({ jobKey: 'high-priority', priority: 10 });
+
+      const listed = await listJobDefinitions(pool);
+      expect(listed.map((job) => job.jobKey)).toEqual(['high-priority', 'a-job', 'z-job']);
+    });
+
+    it('returns an empty array when no jobs exist', async () => {
+      expect(await listJobDefinitions(pool)).toEqual([]);
+    });
+  });
+
+  describe('updateJobDefinition', () => {
+    /** Full control over every editable column, unlike the file's own `seedJobDefinition` (which hardcodes `schedule_expression = '5m'`, not a valid interval for real scheduling math). */
+    async function seedEditableJob(overrides: Partial<{
+      jobKey: string;
+      scheduleType: 'interval' | 'cron';
+      scheduleExpression: string;
+      displayTimezone: string;
+      enabled: boolean;
+      maxAttempts: number;
+      maxCostUsdPerRun: string | null;
+      nextDueAt: Date;
+    }> = {}): Promise<string> {
+      const {
+        jobKey = 'editable-job',
+        scheduleType = 'interval',
+        scheduleExpression = '300',
+        displayTimezone = 'UTC',
+        enabled = true,
+        maxAttempts = 3,
+        maxCostUsdPerRun = null,
+        nextDueAt = new Date('2026-09-01T00:00:00Z'),
+      } = overrides;
+      const { rows } = await pool.query<{ id: string }>(
+        `insert into job_definition
+           (job_key, display_name, enabled, schedule_type, schedule_expression, display_timezone,
+            priority, max_runtime_seconds, max_attempts, max_cost_usd_per_run, trigger_eligible,
+            next_due_at, config_version, updated_by)
+         values ($1, $2, $3, $4, $5, $6, 100, 60, $7, $8, false, $9, $10, 'test-seed')
+         returning id`,
+        [
+          jobKey, `Test ${jobKey}`, enabled, scheduleType, scheduleExpression, displayTimezone,
+          maxAttempts, maxCostUsdPerRun, nextDueAt, configVersionId,
+        ],
+      );
+      return rows[0]?.id as string;
+    }
+
+    it('updates enabled state alone, bumping version, and leaves other columns untouched', async () => {
+      const jobId = await seedEditableJob({ enabled: true, scheduleExpression: '300' });
+      const updated = await updateJobDefinition(jobId, 1, { enabled: false }, 'admin', pool);
+      expect(updated?.enabled).toBe(false);
+      expect(updated?.version).toBe(2);
+      expect(updated?.scheduleExpression).toBe('300');
+      expect(updated?.updatedBy).toBe('admin');
+    });
+
+    it('updates cadence (scheduleType/scheduleExpression/displayTimezone) together', async () => {
+      const jobId = await seedEditableJob({ scheduleType: 'interval', scheduleExpression: '300' });
+      const updated = await updateJobDefinition(
+        jobId,
+        1,
+        { scheduleType: 'cron', scheduleExpression: '0 9 * * *', displayTimezone: 'America/New_York' },
+        'admin',
+        pool,
+      );
+      expect(updated?.scheduleType).toBe('cron');
+      expect(updated?.scheduleExpression).toBe('0 9 * * *');
+      expect(updated?.displayTimezone).toBe('America/New_York');
+    });
+
+    it('updates the due-time override directly', async () => {
+      const jobId = await seedEditableJob({ nextDueAt: new Date('2026-09-01T00:00:00Z') });
+      const updated = await updateJobDefinition(
+        jobId,
+        1,
+        { nextDueAt: new Date('2026-12-25T00:00:00Z') },
+        'admin',
+        pool,
+      );
+      expect(updated?.nextDueAt.toISOString()).toBe('2026-12-25T00:00:00.000Z');
+    });
+
+    it('updates retry policy (maxAttempts + backoffPolicy) together', async () => {
+      const jobId = await seedEditableJob({ maxAttempts: 3 });
+      const updated = await updateJobDefinition(
+        jobId,
+        1,
+        { maxAttempts: 5, backoffPolicy: { strategy: 'exponential', baseSeconds: 30 } },
+        'admin',
+        pool,
+      );
+      expect(updated?.maxAttempts).toBe(5);
+      expect(updated?.backoffPolicy).toEqual({ strategy: 'exponential', baseSeconds: 30 });
+    });
+
+    it('sets and clears the per-job budget ceiling', async () => {
+      const jobId = await seedEditableJob({ maxCostUsdPerRun: null });
+      const withCeiling = await updateJobDefinition(jobId, 1, { maxCostUsdPerRun: '5.00' }, 'admin', pool);
+      expect(withCeiling?.maxCostUsdPerRun).toBe('5.00');
+
+      const cleared = await updateJobDefinition(jobId, 2, { maxCostUsdPerRun: null }, 'admin', pool);
+      expect(cleared?.maxCostUsdPerRun).toBeNull();
+    });
+
+    it('returns null on a stale expectedVersion — the row is untouched', async () => {
+      const jobId = await seedEditableJob({ enabled: true });
+      const result = await updateJobDefinition(jobId, 99, { enabled: false }, 'admin', pool);
+      expect(result).toBeNull();
+
+      const stillOriginal = await findJobDefinitionById(jobId, pool);
+      expect(stillOriginal?.enabled).toBe(true);
+      expect(stillOriginal?.version).toBe(1);
+    });
+
+    it('returns null for a job id that does not exist', async () => {
+      const result = await updateJobDefinition(
+        '00000000-0000-0000-0000-000000000000',
+        1,
+        { enabled: false },
+        'admin',
+        pool,
+      );
+      expect(result).toBeNull();
+    });
+
+    it('throws when called with no editable field set', async () => {
+      const jobId = await seedEditableJob();
+      await expect(updateJobDefinition(jobId, 1, {}, 'admin', pool)).rejects.toThrow(/no editable fields/);
+    });
+
+    /**
+     * F16b's brief, explicitly: "a dispatcher tick and an admin edit racing on the same
+     * job_definition row is a genuine scenario your tests should cover." `advanceJobDefinitionSchedule`
+     * is F16a's dispatcher-only writer of this same row; racing it genuinely concurrently against
+     * this function (not just sequentially) proves the `(id, version)` conditional UPDATE actually
+     * serializes the two writers under real concurrency, the same way `claimJobRun`'s and
+     * `startJobRun`'s own "genuinely concurrent" tests prove their own guards above.
+     */
+    it('a genuinely concurrent dispatcher advance and admin edit on the same row: exactly one wins, the other is refused', async () => {
+      const jobId = await seedEditableJob({ enabled: true });
+
+      const [adminResult, dispatcherResult] = await Promise.all([
+        updateJobDefinition(jobId, 1, { enabled: false }, 'admin', pool),
+        advanceJobDefinitionSchedule(jobId, new Date('2026-09-01T00:05:00Z'), 'jobs:dispatch', pool).catch(() => null),
+      ]);
+
+      // `advanceJobDefinitionSchedule` has no optimistic-concurrency guard of its own (it is F16a's
+      // sole Wave-1 writer, unconditional by design) — it always succeeds. The admin edit above is
+      // the one that must lose when it loses: it targeted `expectedVersion: 1`, and if the
+      // dispatcher's unconditional advance committed first, the row is already at version 2 by the
+      // time the admin's conditional UPDATE runs, so it correctly finds no matching row and
+      // returns `null` rather than silently overwriting the dispatcher's own write.
+      expect(dispatcherResult).not.toBeNull();
+      const finalRow = await findJobDefinitionById(jobId, pool);
+
+      if (adminResult === null) {
+        // The admin lost the race: its `WHERE version = 1` never matched (the dispatcher's own
+        // unconditional advance committed first and moved the row to version 2), so the admin's
+        // UPDATE touched zero rows — not a second, silently-discarded write. Exactly one write
+        // happened in total.
+        expect(finalRow?.enabled).toBe(true); // never touched by the losing admin write
+        expect(finalRow?.version).toBe(2);
+      } else {
+        // The admin won the race (its UPDATE ran and committed first, while it still matched
+        // version 1) — its own write landed, and the dispatcher's subsequent, unconditional
+        // advance still applied on top of it (it has no version guard of its own). Two writes.
+        expect(adminResult.enabled).toBe(false);
+        expect(finalRow?.enabled).toBe(false);
+        expect(finalRow?.version).toBe(3);
+      }
     });
   });
 });

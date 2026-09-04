@@ -10,6 +10,7 @@ import type { AdminMutationBase, MutationDefinition } from './mutation';
 import { activateUniverseMutation, draftUniverseMutation } from './universe';
 import { rollbackSettingsMutation, updateSettingMutation } from './settings';
 import { resolveCalculationIssueMutation } from './calculation-issues';
+import { updateJobMutation } from './jobs';
 
 /** Loosened to `AdminMutationBase` for the registry only — each export above keeps its real type. */
 export const ADMIN_MUTATIONS: Readonly<Record<string, MutationDefinition<AdminMutationBase>>> = {
@@ -18,6 +19,8 @@ export const ADMIN_MUTATIONS: Readonly<Record<string, MutationDefinition<AdminMu
   'settings.update': updateSettingMutation as unknown as MutationDefinition<AdminMutationBase>,
   'settings.rollback': rollbackSettingsMutation as unknown as MutationDefinition<AdminMutationBase>,
   'calculation_issue.resolve': resolveCalculationIssueMutation as unknown as MutationDefinition<AdminMutationBase>,
+  // F16 §4.2 (F16b, Wave 4).
+  'job.update': updateJobMutation as unknown as MutationDefinition<AdminMutationBase>,
 };
 
 export type AdminMutationKey = keyof typeof ADMIN_MUTATIONS;

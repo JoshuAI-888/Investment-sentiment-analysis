@@ -13,8 +13,10 @@ import { activateConfigVersion, insertConfigVersion } from '../../src/repositori
 import { runAdminMutation } from '../../src/services/admin/mutation';
 import { activateUniverseMutation, draftUniverseMutation } from '../../src/services/admin/universe';
 import { updateSettingMutation } from '../../src/services/admin/settings';
+import { updateJobMutation } from '../../src/services/admin/jobs';
 import { getDataExplorerResults } from '../../src/services/admin/reads';
 import { insertAuditEvent, listAuditEvents } from '../../src/repositories/audit';
+import { advanceJobDefinitionSchedule } from '../../src/repositories/jobs';
 import type { Session } from '../../src/services/auth';
 
 const url = databaseUrl();
@@ -326,6 +328,142 @@ describe.skipIf(url === undefined)('F15 — admin mutations against a real Postg
       const { rows, restricted } = await getDataExplorerResults({ provider: 'reddit', asOf: new Date(), limit: 50 });
       expect(rows).toHaveLength(0);
       expect(restricted.retentionExpired).toBe(1);
+    });
+  });
+
+  // F16 §4.2/§4.4 (F16b, Wave 4) — the job-editing mutation, run through the same pipeline.
+  describe('job: update → conflict', () => {
+    async function seedJob(configVersionId: string, overrides: Partial<{
+      jobKey: string;
+      scheduleType: 'interval' | 'cron';
+      scheduleExpression: string;
+      displayTimezone: string;
+      nextDueAt: Date;
+      enabled: boolean;
+    }> = {}): Promise<string> {
+      const {
+        jobKey = 'admin-edit-target',
+        scheduleType = 'interval',
+        scheduleExpression = '300',
+        displayTimezone = 'UTC',
+        nextDueAt = new Date('2026-09-01T00:00:00Z'),
+        enabled = true,
+      } = overrides;
+      const { rows } = await pool.query<{ id: string }>(
+        `insert into job_definition
+           (job_key, display_name, enabled, schedule_type, schedule_expression, display_timezone,
+            priority, max_runtime_seconds, trigger_eligible, next_due_at, config_version, updated_by)
+         values ($1, $2, $3, $4, $5, $6, 100, 60, false, $7, $8, 'test-seed')
+         returning id`,
+        [jobKey, `Test ${jobKey}`, enabled, scheduleType, scheduleExpression, displayTimezone, nextDueAt, configVersionId],
+      );
+      return rows[0]?.id as string;
+    }
+
+    it('editing enabled state alone is audited and leaves cadence untouched', async () => {
+      const configId = await seedActiveConfig(pool);
+      const jobId = await seedJob(configId, { enabled: true });
+
+      const outcome = await runAdminMutation(
+        updateJobMutation,
+        { reason: 'pause for maintenance', expectedVersion: '1', jobId, enabled: false },
+        SESSION,
+      );
+      expect(outcome.ok).toBe(true);
+      if (!outcome.ok) return;
+
+      const { rows } = await pool.query<{ enabled: boolean; version: number; schedule_expression: string }>(
+        'select enabled, version, schedule_expression from job_definition where id = $1',
+        [jobId],
+      );
+      expect(rows[0]?.enabled).toBe(false);
+      expect(rows[0]?.version).toBe(2);
+      expect(rows[0]?.schedule_expression).toBe('300');
+
+      const events = await listAuditEvents({ objectType: 'job_definition' });
+      expect(events.some((e) => e.action === 'job.update' && e.result === 'success')).toBe(true);
+    });
+
+    it('editing cadence to a DST-crossing cron moves next_due_at forward, matching the mutation\'s own impact preview', async () => {
+      const configId = await seedActiveConfig(pool);
+      const jobId = await seedJob(configId, {
+        scheduleType: 'interval',
+        scheduleExpression: '300',
+        nextDueAt: new Date('2020-01-01T00:00:00Z'), // deliberately stale
+      });
+
+      const outcome = await runAdminMutation(
+        updateJobMutation,
+        {
+          reason: 'switch to a daily 9am Eastern cron',
+          expectedVersion: '1',
+          jobId,
+          scheduleType: 'cron',
+          scheduleExpression: '0 9 * * *',
+          displayTimezone: 'America/New_York',
+        },
+        SESSION,
+      );
+      expect(outcome.ok).toBe(true);
+      if (!outcome.ok) return;
+
+      const preview = outcome.impactPreview as { newNextDueAt: string };
+      const { rows } = await pool.query<{ next_due_at: Date; schedule_type: string; display_timezone: string }>(
+        'select next_due_at, schedule_type, display_timezone from job_definition where id = $1',
+        [jobId],
+      );
+      expect(rows[0]?.schedule_type).toBe('cron');
+      expect(rows[0]?.display_timezone).toBe('America/New_York');
+      // The stale 2020 due instant is gone — the write recomputed it from "now", matching what
+      // the same-request impact preview reported (F16 §4.4).
+      expect(rows[0]?.next_due_at.getTime()).toBeGreaterThan(Date.now());
+      expect(new Date(preview.newNextDueAt).toISOString()).toBe(rows[0]?.next_due_at.toISOString());
+    });
+
+    it('rejects a partial cadence edit before ever reaching the database', async () => {
+      const configId = await seedActiveConfig(pool);
+      const jobId = await seedJob(configId);
+
+      const outcome = await runAdminMutation(
+        updateJobMutation,
+        { reason: 'partial cadence edit', expectedVersion: '1', jobId, scheduleType: 'cron' },
+        SESSION,
+      );
+      expect(outcome.ok).toBe(false);
+      if (outcome.ok) return;
+      expect(outcome.kind).toBe('validation');
+    });
+
+    /**
+     * F16b's brief, explicitly: "a dispatcher tick and an admin edit racing on the same
+     * job_definition row is a genuine scenario your tests should cover." This simulates the
+     * dispatcher's own writer (`advanceJobDefinitionSchedule`, F16a) committing first — the admin's
+     * `expectedVersion` (read before the race) is then stale by the time the mutation runs, and
+     * the pipeline's own step-3 optimistic-concurrency check must refuse it with a diff, not
+     * silently overwrite the dispatcher's write.
+     */
+    it('a dispatcher tick advancing the schedule before the admin\'s mutation runs is refused, not silently overwritten', async () => {
+      const configId = await seedActiveConfig(pool);
+      const jobId = await seedJob(configId);
+
+      await advanceJobDefinitionSchedule(jobId, new Date('2026-09-01T00:05:00Z'), 'jobs:dispatch', pool);
+
+      const outcome = await runAdminMutation(
+        updateJobMutation,
+        { reason: 'admin edit racing the dispatcher', expectedVersion: '1', jobId, enabled: false },
+        SESSION,
+      );
+      expect(outcome.ok).toBe(false);
+      if (outcome.ok) return;
+      expect(outcome.kind).toBe('conflict');
+
+      // The dispatcher's own write must survive untouched.
+      const { rows } = await pool.query<{ enabled: boolean; version: number }>(
+        'select enabled, version from job_definition where id = $1',
+        [jobId],
+      );
+      expect(rows[0]?.enabled).toBe(true);
+      expect(rows[0]?.version).toBe(2);
     });
   });
 });

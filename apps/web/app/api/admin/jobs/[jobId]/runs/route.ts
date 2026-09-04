@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin, UnauthenticatedError, UnauthorizedError, PasswordChangeRequiredError } from '@/services/auth';
+import { getJobRunHistoryView } from '@/services/admin/reads';
 
-/** F02 §4.4: `requireAdmin()` called in this route handler's own body. Fixture state until F16b (SURFACE) lands beyond auth (F01 §4.6). */
+/** F16 §4.4 (F16b) — one job's recent run history, dry runs included. */
 export async function GET(_request: Request, { params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await params;
 
@@ -14,10 +15,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ job
     throw error;
   }
 
-  return NextResponse.json({
-    state: 'fixture',
-    route: `/api/admin/jobs/${jobId}/runs`,
-    owner: 'F16b (SURFACE)',
-    data: null,
-  });
+  const runs = await getJobRunHistoryView({ jobId, limit: 25 });
+  return NextResponse.json({ state: 'ready', route: `/api/admin/jobs/${jobId}/runs`, runs });
 }
