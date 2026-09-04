@@ -46,7 +46,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 | Suite | Status | Command/run link | Notes |
 |---|---|---|---|
-| discovery/adapter contract | `READY_FOR_REVIEW` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/discovery/openai-web-search.test.ts tests/contract/rni/discovery.test.ts --no-file-parallelism` | 2 files, 15 tests passed after coordinator fixes |
+| discovery/adapter contract | `READY_FOR_REVIEW` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/discovery/openai-web-search.test.ts tests/contract/rni/discovery.test.ts --no-file-parallelism` | 2 files, 16 tests passed after coordinator fixes |
 | workflow/idempotency | `NOT_STARTED` | — | — |
 | semantic gold set | `NOT_STARTED` | — | — |
 | analytics golden/replay | `NOT_STARTED` | — | — |
@@ -59,7 +59,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 | ID | Priority | Status | Finding | Resolution |
 |---|---|---|---|---|
-| E01-R1-01 | P1 | `READY_FOR_REVIEW` | Canonical URL membership did not bind model excerpt/time to the exact consulted source | Exact provider URL plus field-scoped URL-citation annotations are required; otherwise the provider URL is emitted URL-only and interpretation-ineligible |
+| E01-R1-01 | P1 | `READY_FOR_REVIEW` | Canonical URL membership did not bind model excerpt/time to the exact consulted source | Exact provider URL plus full-value-covering field-scoped URL-citation annotations are required; partial/overlapping spans fail closed, and otherwise the provider URL is emitted URL-only and interpretation-ineligible |
 | E01-R1-02 | P1 | `READY_FOR_REVIEW` | Malformed or source-less calls could be skipped, yielding an incomplete consulted-source trace | Every call now validates; search requires a sources array, supported non-search actions are traced, and unknown/malformed actions fail closed |
 | E01-R1-03 | P2 | `READY_FOR_REVIEW` | Injection test covered post-generation output handling, not model resistance before generation | Test and evidence now explicitly claim only output-handling/tool-configuration coverage; pre-generation model resistance remains E10 eval scope |
 
@@ -77,15 +77,16 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 - **Slice:** Added a Responses API Web Search request builder and injected transport boundary,
   strict structured-output parsing, complete per-call action/source validation, and deterministic
   Reddit post/comment URL normalization. Interpretation-eligible candidates require exact
-  consulted-URL equality and URL-citation spans that bind both bounded content and publication
-  time to that source. Unbound, untimed, out-of-window, or otherwise ineligible consulted Reddit
-  sources remain explicit URL-only records and cannot enter interpretation.
+  consulted-URL equality and URL-citation spans that fully cover both bounded content and
+  publication time for that source. Partial, unbound, untimed, out-of-window, or otherwise
+  ineligible consulted Reddit sources remain explicit URL-only records and cannot enter
+  interpretation.
 - **Files changed:**
   `apps/web/src/rni/discovery/{index,openai-web-search,reddit-url,types}.ts`,
   `apps/web/tests/unit/rni/discovery/openai-web-search.test.ts`,
   `apps/web/tests/unit/rni/discovery/fixtures/openai-web-search-response.json`,
   `apps/web/tests/contract/rni/discovery.test.ts`, and this tracker.
-- **Tests/results:** focused unit + contract 15/15 passed; repository unit 1,185/1,185 passed;
+- **Tests/results:** focused unit + contract 16/16 passed; repository unit 1,186/1,186 passed;
   repository contract 78 passed and 22 pre-existing skips; `typecheck`, focused ESLint, full
   ESLint, and `git diff --check` passed.
 - **Models/prompts:** no model ID is hard-coded; the caller supplies the evaluated Web Search

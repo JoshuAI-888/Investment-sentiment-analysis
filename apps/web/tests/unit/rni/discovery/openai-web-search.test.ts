@@ -57,31 +57,34 @@ function responseWith(options: {
     candidateUrl: string;
     field: 'excerpt' | 'published_at';
     sourceUrl?: string;
+    spanLength?: number;
   }[];
   extraCalls?: readonly unknown[];
 } = {}): unknown {
   const candidates = options.candidates ?? [baseCandidate];
   const sources = options.sources ?? [{ url: baseCandidate.url, title: baseCandidate.title }];
   const text = JSON.stringify({ candidates, limitations: ['Sampled discovery.'] });
-  const annotations = (options.bindings ?? []).map(({ candidateUrl, field, sourceUrl }) => {
-    const candidate = candidates.find(({ url }) => url === candidateUrl);
-    const value = candidate?.[field];
-    if (value === undefined || value === null) {
-      throw new Error(`Fixture binding field not found: ${candidateUrl} ${field}`);
-    }
-    const candidateStart = text.indexOf(JSON.stringify(candidateUrl));
-    const fieldStart = text.indexOf(`"${field}"`, candidateStart);
-    const start = text.indexOf(JSON.stringify(value), fieldStart) + 1;
-    if (candidateStart < 0 || fieldStart < 0 || start <= 0) {
-      throw new Error(`Fixture binding value not found: ${value}`);
-    }
-    return {
-      type: 'url_citation',
-      url: sourceUrl ?? candidateUrl,
-      start_index: start,
-      end_index: start + value.length,
-    };
-  });
+  const annotations = (options.bindings ?? []).map(
+    ({ candidateUrl, field, sourceUrl, spanLength }) => {
+      const candidate = candidates.find(({ url }) => url === candidateUrl);
+      const value = candidate?.[field];
+      if (value === undefined || value === null) {
+        throw new Error(`Fixture binding field not found: ${candidateUrl} ${field}`);
+      }
+      const candidateStart = text.indexOf(JSON.stringify(candidateUrl));
+      const fieldStart = text.indexOf(`"${field}"`, candidateStart);
+      const start = text.indexOf(JSON.stringify(value), fieldStart) + 1;
+      if (candidateStart < 0 || fieldStart < 0 || start <= 0) {
+        throw new Error(`Fixture binding value not found: ${value}`);
+      }
+      return {
+        type: 'url_citation',
+        url: sourceUrl ?? candidateUrl,
+        start_index: start,
+        end_index: start + (spanLength ?? value.length),
+      };
+    },
+  );
   return {
     id: 'resp_test',
     status: 'completed',
@@ -311,6 +314,24 @@ describe('OpenAI Web Search response normalization', () => {
     expect(wrongSourceBinding.rejectedCandidates[0]?.reason).toBe(
       'EXCERPT_NOT_SOURCE_BOUND',
     );
+  });
+
+  it('rejects a same-source citation that covers only part of a field value', async () => {
+    const result = await discoveryFor(
+      responseWith({
+        bindings: [
+          { candidateUrl: baseCandidate.url, field: 'excerpt', spanLength: 1 },
+          { candidateUrl: baseCandidate.url, field: 'published_at' },
+        ],
+      }),
+    ).discover(request);
+
+    expect(result.candidates).toHaveLength(0);
+    expect(result.rejectedCandidates[0]?.reason).toBe('EXCERPT_NOT_SOURCE_BOUND');
+    expect(result.urlOnlyCandidates[0]).toMatchObject({
+      originalUrl: baseCandidate.url,
+      interpretationEligible: false,
+    });
   });
 
   it('fails closed if any completed search call has missing or malformed sources', async () => {

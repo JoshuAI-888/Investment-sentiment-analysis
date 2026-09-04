@@ -405,8 +405,8 @@ function candidateFieldIsSourceBound(
     citations.some(
       (citation) =>
         citation.url === sourceUrl &&
-        citation.start_index < valueEnd &&
-        citation.end_index > valueStart,
+        citation.start_index <= valueStart &&
+        citation.end_index >= valueEnd,
     )
   ) {
     return true;
