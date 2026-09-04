@@ -17,8 +17,8 @@ against fixtures, and the one whose work is cheapest to redo if a contract moves
 | F07 | Dashboard and composites | 2 | `merged 2026-09-03` | [#7](https://github.com/JoshuAI-888/Investment-sentiment-analysis/pull/7) | Market and sector composite cards, `sectorBreadthInputs`. Two rounds of adversarial `lane-review`: round 1 (8 fixes) added TTL'd refusal markers (`refusal.ts` — 60s rate-limited, 120s in-progress, 15min budget) and `renormalizedComponentWeight`, and fixed a `Number()`-vs-decimal comparison in `sectorBreadthInputs` that could flip a threshold at exactly the float/decimal disagreement point; round 2 (3 fixes) found `MarketCompositeCard`'s omitted/applied branch split used `component.metric === null` where it needed `!component.participated \|\| component.metric === null` (an abstained artifact still carries a non-null metric), verified by mutation. Also found and fixed a non-discriminating regression test (`'0.35' >= '0.35'` compares a value to itself) by using `'0.34999999999999999'`, a value where `Number()` and `Dec` disagree |
 | F08 | Attention leaderboard | 2 | `merged 2026-09-03/04` | [#15](https://github.com/JoshuAI-888/Investment-sentiment-analysis/pull/15) | Re-sourced to the Reddit API; ApeWisdom demoted to cross-check. **Merged after 55 total adversarial `lane-review` rounds** — resumed from a round-43 pause (see `progress/log/2026-09-03-surface-f08-round33-43-pause.md`) and continued to a clean round. Recurring theme across rounds 24–28: the "degraded state over zero rows" read path (`leaderboard.ts`/`pipeline.ts`/`AttentionUnavailable.tsx`) took five rounds to become honest about every `degradedReason`/`unavailableReason` combination. Full gate green on the merge commit |
 | F09 | Ticker detail and evidence drawer | 2 | `merged 2026-09-04` | [#16](https://github.com/JoshuAI-888/Investment-sentiment-analysis/pull/16) | Renders **three** sampling-frame disclosures, plus coverage gaps as holes in the chart. Converged after 4 adversarial `lane-review` rounds (fabricated-input, mislabeled-coverage and missing-scope findings — see the round commits). Merged `main` in cleanly, resolving an additive conflict with F08 in `metric-manifest.ts`/`routes.ts` (both features append to shared list files — see `MEMORY.md` for the pattern) |
-| F15 | Operator control plane | 4 | `not started` | — | Heavily cut by D-11 — versioning/audit/rollback kept as reproducibility infrastructure, the ~20-surface mutation UI cut |
-| F16b | Scheduler admin plane | 4 | `not started` | — | **Wave 4 half of F16**: admin-editable job rows, cadence editing, next-run preview, dry-run UI. Depends on F15 (this lane) **and F16a (COLLECT)** |
+| F15 | Operator control plane | 4 | `merged 2026-09-05 (partial)` | — | Heavily cut by D-11 — versioning/audit/rollback kept as reproducibility infrastructure, the ~20-surface mutation UI cut. **Eight of twelve `/admin` sub-surfaces built**: status/overview, universe selector (draft→preview→activate→rollback, 100-cap, zero provider calls/row), settings (typed catalogue + D-15 thresholds, versioned), audit trail, cost ledger view, data explorer (rights/retention-filtered, audited every access), calculation issues. Models is read-only (mutation deferred). **Not built this pass:** data sources, jobs (F16b-owned — untouched, deliberately), user assumptions, coverage/replay. The uniform 8-step mutation contract (`services/admin/mutation.ts`) is real and enumerated-tested, not per-mutation copy-paste. Coordinator-verified independently: lint/typecheck clean, unit 1325/1325 on the full merged tree, contract 109/109, integration 364/364, build clean. A real cross-transaction bug was found and fixed during the build (settings activation couldn't see its own just-drafted, uncommitted config_version — fixed by committing the draft in its own transaction first). Known tradeoff: settings budget defaults seeded to D-32's $290/$320/$350, not §4.7's stale pre-D-20 $80/$90/$100. Deferred (trigger: a future pass): 20k-row perf benchmark (no seeded dataset), models mutation, user-assumptions/coverage-replay queues. See `progress/log/2026-09-05-f15-admin-control-plane.md` |
+| F16b | Scheduler admin plane | 4 | `not started` | — | **Wave 4 half of F16**: admin-editable job rows, cadence editing, next-run preview, dry-run UI. Depends on F15 (this lane, merged) **and F16a (COLLECT, merged 2026-09-05)** — both prerequisites now satisfied |
 | F17 | Architecture Explorer | 5 | `not started` | — | Manifest now carries `ScorerIdentity` and the MCP tool catalogue |
 | F18 | Cost, budgets, degradation | 5 | `not started` | — | **Promoted.** X bills per read; the DB now has a paid tier. **D-32: X ceilings start at 0** and the global ceiling is the only budget control — enforce it before dispatch |
 | F19 | Release hardening | 5 | `not started` | — | Copy lint extended: predictive vocabulary without a Tier D4 record fails the build |
@@ -70,11 +70,19 @@ failing-case test. Two notes that matter when filling them out:
 
 ## In flight
 
+**Updated 2026-09-05.** F15 merged (partial — see the Features table). F16b is now genuinely
+unblocked (F15 and F16a, COLLECT, both merged) and is this lane's next pickup, followed by F17,
+F18, F19 in wave order.
+
+<details><summary>Prior state, retained for the record</summary>
+
 **Updated 2026-09-04.** This section previously read "F08 not yet merged, no PR opened" — stale
 against the git tree, which had F08 merged (PR #15, 55 rounds) and F09 merged (PR #16, 4 rounds)
 by 2026-09-04 with no corresponding update here. Nothing is in flight in this lane right now;
 F15–F19 (Waves 4–5) are `not started` and wait on their own prerequisites. See the Features table
 above for both merges' round-by-round summary.
+
+</details>
 
 ## Deferred from a DoD
 
