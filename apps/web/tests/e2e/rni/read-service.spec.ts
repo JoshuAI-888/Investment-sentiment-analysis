@@ -62,6 +62,17 @@ test.describe('RNI fixture read service', () => {
     expect(
       (await partialService.getSecuritySummary(rniFixtureIds.run, rniFixtureIds.nvda)).status,
     ).toBe('partial');
+    const firstRadarPage = await partialService.getRadarPage({
+      runId: rniFixtureIds.run,
+      limit: 1,
+    });
+    const secondRadarPage = await partialService.getRadarPage({
+      runId: rniFixtureIds.run,
+      cursor: firstRadarPage.nextCursor,
+      limit: 1,
+    });
+    expect(firstRadarPage.rows.map((row) => row.security.ticker)).toEqual(['NVDA']);
+    expect(secondRadarPage.rows.map((row) => row.security.ticker)).toEqual(['AMD']);
   });
 
   test('returns defensive copies through only the frozen read service methods', async () => {

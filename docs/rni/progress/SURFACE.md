@@ -3,7 +3,7 @@
 **Writer:** SURFACE builder only  
 **Branch:** `feat/rni-surface-demo`  
 **Depends on:** merged RNI contract-freeze SHA; fixture-backed `RniReadService`  
-**Status:** `BLOCKED` — S02 awaits a frozen Radar read shape
+**Status:** `IN_PROGRESS` — S02 Retail Radar ready for coordinator review; S03–S10 not started
 
 ## Owned paths
 
@@ -11,18 +11,18 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 
 ## Tasks
 
-| ID  | Task                                                             | Status            | Acceptance evidence                        |
-| --- | ---------------------------------------------------------------- | ----------------- | ------------------------------------------ |
-| S01 | Typed fixture `RniReadService` and state catalogue               | `READY_FOR_MERGE` | Citation resolution contract tests         |
-| S02 | Retail Radar with Reddit/X/combined columns                      | `BLOCKED`         | Desktop/narrow/keyboard tests              |
-| S03 | Security detail and four dimensions per platform                 | `NOT_STARTED`     | NVDA and divergence fixtures               |
-| S04 | Evidence drawer with platform-labelled canonical citations       | `NOT_STARTED`     | Citation navigation e2e                    |
-| S05 | Raw data/lineage explorer                                        | `NOT_STARTED`     | Summary-to-source traversal e2e            |
-| S06 | Per-platform freshness, run progress and partial/failure states  | `NOT_STARTED`     | State-matrix visual/e2e tests              |
-| S07 | Manual ticker/full refresh controls and double-submit prevention | `NOT_STARTED`     | Idempotency UI test                        |
-| S08 | S&P 500 search, NVDA default and universe Settings components    | `NOT_STARTED`     | Any-member search + staged preview fixture |
-| S09 | Route/model display and Direct/Gateway future-run setting        | `NOT_STARTED`     | Setting/history immutability test          |
-| S10 | Accessibility, responsive and full SURFACE handoff               | `NOT_STARTED`     | Required audits and lane report            |
+| ID  | Task                                                             | Status             | Acceptance evidence                        |
+| --- | ---------------------------------------------------------------- | ------------------ | ------------------------------------------ |
+| S01 | Typed fixture `RniReadService` and state catalogue               | `READY_FOR_MERGE`  | Citation resolution contract tests         |
+| S02 | Retail Radar with Reddit/X/combined columns                      | `READY_FOR_REVIEW` | Desktop/narrow/keyboard tests              |
+| S03 | Security detail and four dimensions per platform                 | `NOT_STARTED`      | NVDA and divergence fixtures               |
+| S04 | Evidence drawer with platform-labelled canonical citations       | `NOT_STARTED`      | Citation navigation e2e                    |
+| S05 | Raw data/lineage explorer                                        | `NOT_STARTED`      | Summary-to-source traversal e2e            |
+| S06 | Per-platform freshness, run progress and partial/failure states  | `NOT_STARTED`      | State-matrix visual/e2e tests              |
+| S07 | Manual ticker/full refresh controls and double-submit prevention | `NOT_STARTED`      | Idempotency UI test                        |
+| S08 | S&P 500 search, NVDA default and universe Settings components    | `NOT_STARTED`      | Any-member search + staged preview fixture |
+| S09 | Route/model display and Direct/Gateway future-run setting        | `NOT_STARTED`      | Setting/history immutability test          |
+| S10 | Accessibility, responsive and full SURFACE handoff               | `NOT_STARTED`      | Required audits and lane report            |
 
 ## Required invariants
 
@@ -39,21 +39,23 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 
 ## Contract requests
 
-| ID            | Status     | Request                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Impact                                                                            |
-| ------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| CR-SURFACE-01 | `ACCEPTED` | I02B / D-RNI-12 (`264ea9c`) adds `getCitation(citationId)` returning frozen `RniCitation`. Consumers must resolve citation ID → citation source ID → bounded evidence, never equate citation and source IDs.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | S01 must implement the additive method; this unblocks S04’s evidence-drawer flow. |
-| CR-SURFACE-02 | `OPEN`     | **Current behaviour:** `RniReadService` can read one run, its global platform slices, one security summary by opaque security ID, citations and evidence. It cannot enumerate Radar securities, map a security ID to ticker/company/exchange, or return per-security Reddit/X/combined display records for a selected run. **Requested change:** add an additive, paginated Radar read method and frozen response shape containing run identity/freshness plus per-security identity (ID, ticker, company name, exchange), independently labelled Reddit and X result states, and combined status/summary. **Justification:** S02 cannot show mandatory ticker-plus-company Radar rows or independently calculated source columns from the existing methods without importing repositories or inventing a SURFACE-only read model. **Affected lanes:** DATA read model, ENGINE/fixture production, INTEGRATION route composition, SURFACE. **Compatibility:** additive only; existing read-service consumers remain valid. **Recommended acceptance test:** an RNI fixture returns NVDA and AMD rows with company names, preserves Reddit/X divergence or partial/unavailable state per row, and rejects any synthetic source fallback or source-count pooling. | Blocks S02; no implementation can proceed within the frozen boundary.             |
+| ID            | Status     | Request                                                                                                                                                                                                                         | Impact                                                                            |
+| ------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| CR-SURFACE-01 | `ACCEPTED` | I02B / D-RNI-12 (`264ea9c`) adds `getCitation(citationId)` returning frozen `RniCitation`. Consumers must resolve citation ID → citation source ID → bounded evidence, never equate citation and source IDs.                    | S01 must implement the additive method; this unblocks S04’s evidence-drawer flow. |
+| CR-SURFACE-02 | `ACCEPTED` | D-RNI-13 / `84dca87` adds frozen `getRadarPage` query/page schemas and `referenceRadarPage`. The page has canonical ticker/company/exchange identity plus separate Reddit, X and combined cells; no pooled source count exists. | S02 may use only this frozen response shape and fixture.                          |
 
 ## Test evidence
 
-| Suite                         | Status        | Command/run link                                                                                                                              | Notes                                                                                                            |
-| ----------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| component/contract            | `PASSED`      | `apps/web/node_modules/.bin/tsc --noEmit`; `apps/web/node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism` | Type check passed; rebased frozen RNI contract suite passed (9 tests).                                           |
-| e2e happy path                | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:1 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts --project=chromium`            | Fixture read-service contract passed (2 tests).                                                                  |
-| e2e partial/divergent/failure | `PASSED`      | Same targeted Playwright fixture suite                                                                                                        | Exercises independent partial/unavailable and active refresh states; full surface divergence UI remains S02/S03. |
-| accessibility/keyboard        | `NOT_STARTED` | —                                                                                                                                             | —                                                                                                                |
-| narrow screen                 | `NOT_STARTED` | —                                                                                                                                             | —                                                                                                                |
-| repository required gate      | `NOT_STARTED` | —                                                                                                                                             | —                                                                                                                |
+| Suite                         | Status        | Command/run link                                                                                                                                                                       | Notes                                                                                 |
+| ----------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| component/contract            | `PASSED`      | `apps/web/node_modules/.bin/tsc --noEmit`; `apps/web/node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism`                                          | Typecheck passed; frozen RNI contract suite passed (11/11).                           |
+| focused lint                  | `PASSED`      | `apps/web/node_modules/.bin/eslint fixtures/rni-ui/read-service.ts src/rni/ui/RetailRadar.tsx 'app/(rni)/rni/page.tsx' tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts` | All S02 implementation and test files passed lint.                                    |
+| production build              | `PASSED`      | `apps/web/node_modules/.bin/next build`                                                                                                                                                | Build passed and emitted the static `/rni` route.                                     |
+| e2e happy path                | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:3001 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts --project=chromium`                      | Chromium passed 4/4: fixture service (2), Radar desktop, and Radar narrow/keyboard.   |
+| e2e partial/divergent/failure | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:3001 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts --project=chromium`                      | NVDA proves divergent Reddit/X inputs; AMD proves X unavailable and combined partial. |
+| accessibility/keyboard        | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:3001 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts --project=chromium`                      | Keyboard tab traversal reaches a visible citation link.                               |
+| narrow screen                 | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:3001 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts --project=chromium`                      | At 375px the Radar stacks as cards without horizontal overflow.                       |
+| repository required gate      | `NOT_STARTED` | —                                                                                                                                                                                      | —                                                                                     |
 
 ## Review findings
 
@@ -65,16 +67,17 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 
 ## Open risks/blockers
 
-| Since      | Status    | Blocker                                               | Owner       | Attempted mitigation                                                                                                              | Next check                                             |
-| ---------- | --------- | ----------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| 2026-09-05 | `BLOCKED` | S02 has no frozen Radar/security-identity read shape. | coordinator | Inspected all `RniReadService` methods and frozen schemas after rebasing I02B; no direct repository/provider import is permitted. | Coordinator accepts, rejects or narrows CR-SURFACE-02. |
+| Since      | Status | Blocker                                                                                                                                        | Owner                 | Attempted mitigation                                                                | Next check                           |
+| ---------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------- | ------------------------------------ |
+| 2026-09-05 | `OPEN` | Fixture-only `/rni` composition and static citation anchors require the integration read service and S04 evidence drawer before live-data use. | INTEGRATION / SURFACE | S02 uses only frozen `RniReadService.getRadarPage` and keeps every source distinct. | S04 / integration composition review |
 
 ## Commits
 
-| SHA       | Summary                               | Tests                                       |
-| --------- | ------------------------------------- | ------------------------------------------- |
-| `3220e0d` | S01 fixture service rebased onto I02B | typecheck; contract 7; fixture Playwright 2 |
-| `71010bd` | S01 citation-read compatibility       | typecheck; contract 9; fixture Playwright 2 |
+| SHA       | Summary                                             | Tests                                                      |
+| --------- | --------------------------------------------------- | ---------------------------------------------------------- |
+| `52652e3` | S01 fixture service rebased onto I02B               | typecheck; contract 7; fixture Playwright 2                |
+| `f73a17a` | S01 citation-read compatibility                     | typecheck; contract 9; fixture Playwright 2                |
+| `CURRENT` | S02 source-separated Retail Radar (see branch HEAD) | typecheck; lint; contract 11; build; Chromium Playwright 4 |
 
 ## S01 delivery record
 
@@ -82,20 +85,28 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 - **Result:** fixture-only `RniReadService` covers complete, empty, partial, refreshing, stale, failed, and unpublished states; every state retains one Reddit and one X slice and returns defensive copies. The active refresh state deliberately has no combined summary.
 - **Contract compatibility:** after rebasing on I02B (`264ea9c`), `FixtureRniReadService` implements `getCitation`. Tests prove a citation resolves to a same-platform source record whose bounded evidence contains the cited text; citation IDs are not treated as source IDs.
 - **Risk:** S01 has no open contract blocker. S04 must consume the same citation flow when it adds UI navigation.
-- **Handoff:** coordinator-approved fixture-only slice; citation compatibility committed at `71010bd` and ready for merge.
+- **Handoff:** coordinator-approved fixture-only slice; citation compatibility is committed at `f73a17a` and ready for merge.
+
+## S02 delivery record
+
+- **Files changed:** `apps/web/fixtures/rni-ui/read-service.ts`, `apps/web/app/(rni)/rni/page.tsx`, `apps/web/src/rni/ui/RetailRadar.tsx`, `apps/web/tests/e2e/rni/read-service.spec.ts`, `apps/web/tests/e2e/rni/radar.spec.ts`, and this lane tracker.
+- **Result:** `/rni` reads only frozen `getRadarPage` fixture data and renders ticker, company, exchange, individually labelled Reddit/X cells, and the derived combined cell. NVDA makes Reddit/X divergence explicit; AMD makes X unavailability and combined partial status explicit. No source counts are pooled or substituted.
+- **Verification:** typecheck, focused lint, frozen contract tests (11/11), and production build passed. Chromium passed the exact focused command above (4/4), including desktop identity/divergence and 375px keyboard/no-overflow checks.
+- **Risk:** the route remains fixture-composed until integration injects a live `RniReadService`; citation anchors provide source-labelled links but S04 must add citation → source → evidence navigation.
+- **Handoff:** ready for coordinator review. S03 remains `NOT_STARTED`.
 
 ## Handoff
 
 ```text
 RNI LANE     SURFACE
 BRANCH       feat/rni-surface-demo
-BASE SHA     264ea9c
+BASE SHA     4ab744e
 STATUS       PARTIAL
-TASKS        S01 ready for merge; S02 blocked on CR-SURFACE-02; S03–S10 not started
-TESTS        typecheck: pass; RNI contract: 9 pass; fixture service Playwright: 2 pass
-CONTRACT     CR-SURFACE-01 accepted at 264ea9c; CR-SURFACE-02 open
-RISKS        S02 blocked pending a Radar read shape; S04 must use citation → source → evidence flow
-FILES        apps/web/fixtures/rni-ui/read-service.ts; apps/web/tests/e2e/rni/read-service.spec.ts; docs/rni/progress/SURFACE.md
-COMMITS      3220e0d; 71010bd
-DEMO PROOF   Fixture service returns independent Reddit/X slices for complete, partial, active-refresh, stale, failed and unpublished states
+TASKS        S01 ready for merge; S02 ready for coordinator review; S03–S10 not started
+TESTS        typecheck: pass; focused lint: pass; RNI contract: 11 pass; production build: pass; Chromium Playwright: 4 pass
+CONTRACT     CR-SURFACE-01 accepted at 264ea9c; CR-SURFACE-02 accepted at 84dca87
+RISKS        S04 must replace static citation anchors with citation → source → evidence navigation; integration must inject the live read service
+FILES        apps/web/fixtures/rni-ui/read-service.ts; apps/web/app/(rni)/rni/page.tsx; apps/web/src/rni/ui/RetailRadar.tsx; apps/web/tests/e2e/rni/read-service.spec.ts; apps/web/tests/e2e/rni/radar.spec.ts; docs/rni/progress/SURFACE.md
+COMMITS      52652e3; f73a17a; CURRENT (S02 task commit; see branch HEAD)
+DEMO PROOF   `/rni` fixture Radar shows NVDA — NVIDIA Corporation with Reddit bullish / X bearish / divergent and AMD — Advanced Micro Devices with X unavailable / combined partial; 375px cards and keyboard citation focus pass
 ```

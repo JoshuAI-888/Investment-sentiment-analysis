@@ -3,6 +3,8 @@ import type {
   RniCombinedStatus,
   RniCombinedSummary,
   RniPlatformSlice,
+  RniRadarPage,
+  RniRadarQuery,
   RniReadService,
   RniRun,
   RniRunStatus,
@@ -13,6 +15,7 @@ import {
   comparativeSource,
   independentPlatformSlices,
   partialCombinedSummary,
+  referenceRadarPage,
   rniFixtureIds,
 } from '@/rni/testing/reference-fixtures';
 
@@ -37,6 +40,7 @@ export type RniUiFixtureState =
 
 export type RniUiFixture = Readonly<{
   run: RniRun;
+  radarPage: RniRadarPage | null;
   platformSlices: readonly RniPlatformSlice[];
   summariesBySecurityId: Readonly<Record<string, RniCombinedSummary>>;
   citationsByCitationId: Readonly<Record<string, RniCitation>>;
@@ -45,7 +49,7 @@ export type RniUiFixture = Readonly<{
 
 export class RniFixtureNotFoundError extends Error {
   constructor(
-    readonly resource: 'run' | 'security summary' | 'citation' | 'evidence',
+    readonly resource: 'radar page' | 'run' | 'security summary' | 'citation' | 'evidence',
     readonly id: string,
   ) {
     super(`RNI fixture ${resource} was not found: ${id}`);
@@ -227,6 +231,7 @@ const completeSlices = slices(
 export const rniUiFixtureCatalogue: Readonly<Record<RniUiFixtureState, RniUiFixture>> = {
   complete: {
     run: run('complete'),
+    radarPage: null,
     platformSlices: completeSlices,
     summariesBySecurityId: { [rniFixtureIds.nvda]: completeSummary },
     citationsByCitationId: {
@@ -237,6 +242,7 @@ export const rniUiFixtureCatalogue: Readonly<Record<RniUiFixtureState, RniUiFixt
   },
   empty: {
     run: run('complete'),
+    radarPage: null,
     platformSlices: slices(
       { status: 'complete', eligibleSourceCount: 0 },
       { status: 'complete', eligibleSourceCount: 0, errorCode: null },
@@ -247,6 +253,7 @@ export const rniUiFixtureCatalogue: Readonly<Record<RniUiFixtureState, RniUiFixt
   },
   failed: {
     run: run('failed'),
+    radarPage: null,
     platformSlices: slices(
       {
         status: 'failed',
@@ -263,6 +270,7 @@ export const rniUiFixtureCatalogue: Readonly<Record<RniUiFixtureState, RniUiFixt
   },
   partial: {
     run: run('partial'),
+    radarPage: referenceRadarPage,
     platformSlices: independentPlatformSlices,
     summariesBySecurityId: { [rniFixtureIds.nvda]: partialCombinedSummary },
     citationsByCitationId: { [comparativeCitation.id]: comparativeCitation },
@@ -270,6 +278,7 @@ export const rniUiFixtureCatalogue: Readonly<Record<RniUiFixtureState, RniUiFixt
   },
   refreshing: {
     run: run('running', FIXTURE_TIME, null),
+    radarPage: null,
     platformSlices: slices(
       {
         status: 'running',
@@ -296,6 +305,7 @@ export const rniUiFixtureCatalogue: Readonly<Record<RniUiFixtureState, RniUiFixt
   },
   stale: {
     run: run('partial', STALE_TIME, STALE_TIME),
+    radarPage: null,
     platformSlices: slices(
       {
         status: 'complete',
@@ -320,6 +330,7 @@ export const rniUiFixtureCatalogue: Readonly<Record<RniUiFixtureState, RniUiFixt
   },
   unpublished: {
     run: run('partial'),
+    radarPage: null,
     platformSlices: slices(
       { status: 'partial', eligibleSourceCount: 1 },
       {
@@ -347,6 +358,24 @@ function copy<T>(value: T): T {
  */
 export class FixtureRniReadService implements RniReadService {
   constructor(private readonly fixture: RniUiFixture) {}
+
+  async getRadarPage(query: RniRadarQuery): Promise<RniRadarPage> {
+    const page = this.fixture.radarPage;
+    if (!page || query.runId !== page.run.id) {
+      throw new RniFixtureNotFoundError('radar page', query.runId);
+    }
+    const start = query.cursor === undefined || query.cursor === null ? 0 : Number(query.cursor);
+    if (!Number.isInteger(start) || start < 0 || start > page.rows.length) {
+      throw new RniFixtureNotFoundError('radar page', query.cursor ?? query.runId);
+    }
+    const rows = page.rows.slice(start, start + (query.limit ?? 50));
+    const nextOffset = start + rows.length;
+    return copy({
+      ...page,
+      rows,
+      nextCursor: nextOffset < page.rows.length ? String(nextOffset) : null,
+    });
+  }
 
   async getRun(runId: string): Promise<RniRun> {
     if (runId !== this.fixture.run.id) throw new RniFixtureNotFoundError('run', runId);
