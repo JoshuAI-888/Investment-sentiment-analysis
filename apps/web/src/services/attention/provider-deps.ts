@@ -61,7 +61,24 @@ function inMemoryRateLimiter() {
   };
 }
 
-/** ApeWisdom carries no per-provider budget policy of its own — F18's scope, not this one's. */
+/**
+ * F18 self-review correction (caught while running the full e2e gate, not by review — see the
+ * PR report). The first draft of this file classified ApeWisdom as F18 §4.1's `'optional'` work
+ * — reduce-tier-gated background enrichment — by reading D-12/D-30's "ApeWisdom demoted to
+ * cross-check" ruling at face value. **That ruling describes a world where the Reddit Data API
+ * is the primary attention source; D-39 (2026-09-05) discarded that source for the legacy
+ * product entirely.** This module's own doc comment above and `collector.ts`'s own doc comment
+ * ("the attention snapshot collector — F08 §4.1... persists an `attention_snapshot` per active
+ * symbol per run") say plainly what this call actually is today: **the only running attention
+ * collector this codebase has.** An `attention_snapshot` row this collector fails to write is
+ * D-16 permanent, unrecoverable corpus loss — exactly the failure mode
+ * `services/market/provider-deps.ts`'s own permissive gate exists to prevent for the price
+ * trigger, and for the identical reason. Gating this call at the `'reduce'`/`'block'` tiers would
+ * silently manufacture a coverage gap in the attention corpus on every month the ledger crosses
+ * $320 — for a call that is free and keyless, so the gate would not even save any money in
+ * exchange. **Always allows**, matching `market/provider-deps.ts`'s own reasoning verbatim.
+ * `services/degradation/catalogue.ts`'s ApeWisdom row is corrected to `critical` to match.
+ */
 function permissiveBudgetGate(): BudgetGate {
   return { check: async () => ({ allowed: true }) };
 }

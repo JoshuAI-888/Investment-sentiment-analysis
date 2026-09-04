@@ -11,8 +11,8 @@ const ADMIN_PAGES = GATED_PAGE_ROUTES.filter((route) => route.path.startsWith('/
  * `/admin/models`, `/admin/data-explorer`, `/admin/calculation-issues`) — those no longer render
  * F01's `data-state="fixture"` shell, so the negative-auth check (still true for all twelve:
  * every one still refuses a non-admin) and the positive "an admin reaches it" check now diverge
- * per page. **F16b adds `/admin/jobs` as a ninth.** `/admin/data-sources` and
- * `/admin/user-assumptions` remain fixture.
+ * per page. **F16b adds `/admin/jobs` as a ninth; F18 adds `/admin/data-sources` as a tenth**
+ * (the degraded-state catalogue, §4.3). `/admin/user-assumptions` remains fixture.
  */
 const ADMIN_PAGES_WITH_REAL_CONTENT = new Set([
   '/admin',
@@ -24,6 +24,7 @@ const ADMIN_PAGES_WITH_REAL_CONTENT = new Set([
   '/admin/data-explorer',
   '/admin/calculation-issues',
   '/admin/jobs',
+  '/admin/data-sources',
 ]);
 
 /**

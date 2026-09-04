@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireUser, UnauthenticatedError, PasswordChangeRequiredError } from '@/services/auth';
 import { checkGlobalBudget } from '@/services/dashboard/budget';
+import { resolveBudgetThresholds } from '@/services/budget/policy';
 import { acquireRefreshLock, checkRefreshRateLimit } from '@/services/dashboard/rate-limit';
 import { recordRefusal } from '@/services/dashboard/refusal';
 import { resolveRedisClient } from '@/services/dashboard/redis';
@@ -12,6 +13,12 @@ import type { RefreshResponse } from '@/services/dashboard/contract';
  * budget-checked against the global ceiling, and runs through the same internal job service."
  * Order matters and is deliberate: auth first (an unauthenticated caller learns nothing about
  * budget or rate state), then the coarse checks that refuse cheaply, then the actual work.
+ *
+ * F18: the ceiling itself is now live — `resolveBudgetThresholds().hardUsd` reads the currently
+ * active `budget.hard_usd` setting (F15's operator-editable, versioned catalogue), falling back
+ * to D-32's own $350 default when no active `config_version` has ever carried it yet. This is
+ * the "$100 block" tier (D-32's real figure: $350) — the dashboard refresh itself is a core
+ * path, so it is refused only at the hard tier, never at warn or reduce.
  */
 export async function POST() {
   let session;
@@ -43,7 +50,8 @@ export async function POST() {
     );
   }
 
-  const budget = await checkGlobalBudget();
+  const { hardUsd } = await resolveBudgetThresholds();
+  const budget = await checkGlobalBudget(new Date(), undefined, hardUsd);
   if (!budget.allowed) {
     return respondRefused('budget', budget.message);
   }
