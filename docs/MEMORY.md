@@ -1001,6 +1001,22 @@ a hard boundary would be exceeded and never rewrite historical usage. The limits
 demo baseline and may change only through a later owner-approved, versioned configuration after a
 measured full-universe run.
 
+### D-RNI-22 — Semantic persistence crosses lanes through one atomic E05 result
+
+**Accepts CR-DATA-002 for I07, 2026-09-05.** ENGINE classification remains SQL-free and DATA's
+relational row inputs remain private. The integration-owned `RniSemanticPersistencePort` accepts
+only a durable run ID, the already-persisted source identity and the complete validated E05
+classification result. Its implementation commits observations, claims, claim-source citations,
+themes and noise assessments atomically, then returns the durable identities selected by storage.
+It never exposes table-shaped write arguments back to ENGINE.
+
+The coordinator wrapper reads committed bounded evidence and completes every independent
+per-security classification before it invokes the port once. A failure for any security writes
+nothing; an exact redelivery returns `duplicate` with the original durable identities; reusing a
+semantic identity for different content fails closed. This port does not decide catalyst evidence
+roles, model routes, rights policy or publication. Those remain the separate D-RNI-19
+assessment/publication boundary and I10 server-owned routing/configuration work.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

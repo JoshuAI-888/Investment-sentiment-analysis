@@ -55,7 +55,7 @@
 | ID | From | Status | Decision | Affected lanes | Contract SHA |
 |---|---|---|---|---|---|
 | CR-DATA-001 | DATA | `ACCEPTED` | Freeze additive commit-returning persistence port; concrete DATA adapter must pass the same duplicate-delivery semantics | DATA, ENGINE, INTEGRATION | `6b67657` |
-| CR-DATA-002 | DATA | `DEFERRED_TO_I07` | Keep storage-shaped semantic writes DATA-private until an implemented ENGINE consumer proves the smallest cross-lane port | DATA, ENGINE, INTEGRATION | `264ea9c` |
+| CR-DATA-002 | DATA | `ACCEPTED_FOR_I07` | D-RNI-22 freezes one atomic complete-E05-result port; storage rows stay DATA-private and the coordinator wrapper commits only after every security classifies | DATA, ENGINE, INTEGRATION | D-RNI-22 / current I07A commit |
 | CR-DATA-003 | DATA | `RESOLVED_NO_CHANGE` | pgvector remains deferred for this vertical slice; relational claim/narrative storage proceeds without an extension or placeholder | DATA, ENGINE, INTEGRATION | `264ea9c` |
 | CR-DATA-004 | DATA | `RESOLVED_NO_CHANGE` | I06 synchronizer owns duplicate, completeness, NVDA, ambiguous, and unresolved validation; transport schema remains structural | DATA, INTEGRATION | `e535624` + `264ea9c` |
 | CR-ENGINE-001 | ENGINE | `ACCEPTED_FOR_I07` | Persist claim-bound point-in-time corroboration, separate verifier/challenger invocations, citation roles, analytics lineage and ordered sentence trace; no P0 source-kind expansion or factual-verification copy | DATA, ENGINE, INTEGRATION | D-RNI-19 / current I02G commit |
@@ -83,9 +83,11 @@
 
 ### I02B decisions
 
-- **CR-DATA-002:** defer a public semantic write port until I07 has an implemented ENGINE
-  consumer. DATA's relational table inputs remain private; the coordinator will freeze only the
-  minimum consumed boundary.
+- **CR-DATA-002:** accepted as D-RNI-22 now that I07 has the concrete E05 consumer. The
+  integration-owned `RniSemanticPersistencePort` accepts one durable run/source identity and the
+  complete validated E05 result, commits it atomically and returns storage-selected identities.
+  DATA's relational table inputs remain private; exact replay returns the original IDs and a
+  crossed semantic identity fails closed.
 - **CR-DATA-003:** confirm the existing pgvector deferral. Migration `0022` carries relational
   lineage only; a later embedding phase requires its own migration and Neon capability gate.
 - **CR-DATA-004:** assign resolution semantics to the integration synchronizer implemented in
@@ -374,6 +376,26 @@
 | `CURRENT` | Accept and merge final ENGINE E10 | `62eab1d` descends `e52052f`; coordinator focused E10 plus E08 57/1 live skip, full eval 18/1 live skip, typecheck/lint/diff pass; independent adversarial review PASS; ER-20–23 closed |
 | `CURRENT` | Refresh, accept and merge final SURFACE lane | code `c224c78`, tracker/merge head `b60ec14` descends `01a088c`; coordinator typecheck/focused lint/expanded RNI contract 37/37 pass; builder build and Chromium 22/22 pass |
 | `CURRENT` | Start I07 DATA/ENGINE composition | all three lanes merged in required order; resolve CR-DATA-002 only from the concrete E05 consumer and prove the smallest durable boundary with integration contracts |
+| `CURRENT` | Freeze I07 semantic composition as D-RNI-22 | SQL-free complete-E05-result port plus persist-after-all-security wrapper; focused integration 3/3, typecheck and scoped lint pass; DATA transaction adapter remains |
+
+## I07A handoff
+
+- **Status:** `COMPLETE`; I07 remains `IN_PROGRESS` for the DATA adapter and D-RNI-19 durable
+  assessment/publication composition.
+- **Files changed:** `apps/web/src/rni/composition/{index,semantic,types}.ts`,
+  `apps/web/tests/integration/rni/composition/semantic-composition.test.ts`, D-RNI-22 and the two
+  coordinator trackers.
+- **Behaviour:** the coordinator wrapper validates a durable run identity, reads already-committed
+  bounded evidence through E05, preserves independent multi-security outputs and calls one atomic
+  semantic persistence port only after every classification succeeds. The port receives no
+  table-shaped inputs and must return storage-selected identities on exact replay.
+- **Verification:** focused semantic composition integration 3/3, typecheck, scoped ESLint and
+  `git diff --check` pass.
+- **Risks/handoff:** no database adapter is claimed yet. DATA must implement one transaction over
+  observations, claims, source citations, themes and noise assessments, with exact replay and
+  crossed-content rejection. I07 must separately complete D-RNI-19 analytics, invocation,
+  assessment and sentence-citation persistence; I10 still owns active model and rights-policy
+  resolution.
 
 ## Coordinator notes
 
