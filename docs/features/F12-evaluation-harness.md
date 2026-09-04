@@ -1,5 +1,8 @@
 # F12 — Evaluation Harness and LLM Judge
 
+> **RNI scope:** RNI prompts, analytics and convergence changes trigger the RNI frozen eval suite
+> and citation/independence guardrails defined in `../rni/EVALS_AND_GUARDRAILS.md`.
+
 > **Amended 2026-09-03 by the re-lock.** **D-09:** adds **Tier D** (measurement fidelity) — per-axis stance accuracy, scorer reproducibility, scorer-provenance completeness, and the D4 promotion backtest. **D-18:** ports finsent's evaluation harness (PIT, IC, Newey–West, momentum-residual IC) as a versioned module with its own tests. **D-18 also requires the null scenario that must fail** — raw IC alone is not an acceptable promotion criterion. Blocked additionally on **OQ-7** (the labelled set is unspecified).
 > See `../MEMORY.md` §1b for the decisions and `../SPEC-REVIEW.md` for the reasoning.
 

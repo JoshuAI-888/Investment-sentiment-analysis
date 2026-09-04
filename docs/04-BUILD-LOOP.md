@@ -1,5 +1,9 @@
 # The Agentic Build Loop
 
+> **RNI execution rule (2026-09-05):** `rni/RNI_BUILD_LOOP.md` is the scoped orchestration
+> protocol for RNI. It preserves independent verification, CI and coordinator-only merging but
+> replaces the legacy feature/wave selection mechanics only for the RNI branches.
+
 > **Amended 2026-09-03 by the re-lock.** Three changes to the loop protocol:
 > **(1)** CI spans **two deploy targets** now — the web app and F20's scorer service. A green web
 > lane with a red scorer lane is the same hard stop R-12 already defines.

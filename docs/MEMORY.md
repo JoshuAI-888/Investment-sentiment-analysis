@@ -757,6 +757,58 @@ now it is blocked on wiring the confirmed 13-publication list into F04's Substac
 config — an engineering task for COLLECT, not a further manual task. See `DEPLOY.md` MT-15 for
 the full table.
 
+### D-RNI-01 — RNI is an isolated build lane with scoped precedence
+
+**Owner decision, 2026-09-05.** Retail Narrative Intelligence is added to this repository rather
+than replacing the existing product. `features/RNI-00-CONTRACT.md` and `rni/**` take precedence
+only for the RNI namespaces they name. Existing features, routes, data and decisions remain
+binding elsewhere. DATA, ENGINE and SURFACE may build in parallel only after the RNI contract
+freeze; the RNI coordinator alone owns shared wiring, merging and master state.
+
+### D-RNI-02 — Reddit discovery uses OpenAI Web Search and persists bounded evidence first
+
+The RNI Reddit path has no Reddit Data API dependency. It uses OpenAI Web Search to discover the
+configured subreddit sample and persists the original/canonical URL, returned post/comment body
+or bounded excerpt, capture fidelity and relevant metadata before any interpretation job runs.
+Whole webpage HTML, page chrome and unrelated content are prohibited. Search citations become
+publishable only after they resolve to persisted evidence.
+
+### D-RNI-03 — X is independent and the surface always exposes three conclusions
+
+X is a complete sentiment datasource, not a fallback for missing Reddit evidence. Reddit and X
+acquire, persist, classify, calculate, retry and report independently. User-facing synthesis has
+three explicit sections—Reddit sentiment, X sentiment and combined summary—and preserves missing
+or divergent platform states instead of filling or smoothing them.
+
+### D-RNI-04 — Multi-security sources create per-security observations
+
+One post can mention or compare multiple securities. It remains one source record but creates a
+resolved mention and independent stance observation for every security, plus any comparative
+relation. A bullish view of NVDA and bearish view of AMD cannot be stored as one blended label.
+
+### D-RNI-05 — RNI uses OpenAI Direct by default without changing the legacy default
+
+RNI task routes default to OpenAI Direct. An audited Settings choice can route future RNI runs
+through Vercel AI Gateway. The selected/resolved provider and model are stored on each run and
+model call. This scoped choice does not reverse D-34 for the existing application's global model
+transport.
+
+### D-RNI-06 — The RNI universe is the configurable current FMP S&P 500
+
+The initial active RNI watchlist is the current S&P 500 membership obtained from FMP and resolved
+against the existing security master. NVDA is the default selected security, not the corpus
+limit. Sync is staged, versioned and fails closed on incomplete, ambiguous, duplicate, unresolved
+or over-600 membership; `joshuai` approves production activation. The legacy 100-name seed and
+historical migrations are not overwritten.
+
+### D-RNI-07 — Scheduling, freshness and release authority are explicit
+
+Manual refresh and scheduled collection call the same idempotent existing job path. The portal
+shows attempt time, last successful refresh, data-through time, calculation time and per-source
+status. The configured Reddit community list is versioned in Settings, including the combined
+`r/Superstonk` + `r/GME` analytical cluster while retaining separate provenance. `joshuai` owns
+production approval and human intervention recorded in `rni/DEPLOY.md`.
+
 ---
 
 ## 2. Rulings made during review

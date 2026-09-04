@@ -1,5 +1,8 @@
 # F09 — Ticker Detail Page and Evidence Drawer
 
+> **RNI scope:** RNI security detail renders Reddit sentiment, X sentiment and combined summary,
+> plus bounded raw evidence, canonical citations, coverage and freshness for each source.
+
 > **Amended 2026-09-03 by the re-lock.** The page's structure survives; **what it must disclose
 > does not**. **D-14:** there is no longer one sampled-evidence disclosure but **three** — an
 > observed Reddit comment sample, a watched-account X sample opened by a price trigger, and a

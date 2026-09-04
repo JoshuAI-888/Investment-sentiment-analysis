@@ -1,5 +1,8 @@
 # F03 — Persistence and Domain Contracts
 
+> **RNI scope:** `RNI-00-CONTRACT.md` adds forward migrations `0020–0024`, bounded source-first
+> evidence and per-security observations. Do not edit F03's historical migrations or seed.
+
 > **Amended 2026-09-03 by the re-lock.** **D-12:** the ingest half is redesigned for three social axes plus intraday market data. The *conventions* — surrogate keys, bitemporal `observed_at`/`ingested_at`, decimal as `numeric`, append-only — are unchanged and correct. **D-17: the 90-day normalized retention is superseded for social data.** Under forward-only collection a rolling delete means the corpus never exceeds 90 days and D-09's promotion path can never run. **The normalized social corpus and its derived scores are permanent.** **F22 owns** the PIT guard, the coverage-gap model and retention enforcement; this feature owns the tables they act on. Neon **Launch**, not Free.
 > See `../MEMORY.md` §1b for the decisions and `../SPEC-REVIEW.md` for the reasoning.
 

@@ -1,5 +1,8 @@
 # F06 — Deterministic Analytics Library
 
+> **RNI scope:** calculate Reddit and X metrics independently, then derive explicit
+> agreement/divergence facts. Do not pool incomparable raw counts into one sentiment number.
+
 > **Amended 2026-09-03 by the re-lock.** **D-14:** three platform axes, computed and stored separately. A blended cross-axis number is never the stored primitive; a composite may be displayed with its three components beside it. **D-12 consequence — this is the one that will be missed:** every abstention threshold in this package (`n ≥ 5` stance, `n ≥ 3` news, `n_eff ≥ 8` display) was calibrated against a 5–12-snippet sampling regime that no longer exists. **All three must be re-derived per axis before this feature merges** — `n ≥ 5` is met trivially on Reddit and nearly always fails on X at 15-minute resolution. A threshold calibrated to one sampling regime is meaningless in another. **D-15:** X coverage is event-conditional; never average across a trigger gap as though the series were continuous.
 > See `../MEMORY.md` §1b for the decisions and `../SPEC-REVIEW.md` for the reasoning.
 

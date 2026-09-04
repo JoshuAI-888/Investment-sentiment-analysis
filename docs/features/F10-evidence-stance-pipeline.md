@@ -1,5 +1,8 @@
 # F10 — Evidence Pipeline and Stance Classification
 
+> **RNI scope:** a multi-ticker source creates one mention and independently classified stance
+> per security, plus any comparative relation. Source persistence must commit first.
+
 **Wave:** 3 · **Lane:** unallocated — assigned at the Wave 2 gate (`../PROGRESS.md`) · **Estimate:** 12–16 h · **Depends on:** F04, F06
 **Blocking manual task:** `../DEPLOY.md` **MT-06** (LLM access) — unresolved at spec time.
 

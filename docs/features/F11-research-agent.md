@@ -1,5 +1,8 @@
 # F11 — Research Agent, Verifier, and Claim Ledger
 
+> **RNI scope:** synthesis reads persisted evidence only, mandates per-claim citations and emits
+> Reddit/X/combined sections. RNI defaults to OpenAI Direct without changing the legacy default.
+
 > **Amended 2026-09-03 by the re-lock.** **D-10:** this feature is retained as the **measurement path** as well as the web research flow. Tiers B and C run against it in CI and are the only evidence that F21's MCP tool surface can be used honestly — an MCP server owns no render boundary, so B4 is unmeasurable without this.
 > See `../MEMORY.md` §1b for the decisions and `../SPEC-REVIEW.md` for the reasoning.
 

@@ -1,5 +1,8 @@
 # F08 — Attention Leaderboard and Notable Rank Change
 
+> **RNI scope:** the RNI Radar uses a configurable, versioned current FMP S&P 500 universe with
+> NVDA selected by default; the legacy 100-name universe remains unchanged outside RNI.
+
 > **Amended 2026-09-03 by the re-lock.** **D-12:** the attention axis is re-sourced to the Reddit Data API; ApeWisdom is demoted to an independent cross-check and no longer carries this feature. **D-16:** rank change accrues forward-only — there is no backfill, so MT-08's start date is this feature's real dependency.
 > See `../MEMORY.md` §1b for the decisions and `../SPEC-REVIEW.md` for the reasoning.
 

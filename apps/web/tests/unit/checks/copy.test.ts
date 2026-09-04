@@ -42,10 +42,44 @@ describe('check:copy — banned vocabulary', () => {
     expect(findings.length).toBeGreaterThanOrEqual(1);
   });
 
+  it('keeps the legacy Reddit sentiment prose ban', () => {
+    const findings = checkCopy({
+      files: [{ path: 'app/(app)/ticker/page.tsx', content: '<p>Reddit sentiment is bullish</p>' }],
+      methods: [],
+    });
+    expect(findings.some((finding) => finding.where.includes('Reddit sentiment'))).toBe(true);
+  });
+
+  it('allows only the required standalone RNI section heading', () => {
+    const findings = checkCopy({
+      files: [{ path: 'app/(rni)/ticker/page.tsx', content: '<h2>Reddit sentiment</h2>' }],
+      methods: [],
+    });
+    expect(findings).toEqual([]);
+  });
+
+  it('still rejects census-like Reddit sentiment prose inside RNI', () => {
+    const findings = checkCopy({
+      files: [
+        {
+          path: 'src/rni/ui/Summary.tsx',
+          content: "export const copy = 'Reddit sentiment is bullish';",
+        },
+      ],
+      methods: [],
+    });
+    expect(findings.some((finding) => finding.where.includes('Reddit sentiment'))).toBe(true);
+  });
+
   it('does not report a banned word appearing only as an identifier', () => {
     // `AbortSignal` is not copy. A scan that cannot tell the difference gets disabled.
     const findings = checkCopy({
-      files: [{ path: 'src/ui/Fetch.tsx', content: 'const controller=new AbortController();const signal=controller.signal;' }],
+      files: [
+        {
+          path: 'src/ui/Fetch.tsx',
+          content: 'const controller=new AbortController();const signal=controller.signal;',
+        },
+      ],
       methods: [],
     });
     expect(findings).toEqual([]);
@@ -61,9 +95,15 @@ describe('check:copy — banned vocabulary', () => {
   // — not a hand-built excerpt — is what proves the fix against the exact prose that broke it,
   // since reconstructing the precise stray-quote chain by hand had already once produced a
   // synthetic case too small to reproduce the bug.
-  it('reports nothing on the real leaderboard.ts source, despite its prose doc comments\' stray backticks and apostrophes', () => {
-    const content = readFileSync(path.join(WEB_ROOT, 'src/services/attention/leaderboard.ts'), 'utf8');
-    const findings = checkCopy({ files: [{ path: 'src/services/attention/leaderboard.ts', content }], methods: [] });
+  it("reports nothing on the real leaderboard.ts source, despite its prose doc comments' stray backticks and apostrophes", () => {
+    const content = readFileSync(
+      path.join(WEB_ROOT, 'src/services/attention/leaderboard.ts'),
+      'utf8',
+    );
+    const findings = checkCopy({
+      files: [{ path: 'src/services/attention/leaderboard.ts', content }],
+      methods: [],
+    });
     expect(findings).toEqual([]);
   });
 
@@ -88,7 +128,9 @@ describe('check:copy — banned vocabulary', () => {
   // line comment.
   it('still finds a banned word on the same line as a bare URL in JSX text', () => {
     const findings = checkCopy({
-      files: [{ path: 'app/page.tsx', content: '<p>See https://apewisdom.io/ — the consensus view</p>' }],
+      files: [
+        { path: 'app/page.tsx', content: '<p>See https://apewisdom.io/ — the consensus view</p>' },
+      ],
       methods: [],
     });
     expect(findings.some((finding) => finding.where.includes('consensus'))).toBe(true);
@@ -101,7 +143,12 @@ describe('check:copy — banned vocabulary', () => {
   // is now left in place rather than treated as an open comment, so nothing after it is lost.
   it('still finds a banned word later in the file after an unterminated /* in JSX text', () => {
     const findings = checkCopy({
-      files: [{ path: 'app/page.tsx', content: '<p>Rating: 4/*5 stars</p>\n<p>A bullish signal on NVDA</p>' }],
+      files: [
+        {
+          path: 'app/page.tsx',
+          content: '<p>Rating: 4/*5 stars</p>\n<p>A bullish signal on NVDA</p>',
+        },
+      ],
       methods: [],
     });
     expect(findings.some((finding) => finding.where.includes('signal'))).toBe(true);
@@ -125,7 +172,12 @@ describe('check:copy — the §6.4 disclosure line', () => {
   // CAN FAIL.
   it('fails when a divergence state omits the line', () => {
     const findings = checkCopy({
-      files: [{ path: 'src/ui/Divergence.tsx', content: 'export const Divergence = () => <p>Diverging</p>;' }],
+      files: [
+        {
+          path: 'src/ui/Divergence.tsx',
+          content: 'export const Divergence = () => <p>Diverging</p>;',
+        },
+      ],
       methods: [],
     });
     expect(findings).toHaveLength(1);
@@ -137,7 +189,8 @@ describe('check:copy — the §6.4 disclosure line', () => {
       files: [
         {
           path: 'src/ui/Divergence.tsx',
-          content: "export const Divergence = () => <p>{'This describes what is observable and is not a forecast.'}</p>;",
+          content:
+            "export const Divergence = () => <p>{'This describes what is observable and is not a forecast.'}</p>;",
         },
       ],
       methods: [],
@@ -170,7 +223,11 @@ describe('check:copy — D-09 Tier D4 clause', () => {
     const findings = checkCopy({
       files: [predictiveCopy],
       methods: [
-        { id: 'attention.rank_change', goldens: ['g.json'], tierD4Record: 'backtest/2026-08-rank-change' },
+        {
+          id: 'attention.rank_change',
+          goldens: ['g.json'],
+          tierD4Record: 'backtest/2026-08-rank-change',
+        },
       ],
     });
     expect(findings).toEqual([]);

@@ -12,6 +12,13 @@ document is worse than a blank, because it gets quoted later as though it were c
 not a substitute for the provider's current terms.** Terms change without notice and none of
 these rows is a defence. Re-read the source terms before any public launch.
 
+> **RNI source-policy note (2026-09-05):** the Reddit Data API row below applies to the legacy
+> collector. RNI uses OpenAI Web Search to discover public Reddit URLs and stores only the
+> returned post/comment content or bounded excerpt plus necessary metadata—never whole-page
+> HTML. That distinct path still requires a versioned source/retention review before live use;
+> search availability does not itself grant redistribution rights. X remains authorised API
+> access and an independent source, not a fallback.
+
 ---
 
 ## 1. The rule that outranks every row below

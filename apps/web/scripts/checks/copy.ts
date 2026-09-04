@@ -206,6 +206,20 @@ function contains(haystack: string, needle: string): boolean {
   return new RegExp(`\\b${needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(haystack);
 }
 
+/**
+ * D-RNI-03 requires this exact three-section heading. The legacy ban prevents prose from
+ * presenting a sample as platform-wide sentiment, so the exception is deliberately narrower:
+ * only the standalone heading in an RNI-owned surface is allowed. A sentence such as
+ * "Reddit sentiment is bullish" still fails and must name the observed sample.
+ */
+function isRniRequiredHeading(file: SourceFile, value: string, banned: string): boolean {
+  if (banned !== 'Reddit sentiment') return false;
+  if (!/(?:^|[/\\])(?:app[/\\]\(rni\)|src[/\\]rni[/\\]ui)(?:[/\\]|$)/u.test(file.path)) {
+    return false;
+  }
+  return value.trim().toLowerCase() === 'reddit sentiment';
+}
+
 /** A file renders a divergence state if it names one structurally. */
 function rendersDivergenceState(content: string): boolean {
   return /divergence/i.test(content);
@@ -221,6 +235,7 @@ export function checkCopy(input: CopyInput): Finding[] {
     for (const banned of BANNED_VOCABULARY) {
       const hit = strings.find((value) => contains(value, banned));
       if (hit === undefined) continue;
+      if (isRniRequiredHeading(file, hit, banned)) continue;
       findings.push({
         check: 'copy',
         where: `${file.path} — "${banned}"`,

@@ -1,5 +1,9 @@
 # Test Strategy
 
+> **RNI test addendum (2026-09-05):** RNI uses the same frozen-fixture merge principle and adds
+> the cases in `rni/EVALS_AND_GUARDRAILS.md`. Live OpenAI Web Search, X and FMP probes are recorded
+> deployment gates, never deterministic CI dependencies.
+
 > **Amended 2026-09-03 by the re-lock.** Two additions below — §2.1 (fixtures for streaming and
 > paginated social sources, which the original fixture policy does not cover) and §9 (Tier D).
 > See `MEMORY.md` §1b and `SPEC-REVIEW.md`.

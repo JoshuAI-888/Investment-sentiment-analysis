@@ -1,5 +1,9 @@
 # Roadmap — Five Waves, Twenty-One Active Features
 
+> **Parallel RNI carve-out (2026-09-05):** the legacy five-wave roadmap is unchanged. The
+> isolated overnight RNI lane is governed by `rni/RNI_BUILD_LOOP.md`, uses DATA/ENGINE/SURFACE
+> single-writer branches after its contract freeze, and converges through the RNI integrator.
+
 **Re-waved 2026-09-03** against the owner's changed intent (`MEMORY.md` §1b, D-08…D-23).
 **Owner decision:** full scope retained; the timeline is re-baselined
 (`00-ADVERSARIAL-REVIEW.md` F-01).
