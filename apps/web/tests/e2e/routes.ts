@@ -119,6 +119,13 @@ export type ApiRoute = { readonly path: string; readonly method: 'GET' | 'POST';
  * `401` — the dedicated unauthenticated-`401` coverage for both actually lives in
  * `tests/e2e/auth.spec.ts`'s "F02 — sign-in" describe block, mirroring `GET /api/dashboard`'s
  * precedent immediately above.
+ *
+ * **`GET /api/architecture` (F17) is a `calc_fixture`-shaped exception, not a removal.** It
+ * genuinely answers `{ state: 'fixture' }` with no `DATABASE_URL` and `{ state: 'ready', ... }`
+ * with one — never gated behind auth, so it stays in this list rather than being removed, but
+ * `routes.spec.ts` excludes it from the unconditional loop's run when `DATABASE_URL` is set, the
+ * same way `PAGE_ROUTES_FOR_THIS_RUN` already excludes `/calculations/calc_fixture`. Its
+ * database-configured behaviour is covered in `tests/e2e/architecture.spec.ts`.
  */
 export const API_ROUTES: readonly ApiRoute[] = [
   { path: '/api/research', method: 'POST', source: 'api/research' },
