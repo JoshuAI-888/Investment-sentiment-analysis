@@ -149,6 +149,11 @@ describe.skipIf(url === undefined)('F21 §4.4 — ui:// resources render their o
       expect(html).toContain('This list is bounded and stance-classified');
       expect(html).toContain('data-availability="available"');
       expect(html).toContain('data-role="snippet"');
+      expect(html).toContain('data-role="window"');
+      expect(html).toContain('data-role="coverage-floor"');
+      expect(html).toContain('data-axis="reddit"');
+      expect(html).toContain('data-axis="x"');
+      expect(html).toContain('data-axis="substack"');
     });
   });
 
@@ -167,6 +172,11 @@ describe.skipIf(url === undefined)('F21 §4.4 — ui:// resources render their o
       expect(html).toContain('data-role="steps"');
       expect(html).toContain('data-role="inputs"');
       expect(html).toMatch(/data-role="rounding-rule"|data-role="abstention"/);
+      expect(html).toContain('data-role="n"');
+      expect(html).toContain('data-role="window"');
+      expect(html).toContain('data-role="coverage-floor"');
+      expect(html).toContain('data-role="tier-d-disclosure"');
+      expect(html).toContain('This is a description of what is currently observable.');
     });
   });
 });

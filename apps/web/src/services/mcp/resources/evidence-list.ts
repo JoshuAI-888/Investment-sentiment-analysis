@@ -5,6 +5,7 @@
  */
 import { resolveTickerSymbol } from '@/services/ticker/resolve';
 import { boundedEvidenceFor, type StanceDirection } from '../evidence-view';
+import { coverageEntriesFor } from '../coverage-view';
 import { escapeHtml, htmlDocument } from './render';
 
 export type EvidenceListParams = {
@@ -20,6 +21,10 @@ export async function renderEvidenceList(params: EvidenceListParams): Promise<st
   if (!resolved.ok) throw new EvidenceListNotFoundError(resolved.refusal.message);
 
   const bounded = await boundedEvidenceFor(resolved.security.id, params.direction, asOf, null);
+  // Evidence spans all three social axes at once (D-14 — never blended, but a bounded list here
+  // is not axis-scoped the way a single stance metric is) — every axis's own coverage floor is
+  // rendered, not just one, so a caller cannot mistake one axis's start date for the whole list's.
+  const coverage = await coverageEntriesFor(['reddit', 'x', 'substack']);
 
   const itemsHtml = bounded.items
     .map(
@@ -34,11 +39,17 @@ export async function renderEvidenceList(params: EvidenceListParams): Promise<st
     )
     .join('');
 
+  const coverageHtml = coverage
+    .map((entry) => `<li data-role="coverage-floor" data-axis="${escapeHtml(entry.axis)}">${escapeHtml(entry.disclosure)}</li>`)
+    .join('');
+
   const body = `
     <section data-role="evidence-list" data-security-id="${escapeHtml(resolved.security.id)}" data-direction="${escapeHtml(params.direction)}">
       <h2 data-role="label">${escapeHtml(resolved.security.symbol)} — ${escapeHtml(params.direction)} evidence</h2>
       <p data-role="n">Sample size (n): ${escapeHtml(String(bounded.usedCount))}</p>
       <p data-role="retrieved-count">Retrieved: ${escapeHtml(String(bounded.retrievedCount))}</p>
+      <p data-role="window">Window: evidence retrievable as of ${escapeHtml(asOf.toISOString())}</p>
+      <ul data-role="coverage-floors">${coverageHtml}</ul>
       <p data-role="bound-disclosure">This list is bounded and stance-classified. It is never the full evidence corpus for this security.</p>
       ${bounded.truncated ? '<p data-role="truncated">More classified items existed than fit this bounded list.</p>' : ''}
       <ul data-role="items">${itemsHtml}</ul>
