@@ -20,7 +20,7 @@ by an agentic engineering loop; every number it renders is reproducible and labe
   silently substituting; point-in-time discipline throughout.
 - **No recommendations** — this is analytics and evidence, not trade advice.
 
-## What it intends to do
+## What it does
 
 Serve a single operator an institutional-grade, validated, cross-platform view of social
 sentiment — historical as well as current. "Validated" means classification accuracy measured
