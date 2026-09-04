@@ -146,7 +146,8 @@ request for the same active key receives a retryable conflict with `retryAt`; it
 call FMP again. A later request replays the terminal provider, validation or staged outcome. If a
 worker terminates and the claim expires, the next observation records a terminal abandoned-command
 failure without redispatching. Review its command/provider audit before intentionally retrying
-with a new idempotency key. Staging and successful command completion commit atomically.
+with a new idempotency key. Any provider attempt logged before abandonment remains bound to the
+failed command. Staging and successful command completion commit atomically.
 Resolve all members against the canonical security master and stage—but do not activate—the new
 universe. Activation is blocked on empty, partial, duplicate, ambiguous, unresolved or over-600
 membership. `joshuai` must first approve the exact staged version, then activate that unchanged

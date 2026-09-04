@@ -11,6 +11,7 @@ import {
   claimUniverseSyncCommand,
   completeUniverseSyncCommand,
   failUniverseSyncCommand,
+  insertAndBindUniverseProviderCall,
   insertUniverseProviderCall,
   stageAndCompleteFmpUniverseCommand,
 } from '../../../src/repositories/versions';
@@ -270,22 +271,27 @@ describe.skipIf(url === undefined)(
 
     it('rolls back the complete bootstrap on CIK or exchange ambiguity', async () => {
       const conflicts = [
-        makeProfiles().map((profile, index) =>
-          index === 0 ? { ...profile, cik: '9999999999' } : profile,
-        ),
-        makeProfiles().map((profile, index) =>
-          index === 0 ? { ...profile, exchange: 'NYSE' } : profile,
-        ),
+        [
+          { ...makeProfiles()[1]!, symbol: 'NEWCIK', name: 'New CIK Rollback Security' },
+          { ...makeProfiles()[0]!, cik: '9999999999' },
+          ...makeProfiles().slice(2),
+        ],
+        [
+          { ...makeProfiles()[1]!, symbol: 'NEWEX', name: 'New Exchange Rollback Security' },
+          { ...makeProfiles()[0]!, exchange: 'NYSE' },
+          ...makeProfiles().slice(2),
+        ],
       ];
 
       for (const [index, profiles] of conflicts.entries()) {
         const snapshot = makeSnapshot(profiles);
+        const idempotencyKey = `security-bootstrap-conflict-${index}`;
         await expect(
           importFmpSecurityMasterSnapshot(
             {
               environment: 'test',
               actorId: 'joshuai',
-              idempotencyKey: `security-bootstrap-conflict-${index}`,
+              idempotencyKey,
               correlationId: `corr-bootstrap-conflict-${index}`,
               snapshot,
             },
@@ -299,6 +305,26 @@ describe.skipIf(url === undefined)(
           [snapshot.payloadSha256],
         );
         expect(rows[0]?.count).toBe('0');
+        const { rows: insertedSecurities } = await pool.query<{ count: string }>(
+          `select count(*)::text as count from security where symbol = $1`,
+          [profiles[0]!.symbol],
+        );
+        expect(insertedSecurities[0]?.count).toBe('0');
+        const { rows: members } = await pool.query<{ count: string }>(
+          `select count(*)::text as count
+             from rni_security_master_import_member member
+             join rni_security_master_import import on import.id = member.import_id
+            where import.source_payload_hash = $1`,
+          [snapshot.payloadSha256],
+        );
+        expect(members[0]?.count).toBe('0');
+        const { rows: audits } = await pool.query<{ count: string }>(
+          `select count(*)::text as count
+             from audit_event
+            where object_type = 'rni_security_master_import' and request_id = $1`,
+          [idempotencyKey],
+        );
+        expect(audits[0]?.count).toBe('0');
       }
       expect(await listActiveSecurities(pool)).toHaveLength(501);
     });
@@ -446,6 +472,69 @@ describe.skipIf(url === undefined)(
           { action: 'replay', result: 'failure' },
         ]),
       );
+    });
+
+    it('retains a persisted provider call when a post-dispatch command is abandoned', async () => {
+      const command = {
+        environment: 'test',
+        actorId: 'joshuai',
+        idempotencyKey: 'universe-sync-abandoned-after-dispatch',
+        correlationId: 'corr-sync-abandoned-after-dispatch',
+      };
+      await expect(claimUniverseSyncCommand(command)).resolves.toEqual({ state: 'claimed' });
+      const providerCallId = await insertAndBindUniverseProviderCall({
+        command,
+        call: {
+          operation: 'sp500_constituent',
+          requestFingerprint: 'fixture-abandoned-after-dispatch',
+          statusCode: 200,
+          latencyMs: 25,
+          cacheStatus: 'miss',
+          itemsReturned: 501,
+          estimatedCostUsd: '0',
+          startedAt: new Date(META.requestedAt),
+          errorClass: null,
+        },
+      });
+      await pool.query(
+        `update rni_universe_sync_command
+            set lease_expires_at = now() - interval '1 second'
+          where environment = $1 and idempotency_key = $2`,
+        [command.environment, command.idempotencyKey],
+      );
+      const fetchConstituents = vi.fn(async () => {
+        throw new Error('an abandoned post-dispatch command must not redispatch FMP');
+      });
+      const result = await synchronizeFmpUniverse(command, {
+        claimCommand: (claim) => claimUniverseSyncCommand(claim),
+        completeCommand: (completion) => completeUniverseSyncCommand(completion),
+        failCommand: (failure) => failUniverseSyncCommand(failure),
+        fetchConstituents,
+        listSecurities: () => listActiveSecurities(pool),
+        stageAndComplete: (stageInput) => stageAndCompleteFmpUniverseCommand(stageInput),
+      });
+
+      expect(result).toEqual({
+        ok: false,
+        kind: 'command_failed',
+        errorCode: 'UNIVERSE_SYNC_COMMAND_ABANDONED',
+      });
+      expect(fetchConstituents).not.toHaveBeenCalled();
+      const { rows: commands } = await pool.query<{
+        status: string;
+        provider_call_id: string | null;
+      }>(
+        `select status, provider_call_id
+           from rni_universe_sync_command
+          where environment = $1 and idempotency_key = $2`,
+        [command.environment, command.idempotencyKey],
+      );
+      expect(commands[0]).toEqual({ status: 'failed', provider_call_id: providerCallId });
+      const { rows: calls } = await pool.query<{ id: string }>(
+        `select id from provider_call_log where id = $1`,
+        [providerCallId],
+      );
+      expect(calls).toEqual([{ id: providerCallId }]);
     });
 
     it('persists and replays an audited provider failure without another provider call', async () => {

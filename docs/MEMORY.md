@@ -900,6 +900,11 @@ later request observes an expired claim, it atomically records an audited termin
 and returns that failed command. It never automatically repeats the external request; an operator
 must inspect the audit and intentionally choose a new idempotency key.
 
+Each completed provider attempt is persisted and bound to the still-running command in the same
+transaction before control returns from the adapter call-log callback. Abandonment preserves that
+binding, so a worker lost after dispatch cannot leave its already-recorded FMP attempt detached
+from the terminal command.
+
 For a valid candidate, immutable universe staging/reuse and successful command completion share
 one database transaction. Failure or process termination between those writes therefore leaves
 neither an orphaned staged version nor a falsely successful command. Expected provider and

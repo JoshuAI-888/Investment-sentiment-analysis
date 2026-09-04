@@ -14,7 +14,7 @@ import {
   claimUniverseSyncCommand,
   completeUniverseSyncCommand,
   failUniverseSyncCommand,
-  insertUniverseProviderCall,
+  insertAndBindUniverseProviderCall,
   stageAndCompleteFmpUniverseCommand,
 } from '../../repositories/versions';
 import { synchronizeFmpUniverse, type FmpUniverseSyncResult } from './sync';
@@ -69,7 +69,7 @@ export async function syncFmpUniverseFromEnvironment(input: {
     fetchConstituents: async () => {
       let providerCallId: string | null = null;
       const deps = wrapperDeps(async (entry) => {
-        providerCallId = await insertUniverseProviderCall(entry);
+        providerCallId = await insertAndBindUniverseProviderCall({ command: input, call: entry });
       });
       const result = await fetchFmpSp500Constituents(
         { ...(env.FMP_API_KEY === undefined ? {} : { apiKey: env.FMP_API_KEY }) },

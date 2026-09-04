@@ -225,6 +225,26 @@ export async function insertUniverseProviderCall(
   return id;
 }
 
+/** Persist an FMP attempt and attach it to its claimed command before control returns. */
+export async function insertAndBindUniverseProviderCall(input: {
+  readonly command: UniverseSyncCommandInput;
+  readonly call: UniverseProviderCallInput;
+}): Promise<string> {
+  return withTransaction(async (tx) => {
+    const providerCallId = await insertUniverseProviderCall(input.call, tx);
+    const { rowCount } = await tx.query(
+      `update rni_universe_sync_command
+          set provider_call_id = $3
+        where environment = $1 and idempotency_key = $2 and status = 'running'`,
+      [input.command.environment, input.command.idempotencyKey, providerCallId],
+    );
+    if (rowCount !== 1) {
+      throw new Error('Universe sync command was not running when its provider call was logged');
+    }
+    return providerCallId;
+  });
+}
+
 export type UniverseSyncCommandInput = {
   readonly environment: string;
   readonly idempotencyKey: string;

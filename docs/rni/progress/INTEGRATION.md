@@ -18,10 +18,11 @@
 | I03 | Expand CI path filters for RNI prompts/agents/evals | `MERGED` | PR #5; actual `tests/eval/rni` path triggered and passed |
 | I04 | Pin/verify pnpm 10.33.0 and build-script policy | `PASSED` | Clean frozen install and PR #5 web/scorer CI passed |
 | I05 | Add forward universe migration and 600-member ceiling | `PASSED` | Independent re-review passed IR-01/03/05/06; focused validation 9 and fresh PostgreSQL activation/version gates 14 pass |
-| I06 | Build FMP sync composition and minimal Settings route wiring | `READY_FOR_REVIEW` | I06R3 closes abandonment/atomicity; focused 42 and fresh PostgreSQL affected gates 22 pass |
+| I06 | Build FMP sync composition and minimal Settings route wiring | `READY_FOR_REVIEW` | I06R4 retains post-dispatch provider identity and proves insert-then-conflict rollback in PostgreSQL |
 | I06R1 | Close universe activation, lineage and validation review findings | `PASSED` | One-way approval, stored-member/current-parent activation, lineage constraint, exact-500/date tests; PostgreSQL 14/14 |
 | I06R2 | Add durable pre-fetch sync command and clean security bootstrap | `PASSED` | Pre-fetch claim, concurrent/replay one-fetch, terminal audits/lineage and clean 501-security import pass |
 | I06R3 | Make command abandonment and stage completion fail-closed | `PASSED` | D-RNI-16; active conflict, stale terminalization, atomic rollback, invalid replay and bootstrap integrity tests pass |
+| I06R4 | Retain abandoned-command provider lineage and prove bootstrap rollback | `PASSED` | typecheck/lint; PostgreSQL command/bootstrap 9/9; IR-10/11 resolved |
 | I07 | Compose DATA repositories and ENGINE services | `NOT_STARTED` | Integration contract tests |
 | I08 | Compose SURFACE routes/nav/API with auth | `NOT_STARTED` | Authenticated preview e2e |
 | I09 | Wire QStash jobs/manual idempotent refresh | `NOT_STARTED` | Signed redelivery/double-click tests |
@@ -182,7 +183,8 @@
 | IR-07 | P1 | `RESOLVED` | Claimed commands can remain permanently running after process termination and five-second replays can fail during a valid slow call | Active duplicate returns retryable conflict immediately; expired claim terminalizes with failure/replay audits and no provider call |
 | IR-08 | P1 | `RESOLVED` | Staging commits separately from command completion and can leave an orphaned version or missing command lineage | Stage/reuse and successful command completion share one transaction; forced completion failure rolls both back before terminal failure is recorded |
 | IR-09 | P2 | `RESOLVED` | Invalid-snapshot terminal persistence lacks a PostgreSQL replay/lineage assertion | Exact-500 database case binds provider/payload, records failure audit, creates no version and replays without fetch |
-| IR-10 | P2 | `RESOLVED` | Bootstrap conflict, compatible reuse, rollback and append-only lineage branches lack acceptance coverage | Compatible 501 reuse, CIK/exchange rollback, and import/member update/delete rejection pass |
+| IR-10 | P2 | `RESOLVED` | Bootstrap conflict, compatible reuse, rollback and append-only lineage branches lack acceptance coverage | Each conflict case now inserts a unique security before a later identity conflict and proves security/import/member/audit rollback |
+| IR-11 | P2 | `RESOLVED` | A worker abandoned after provider dispatch can leave the terminal command without its already-persisted provider-call identity | Provider log and running-command binding share one transaction; post-dispatch abandonment retains the identity without refetch |
 
 ## Open risks/blockers
 
@@ -210,6 +212,7 @@
 | `86db21e` | Close I06R2 with durable pre-fetch commands and governed security bootstrap | typecheck; focused lint; unit 1,179; contract 83 pass/22 DB-skipped; fresh PostgreSQL affected universe/version gates 17/17 |
 | `CURRENT` | Record ENGINE E03 and SURFACE S03 coordinator acceptance | coordinator focused E03 17/17; typecheck; RNI contract 13/13; ownership/base/diff review |
 | `CURRENT` | Close I06R3 command lifecycle and atomicity findings | focused 42; unit 1,179; contract 83/22 skipped; fresh PostgreSQL affected 22; full integration 429/433 then failed-file 71/72 and isolated timing case pass |
+| `CURRENT` | Close I06R4 provider-lineage and rollback-evidence findings | typecheck; focused lint; fresh PostgreSQL command/bootstrap 9/9 |
 
 ## Coordinator notes
 
@@ -284,6 +287,19 @@
 - **Risk/handoff:** authenticated FMP entitlement, secure profile-export source-rights review and
   ephemeral Neon forward migration remain deployment gates. A terminal abandoned key requires
   intentional operator inspection and a new key. No frozen contract changed.
+
+## I06R4 handoff
+
+- **Files changed:** universe command repository/composition; PostgreSQL command/bootstrap tests;
+  deployment runbook; D-RNI-16; coordinator trackers.
+- **Behaviour:** every persisted FMP call-log row is bound to the running command in the same
+  transaction. If the worker is later abandoned, the terminal failure retains that provider
+  identity and replay never redispatches. Bootstrap conflict tests insert a new canonical security
+  before a later CIK/exchange ambiguity and prove the whole security/import/member/audit write set
+  rolls back.
+- **Verification:** typecheck and focused lint pass; fresh PostgreSQL command/bootstrap suite 9/9.
+- **Risk/handoff:** the external entitlement/source-rights/forward-migration gates remain; no
+  frozen contract changed. I06 is ready for final independent re-review.
 
 ## I06R2 handoff
 
