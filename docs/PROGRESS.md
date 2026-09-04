@@ -185,10 +185,10 @@ F10's corpora arrived.
 
 | ID | Feature | Wave | Status | Blocker |
 |---|---|---|---|---|
-| F10 | Evidence and stance pipeline | 3 | `blocked` | **MT-06.** Reworked: real corpora, three sampling frames |
-| F11 | Research agent and verifier | 3 | `blocked` | **MT-06.** Now also the **measurement path** for F21 |
-| F12 | Evaluation harness and judge | 3 | `blocked` | **MT-06** and **OQ-7.** Extended with Tier D; ports finsent's harness (D-18) |
-| F21 | MCP server and MCP Apps surface | 3 | `not started` | — **New (D-10).** Placed at the Wave 3 exit, not after Wave 5 |
+| F10 | Evidence and stance pipeline | 3 | `merged 2026-09-05` | **MT-06 done, unblocked and merged.** Evidence normalization/dedupe, the D-21 LLM relevance/collision methods (new `services/llm/model-client.ts` `ModelClient` port), the evidence-pack builder, the three per-axis disclosures (Reddit's is D-39's honest not-collected statement), the availability checker. 64 new unit tests; full suite 1235/1235; lint/typecheck/build clean. **Deferred (named trigger: F12 exists):** DoD's B1/B2/B5 numeric gates need a real F12 corpus. See `progress/log/2026-09-05-f10-evidence-stance-pipeline.md` |
+| F11 | Research agent and verifier | 3 | `blocked` | **F10 (now merged) — genuinely next.** Now also the **measurement path** for F21 |
+| F12 | Evaluation harness and judge | 3 | `blocked` | **F10+F11.** Extended with Tier D; built from scratch, not ported (D-18 — `archive/` is gone) |
+| F21 | MCP server and MCP Apps surface | 3 | `not started` | — **New (D-10).** Depends on F12+F20 (F20 done). Placed at the Wave 3 exit, not after Wave 5 |
 
 Status values: `not started` · `in progress` · `in review` · `merged` · `blocked` · `deferred`
 
