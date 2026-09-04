@@ -28,7 +28,7 @@
 | I06R2 | Add durable pre-fetch sync command and clean security bootstrap | `PASSED` | Pre-fetch claim, concurrent/replay one-fetch, terminal audits/lineage and clean 501-security import pass |
 | I06R3 | Make command abandonment and stage completion fail-closed | `PASSED` | D-RNI-16; active conflict, stale terminalization, atomic rollback, invalid replay and bootstrap integrity tests pass |
 | I06R4 | Retain abandoned-command provider lineage and prove bootstrap rollback | `PASSED` | typecheck/lint; PostgreSQL command/bootstrap 9/9; IR-10/11 resolved |
-| I07 | Compose DATA repositories and ENGINE services | `NOT_STARTED` | Integration contract tests |
+| I07 | Compose DATA repositories and ENGINE services | `IN_PROGRESS` | Integration contract tests |
 | I08 | Compose SURFACE routes/nav/API with auth | `NOT_STARTED` | Authenticated preview e2e |
 | I09 | Wire QStash jobs/manual idempotent refresh | `NOT_STARTED` | Signed redelivery/double-click tests |
 | I10 | Seed RNI Direct routes and optional Gateway selection | `NOT_STARTED` | D-RNI-21 policy locked; legacy route unchanged, budget enforcement and parity tests pending |
@@ -222,7 +222,7 @@
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
 | ENGINE | `ACCEPTED` | yes at `e52052f`; final handoff `62eab1d` | coordinator focused E10 plus E08 57/1 live skip, full eval 18/1 live skip, typecheck/lint/diff pass; independent review PASS | yes | E01–E10 merged sequentially at `62eab1d`; ER-20–23 closed |
-| SURFACE | `ACCEPTED_WAITING_ORDER` | yes at `87742d0`; code `c68980b`, tracker head `5d9cd3d` | coordinator typecheck/lint, RNI contract 17/17, production build and complete Chromium 22/22; independent review PASS | yes | S01–S10 accepted; merge waits behind ENGINE per DATA→ENGINE→SURFACE order |
+| SURFACE | `ACCEPTED` | yes at `01a088c`; code `c224c78`, tracker head `b60ec14` | coordinator typecheck/lint and expanded RNI contract 37/37; builder production build and complete Chromium 22/22; prior independent review PASS | yes | S01–S10 merged sequentially at `b60ec14` |
 
 ## Live/deployment gates
 
@@ -372,6 +372,8 @@
 | `CURRENT` | Review ENGINE E10 release/live-resistance eval | `e5293f2` descends `bb151ff`; unit 1,345, contract 107/22 skipped, available integration 44/390 skipped, eval 12/1 live skip, typecheck/full lint/diff/CI-scope pass; independent adversarial review CHANGES REQUESTED on ER-20–22 |
 | `CURRENT` | Re-review corrected ENGINE E10 live-resistance semantics | `e41106a` descends `6b4902c`; focused E10 9/1 live skip, E08 46/46, full eval 16/1 live skip, typecheck/full lint/diff/ownership pass; ER-20–22 closed, independent adversarial review CHANGES REQUESTED on ER-23 |
 | `CURRENT` | Accept and merge final ENGINE E10 | `62eab1d` descends `e52052f`; coordinator focused E10 plus E08 57/1 live skip, full eval 18/1 live skip, typecheck/lint/diff pass; independent adversarial review PASS; ER-20–23 closed |
+| `CURRENT` | Refresh, accept and merge final SURFACE lane | code `c224c78`, tracker/merge head `b60ec14` descends `01a088c`; coordinator typecheck/focused lint/expanded RNI contract 37/37 pass; builder build and Chromium 22/22 pass |
+| `CURRENT` | Start I07 DATA/ENGINE composition | all three lanes merged in required order; resolve CR-DATA-002 only from the concrete E05 consumer and prove the smallest durable boundary with integration contracts |
 
 ## Coordinator notes
 
