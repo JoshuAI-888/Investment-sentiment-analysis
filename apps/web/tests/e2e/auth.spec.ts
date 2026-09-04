@@ -3,12 +3,47 @@ import type { APIRequestContext, Page } from '@playwright/test';
 import { GATED_PAGE_ROUTES } from './routes';
 
 const ADMIN_PAGES = GATED_PAGE_ROUTES.filter((route) => route.path.startsWith('/admin'));
+
+/**
+ * F15 landed real content on eight of the twelve `/admin/*` pages
+ * (`/admin`, `/admin/settings`, `/admin/settings/universe`, `/admin/audit`, `/admin/costs`,
+ * `/admin/models`, `/admin/data-explorer`, `/admin/calculation-issues`) — those no longer render
+ * F01's `data-state="fixture"` shell, so the negative-auth check (still true for all twelve:
+ * every one still refuses a non-admin) and the positive "an admin reaches it" check now diverge
+ * per page. `/admin/data-sources`, `/admin/jobs` (F16b) and `/admin/user-assumptions` remain
+ * fixture.
+ */
+const ADMIN_PAGES_WITH_REAL_CONTENT = new Set([
+  '/admin',
+  '/admin/settings',
+  '/admin/settings/universe',
+  '/admin/audit',
+  '/admin/costs',
+  '/admin/models',
+  '/admin/data-explorer',
+  '/admin/calculation-issues',
+]);
+
 const ADMIN_API_ROUTES = [
-  { path: '/api/admin/status', method: 'GET' as const },
-  { path: '/api/admin/jobs/job_fixture/runs', method: 'GET' as const },
-  { path: '/api/admin/data', method: 'GET' as const },
-  { path: '/api/admin/costs', method: 'GET' as const },
-  { path: '/api/admin/universe', method: 'GET' as const },
+  // F15-built, real content — GET reads.
+  { path: '/api/admin/status', method: 'GET' as const, real: true },
+  { path: '/api/admin/data', method: 'GET' as const, real: true },
+  { path: '/api/admin/costs', method: 'GET' as const, real: true },
+  { path: '/api/admin/universe', method: 'GET' as const, real: true },
+  { path: '/api/admin/audit', method: 'GET' as const, real: true },
+  { path: '/api/admin/models', method: 'GET' as const, real: true },
+  { path: '/api/admin/calculation-issues', method: 'GET' as const, real: true },
+  // F15-built mutations — POST. An authenticated admin with no/invalid body reaches validation
+  // (400), never authorization (401); that is the "admin reaches it" signal for a mutation route,
+  // since a genuinely valid payload needs seeded domain data this suite does not provision.
+  { path: '/api/admin/universe/draft', method: 'POST' as const, real: true, mutation: true },
+  { path: '/api/admin/universe/activate', method: 'POST' as const, real: true, mutation: true },
+  { path: '/api/admin/universe/rollback', method: 'POST' as const, real: true, mutation: true },
+  { path: '/api/admin/settings', method: 'POST' as const, real: true, mutation: true },
+  { path: '/api/admin/settings/rollback', method: 'POST' as const, real: true, mutation: true },
+  { path: '/api/admin/calculation-issues/resolve', method: 'POST' as const, real: true, mutation: true },
+  // Still fixture — F16b's own tab.
+  { path: '/api/admin/jobs/job_fixture/runs', method: 'GET' as const, real: false },
 ];
 
 /** ≥ 12 chars — `emailAndPassword.minPasswordLength` (`src/services/auth/instance.ts`). */
@@ -372,7 +407,13 @@ test.describe('F02 — a real admin session reaches every gated route', () => {
       const response = await page.goto(route.path);
       expect(response?.status()).toBe(200);
       expect(new URL(page.url()).pathname).toBe(route.path);
-      await expect(page.locator('[data-state="fixture"]').first()).toBeVisible();
+      // Both F01's fixture shell (`RouteShell`) and every F15-built page carry `data-route`
+      // matching the path — the fixture shell additionally carries `data-state="fixture"`,
+      // which the seven F15 pages (`ADMIN_PAGES_WITH_REAL_CONTENT`) no longer do.
+      await expect(page.locator(`[data-route="${route.path}"]`).first()).toBeVisible();
+      if (!ADMIN_PAGES_WITH_REAL_CONTENT.has(route.path)) {
+        await expect(page.locator('[data-state="fixture"]').first()).toBeVisible();
+      }
       await expect(page.getByText('Not authorized')).toHaveCount(0);
     });
   }
@@ -381,9 +422,27 @@ test.describe('F02 — a real admin session reaches every gated route', () => {
     test(`route handler ${route.method} ${route.path} answers rather than refusing`, async ({ page }) => {
       const response =
         route.method === 'GET' ? await page.request.get(route.path) : await page.request.post(route.path);
+
+      if (!route.real) {
+        expect(response.status()).toBe(200);
+        const body = (await response.json()) as { state?: string };
+        expect(body.state).toBe('fixture');
+        return;
+      }
+
+      if ('mutation' in route && route.mutation) {
+        // An admin with no request body reaches validation (400), never authorization (401) —
+        // that is the "past the auth gate" signal for a mutation route; a genuinely valid
+        // payload needs seeded domain data (a security master, an active config version) this
+        // suite does not provision.
+        expect(response.status()).not.toBe(401);
+        expect([200, 400]).toContain(response.status());
+        return;
+      }
+
       expect(response.status()).toBe(200);
       const body = (await response.json()) as { state?: string };
-      expect(body.state).toBe('fixture');
+      expect(body.state).toBe('ready');
     });
   }
 });
