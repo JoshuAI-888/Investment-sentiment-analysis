@@ -157,7 +157,7 @@
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
 | DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
-| ENGINE | `E06_CHANGES_REQUESTED` | E06 based on `fec8c46`; must rebase to `03f8afc` before E07 | builder E06 focused 17/17 plus repository gates; coordinator typecheck/lint and focused 17/17 | yes | ER-07 open: zero-weight observations can satisfy the independent-source/confidence breadth gates; E01–E05 remain accepted |
+| ENGINE | `E06_APPROVED` | E06 based on `098f010`; must rebase to current integration before E07 | builder serialized unit 1,269 + contract 97/22 skipped + integration 44/390 skipped + eval 3/3; coordinator typecheck/lint, focused 18/18 and diff check | yes | E01–E06 accepted through `ecbf049`; ER-07/08 closed; lane remains held |
 | SURFACE | `S08_UNBLOCKED` | must rebase to current I02F1 correction | builder S07 typecheck/lint/contract/build/guard and Chromium 4/4 twice; coordinator I02F1 type/lint, RNI 15/15 and full contract 85/22 skipped | yes | S01–S07 accepted through `babd940`; CR-SURFACE-05 accepted as corrected D-RNI-18; S08 may start after rebase |
 
 ## Live/deployment gates
@@ -210,7 +210,8 @@
 | ER-04 | P1 | `RESOLVED` | Existing X adapter reports usable partial responses out-of-band, but the RNI port erases that signal and may label the slice complete | `0e229d6` intercepts and forwards per-call violations, propagates completeness and maps usable partial data to a partial slice |
 | ER-05 | P1 | `RESOLVED` | X authors are unsalted SHA-256 hashes of mutable usernames rather than tenant-scoped hashes of stable identity | `0e229d6` omits identity by default and permits only an injected tenant policy over stable provider author ID, with tenant/rename/privacy tests |
 | ER-06 | P1 | `RESOLVED` | X content-version candidates do not identify exactly one latest interpretation version and A→B→A leaves B latest | `0e229d6` separates persistence versions from one latest interpretation candidate and records ordered A→B→A transitions |
-| ER-07 | P1 | `OPEN` | A zero-weight second source/group/community can satisfy the independent-source floor and remove single-source confidence caps while only one source contributes effective evidence | ENGINE must derive effective independence/breadth from positive-weight traces and add the mixed positive/zero regression before E06 acceptance |
+| ER-07 | P1 | `RESOLVED` | A zero-weight second source/group/community can satisfy the independent-source floor and remove single-source confidence caps while only one source contributes effective evidence | `ecbf049` derives effective source/community/cluster/author/narrative breadth from positive-weight traces; mixed positive/zero regression keeps sentiment/confidence insufficient at floor two |
+| ER-08 | P2 | `RESOLVED` | E06 added two test files with blank lines at EOF, contradicting its branch-range diff-check claim | `ecbf049` removes only the EOF lines; `git diff --check 098f010..ecbf049` passes |
 | ICR-01 | P1 | `RESOLVED` | D-RNI-18 cannot represent the preserved 100-member legacy active parent of the first staged FMP candidate, while undersized FMP versions pass | Active is an explicit legacy/FMP union; FMP active/staged variants require 501–600 and a 100→501 fixture passes |
 | ICR-02 | P1 | `RESOLVED` | Balanced arithmetic permits complete impact arrays that remove more members than active or add more members than staged | Frozen schema rejects both bounds; I08 retains repository-backed membership-set acceptance |
 | SR-04 | P2 | `RESOLVED` | S02's first commit left its task/evidence/handoff record stale and did not identify the actual browser gate | `c4899b8` amends the task commit with exact type, lint, contract, build and Chromium evidence plus complete files/risks/handoff |
@@ -266,6 +267,7 @@
 | `CURRENT` | Accept SURFACE S07 idempotent manual-refresh controls | typecheck; focused lint; RNI contract 14/14; guard 1/1; deterministic Chromium 4/4 twice |
 | `CURRENT` | Resolve CR-SURFACE-05 with read-only universe selection boundary | typecheck; focused lint; RNI contract 15/15; full contract 85/22 skipped |
 | `CURRENT` | Review ENGINE E06 platform analytics | typecheck; focused lint; focused unit/contract/eval 17/17; ER-07 returned |
+| `CURRENT` | Accept corrected ENGINE E06 platform analytics | typecheck; focused lint; focused unit/contract/eval 18/18; branch diff check; ownership/base review |
 | `CURRENT` | Close I02F universe-read P1 review findings | typecheck; focused lint; RNI contract 15/15; full contract 85/22 skipped; independent re-review READY at `098f010` |
 
 ## Coordinator notes
@@ -326,6 +328,8 @@
   consume only the reference active/search/staged values; live repository composition remains I08.
 - ENGINE E06 `3d6688e` is held on ER-07: raw zero-weight observations may remain visible in raw
   attention, but cannot manufacture effective source/community breadth for sentiment or confidence.
+- ENGINE E06 is accepted at `ecbf049`: positive-weight traces now govern effective independence,
+  breadth, concentration and freshness, while raw distinct-source attention remains unchanged.
 - I02F1 closes ICR-01/02 with an explicit legacy/FMP active union, a 501-member FMP floor and
   impossible over-add/remove rejection. Surface must use the superseding commit, not `03f8afc`.
 
