@@ -13,12 +13,12 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 | ID | Task | Status | Acceptance evidence |
 |---|---|---|---|
-| E01 | Reddit OpenAI Web Search discovery and canonical candidate normalization | `COMPLETE` | 16 focused tests: exact source/evidence binding, URL-only abstention, complete action lineage, half-open windows, dedup, frozen-source compatibility; coordinator accepted, current rebased `534987d` |
-| E02 | Existing X adapter port and independent terminal source slice | `COMPLETE` | 20 focused tests: partial-success propagation, isolation, tenant-safe identity, retrieval/version lineage, A→B→A latest selection, half-open windows; coordinator accepted, current rebased `fb93b45` |
-| E03 | Persist-first workflow, retry, checkpoint and budget logic | `COMPLETE` | 17 focused tests: commit/checkpoint and enqueue/completion crashes, exact redelivery, lease heartbeat, retry not-before, bounded jitter, stable budget reservation, durable wall-time and hash integrity; coordinator accepted, current rebased `bb3d80c` |
-| E04 | Security resolver and multi-security relationships | `READY_FOR_REVIEW` | 19 focused tests: exact NVDA/AMD offsets, governed bare-ticker abstention, duplicate-symbol ambiguity, committed-evidence-only inference, cited canonical relationship deduplication; independent review READY |
-| E05 | Four-dimension classifier, themes, claims and noise labels | `NOT_STARTED` | Gold/schema/injection tests |
-| E06 | Platform-specific deterministic analytics and confidence | `NOT_STARTED` | Golden/replay/baseline tests |
+| E01 | Reddit OpenAI Web Search discovery and canonical candidate normalization | `COMPLETE` | 16 focused tests: exact source/evidence binding, URL-only abstention, complete action lineage, half-open windows, dedup, frozen-source compatibility; coordinator accepted, current rebased `85dc3d8` |
+| E02 | Existing X adapter port and independent terminal source slice | `COMPLETE` | 20 focused tests: partial-success propagation, isolation, tenant-safe identity, retrieval/version lineage, A→B→A latest selection, half-open windows; coordinator accepted, current rebased `7f23b67` |
+| E03 | Persist-first workflow, retry, checkpoint and budget logic | `COMPLETE` | 17 focused tests: commit/checkpoint and enqueue/completion crashes, exact redelivery, lease heartbeat, retry not-before, bounded jitter, stable budget reservation, durable wall-time and hash integrity; coordinator accepted, current rebased `ed56749` |
+| E04 | Security resolver and multi-security relationships | `COMPLETE` | 19 focused tests: exact NVDA/AMD offsets, governed bare-ticker abstention, duplicate-symbol ambiguity, committed-evidence-only inference, cited canonical relationship deduplication; coordinator accepted current rebased `0e69714` |
+| E05 | Four-dimension classifier, themes, claims and noise labels | `COMPLETE` | 15 focused tests: isolated opposing security stance, four dimensions, mixed dimension/theme stance, source spans, taxonomy/policy versions, noise/exclusion labels, strict injection handling; coordinator accepted |
+| E06 | Platform-specific deterministic analytics and confidence | `IN_PROGRESS` | Golden/replay/baseline tests |
 | E07 | Reddit/X convergence and agreement/divergence facts | `NOT_STARTED` | Divergence/scale imbalance/partial tests |
 | E08 | Verification, challenger and three-part cited synthesis | `NOT_STARTED` | Citation entailment/fail-closed tests |
 | E09 | RNI model routes, prompts and caching-compatible stable prefixes | `NOT_STARTED` | Direct default/Gateway parity fixtures |
@@ -46,12 +46,12 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 | Suite | Status | Command/run link | Notes |
 |---|---|---|---|
-| discovery/adapter contract | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/discovery/openai-web-search.test.ts tests/contract/rni/discovery.test.ts --no-file-parallelism` | 2 files, 16 tests passed after coordinator fixes; coordinator accepted, current rebased `534987d` |
-| X adapter/source slice | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/sources/x-source-slice.test.ts tests/contract/rni/x-source-slice.test.ts --no-file-parallelism` | 2 files, 20 tests passed after coordinator fixes; coordinator accepted, current rebased `fb93b45` |
-| workflow/idempotency | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/workflow/persist-source.test.ts tests/contract/rni/persist-source-workflow.test.ts --no-file-parallelism` | 2 files, 17 tests passed; coordinator accepted, current rebased `bb3d80c` |
-| security resolution/relationships | `READY_FOR_REVIEW` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/observations/security-resolution.test.ts tests/contract/rni/security-resolution.test.ts tests/eval/rni/security-resolution.eval.test.ts --no-file-parallelism` | 3 files, 19 tests passed; independent read-only review returned READY with no P0/P1/P2 findings |
-| semantic gold set | `NOT_STARTED` | — | — |
-| analytics golden/replay | `NOT_STARTED` | — | — |
+| discovery/adapter contract | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/discovery/openai-web-search.test.ts tests/contract/rni/discovery.test.ts --no-file-parallelism` | 2 files, 16 tests passed after coordinator fixes; coordinator accepted, current rebased `85dc3d8` |
+| X adapter/source slice | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/sources/x-source-slice.test.ts tests/contract/rni/x-source-slice.test.ts --no-file-parallelism` | 2 files, 20 tests passed after coordinator fixes; coordinator accepted, current rebased `7f23b67` |
+| workflow/idempotency | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/workflow/persist-source.test.ts tests/contract/rni/persist-source-workflow.test.ts --no-file-parallelism` | 2 files, 17 tests passed; coordinator accepted, current rebased `ed56749` |
+| security resolution/relationships | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/observations/security-resolution.test.ts tests/contract/rni/security-resolution.test.ts tests/eval/rni/security-resolution.eval.test.ts --no-file-parallelism` | 3 files, 19 tests passed; coordinator accepted |
+| semantic gold set | `COMPLETE` | `corepack pnpm --dir apps/web exec vitest run tests/unit/rni/observations/classifier.test.ts tests/contract/rni/semantic-classifier.test.ts tests/eval/rni/semantic-classifier.eval.test.ts --no-file-parallelism` | 3 files, 15 tests passed; coordinator accepted; live model-resistance eval remains E10 |
+| analytics golden/replay | `IN_PROGRESS` | — | E06 marked before implementation |
 | cross-source isolation | `NOT_STARTED` | — | — |
 | prompt injection/citations | `NOT_STARTED` | — | — |
 | RNI eval | `NOT_STARTED` | — | — |
@@ -75,6 +75,11 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 | E04-R1-01 | P1 | `CLOSED` | Public model-entry exports could bypass the committed-evidence reader | Public barrel exposes only the persisted-evidence composition entry; contract test pins the export boundary and exact durable evidence lookup |
 | E04-R1-02 | P1 | `CLOSED` | A partial built-in ambiguous-ticker list could resolve ordinary uppercase prose | Resolver now requires a strict, versioned ambiguity policy from the governed caller and fails closed when it is absent; A, AI and IT challenge cases abstain |
 | E04-R1-03 | P1 | `CLOSED` | Equivalent inverse/symmetric proposals with different evidence offsets were not deduplicated | Relations deduplicate by canonical logical identity, select the shortest then earliest valid covering span, and sort before deterministic ID allocation |
+| E05-R1-01 | P1 | `CLOSED` | Model proposals were validated against numeric policy thresholds absent from their input | The complete pinned classification policy is part of each target-specific model input and exact input hash |
+| E05-R1-02 | P1 | `CLOSED` | Observation input hashes did not represent the exact model-visible payload | One canonical payload containing policy, prompt/model provenance, platform, evidence, target/context mentions and enabled taxonomy is both SHA-256 hashed and passed unchanged |
+| E05-R1-03 | P1 | `CLOSED` | Equivalent dimension assignments retained arbitrary model order | Valid assignments are normalized to the four frozen dimension keys before frozen observation construction; shuffled-output regression is exact |
+| E05-R1-04 | P1 | `CLOSED` | Noise and semantic-quality labels lacked source support spans | Every noise assessment carries validated, nonblank persisted-source offsets and derived evidence text covering its target mention |
+| E05-R2-01 | P2 | `CLOSED` | Claim and semantic-label challenge coverage omitted forbidden epistemic values and threshold disagreement | Strict schema rejects `verified_fact`, unknown claim types and aggregate fields; probability flags must match the pinned binary threshold |
 
 ## Open risks/blockers
 
@@ -86,7 +91,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 ### E01 — Reddit OpenAI Web Search discovery and canonical candidate normalization
 
-- **Status:** `COMPLETE`; coordinator accepted; current rebased `534987d`
+- **Status:** `COMPLETE`; coordinator accepted; current rebased `85dc3d8`
 - **Slice:** Added a Responses API Web Search request builder and injected transport boundary,
   strict structured-output parsing, complete per-call action/source validation, and deterministic
   Reddit post/comment URL normalization. Interpretation-eligible candidates require exact
@@ -118,7 +123,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 ### E02 — Existing X adapter port and independent terminal source slice
 
-- **Status:** `COMPLETE`; coordinator accepted; current rebased `fb93b45`
+- **Status:** `COMPLETE`; coordinator accepted; current rebased `7f23b67`
 - **Slice:** Added a composition port around the existing authorised X recent-search adapter and
   an X-only terminal source-slice runner. A governed query set is invoked without Reddit inputs;
   each returned post is deterministically filtered to the exact half-open UTC window, normalized
@@ -150,7 +155,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 ### E03 — Persist-first workflow, retry, checkpoint and budget logic
 
-- **Status:** `COMPLETE`; coordinator accepted; current rebased `bb3d80c`
+- **Status:** `COMPLETE`; coordinator accepted; current rebased `ed56749`
 - **Slice:** Added the portable operational `RniWorkflowPort` around the existing durable
   job/queue composition boundary while consuming the frozen `RniSourcePersistencePort` directly.
   The runner claims the `(run, stage, subject, version)` step, maintains its lease heartbeat,
@@ -183,7 +188,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
 
 ### E04 — Security resolver and multi-security relationships
 
-- **Status:** `READY_FOR_REVIEW`
+- **Status:** `COMPLETE`; coordinator accepted current rebased `0e69714`
 - **Slice:** Added pure exact-ticker and company-alias mention resolution with exact source offsets,
   active-candidate filtering, overlap resolution, duplicate-symbol abstention and a required
   versioned bare-ticker ambiguity policy. The only public model-capable composition path first
@@ -196,7 +201,7 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
   `apps/web/tests/unit/rni/observations/security-resolution.test.ts`,
   `apps/web/tests/contract/rni/security-resolution.test.ts`,
   `apps/web/tests/eval/rni/security-resolution.eval.test.ts`, and this tracker.
-- **Tests/results:** after rebase onto integration `6309b62`, focused unit + contract + eval 19/19
+- **Tests/results:** after rebase onto integration `fec8c46`, focused unit + contract + eval 19/19
   passed; serialized repository unit 1,242/1,242 passed; repository contract 91 passed and 22
   pre-existing skips; repository integration 44 passed and 390 environment-gated skips; repository
   eval 1/1 passed; `typecheck`, focused ESLint, full ESLint and `git diff --check` passed. Independent
@@ -215,30 +220,68 @@ See `../RNI_BUILD_LOOP.md` §3.3. Any path outside that list requires a contract
   the evaluated model route/prompt behind the bounded inference port. No DATA-private import,
   shared schema, frozen contract change or contract request is required.
 
+### E05 — Four-dimension classifier, themes, claims and noise labels
+
+- **Status:** `COMPLETE`; coordinator accepted
+- **Slice:** Added a persisted-evidence semantic boundary that validates exact resolved mention
+  text/offsets, then makes one bounded no-tool classifier call per unique security so comparative
+  sources cannot blend stances. Strict proposals produce all four frozen dimensions, atomic claim
+  candidates, enabled versioned theme assignments, and source-bound sarcasm/meme/spam,
+  information-value, assertion-strength, evidence-quality and uncertainty assessments. Claims,
+  themes and noise quote exact persisted spans. Claim-linked citation proposals derive the
+  original URL and evidence text from the persisted source and remain explicitly non-publishable
+  until I07 supplies the coordinator-frozen atomic semantic write port.
+- **Files changed:** `apps/web/src/rni/observations/{classifier,index,types}.ts`,
+  `apps/web/tests/unit/rni/observations/classifier.test.ts`,
+  `apps/web/tests/contract/rni/semantic-classifier.test.ts`,
+  `apps/web/tests/eval/rni/semantic-classifier.eval.test.ts`, and this tracker.
+- **Tests/results:** after rebase onto integration `fec8c46`, focused unit + contract + synthetic
+  eval 15/15 passed; serialized repository unit 1,254/1,254 passed; repository contract 94 passed and 22 pre-existing skips; repository
+  integration 44 passed and 390 environment-gated skips; repository eval 2/2 passed; `typecheck`,
+  focused ESLint, full ESLint and `git diff --check` passed. Independent read-only re-review
+  returned READY with no P0/P1/P2 findings after all four initial P1s and the P2 gaps were closed.
+- **Models/prompts/formulas:** no model implementation, model ID or prompt file is added or changed;
+  E09 owns production routes/prompts. The injected port receives caller-pinned prompt/model
+  provenance and the complete numeric classification policy. Deterministic rules map score sign
+  and absolute magnitude through `neutralMaxAbsoluteScore`/`strongMinAbsoluteScore`, map semantic
+  booleans through `binaryLabelThreshold`, enforce per-theme confidence thresholds, normalize
+  dimensions to frozen order, bind all semantic spans to persisted evidence, and SHA-256 hash the
+  exact canonical per-security model input. Sarcasm/meme labels do not force abstention; explicit
+  spam/off-topic/unresolved-context exclusion does.
+- **Token/latency evidence:** no live model was called and no production token count is claimed.
+  On the final base, the focused fake/in-memory suite completed in 1.33 s; full serialized unit in
+  19.76 s, contract in 4.43 s, integration in 8.13 s and eval in 822 ms.
+- **Risks/handoff:** I07 must freeze the smallest atomic write port that persists observations,
+  claims, theme assignments and claim citations from these proposals and returns durable IDs.
+  E09 must implement the model route/prompt, and E10 must evaluate real pre-generation injection
+  resistance; current injection coverage proves strict output handling and an empty tool allowlist
+  only. No DATA-private import, shared schema, frozen contract change or contract request is needed.
+
 ## Commits
 
 | SHA | Summary | Tests |
 |---|---|---|
-| `bc4c3a2` | E01 Web Search discovery and canonical candidate normalization | focused 10/10; unit 1,180/1,180; contract 78 passed/22 skipped; typecheck/lint passed |
-| `43a84cd` | E01 exact evidence binding and complete action lineage | focused 15/15; unit 1,185/1,185; contract 78 passed/22 skipped; typecheck/lint passed |
-| `534987d` | E01 full citation-span coverage; coordinator accepted | focused 16/16; unit 1,186/1,186; contract 78 passed/22 skipped; typecheck/lint passed |
-| `a32d070` | E02 independent X adapter/source slice | focused 16/16; unit 1,200/1,200; contract 80 passed/22 skipped; typecheck/lint passed |
-| `fb93b45` | E02 partial signal, tenant-safe identity and explicit latest/version lineage; coordinator accepted | focused 20/20; unit 1,204/1,204; contract 80 passed/22 skipped; typecheck/lint passed |
-| `bb3d80c` | E03 persist-first durable workflow slice; coordinator accepted | focused 17/17; serialized unit 1,223/1,223; contract 88 passed/22 skipped; typecheck/focused lint passed |
-| this task commit | E04 deterministic security resolution and cited comparative relationships | focused 19/19; serialized unit 1,242/1,242; contract 91 passed/22 skipped; integration 44 passed/390 skipped; eval 1/1; typecheck/lint passed |
+| `2bbbbe3` | E01 Web Search discovery and canonical candidate normalization | focused 10/10; unit 1,180/1,180; contract 78 passed/22 skipped; typecheck/lint passed |
+| `638afb4` | E01 exact evidence binding and complete action lineage | focused 15/15; unit 1,185/1,185; contract 78 passed/22 skipped; typecheck/lint passed |
+| `85dc3d8` | E01 full citation-span coverage; coordinator accepted | focused 16/16; unit 1,186/1,186; contract 78 passed/22 skipped; typecheck/lint passed |
+| `fed05b7` | E02 independent X adapter/source slice | focused 16/16; unit 1,200/1,200; contract 80 passed/22 skipped; typecheck/lint passed |
+| `7f23b67` | E02 partial signal, tenant-safe identity and explicit latest/version lineage; coordinator accepted | focused 20/20; unit 1,204/1,204; contract 80 passed/22 skipped; typecheck/lint passed |
+| `ed56749` | E03 persist-first durable workflow slice; coordinator accepted | focused 17/17; serialized unit 1,223/1,223; contract 88 passed/22 skipped; typecheck/focused lint passed |
+| `0e69714` | E04 deterministic security resolution and cited comparative relationships; coordinator accepted | focused 19/19; serialized unit 1,242/1,242; contract 91 passed/22 skipped; integration 44 passed/390 skipped; eval 1/1; typecheck/lint passed |
+| this task commit | E05 isolated four-dimension classification and semantic proposals; coordinator accepted | focused 15/15; serialized unit 1,254/1,254; contract 94 passed/22 skipped; integration 44 passed/390 skipped; eval 2/2; typecheck/lint passed |
 
 ## Handoff
 
 ```text
 RNI LANE     ENGINE
 BRANCH       feat/rni-engine-live-slice
-BASE SHA     6309b62 (latest feat/rni-integration-demo at final verification)
+BASE SHA     fec8c46 (latest feat/rni-integration-demo at final verification)
 STATUS       PARTIAL
-TASKS        4/10; E04 ready for review; E05-E10 not started
-TESTS        E01 focused 16/16; E02 focused 20/20; E03 focused 17/17; E04 focused 19/19; serialized unit 1,242/1,242; contract 91 passed/22 skipped; integration 44 passed/390 skipped; eval 1/1; typecheck/full lint pass
+TASKS        5/10; E01-E05 coordinator accepted; E06 in progress; E07-E10 not started
+TESTS        E01 focused 16/16; E02 focused 20/20; E03 focused 17/17; E04 focused 19/19; E05 focused 15/15; serialized unit 1,254/1,254; contract 94 passed/22 skipped; integration 44 passed/390 skipped; eval 2/2; typecheck/full lint pass
 CONTRACT     none
-RISKS        live Web Search/X smokes pending approved credentials; coordinator must compose the portable workflow port and inject a complete versioned ticker ambiguity policy; E09 owns the evaluated relationship model/prompt
-FILES        src/rni/{discovery,sources,workflow,observations}/**; tests/unit/rni/{discovery,sources,workflow,observations}/**; tests/contract/rni/{discovery,x-source-slice,persist-source-workflow,security-resolution}.test.ts; tests/eval/rni/security-resolution.eval.test.ts; docs/rni/progress/ENGINE.md
-COMMITS      rebased E01/E02 series through fb93b45, E03 bb3d80c, plus E04 task commit
-DEMO PROOF   citation-bound Reddit; independent X terminal states; commit-before-ID-only-interpret; persisted NVDA/AMD exact mentions and cited canonical preference
+RISKS        live Web Search/X smokes pending approved credentials; coordinator must compose workflow, ambiguity policy and I07 semantic persistence; E09/E10 own evaluated model prompts and live injection resistance
+FILES        src/rni/{discovery,sources,workflow,observations}/**; tests/unit/rni/{discovery,sources,workflow,observations}/**; tests/contract/rni/{discovery,x-source-slice,persist-source-workflow,security-resolution,semantic-classifier}.test.ts; tests/eval/rni/{security-resolution,semantic-classifier}.eval.test.ts; docs/rni/progress/ENGINE.md
+COMMITS      rebased E01/E02 series through 7f23b67, E03 ed56749, E04 0e69714, plus E05 task commit
+DEMO PROOF   citation-bound Reddit; independent X terminal states; commit-before-ID-only-interpret; persisted NVDA/AMD exact mentions, cited canonical preference and isolated opposing four-dimension classification
 ```

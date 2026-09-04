@@ -1,7 +1,11 @@
 import type {
   RniComparativeRelation,
+  RniDimensionKey,
+  RniPlatform,
   RniReadService,
+  RniSecurityObservation,
   RniSecurityMention,
+  RniStance,
 } from '@/rni/contracts';
 
 export type RniSecurityResolutionCandidate = {
@@ -91,4 +95,129 @@ export type RniRelationshipIdFactory = (input: {
 export type RniSourceSecurityInterpretation = RniSecurityResolutionResult & {
   readonly relationships: readonly RniComparativeRelation[];
   readonly relationshipInferenceInvoked: boolean;
+};
+
+export type RniThemeTaxonomySnapshot = {
+  readonly version: string;
+  readonly categories: readonly {
+    readonly definitionId: string;
+    readonly stableKey: string;
+    readonly label: string;
+    readonly description: string;
+    readonly enabled: boolean;
+    readonly classificationThreshold: string;
+  }[];
+};
+
+export type RniClassificationPolicy = {
+  readonly version: string;
+  readonly schemaVersion: string;
+  readonly neutralMaxAbsoluteScore: string;
+  readonly strongMinAbsoluteScore: string;
+  readonly binaryLabelThreshold: string;
+};
+
+export type RniEvidenceSpan = {
+  readonly startOffset: number;
+  readonly endOffset: number;
+  readonly evidenceText: string;
+};
+
+export type RniClassifiedClaim = RniEvidenceSpan & {
+  readonly sourceItemId: string;
+  readonly securityId: string;
+  readonly dimension: RniDimensionKey;
+  readonly claimText: string;
+  readonly claimType: 'fact_assertion' | 'opinion' | 'forecast' | 'position' | 'question' | 'joke';
+  readonly epistemicStatus: 'source_claim' | 'unverified';
+};
+
+export type RniClassifiedTheme = RniEvidenceSpan & {
+  readonly sourceItemId: string;
+  readonly securityId: string;
+  readonly taxonomyVersion: string;
+  readonly themeDefinitionId: string;
+  readonly stableKey: string;
+  readonly stance: RniStance;
+  readonly score: string | null;
+  readonly classificationConfidence: string;
+};
+
+export type RniSecurityNoiseAssessment = RniEvidenceSpan & {
+  readonly sourceItemId: string;
+  readonly securityId: string;
+  readonly isSarcastic: boolean;
+  readonly sarcasmProbability: string;
+  readonly isMeme: boolean;
+  readonly memeProbability: string;
+  readonly isSpam: boolean;
+  readonly spamProbability: string;
+  readonly informationValue: string;
+  readonly assertionStrength: string;
+  readonly evidenceQuality: string;
+  readonly uncertainty: string;
+  readonly exclusionReason: 'off_topic' | 'spam' | 'unresolved_context' | null;
+};
+
+export type RniCitationProposal = {
+  readonly sourceItemId: string;
+  readonly securityId: string;
+  readonly dimension: RniDimensionKey;
+  readonly claimText: string;
+  readonly claimType: RniClassifiedClaim['claimType'];
+  readonly epistemicStatus: RniClassifiedClaim['epistemicStatus'];
+  readonly platform: RniPlatform;
+  readonly url: string;
+  readonly evidenceText: string;
+  readonly startOffset: number;
+  readonly endOffset: number;
+};
+
+export type RniPersistedClassificationRequest = {
+  readonly sourceItemId: string;
+  readonly mentions: readonly RniSecurityMention[];
+  readonly taxonomy: RniThemeTaxonomySnapshot;
+  readonly classificationPolicy: RniClassificationPolicy;
+  /** Durable model-run identity created by orchestration before classification. */
+  readonly classifierRunId: string;
+  readonly promptVersion: string;
+  readonly modelId: string;
+  readonly createdAt: string;
+};
+
+export type RniClassifierEvidenceReader = Pick<RniReadService, 'getEvidence'>;
+
+export interface RniClassifierInferencePort {
+  infer(input: {
+    readonly policy: {
+      readonly sourceContentTreatment: 'untrusted_data';
+      readonly allowedTools: readonly [];
+      readonly classification: RniClassificationPolicy;
+    };
+    readonly promptVersion: string;
+    readonly modelId: string;
+    readonly sourceItemId: string;
+    readonly platform: RniPlatform;
+    readonly untrustedBoundedContent: string;
+    readonly targetSecurityId: string;
+    readonly targetMentions: readonly RniSecurityMention[];
+    readonly contextMentions: readonly RniSecurityMention[];
+    readonly taxonomy: RniThemeTaxonomySnapshot;
+  }): Promise<unknown>;
+}
+
+export type RniObservationIdFactory = (input: {
+  readonly sourceItemId: string;
+  readonly securityId: string;
+  readonly classifierRunId: string;
+  readonly occurrence: number;
+}) => string;
+
+export type RniPersistedClassificationResult = {
+  readonly observations: readonly RniSecurityObservation[];
+  readonly claims: readonly RniClassifiedClaim[];
+  readonly themes: readonly RniClassifiedTheme[];
+  readonly noise: readonly RniSecurityNoiseAssessment[];
+  readonly citationProposals: readonly RniCitationProposal[];
+  readonly inputHashesBySecurity: Readonly<Record<string, string>>;
 };
