@@ -7,6 +7,7 @@ import { databaseUrl, makePool, resetSchema, truncateAll } from './helpers/db';
 import { closePool, getPool } from '../../src/repositories/client';
 import { evidenceForSecurity } from '../../src/repositories/evidence';
 import { collectSubstackEvidence } from '../../src/services/substack/collector';
+import { fetchSubstackFeed } from '../../src/adapters/substack';
 import type { SubstackPublication } from '../../src/adapters/substack-publications';
 import type { ScoringQueueEntry, ScoringQueuePort } from '../../src/services/jobs/ports';
 import { substackWrapperDeps } from '../../src/services/substack/provider-deps';
@@ -231,22 +232,35 @@ describe.skipIf(url === undefined)('F04 — the Substack collector', () => {
       'success',
       item('Tesla had a strong quarter', 'tsla', '<p>Tesla shipped a lot of cars.</p>'),
     );
-    // `broken` has no fixture file in the scratch tree, so its poll fails while `example` succeeds.
     const queue = recordingQueue();
+
     const outcome = await collectSubstackEvidence({
       queue,
       providerMode: 'fixture',
       fixturesRoot,
       publications: [PUBLICATION, { slug: 'broken', name: 'Broken', sector: 'Energy' }],
       deps: fastDeps(),
+      // The fixture harness keys a recorded response by provider/endpoint/case, never by
+      // publication slug, so both feeds would otherwise read the same file and both succeed.
+      // Failing one by slug is the only way to exercise the partial-failure path.
+      fetchFeed: async (feedOptions, providerMode, feedDeps) =>
+        feedOptions.publicationSlug === 'broken'
+          ? {
+              ok: false,
+              error: { kind: 'upstream', status: 500 },
+              meta: (await fetchSubstackFeed(feedOptions, providerMode, feedDeps)).meta,
+            }
+          : fetchSubstackFeed(feedOptions, providerMode, feedDeps),
     });
 
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) return;
     // One feed of two failing must not cost the other its poll, and must not manufacture an
-    // axis-wide gap either.
-    expect(outcome.failedPublications).toHaveLength(1);
+    // axis-wide gap either: the heartbeat is still written, because the collector did run and
+    // the items it saw are real.
+    expect(outcome.failedPublications.map((f) => f.slug)).toEqual(['broken']);
     expect(outcome.heartbeatWritten).toBe(true);
+    expect(await heartbeats()).toEqual([{ axis: 'substack', items_seen: 1 }]);
 
     const evidence = await evidenceForSecurity({ securityId: tesla, asOfInstant: FAR_FUTURE });
     expect(evidence.items).toHaveLength(1);

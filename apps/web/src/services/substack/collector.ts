@@ -63,6 +63,17 @@ export const SUBSTACK_LICENSE_CLASS = 'own_collected';
  */
 export const SUBSTACK_COVERAGE_CLASS = 'curated_publication_set';
 
+/**
+ * The feed poll, as a port.
+ *
+ * Injectable for one reason the fixture harness cannot serve: `adapters/fixtures.ts` keys a
+ * recorded response by `provider/endpoint/case`, **not** by publication slug, so every
+ * publication in one run reads the same file. That makes the partial-failure path — some feeds
+ * poll, others fail, which decides whether a heartbeat is written at all — untestable through
+ * fixtures alone. Production always takes the default.
+ */
+export type SubstackFeedFetcher = typeof fetchSubstackFeed;
+
 export type SubstackCollectorOptions = {
   readonly db?: Queryable;
   readonly queue: ScoringQueuePort;
@@ -74,6 +85,8 @@ export type SubstackCollectorOptions = {
   readonly deps?: Omit<WrapperDeps, 'fetcher'>;
   /** Defaults to the committed MT-15 set. Overridden only by tests. */
   readonly publications?: readonly SubstackPublication[];
+  /** Defaults to `fetchSubstackFeed`. See `SubstackFeedFetcher`. */
+  readonly fetchFeed?: SubstackFeedFetcher;
 };
 
 export type FailedPublication = {
@@ -201,6 +214,7 @@ export async function collectSubstackEvidence(
   const observedAt = options.now ?? new Date();
   const providerMode = options.providerMode ?? env.PROVIDER_MODE;
   const deps = options.deps ?? substackWrapperDeps({ db });
+  const fetchFeed = options.fetchFeed ?? fetchSubstackFeed;
 
   const publications = options.publications ?? (await getSubstackPublications());
   const securities = await listActiveSecurities(db);
@@ -210,7 +224,7 @@ export async function collectSubstackEvidence(
   let entriesSeen = 0;
 
   for (const publication of publications) {
-    const feed = await fetchSubstackFeed(
+    const feed = await fetchFeed(
       {
         publicationSlug: publication.slug,
         ...(options.headers === undefined ? {} : { headers: options.headers }),
