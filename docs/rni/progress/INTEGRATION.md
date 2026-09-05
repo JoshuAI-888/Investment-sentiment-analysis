@@ -36,6 +36,7 @@
 | I10 | Seed RNI Direct routes and optional Gateway selection | `IN_PROGRESS` | I10A starts versioned Direct/Gateway resolution and pre-dispatch budget enforcement under D-RNI-21; live parity remains I11 |
 | I10A | Enforce balanced runtime model policy and exact route lineage | `PASSED` | Direct default, five-task Terra/Sol low mapping, fresh capabilities, Gateway provider/canonical identity and stable cache semantics; unit/contract/eval regression and independent review pass |
 | I10B | Persist immutable route capabilities and atomic RNI AI budgets | `PASSED` | Additive migration 0024 schema; PostgreSQL 11/11 focused and 129/129 RNI regression; transports remain I10C |
+| I10C | Compose live Direct/Gateway transports and governed recorder | `IN_PROGRESS` | Server-only capability/configuration transport and I10B reservation/settlement composition; no live claim until I11 |
 | I11 | Run live Reddit, X and FMP gates | `NOT_STARTED` | Provider audit IDs and screenshots/log links |
 | I12 | Full regression, preview, production approval and smoke | `NOT_STARTED` | `joshuai` approval + production evidence |
 
@@ -397,6 +398,7 @@
 | `CURRENT` | Resolve CR-DATA-005 overall convergence provenance | D-RNI-23 makes overall platform stance a deterministic weighted projection of persisted E05 overall scores through the exact E06 current weight trace; no frozen contract or schema expansion |
 | `CURRENT` | Complete I10B persisted routing and AI budget substrate | Migration 0024 preserves activation and per-call capability snapshots, exact run/config/task lineage, synthesis invocation identity, numeric reservation/settlement, 2/25/50/300/500 enforcement and once-only monthly warnings; focused 11/11 and full RNI PostgreSQL 129/129 |
 | `CURRENT` | Accept and merge DATA D12 analytics/convergence persistence | corrected tip `cf2b635` closes exact observation/component/slice lineage and D-RNI-23 overall projection findings; coordinator D12 15/15 and post-merge D12/I10B 26/26 with typecheck/lint/diff pass; merge `59ab04a` |
+| `CURRENT` | Start I10C live transport/configuration composition | Add server-only Direct and provider-pinned Gateway adapters, capability discovery/config loading and an I10B-backed invocation recorder; credentials are environment-only and live evidence remains I11 |
 
 ## I10A handoff
 
