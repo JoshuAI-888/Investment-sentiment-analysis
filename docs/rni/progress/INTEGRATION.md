@@ -33,7 +33,7 @@
 | I07E | Compose trusted cited-synthesis persistence boundary | `PASSED` | SQL-free trusted prepare, zero-model accepted replay and opaque-preparation atomic commit; composition 13/13, independent re-review PASS |
 | I08 | Compose SURFACE routes/nav/API with auth | `NOT_STARTED` | Authenticated preview e2e |
 | I09 | Wire QStash jobs/manual idempotent refresh | `NOT_STARTED` | Signed redelivery/double-click tests |
-| I10 | Seed RNI Direct routes and optional Gateway selection | `NOT_STARTED` | D-RNI-21 policy locked; legacy route unchanged, budget enforcement and parity tests pending |
+| I10 | Seed RNI Direct routes and optional Gateway selection | `IN_PROGRESS` | I10A starts versioned Direct/Gateway resolution and pre-dispatch budget enforcement under D-RNI-21; live parity remains I11 |
 | I11 | Run live Reddit, X and FMP gates | `NOT_STARTED` | Provider audit IDs and screenshots/log links |
 | I12 | Full regression, preview, production approval and smoke | `NOT_STARTED` | `joshuai` approval + production evidence |
 
@@ -388,6 +388,7 @@
 | `CURRENT` | Complete I07E cited-synthesis composition | focused composition 13/13, typecheck/scoped lint/diff pass; initial P1/P2 replay/preparation/failure findings corrected; independent re-review PASS |
 | `CURRENT` | Re-review DATA D10/D11 corrected handoff | `825e68c` based `a161b6b`; coordinator focused 13/13, full DATA 50/50, typecheck/lint/diff pass; D11 and original D10 findings close, but cross-run exact-hash attachment remains P1 and was returned to DATA |
 | `CURRENT` | Accept and merge final DATA D10/D11 | final `7dd9454` rebased on `2099936`; cross-run identity finding closed; coordinator post-merge DATA/composition/PostgreSQL 87/87, typecheck/focused lint/diff pass; independent re-review PASS |
+| `CURRENT` | Start I10A versioned route and budget enforcement | D-RNI-21 is owner-approved; implement Direct-default task resolution, capability-gated same-family Gateway parity and atomic pre-dispatch USD 2/25/50/500 enforcement with USD 300 warning; no credential values enter code or trackers |
 
 ## I07A handoff
 
