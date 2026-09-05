@@ -36,7 +36,7 @@
 
 | Workstream | Branch | Status | Progress file | Latest accepted commit |
 |---|---|---|---|---|
-| DATA | `feat/rni-data-source-first` | `D10_READY_FOR_REVIEW` | `DATA.md` | D01–D09 merge `254fe45`; D10 handoff `4357d5c` |
+| DATA | `feat/rni-data-source-first` | `MERGED_TO_INTEGRATION` | `DATA.md` | D10/D11 final merge `7dd9454` |
 | ENGINE | `feat/rni-engine-live-slice` | `MERGED_TO_INTEGRATION` | `ENGINE.md` | lane/merge `62eab1d` |
 | SURFACE | `feat/rni-surface-demo` | `MERGED_TO_INTEGRATION` | `SURFACE.md` | code `c224c78`; tracker/merge `b60ec14` |
 | INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I07 artifact boundary `a5a0c98`; cited-synthesis schema follows |
@@ -147,3 +147,4 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — started I07E SQL-free cited-synthesis composition: the coordinator boundary will accept only run/security/convergence/idempotency intent, obtain the complete trusted E08 request from persistence, replay an already accepted artifact without model calls, and verify the exact artifact/summary identity returned by one atomic publication commit.
 - 2026-09-05 — completed I07E trusted cited-synthesis composition: persistence builds the E08 request and returns an opaque durable preparation identity; accepted retries replay with zero model calls and exact stored/replayed hash equality; fresh publication carries the preparation identity and rejects crossed commit results; verifier/challenger failures cannot commit. Complete SQL-free I07 composition passes 13/13 with typecheck/lint/diff checks. Initial independent review findings were corrected and focused re-review passes; concrete DATA/I10 adapters remain.
 - 2026-09-05 — re-reviewed corrected DATA D10/D11 `825e68c`: coordinator focused 13/13 and full DATA 50/50, typecheck and lint pass; D11 and the original two D10 P1s close. Acceptance remains held because a second run can attach a different exact semantic hash to the same durable observation under run-scoped locking. DATA must serialize/revalidate by observation identity and prove cross-run mismatch rejection before rebase and merge.
+- 2026-09-05 — accepted and fast-forward merged final DATA D10/D11 at `7dd9454` after the cross-run observation-identity correction: deterministic locks plus prior-membership exact-hash validation reject sequential and concurrent crossed reuse while allowing exact attachment. Standalone summaries fail closed and reads remain. Coordinator post-merge PostgreSQL/composition gate passes 87/87 with typecheck, focused lint and clean diff; independent final review passes.

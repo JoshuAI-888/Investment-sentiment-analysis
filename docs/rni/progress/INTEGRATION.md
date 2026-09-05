@@ -387,6 +387,7 @@
 | `CURRENT` | Start I07E cited-synthesis composition | define the smallest trusted preparation, accepted replay and exact atomic-commit identity boundary around E08 while DATA adapters proceed independently |
 | `CURRENT` | Complete I07E cited-synthesis composition | focused composition 13/13, typecheck/scoped lint/diff pass; initial P1/P2 replay/preparation/failure findings corrected; independent re-review PASS |
 | `CURRENT` | Re-review DATA D10/D11 corrected handoff | `825e68c` based `a161b6b`; coordinator focused 13/13, full DATA 50/50, typecheck/lint/diff pass; D11 and original D10 findings close, but cross-run exact-hash attachment remains P1 and was returned to DATA |
+| `CURRENT` | Accept and merge final DATA D10/D11 | final `7dd9454` rebased on `2099936`; cross-run identity finding closed; coordinator post-merge DATA/composition/PostgreSQL 87/87, typecheck/focused lint/diff pass; independent re-review PASS |
 
 ## I07A handoff
 
@@ -489,6 +490,23 @@
   idempotency claim, request snapshot and final atomic graph under concurrency. I10 supplies the
   immutable run configuration, active-rights recheck, routed inference ports and budget
   reservation; no credential or frozen-contract change was needed here.
+
+## DATA D10/D11 coordinator acceptance
+
+- **Status:** `MERGED` at `7dd9454`; all DATA semantic-persistence review findings are closed.
+- **Files merged:** `apps/web/src/rni/repositories/{semantic-persistence,summaries}.ts`, their two
+  DATA PostgreSQL suites and `docs/rni/progress/DATA.md`.
+- **Behaviour:** the D-RNI-22 adapter commits complete multi-security E05 output atomically,
+  stores exact unrounded per-security identities, serializes durable observation identities across
+  runs, returns original IDs on exact replay, and rejects crossed children/precision/lineage with
+  no partial membership. The obsolete standalone combined-summary writer fails before SQL while
+  the read path remains compatible with historical rows.
+- **Verification:** final branch D10 11/11, D11 3/3 and DATA 51/51; coordinator post-merge combined
+  DATA/composition/schema/universe PostgreSQL gate 87/87; web typecheck, focused ESLint,
+  `git diff --check`, ownership/base/frozen-contract checks and independent re-review pass.
+- **Risks/handoff:** model invocation foreign-key lineage and active route/rights/budget locking
+  remain in the upcoming concrete model/publication adapters. No DATA blocker or open contract
+  request remains.
 
 ## Coordinator notes
 
