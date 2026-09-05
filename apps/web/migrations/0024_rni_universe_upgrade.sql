@@ -568,6 +568,7 @@ create table rni_synthesis_model_invocation (
       and completed_at is not null
       and completed_at >= prepared_at
       and jsonb_typeof(terminal_metadata) = 'object'
+      and terminal_metadata ? 'outcome'
       and terminal_metadata ->> 'outcome' = 'succeeded'
       and not (terminal_metadata ? 'errorCode')
       and terminal_metadata - array[
@@ -584,6 +585,8 @@ create table rni_synthesis_model_invocation (
       and completed_at is not null
       and completed_at >= prepared_at
       and jsonb_typeof(terminal_metadata) = 'object'
+      and terminal_metadata ? 'outcome'
+      and terminal_metadata ? 'errorCode'
       and terminal_metadata ->> 'outcome' = 'failed'
       and terminal_metadata ->> 'errorCode' in (
         'provider_failure', 'response_envelope_invalid', 'model_identity_mismatch',
@@ -603,6 +606,8 @@ create table rni_synthesis_model_invocation (
       and completed_at is not null
       and completed_at >= prepared_at
       and jsonb_typeof(terminal_metadata) = 'object'
+      and terminal_metadata ? 'outcome'
+      and terminal_metadata ? 'reason'
       and terminal_metadata ->> 'outcome' = 'skipped'
       and terminal_metadata ->> 'reason' in (
         'no_eligible_claims', 'no_verified_assessments'

@@ -741,6 +741,35 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
     ).rejects.toThrow(/terminal_check/);
   });
 
+  it.each([
+    ['succeeded', H('d'), {}],
+    ['failed', null, { outcome: 'failed' }],
+    ['skipped', null, { outcome: 'skipped' }],
+  ] as const)('rejects %s terminal metadata with required keys missing', async (status, outputHash, metadata) => {
+    await seedBase();
+    await pool.query(
+      `insert into rni_synthesis_batch
+         (id, run_id, security_id, assessment_cutoff_at, policy_version,
+          rights_policy_version, ordered_citation_ids, reddit_platform_citation_ids,
+          x_platform_citation_ids, created_at)
+       values ($1, $2, $3, $4, $5, $6, '[]', '[]', '[]', '2026-09-05T01:01:00Z')`,
+      [ids.usageBatch, ids.run, ids.nvda, cutoff, policy, rights],
+    );
+    await pool.query(
+      `insert into rni_synthesis_model_invocation
+         (id, batch_id, stage, model_id, model_revision, prompt_version,
+          ordered_claim_ids, input_hash, prepared_snapshot, prepared_at)
+       values ($1, $2, 'verification', 'gpt-5.6-sol', '2026-09-01', 'prompt-v1',
+               '[]', $3, '{}', '2026-09-05T01:01:00Z')`,
+      [ids.usageVerifier, ids.usageBatch, H('b')],
+    );
+    await expect(pool.query(
+      `update rni_synthesis_model_invocation set status = $2, output_hash = $3,
+         terminal_metadata = $4, completed_at = '2026-09-05T01:02:00Z' where id = $1`,
+      [ids.usageVerifier, status, outputHash, J(metadata)],
+    )).rejects.toThrow(/terminal_check/);
+  });
+
   it('rejects a cross-security citation role', async () => {
     await seedBase();
     await pool.query(

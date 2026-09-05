@@ -11,3 +11,8 @@ export type {
   RniResolvedRuntimePolicy,
   RniRuntimeModelRoute,
 } from './model-policy';
+export {
+  RNI_ACTIVE_SOURCE_RIGHTS_POLICY_VERSION,
+  resolveRniActiveSourceRightsPolicyVersion,
+} from './rights-policy';
+export type { RniActiveRightsPolicyResolver } from './rights-policy';
