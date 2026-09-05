@@ -28,7 +28,7 @@
 | I06R2 | Add durable pre-fetch sync command and clean security bootstrap | `PASSED` | Pre-fetch claim, concurrent/replay one-fetch, terminal audits/lineage and clean 501-security import pass |
 | I06R3 | Make command abandonment and stage completion fail-closed | `PASSED` | D-RNI-16; active conflict, stale terminalization, atomic rollback, invalid replay and bootstrap integrity tests pass |
 | I06R4 | Retain abandoned-command provider lineage and prove bootstrap rollback | `PASSED` | typecheck/lint; PostgreSQL command/bootstrap 9/9; IR-10/11 resolved |
-| I07 | Compose DATA repositories and ENGINE services | `IN_PROGRESS` | Integration contract tests |
+| I07 | Compose DATA repositories and ENGINE services | `IN_PROGRESS` | Semantic/artifact ports plus migration-backed D-RNI-19 trace; DATA D10 adapter and final cited-synthesis adapters/composition remain |
 | I08 | Compose SURFACE routes/nav/API with auth | `NOT_STARTED` | Authenticated preview e2e |
 | I09 | Wire QStash jobs/manual idempotent refresh | `NOT_STARTED` | Signed redelivery/double-click tests |
 | I10 | Seed RNI Direct routes and optional Gateway selection | `NOT_STARTED` | D-RNI-21 policy locked; legacy route unchanged, budget enforcement and parity tests pending |
@@ -379,6 +379,7 @@
 | `CURRENT` | Freeze I07 semantic composition as D-RNI-22 | SQL-free complete-E05-result port plus persist-after-all-security wrapper; focused integration 3/3, typecheck and scoped lint pass; DATA transaction adapter remains |
 | `CURRENT` | Add D-RNI-22 semantic storage to migration 0024 | nullable historical-compatible claim dimension, immutable run/observation membership and exact E05 quality sidecar; clean/forward disposable PostgreSQL migration gate 5/5 |
 | `CURRENT` | Compose E06/E07 artifact persistence boundary | Reddit/X artifacts commit independently; convergence binds their exact complete-artifact hashes and rejects crossed storage identity; focused composition 5/5, typecheck/scoped lint pass |
+| `CURRENT` | Persist D-RNI-19 cited-synthesis lineage in migration 0024 | PostgreSQL schema/universe 23/23; typecheck/scoped lint/diff pass; four adversarial P1 findings closed; independent re-review PASS; broader persistence 38/41 because three superseded D05 standalone-write expectations now reach the intended trace guard and are assigned to DATA D11 |
 
 ## I07A handoff
 
@@ -414,6 +415,33 @@
 - **Risks/handoff:** the port has no SQL adapter yet. Migration 0024 and the eventual adapter must
   enforce run/security/platform/slice identity and exact replay. D-RNI-19 cited-synthesis inputs,
   invocation lifecycle, assessments and ordered publication trace remain the next I07 slice.
+
+## I07C handoff
+
+- **Status:** `COMPLETE`; I07 remains `IN_PROGRESS` for the DATA adapters and SQL-free
+  cited-synthesis composition.
+- **Files changed:** `apps/web/migrations/0024_rni_universe_upgrade.sql`,
+  `apps/web/tests/integration/rni/composition/synthesis-schema.test.ts`, D-RNI-19 and the two
+  coordinator trackers.
+- **Behaviour:** migration 0024 now persists separate Reddit/X analytics artifacts and their exact
+  convergence inputs; a trusted run/security/cutoff/policy claim batch; distinct verifier and
+  challenger invocations persisted before dispatch; claim-specific social, corroborating and
+  counterevidence roles; catalyst assessments; challenger selection; immutable synthesis
+  snapshots; and ordered statement-to-citation edges. Deferred constraints require new combined
+  summaries and their exact section status/text/citation projection to commit with the complete
+  trace. Publication rechecks point-in-time source rights, canonical Reddit/X identity and
+  allowlisted terminal usage metadata.
+- **Verification:** disposable PostgreSQL D-RNI-19 18/18 plus universe upgrade 5/5 (23/23), web
+  typecheck, scoped ESLint and `git diff --check` pass. Initial independent review returned four
+  P1 findings; all four were corrected and independent focused re-review returned `PASS`. The
+  broader RNI persistence suite is 38/41: only the three historical D05 tests that expect the now-
+  forbidden standalone summary writer fail at the new trace constraint.
+- **Risks/handoff:** the database cannot recompute application canonical hashes; DATA adapters
+  must canonicalize snapshots and reject crossed replay. Active-config rights revalidation and
+  model-route/budget reservation remain I10 composition responsibilities. DATA D11 must retire
+  the otherwise-unused standalone summary write export and replace its obsolete success tests;
+  final publication uses the atomic cited-synthesis adapter. No frozen public contract or
+  source-kind vocabulary changed.
 
 ## Coordinator notes
 

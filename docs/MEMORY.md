@@ -965,6 +965,15 @@ enters the affected model input. Publication revalidates the platform-canonical 
 rights-policy version. Absence remains `unverified`, never false, and every non-coverage sentence
 retains at least one persisted citation edge.
 
+Migration `0024` realizes this decision as an additive, append-only graph. New combined summaries
+must commit in the same transaction as their cited synthesis artifact, complete ordered statement
+graph and exact section status/text/citation projection; historical summaries remain valid. The
+database also binds convergence to separate Reddit/X artifact identities, requires model
+invocations to be persisted before their single terminal transition, rejects non-canonical
+platform URLs at publication, and permits only a small numeric token-usage allowlist in terminal
+metadata. Application adapters remain responsible for canonical snapshot hashing and for
+rechecking the currently active route and rights configuration under the integration-owned lock.
+
 ### D-RNI-20 — AI route settings create future config versions, never rewrite runs
 
 **Accepts CR-SURFACE-06, 2026-09-05.** `RniAiRouteSettingsService` exposes the active RNI config,

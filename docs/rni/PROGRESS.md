@@ -9,8 +9,8 @@
 
 | Field | Value |
 |---|---|
-| Overall | `PARALLEL_BUILD_REVIEW` |
-| Current gate | `G3_DATA / G4_ENGINE / G5_SURFACE` |
+| Overall | `INTEGRATION_BUILD` |
+| Current gate | `G6 integrated preview` |
 | Target | approved overnight RNI vertical slice |
 | Base branch | `main` |
 | Base SHA | `86ec5b4757f45cbe96c651f413e8ff1109fef279` on `main` |
@@ -36,10 +36,10 @@
 
 | Workstream | Branch | Status | Progress file | Latest accepted commit |
 |---|---|---|---|---|
-| DATA | `feat/rni-data-source-first` | `MERGED_TO_INTEGRATION` | `DATA.md` | lane `5926601`; merge `254fe45` |
-| ENGINE | `feat/rni-engine-live-slice` | `IN_PROGRESS`; E01–E09 accepted | `ENGINE.md` | `9a8a8f8` |
-| SURFACE | `feat/rni-surface-demo` | `READY_FOR_MERGE`; waits behind ENGINE | `SURFACE.md` | code `c68980b`; lane head `5d9cd3d` |
-| INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I06 passed at `5950b53`; current coordinator record follows |
+| DATA | `feat/rni-data-source-first` | `D10_READY_FOR_REVIEW` | `DATA.md` | D01–D09 merge `254fe45`; D10 handoff `4357d5c` |
+| ENGINE | `feat/rni-engine-live-slice` | `MERGED_TO_INTEGRATION` | `ENGINE.md` | lane/merge `62eab1d` |
+| SURFACE | `feat/rni-surface-demo` | `MERGED_TO_INTEGRATION` | `SURFACE.md` | code `c224c78`; tracker/merge `b60ec14` |
+| INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I07 artifact boundary `a5a0c98`; cited-synthesis schema follows |
 
 ## Confirmed product decisions
 
@@ -141,3 +141,4 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — accepted CR-DATA-002 as D-RNI-22 and implemented I07's SQL-free semantic composition boundary: committed evidence is read before E05, all per-security classifications complete before one atomic port call, and any partial classification failure writes nothing. Focused integration 3/3, typecheck and scoped lint pass; the DATA adapter and migration-backed idempotent transaction remain the next I07 slice.
 - 2026-09-05 — extended coordinator-owned migration `0024` for D-RNI-22 with claim dimension, immutable run/observation membership and per-observation semantic-quality lineage. The clean/forward migration gate passes 5/5 on disposable PostgreSQL; historical rows remain compatible. The DATA transaction adapter can now implement the accepted port without owning shared schema.
 - 2026-09-05 — added I07's SQL-free D-RNI-19 artifact composition boundary: E06 persists Reddit and X artifacts independently, E07 receives their exact canonical storage identities, and a crossed identity fails closed. Focused composition integration 5/5, typecheck and scoped lint pass; normalized migration-backed artifact persistence remains in progress.
+- 2026-09-05 — completed I07's D-RNI-19 cited-synthesis schema slice in migration `0024`: exact Reddit/X analytics lineage, persisted-before-dispatch verifier/challenger calls, point-in-time claim roles, assessments, challenger selection and ordered sentence citations now commit as one append-only graph. Initial adversarial review found four P1 bypasses; exact summary projection, same-transaction trace enforcement, platform-canonical URL checks and nested usage allowlisting close them, and focused re-review passes. Coordinator PostgreSQL schema/universe gate passes 23/23 with typecheck, lint and diff checks. The broader persistence gate is 38/41: its three obsolete D05 standalone-summary success cases now correctly hit the trace guard, so DATA D11 must retire that unused writer and replace those expectations after this schema commit.
