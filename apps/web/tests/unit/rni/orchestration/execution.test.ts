@@ -5,6 +5,7 @@ import {
   type RniPlatformOutcome,
 } from '@/rni/orchestration/execution';
 import { deliveryFor } from '@/rni/orchestration/refresh';
+import type { RniCombinedArtifact } from '@/rni/orchestration/types';
 import { harness, scope, START, uuid } from './fixture';
 
 async function setup() {
@@ -38,6 +39,25 @@ const unavailable: RniPlatformOutcome = {
   errorCode: 'PROVIDER_UNAVAILABLE',
 };
 
+async function publish(
+  h: Awaited<ReturnType<typeof setup>>,
+  status: RniCombinedArtifact['status'],
+) {
+  const claim = await h.combinedWorker.claim(h.record(h.runId).combined.delivery);
+  if (claim.status !== 'acquired') throw new Error('expected combined lease');
+  const artifact = {
+    runId: h.runId,
+    planHash: h.record(h.runId).planHash,
+    artifactHash: 'a'.repeat(64),
+    status,
+  };
+  await h.combinedWorker.commitPublication(claim.lease, artifact, (tx, _fence, value) =>
+    h.store.publish(tx, value),
+  );
+  await h.combinedWorker.finish(claim.lease, artifact.artifactHash, async () => artifact);
+  return { lease: claim.lease, artifact };
+}
+
 describe('RNI platform execution primitives', () => {
   it('gives one current lease under concurrent redelivery and preserves it across service reconstruction', async () => {
     const h = await setup();
@@ -64,20 +84,18 @@ describe('RNI platform execution primitives', () => {
       expect(record.platforms[failed].slice.lastSuccessfulRefreshAt).toBeNull();
       expect(record.platforms[failed].slice.dataThroughAt).toBeNull();
       expect(record.platforms[failed].slice.lastAttemptAt).toBe(START);
-      expect(record.combined).toBe('ready');
+      expect(record.combined.status).toBe('pending');
       expect(record.run.status).toBe('running');
       expect(h.store.data.combined.size).toBe(1);
-      const publication = {
-        runId: h.runId,
-        planHash: record.planHash,
-        artifactHash: 'a'.repeat(64),
-        status: 'partial',
-      };
-      await h.worker.finishCombined(h.runId, async () => publication);
+      const { lease, artifact } = await publish(h, 'partial');
       expect(h.record(h.runId).run.status).toBe('partial');
-      await h.worker.finishCombined(h.runId, async () => publication);
+      await h.combinedWorker.finish(lease, artifact.artifactHash, async () => artifact);
       await expect(
-        h.worker.finishCombined(h.runId, async () => ({ ...publication, status: 'complete' })),
+        h.combinedWorker.commitPublication(
+          lease,
+          { ...artifact, status: 'complete' },
+          async () => artifact,
+        ),
       ).rejects.toThrow('CONFLICT');
     },
   );
@@ -229,12 +247,7 @@ describe('RNI platform execution primitives', () => {
     );
     await h.worker.finish(await acquired(h), unavailable);
     await h.worker.finish(await acquired(h, 'x'), unavailable);
-    await h.worker.finishCombined(h.runId, async () => ({
-      runId: h.runId,
-      planHash: h.record(h.runId).planHash,
-      artifactHash: 'a'.repeat(64),
-      status: 'insufficient',
-    }));
+    await publish(h, 'insufficient');
     const historical = h.record(h.runId);
     h.store.activePlan.configVersion = '2';
     const next = await h.service.rerun({ idempotencyKey: 'rerun', runId: h.runId });
@@ -255,18 +268,29 @@ describe('RNI platform execution primitives', () => {
       runId: h.runId,
       planHash: h.record(h.runId).planHash,
       artifactHash: 'a'.repeat(64),
-      status: 'complete',
+      status: 'complete' as const,
     };
-    await expect(h.worker.finishCombined(h.runId, async () => value)).rejects.toThrow('CONFLICT');
+    await expect(h.combinedWorker.claim(h.record(h.runId).combined.delivery)).rejects.toThrow(
+      'CONFLICT',
+    );
     await Promise.all(
       ['reddit', 'x'].map(async (platform) =>
         h.worker.finish(await acquired(h, platform as 'reddit' | 'x'), complete),
       ),
     );
+    const claim = await h.combinedWorker.claim(h.record(h.runId).combined.delivery);
+    if (claim.status !== 'acquired') throw new Error('lease');
     await expect(
-      h.worker.finishCombined(h.runId, async () => ({ ...value, runId: uuid(999) })),
+      h.combinedWorker.commitPublication(
+        claim.lease,
+        { ...value, runId: uuid(999) },
+        async () => value,
+      ),
     ).rejects.toThrow('CONFLICT');
-    await h.worker.finishCombined(h.runId, async () => value);
+    await h.combinedWorker.commitPublication(claim.lease, value, (tx, _fence, artifact) =>
+      h.store.publish(tx, artifact),
+    );
+    await h.combinedWorker.finish(claim.lease, value.artifactHash, async () => value);
     expect(h.record(h.runId).run.status).toBe('complete');
     expect(h.record(h.runId).run.completedAt).toBe(START);
   });

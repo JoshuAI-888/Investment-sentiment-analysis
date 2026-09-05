@@ -28,6 +28,7 @@ import {
   type RniOrchestrationDependencies,
   type RniOrchestrationTransaction,
   type RniPlatformDelivery,
+  type RniCombinedDelivery,
   type RniRefreshPlan,
 } from './types';
 
@@ -44,6 +45,20 @@ export function deliveryFor(
     planHash,
     attempt,
     deliveryKey: `rni-platform-${hashRniModelInput({ runId, platform, planHash, attempt })}`,
+  };
+}
+
+export function combinedDeliveryFor(
+  runId: string,
+  planHash: string,
+  attempt: number,
+): RniCombinedDelivery {
+  return {
+    version: 'rni-combined-v1',
+    runId,
+    planHash,
+    attempt,
+    deliveryKey: `rni-combined-${hashRniModelInput({ runId, planHash, attempt })}`,
   };
 }
 
@@ -105,6 +120,59 @@ export function validateRniExecution(
       throw new RniOrchestrationError('CONFLICT');
     }
   }
+  const combined = record.combined;
+  const proof = combined.publication;
+  const terminalPlatforms = Object.values(record.platforms).every((p) =>
+    ['complete', 'partial', 'failed', 'unavailable'].includes(p.slice.status),
+  );
+  if (
+    combined.delivery.attempt > record.plan.maxAttempts ||
+    combined.attempt > combined.delivery.attempt ||
+    hashRniModelInput(combined.delivery) !==
+      hashRniModelInput(
+        combinedDeliveryFor(record.run.id, record.planHash, combined.delivery.attempt),
+      ) ||
+    (combined.status !== 'waiting' && !terminalPlatforms) ||
+    (combined.status === 'waiting' &&
+      (terminalPlatforms ||
+        combined.attempt !== 0 ||
+        combined.lastAttemptAt !== null ||
+        combined.outcomeHash !== null)) ||
+    (combined.status === 'running' && record.run.status !== 'running') ||
+    (combined.status === 'failed' && record.run.status !== 'failed') ||
+    (combined.status === 'running') !== (combined.lease !== null) ||
+    (combined.lease !== null &&
+      (combined.attempt !== combined.delivery.attempt ||
+        combined.lastAttemptAt === null ||
+        Date.parse(combined.lease.expiresAt) > Date.parse(record.deadline) ||
+        Date.parse(combined.lease.expiresAt) <= Date.parse(combined.lastAttemptAt))) ||
+    (combined.status === 'complete' && proof === null)
+  )
+    throw new RniOrchestrationError('CONFLICT');
+  if (
+    proof !== null &&
+    (proof.artifact.runId !== record.run.id ||
+      proof.artifact.planHash !== record.planHash ||
+      proof.attempt !== combined.attempt ||
+      proof.acquiredAt !== combined.lastAttemptAt ||
+      !['running', 'complete'].includes(combined.status) ||
+      proof.token !== (combined.lease?.token ?? combined.outcomeToken) ||
+      (proof.artifact.status === 'complete' &&
+        Object.values(record.platforms).some((p) => p.slice.status !== 'complete')) ||
+      (combined.lease !== null &&
+        Date.parse(proof.expiresAt) > Date.parse(combined.lease.expiresAt)) ||
+      Date.parse(proof.acquiredAt) < Date.parse(record.run.requestedAt) ||
+      Date.parse(proof.committedAt) < Date.parse(proof.acquiredAt) ||
+      Date.parse(proof.committedAt) >= Date.parse(proof.expiresAt) ||
+      Date.parse(proof.expiresAt) > Date.parse(record.deadline) ||
+      (combined.status === 'complete' &&
+        (combined.outcomeHash !== hashRniModelInput(proof.artifact) ||
+          record.run.status !==
+            (proof.artifact.status === 'insufficient' ? 'failed' : proof.artifact.status) ||
+          record.run.completedAt !== proof.committedAt)))
+  ) {
+    throw new RniOrchestrationError('CONFLICT');
+  }
   return record;
 }
 
@@ -112,6 +180,17 @@ type Intent =
   | { kind: 'manual'; idempotencyKey: string; scope: RniManualRefreshScope }
   | { kind: 'rerun'; idempotencyKey: string; runId: string }
   | { kind: 'schedule'; idempotencyKey: string; jobId: string; dueAt: string };
+
+export type RniScheduleResult =
+  | RniManualRefreshResult
+  | {
+      disposition: 'skipped';
+      reason: 'busy';
+      idempotencyKey: string;
+      jobId: string;
+      dueAt: string;
+      nextDueAt: string;
+    };
 
 export class RniRefreshService implements RniCommandService {
   constructor(private readonly deps: RniOrchestrationDependencies) {
@@ -134,7 +213,7 @@ export class RniRefreshService implements RniCommandService {
     return this.submit({ kind: 'rerun', ...request });
   }
 
-  async schedule(input: { jobId: string; dueAt: string }): Promise<RniManualRefreshResult> {
+  async schedule(input: { jobId: string; dueAt: string }): Promise<RniScheduleResult> {
     const request = z.object({ jobId: z.string().uuid(), dueAt: instant }).strict().parse(input);
     return this.submit({
       kind: 'schedule',
@@ -143,7 +222,11 @@ export class RniRefreshService implements RniCommandService {
     });
   }
 
-  private async submit(intent: Intent): Promise<RniManualRefreshResult> {
+  private submit(
+    intent: Extract<Intent, { kind: 'manual' | 'rerun' }>,
+  ): Promise<RniManualRefreshResult>;
+  private submit(intent: Extract<Intent, { kind: 'schedule' }>): Promise<RniScheduleResult>;
+  private async submit(intent: Intent): Promise<RniScheduleResult> {
     const deps = this.deps;
     await deps.authorize(intent.kind === 'manual' ? 'refresh' : intent.kind);
     return deps.store.transact(deps.partition, async (tx) => {
@@ -156,6 +239,22 @@ export class RniRefreshService implements RniCommandService {
         const command = commandRecord.parse(prior);
         if (command.key !== key || command.intentHash !== intentHash)
           throw new RniOrchestrationError('CONFLICT');
+        if (command.disposition === 'skipped') {
+          if (
+            intent.kind !== 'schedule' ||
+            command.jobId !== intent.jobId ||
+            command.dueAt !== intent.dueAt
+          )
+            throw new RniOrchestrationError('CONFLICT');
+          return {
+            disposition: 'skipped',
+            reason: 'busy',
+            idempotencyKey: intent.idempotencyKey,
+            jobId: command.jobId,
+            dueAt: command.dueAt,
+            nextDueAt: command.nextDueAt,
+          };
+        }
         const record = validateRniExecution(
           await tx.getExecution(command.runId),
           deps.partition,
@@ -253,9 +352,34 @@ export class RniRefreshService implements RniCommandService {
           throw new RniOrchestrationError('CONFLICT');
         disposition = 'duplicate';
       } else {
-        // A skip-policy schedule cannot overlap an older run beyond the rapid-click interval.
-        // Busy fires fail closed; final dispatcher skip/audit response mapping belongs to I09 wiring.
-        if (scheduled !== null) await tx.assertScheduledJobIdle(definition.id);
+        if (scheduled !== null && (await tx.isScheduledJobBusy(definition.id))) {
+          await tx.putCommand({
+            disposition: 'skipped',
+            key,
+            intentHash,
+            acceptedAt: at,
+            jobId: scheduled.jobId,
+            dueAt: scheduled.dueAt,
+            nextDueAt: scheduled.nextDueAt,
+          });
+          await tx.advanceSchedule(scheduled);
+          await tx.audit({
+            event: 'schedule_skipped',
+            runId: null,
+            actor: deps.actor,
+            at,
+            jobId: scheduled.jobId,
+            dueAt: scheduled.dueAt,
+          });
+          return {
+            disposition: 'skipped',
+            reason: 'busy',
+            idempotencyKey: intent.idempotencyKey,
+            jobId: scheduled.jobId,
+            dueAt: scheduled.dueAt,
+            nextDueAt: scheduled.nextDueAt,
+          };
+        }
         record = await this.createExecution(
           tx,
           intent,
@@ -267,6 +391,7 @@ export class RniRefreshService implements RniCommandService {
         );
       }
       await tx.putCommand({
+        disposition: 'run',
         key,
         intentHash,
         runId: record.run.id,
@@ -380,8 +505,18 @@ export class RniRefreshService implements RniCommandService {
       rerunOf,
       reservedCostUsd: estimate.totalUsd,
       platforms: { reddit: platform('reddit'), x: platform('x') },
-      combined: 'pending',
-      combinedOutputHash: null,
+      combined: {
+        status: 'waiting',
+        attempt: 0,
+        delivery: combinedDeliveryFor(runId, planHash, 1),
+        notBefore: at,
+        lastAttemptAt: null,
+        lease: null,
+        errorCode: null,
+        outcomeHash: null,
+        outcomeToken: null,
+        publication: null,
+      },
     });
     await tx.createExecution(record);
     await tx.enqueue(record.platforms.reddit.delivery, at);

@@ -168,7 +168,9 @@ describe('RNI durable refresh command primitives', () => {
     const results = await Promise.all(
       Array.from({ length: 3 }, () => h.service.schedule({ jobId: uuid(800), dueAt: START })),
     );
-    expect(results.every((result) => result.runId === manual.runId)).toBe(true);
+    expect(
+      results.every((result) => result.disposition !== 'skipped' && result.runId === manual.runId),
+    ).toBe(true);
     expect(h.store.data.jobs).toHaveLength(1);
     expect(h.store.data.definition.nextDueAt.toISOString()).toBe('2026-09-05T00:05:00.000Z');
     expect(h.store.data.definition.version).toBe(2);
@@ -179,6 +181,7 @@ describe('RNI durable refresh command primitives', () => {
     const h = harness();
     h.advance(3600_000);
     const first = await h.service.schedule({ jobId: uuid(800), dueAt: START });
+    if (first.disposition === 'skipped') throw new Error('unexpected skip');
     const record = h.record(first.runId);
     expect(record.run.trigger).toBe('schedule');
     expect(h.store.data.jobs[0]!.triggerType).toBe('scheduled');
@@ -192,16 +195,39 @@ describe('RNI durable refresh command primitives', () => {
     ).rejects.toThrow('NOT_DUE');
   });
 
-  it('fails closed for a skip-policy scheduled overlap after rapid-click coalescing has expired', async () => {
+  it('atomically records and replays a busy skip after rapid-click coalescing has expired', async () => {
     const h = harness();
     await h.service.requestManualRefresh({ idempotencyKey: 'manual', scope });
     h.advance(6000);
-    await expect(h.service.schedule({ jobId: uuid(800), dueAt: START })).rejects.toThrow(
-      'CONFLICT',
+    const results = await Promise.all(
+      Array.from({ length: 8 }, () => h.service.schedule({ jobId: uuid(800), dueAt: START })),
     );
+    expect(results.every((result) => result.disposition === 'skipped')).toBe(true);
+    expect(new Set(results.map((result) => JSON.stringify(result))).size).toBe(1);
     expect(h.store.data.jobs).toHaveLength(1);
     expect(h.store.data.outbox.size).toBe(2);
     expect(h.store.data.admissions.size).toBe(1);
+    expect(h.store.data.definition.nextDueAt.toISOString()).toBe('2026-09-05T00:05:06.000Z');
+    expect(h.store.data.definition.version).toBe(2);
+    expect(h.store.data.audits.filter((event) => event.event === 'schedule_skipped')).toHaveLength(
+      1,
+    );
+    expect(h.store.data.commands.size).toBe(2);
+  });
+
+  it('rolls back busy skip, audit and advancement together, then succeeds once on replay', async () => {
+    const h = harness();
+    await h.service.requestManualRefresh({ idempotencyKey: 'manual', scope });
+    h.advance(6000);
+    h.store.failAudit = true;
+    await expect(h.service.schedule({ jobId: uuid(800), dueAt: START })).rejects.toThrow(
+      'simulated audit',
+    );
     expect(h.store.data.definition.nextDueAt.toISOString()).toBe(START);
+    expect(h.store.data.commands.size).toBe(1);
+    h.store.failAudit = false;
+    expect((await h.service.schedule({ jobId: uuid(800), dueAt: START })).disposition).toBe(
+      'skipped',
+    );
   });
 });

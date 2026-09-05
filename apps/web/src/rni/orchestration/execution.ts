@@ -4,7 +4,6 @@ import { rniWorkflowBackoffMs, defaultRniWorkflowPolicy } from '@/rni/workflow/p
 import { RniOrchestrationError } from './budget';
 import { deliveryFor, validateRniExecution } from './refresh';
 import {
-  digest,
   instant,
   platformDelivery,
   type RniExecutionRecord,
@@ -253,63 +252,15 @@ export class RniPlatformExecutionService {
   ) {
     if (
       terminal(record.platforms.reddit.slice.status) &&
-      terminal(record.platforms.x.slice.status)
+      terminal(record.platforms.x.slice.status) &&
+      record.combined.status === 'waiting'
     ) {
-      record.combined = 'ready';
+      record.combined.status = 'pending';
+      record.combined.notBefore = at;
       // Publication still belongs to I07. Source completion cannot mark the whole run published.
-      await tx.enqueueCombined({
-        runId: record.run.id,
-        planHash: record.planHash,
-        idempotencyKey: `rni-combined-${hashRniModelInput([record.run.id, record.planHash])}`,
-      });
+      await tx.enqueueCombined(record.combined.delivery, at);
     }
     await tx.putExecution(record);
     await tx.audit({ event: 'platform_terminal', runId: record.run.id, actor: 'rni-worker', at });
-  }
-
-  /** Read the accepted I07 artifact from trusted storage; clients cannot declare publication. */
-  async finishCombined(
-    runId: string,
-    readAccepted: (runId: string) => Promise<unknown>,
-  ): Promise<void> {
-    z.string().uuid().parse(runId);
-    const outcome = z
-      .object({
-        runId: z.string().uuid(),
-        planHash: digest,
-        artifactHash: digest,
-        status: z.enum(['complete', 'partial', 'insufficient']),
-      })
-      .strict()
-      .parse(await readAccepted(runId));
-    await this.deps.store.transact(this.deps.partition, async (tx) => {
-      const record = validateRniExecution(await tx.getExecution(runId), this.deps.partition, runId);
-      if (
-        outcome.runId !== runId ||
-        outcome.planHash !== record.planHash ||
-        record.combined !== 'ready' ||
-        !terminal(record.platforms.reddit.slice.status) ||
-        !terminal(record.platforms.x.slice.status)
-      )
-        throw new RniOrchestrationError('CONFLICT');
-      const hash = hashRniModelInput(outcome);
-      if (record.combinedOutputHash !== null) {
-        if (record.combinedOutputHash !== hash) throw new RniOrchestrationError('CONFLICT');
-        return;
-      }
-      if (record.run.status !== 'running' && record.run.status !== 'requested')
-        throw new RniOrchestrationError('STALE_EXECUTION');
-      if (
-        outcome.status === 'complete' &&
-        (record.platforms.reddit.slice.status !== 'complete' ||
-          record.platforms.x.slice.status !== 'complete')
-      ) {
-        throw new RniOrchestrationError('CONFLICT');
-      }
-      record.combinedOutputHash = hash;
-      record.run.status = outcome.status === 'insufficient' ? 'failed' : outcome.status;
-      record.run.completedAt = this.deps.now().toISOString();
-      await tx.putExecution(record);
-    });
   }
 }

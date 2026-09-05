@@ -112,7 +112,13 @@ describe('QStash cryptographic verification', () => {
         consumeRniQstash(request(body), schema, (payload) => h.service.schedule(payload)),
       ),
     );
-    expect(new Set(results.map((result) => result.runId)).size).toBe(1);
+    expect(
+      new Set(
+        results.map((result) =>
+          result.disposition === 'skipped' ? 'unexpected-skip' : result.runId,
+        ),
+      ).size,
+    ).toBe(1);
     expect(results.filter((result) => result.disposition === 'accepted')).toHaveLength(1);
     expect(h.store.data.outbox.size).toBe(2);
     expect(h.store.data.jobs).toHaveLength(1);

@@ -3,6 +3,7 @@ import { jobDefinition, jobRun } from '@/contracts/operations';
 import { RNI_APPROVED_TASK_ENVELOPES } from '@/rni/config/model-policy';
 import { RniRefreshService } from '@/rni/orchestration/refresh';
 import { RniPlatformExecutionService } from '@/rni/orchestration/execution';
+import { RniCombinedExecutionService } from '@/rni/orchestration/combined';
 import { assertRniAggregateBudget } from '@/rni/orchestration/budget';
 import type {
   RniCommandRecord,
@@ -11,6 +12,8 @@ import type {
   RniOrchestrationStore,
   RniOrchestrationTransaction,
   RniPlatformDelivery,
+  RniCombinedDelivery,
+  RniCombinedArtifact,
   RniRefreshPlan,
 } from '@/rni/orchestration/types';
 
@@ -60,7 +63,8 @@ export class TransactionalStore implements RniOrchestrationStore {
     commands: new Map<string, RniCommandRecord>(),
     executions: new Map<string, RniExecutionRecord>(),
     outbox: new Map<string, { delivery: RniPlatformDelivery; notBefore: string }>(),
-    combined: new Map<string, { runId: string; planHash: string; idempotencyKey: string }>(),
+    combined: new Map<string, { delivery: RniCombinedDelivery; notBefore: string }>(),
+    publications: new Map<string, RniCombinedArtifact>(),
     admissions: new Map<string, string>(),
     jobs: [] as ReturnType<typeof jobRun.parse>[],
     audits: [] as Parameters<RniOrchestrationTransaction['audit']>[0][],
@@ -95,10 +99,21 @@ export class TransactionalStore implements RniOrchestrationStore {
   usage = { rollingDayUsd: '0', calendarMonthUsd: '0' };
   failEnqueue = false;
   failAudit = false;
+  afterAudit?: () => void;
   crossedJob = false;
   planReads = 0;
   transactions = 0;
   private tail: Promise<void> = Promise.resolve();
+  private publicationTransactions = new WeakMap<
+    RniOrchestrationTransaction,
+    Map<string, RniCombinedArtifact>
+  >();
+  async publish(tx: RniOrchestrationTransaction, artifact: RniCombinedArtifact) {
+    const publications = this.publicationTransactions.get(tx);
+    if (!publications) throw new Error('publication requires the orchestration transaction');
+    publications.set(artifact.runId, structuredClone(artifact));
+    return artifact;
+  }
   async transact<T>(
     _partition: string,
     operation: (tx: RniOrchestrationTransaction) => Promise<T>,
@@ -142,21 +157,15 @@ export class TransactionalStore implements RniOrchestrationStore {
         return plan;
       },
       getJobDefinition: async (id) => (id === draft.definition.id ? draft.definition : null),
-      assertScheduledJobIdle: async (jobId) => {
-        if (
-          draft.jobs.some(
-            (job) =>
-              job.jobId === jobId &&
-              [...draft.executions.values()].some(
-                (record) =>
-                  record.jobRunId === job.id &&
-                  ['requested', 'running'].includes(record.run.status),
-              ),
-          )
-        ) {
-          throw new Error('CONFLICT: schedule job is still active');
-        }
-      },
+      isScheduledJobBusy: async (jobId) =>
+        draft.jobs.some(
+          (job) =>
+            job.jobId === jobId &&
+            [...draft.executions.values()].some(
+              (record) =>
+                record.jobRunId === job.id && ['requested', 'running'].includes(record.run.status),
+            ),
+        ),
       createJob: async (input) => {
         const result = jobRun.parse({
           ...input,
@@ -202,8 +211,9 @@ export class TransactionalStore implements RniOrchestrationStore {
         if (this.failEnqueue) throw new Error('simulated outbox failure');
         draft.outbox.set(delivery.deliveryKey, { delivery: structuredClone(delivery), notBefore });
       },
-      enqueueCombined: async (event) => {
-        draft.combined.set(event.idempotencyKey, event);
+      enqueueCombined: async (delivery, notBefore) => {
+        if (this.failEnqueue) throw new Error('simulated outbox failure');
+        draft.combined.set(delivery.deliveryKey, { delivery, notBefore });
       },
       advanceSchedule: async (input) => {
         if (
@@ -217,13 +227,16 @@ export class TransactionalStore implements RniOrchestrationStore {
       audit: async (event) => {
         if (this.failAudit) throw new Error('simulated audit failure');
         draft.audits.push(event);
+        this.afterAudit?.();
       },
     };
+    this.publicationTransactions.set(tx, draft.publications);
     try {
       const result = await operation(tx);
       this.data = draft;
       return result;
     } finally {
+      this.publicationTransactions.delete(tx);
       release();
     }
   }
@@ -247,6 +260,7 @@ export function harness() {
     deps,
     service: new RniRefreshService(deps),
     worker: new RniPlatformExecutionService({ ...deps, random: () => 0.5 }),
+    combinedWorker: new RniCombinedExecutionService({ ...deps, random: () => 0.5 }),
     advance: (ms: number) => {
       time += ms;
     },

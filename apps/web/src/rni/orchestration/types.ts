@@ -100,6 +100,71 @@ export const platformDelivery = z
   .strict();
 export type RniPlatformDelivery = z.infer<typeof platformDelivery>;
 
+export const combinedDelivery = platformDelivery
+  .omit({ platform: true })
+  .extend({
+    version: z.literal('rni-combined-v1'),
+  })
+  .strict();
+export type RniCombinedDelivery = z.infer<typeof combinedDelivery>;
+
+export const combinedArtifact = z
+  .object({
+    runId: z.string().uuid(),
+    planHash: digest,
+    artifactHash: digest,
+    status: z.enum(['complete', 'partial', 'insufficient']),
+  })
+  .strict();
+export type RniCombinedArtifact = z.infer<typeof combinedArtifact>;
+
+/** The I07 adapter must use this token in its atomic publication predicate, not just log it. */
+export type RniCombinedFence = Readonly<{
+  stage: 'combined';
+  runId: string;
+  planHash: string;
+  attempt: number;
+  token: string;
+  acquiredAt: string;
+  expiresAt: string;
+  deadline: string;
+}>;
+
+const combinedExecution = z
+  .object({
+    status: z.enum(['waiting', 'pending', 'running', 'complete', 'failed']),
+    attempt: z.number().int().min(0).max(3),
+    delivery: combinedDelivery,
+    notBefore: instant,
+    lastAttemptAt: instant.nullable(),
+    lease: z.object({ token: z.string().uuid(), expiresAt: instant }).strict().nullable(),
+    errorCode: z
+      .enum([
+        'SYNTHESIS_TRANSIENT',
+        'SYNTHESIS_PERMANENT',
+        'VALIDATION_FAILED',
+        'BUDGET_STOPPED',
+        'LEASE_EXPIRED',
+        'DEADLINE_EXCEEDED',
+      ])
+      .nullable(),
+    outcomeHash: digest.nullable(),
+    outcomeToken: z.string().uuid().nullable(),
+    /** Written only in the SAME transaction as the fenced I07 publication, never from a read callback. */
+    publication: z
+      .object({
+        artifact: combinedArtifact,
+        token: z.string().uuid(),
+        attempt: z.number().int().min(1).max(3),
+        acquiredAt: instant,
+        expiresAt: instant,
+        committedAt: instant,
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+
 const platformExecution = z
   .object({
     slice: rniPlatformSlice,
@@ -126,14 +191,14 @@ export const executionRecord = z
     rerunOf: z.string().uuid().nullable(),
     reservedCostUsd: amount,
     platforms: z.object({ reddit: platformExecution, x: platformExecution }).strict(),
-    combined: z.enum(['pending', 'ready']),
-    combinedOutputHash: digest.nullable(),
+    combined: combinedExecution,
   })
   .strict();
 export type RniExecutionRecord = z.infer<typeof executionRecord>;
 
-export const commandRecord = z
+const runCommand = z
   .object({
+    disposition: z.literal('run'),
     key: identifier,
     intentHash: digest,
     runId: z.string().uuid(),
@@ -141,6 +206,21 @@ export const commandRecord = z
     acceptedAt: instant,
   })
   .strict();
+export const skippedScheduleCommand = z
+  .object({
+    disposition: z.literal('skipped'),
+    key: identifier,
+    intentHash: digest,
+    jobId: z.string().uuid(),
+    dueAt: instant,
+    nextDueAt: instant,
+    acceptedAt: instant,
+  })
+  .strict();
+export const commandRecord = z.discriminatedUnion('disposition', [
+  runCommand,
+  skippedScheduleCommand,
+]);
 export type RniCommandRecord = z.infer<typeof commandRecord>;
 
 export const budgetUsage = z.object({ rollingDayUsd: amount, calendarMonthUsd: amount }).strict();
@@ -169,8 +249,8 @@ export interface RniOrchestrationTransaction {
   findCoalescible(key: string, at: string): Promise<unknown | null>;
   resolveActivePlan(scope: RniManualRefreshScope, asOf: string): Promise<unknown>;
   getJobDefinition(jobId: string): Promise<JobDefinition | null>;
-  /** Under the job lock, reject if queued/running work remains; never overlap a skip-policy fire. */
-  assertScheduledJobIdle(jobId: string): Promise<void>;
+  /** Under the scheduled job lock; retained through the skip/advance or create transaction. */
+  isScheduledJobBusy(jobId: string): Promise<boolean>;
   createJob(input: NewJobRun): Promise<JobRun>;
   createExecution(record: RniExecutionRecord): Promise<void>;
   putExecution(record: RniExecutionRecord): Promise<void>;
@@ -181,11 +261,7 @@ export interface RniOrchestrationTransaction {
     runLimitUsd: string;
   }): Promise<RniBudgetUsage>;
   enqueue(delivery: RniPlatformDelivery, notBefore: string): Promise<void>;
-  enqueueCombined(input: {
-    runId: string;
-    planHash: string;
-    idempotencyKey: string;
-  }): Promise<void>;
+  enqueueCombined(delivery: RniCombinedDelivery, notBefore: string): Promise<void>;
   advanceSchedule(input: {
     jobId: string;
     version: number;
@@ -193,10 +269,21 @@ export interface RniOrchestrationTransaction {
     nextDueAt: string;
   }): Promise<void>;
   audit(input: {
-    event: 'accepted' | 'coalesced' | 'rerun' | 'platform_terminal' | 'platform_retry';
-    runId: string;
+    event:
+      | 'accepted'
+      | 'coalesced'
+      | 'rerun'
+      | 'platform_terminal'
+      | 'platform_retry'
+      | 'combined_committed'
+      | 'combined_terminal'
+      | 'combined_retry'
+      | 'schedule_skipped';
+    runId: string | null;
     actor: string;
     at: string;
+    jobId?: string;
+    dueAt?: string;
   }): Promise<void>;
 }
 
