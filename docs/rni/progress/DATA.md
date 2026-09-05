@@ -17,12 +17,13 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | D02 | Source-security links and four-dimension observations       | `READY_FOR_REVIEW` | Migration `0021`; multi-ticker and four-dimension tests pass                 |
 | D03 | Claims, citations, themes, narratives and relationships     | `READY_FOR_REVIEW` | Null-safe claim/narrative security identity enforced; 6/6 pass               |
 | D04 | Independent Reddit/X `run_source_slice` persistence         | `READY_FOR_REVIEW` | Runs foreign-key immutable config/universe version IDs; 5/5 pass             |
-| D05 | Cross-source summary persistence without component mutation | `READY_FOR_REVIEW` | Divergence/partial repository tests 4/4 pass                                 |
+| D05 | Cross-source summary persistence without component mutation | `READY_FOR_REVIEW` | Historical reads/components retained; standalone writer retired by D11       |
 | D06 | Idempotent/concurrent inserts and transactional outbox      | `READY_FOR_REVIEW` | 8-way concurrent upsert and outbox rollback 3/3 pass                         |
 | D07 | Bounded-content, tombstone and rejected-discovery states    | `READY_FOR_REVIEW` | Terminal status, timestamp, and reason are immutable; 3/3 pass               |
 | D08 | FMP >500-member fixture support for integration migration   | `READY_FOR_REVIEW` | 501-member and six invalid activation fixtures 4/4 pass                      |
 | D09 | Full DATA lane verification and handoff                     | `READY_FOR_REVIEW` | Latest-tip RNI 41/41; type/contract 103/103 green                            |
-| D10 | Atomic E05 semantic persistence adapter                      | `READY_FOR_REVIEW` | PostgreSQL D10 9/9 and full DATA 50/50 pass                                   |
+| D10 | Atomic E05 semantic persistence adapter                      | `READY_FOR_REVIEW` | PostgreSQL D10 10/10 and exact output hash replay guard                       |
+| D11 | Retire standalone combined-summary writes                    | `READY_FOR_REVIEW` | D-RNI-19 fail-closed/read compatibility 3/3; full DATA 50/50                  |
 
 ## Task evidence
 
@@ -100,6 +101,9 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 - **Result:** immutable combined rows reference the run's typed Reddit/X slice IDs; divergence
   and one-source-unavailable summaries preserve both component rows byte-for-byte; duplicate
   writes return the original summary.
+- **Supersession:** D11 retires the now-unused standalone writer after D-RNI-19 made complete
+  cited-synthesis lineage mandatory for every future summary. Historical rows remain readable and
+  their component references remain unchanged.
 - **Risk:** citation IDs inside the frozen section JSON remain publication-layer references;
   D03 relational claim citations are separately foreign-keyed and its broader port is deferred.
 - **Handoff:** INTEGRATION can bind `getRniCombinedSummary` to the frozen read service without
@@ -173,7 +177,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 - **Status:** `READY_FOR_REVIEW`
 - **Files:** `apps/web/src/rni/repositories/semantic-persistence.ts`,
   `apps/web/tests/integration/rni-persistence/semantic-persistence.test.ts`, and this progress file.
-- **Tests:** focused PostgreSQL `9/9`; full serial DATA persistence `50/50`; TypeScript and scoped
+- **Tests:** focused PostgreSQL `10/10`; full serial DATA persistence `50/50`; TypeScript and scoped
   ESLint pass; `git diff --check`, DATA ownership, exact-base, and frozen-contract checks pass.
 - **Result:** the D-RNI-22 port commits complete E05 output in one transaction. It retains
   independent run membership and semantic-quality rows per source/security, claim dimensions,
@@ -182,10 +186,31 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
   claim, citation, theme, membership, or noise content fails closed; any child failure rolls back
   the complete semantic write. Transaction-scoped run/source serialization prevents concurrent
   crossed classifications from committing a union of incompatible child sets.
+- **Review correction:** the complete exact, unrounded per-security E05 output is SHA-256 bound to
+  integration-owned `rni_run_observation.semantic_output_hash` and compared under the lock. Input
+  validation requires exactly the four frozen dimensions once each and exact equality between
+  observation-security IDs and `inputHashesBySecurity` keys.
 - **Risk:** no DATA blocker or new contract request remains. The adapter relies on the accepted,
   integration-owned migration `0024` additions and does not modify that migration.
 - **Handoff:** INTEGRATION may compose `PostgresRniSemanticPersistence` behind the SQL-free I07
   wrapper. Returned arrays are unique and deterministic; multi-ticker rows remain independent.
+
+### D11 — Retire standalone combined-summary writes
+
+- **Status:** `READY_FOR_REVIEW`
+- **Files:** `apps/web/src/rni/repositories/summaries.ts`,
+  `apps/web/tests/integration/rni-persistence/summaries.test.ts`, and this progress file.
+- **Tests:** focused summary PostgreSQL `3/3`; combined D10/D11 `13/13`; full serial DATA `50/50`;
+  TypeScript, scoped ESLint, `git diff --check`, ownership, frozen-contract, and exact-base checks
+  pass.
+- **Result:** `persistRniCombinedSummary` now fails closed before SQL and directs callers to the
+  integration-owned atomic cited-synthesis adapter. `getRniCombinedSummary` continues to read
+  historical rows; tests prove the D-RNI-19 trace guard cannot be bypassed and Reddit/X component
+  slices and their references remain unchanged.
+- **Risk:** no DATA blocker or new contract request. The private writer remains as a fail-closed
+  compatibility symbol so stale imports cannot silently persist incomplete summaries.
+- **Handoff:** INTEGRATION should use only the atomic cited-synthesis adapter for future summary
+  writes and may keep the DATA reader for historical/current projection reads.
 
 ## Required invariants
 
@@ -296,8 +321,9 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | migration clean apply    | `READY_FOR_REVIEW` | D09 migration Vitest              | Clean apply through `0023`; pass                                                         |
 | migration forward apply  | `READY_FOR_REVIEW` | D09 migration Vitest              | Populated legacy schema preserved; pass                                                  |
 | repository unit          | `READY_FOR_REVIEW` | full ESLint + TypeScript + unit   | No errors; 1171/1171                                                                     |
-| database integration     | `READY_FOR_REVIEW` | DATA persistence + fixture Vitest | Post-D10 serial DATA 50/50 pass                                                         |
-| semantic persistence     | `READY_FOR_REVIEW` | D10 PostgreSQL Vitest             | Atomic/replay/mutation/precision/concurrency/rollback/lineage 9/9 pass                  |
+| database integration     | `READY_FOR_REVIEW` | DATA persistence + fixture Vitest | Post-D11 serial DATA 50/50 pass                                                         |
+| semantic persistence     | `READY_FOR_REVIEW` | D10 PostgreSQL Vitest             | Exact-hash/replay/validation/concurrency/rollback/lineage 10/10 pass                    |
+| summary compatibility    | `READY_FOR_REVIEW` | D11 PostgreSQL Vitest             | Standalone fail-closed, historical read, unchanged slices 3/3 pass                     |
 | concurrency/idempotency  | `READY_FOR_REVIEW` | D06 PostgreSQL Vitest             | 8 concurrent deliveries + forced rollback; 3/3 pass                                      |
 | repository required gate | `READY_FOR_REVIEW` | full unit/contract/integration    | Latest-tip type and contract 103/103 pass; prior full gate 396/397 with known clock race |
 
@@ -310,6 +336,8 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | DATA-R3 | P1       | `FIXED` | Runs accepted nonexistent text version labels                | Bigint FKs pin existing immutable config/universe versions; negative tests pass  |
 | DATA-R4 | P2       | `FIXED` | Same-status SQL could rewrite tombstone metadata             | Terminal status, timestamp, and reason are immutable after transition            |
 | DATA-R5 | P1       | `FIXED` | Opposing-security claim could join a security narrative      | Null-safe DB trigger requires identical claim/narrative security identity        |
+| DATA-R6 | P1       | `FIXED` | Rounded observation numerics could hide crossed replay output | Exact unrounded per-security semantic output hash is persisted and compared       |
+| DATA-R7 | P1       | `FIXED` | D10 accepted incomplete dimensions or extra input-hash keys   | Exact four-dimension and observation/hash-key-set validation rejects both         |
 
 ## Open risks/blockers
 
@@ -333,20 +361,21 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | 79f4093     | First coordinator review fixes and renewed handoff    | DATA 40/40; unit 1171/1171; contract 100/100; integration 396/397 |
 | 413c9e7     | Null-safe narrative membership integrity correction   | D03 PostgreSQL 6/6; TypeScript pass                               |
 | 484304b     | Rebased migration rehearsal compatibility             | DATA 41/41; lint/type; contract 101/101                           |
-| this commit | D10 atomic E05 semantic persistence                    | D10 9/9; DATA 50/50; TypeScript; scoped lint                      |
+| c553e76     | D10 atomic E05 semantic persistence                    | D10 9/9; DATA 50/50; TypeScript; scoped lint                      |
+| this commit | D10 exact replay correction and D11 writer retirement | D10 10/10; D11 3/3; DATA 50/50; TypeScript; scoped lint           |
 
 ## Handoff
 
 ```text
 RNI LANE     DATA
 BRANCH       feat/rni-data-source-first
-BASE SHA     b5294cf69b2b76ca2caf75bc23ae27daad945baa (current integration base)
+BASE SHA     a161b6b (current integration base)
 STATUS       READY_FOR_REVIEW
-TASKS        10/10 ready for coordinator review
-TESTS        typecheck and scoped lint pass; D10 9/9; serial DATA 50/50; diff/ownership/contracts clean
+TASKS        11/11 ready for coordinator review
+TESTS        typecheck and scoped lint pass; D10 10/10; D11 3/3; serial DATA 50/50; diff/ownership/contracts clean
 CONTRACT     CR-DATA-001 and 002 accepted; CR-DATA-003 and 004 resolved
 RISKS        no DATA blocker; one previously known non-RNI integration clock race
-FILES        migrations 0020-0023; DATA repositories; RNI persistence tests/fixtures; DATA.md; D10 consumes but does not edit migration 0024
-COMMITS      prior D01-D09 history plus this commit (D10 atomic semantic persistence)
+FILES        migrations 0020-0023; DATA repositories; RNI persistence tests/fixtures; DATA.md; D10/D11 consume but do not edit migration 0024
+COMMITS      prior D01-D09 history; c553e76 (D10); this commit (D10 review correction and D11)
 DEMO PROOF   one comparative source persists distinct bullish NVDA and bearish AMD observations
 ```

@@ -137,6 +137,25 @@ function semanticBundle(
   return canonical({ claims, citations, themes, noise });
 }
 
+function semanticOutputHash(
+  classification: RniSemanticCommitRequest['classification'],
+  securityId: string,
+): string {
+  const observation = classification.observations.find(
+    (value) => value.securityId === securityId,
+  );
+  if (observation === undefined) fail('missing semantic-output observation');
+  return createHash('sha256')
+    .update(
+      canonical({
+        observation,
+        inputHash: classification.inputHashesBySecurity[securityId],
+        semantic: semanticBundle(classification, securityId),
+      }),
+    )
+    .digest('hex');
+}
+
 function assertUnique<T>(values: readonly T[], key: (value: T) => string, label: string): void {
   const keys = values.map(key);
   if (new Set(keys).size !== keys.length) fail(`duplicate ${label}`);
@@ -248,25 +267,42 @@ async function insertRunObservation(
   observationId: string,
   sourceItemId: string,
   securityId: string,
+  outputHash: string,
   createdAt: string,
   db: Queryable,
 ): Promise<boolean> {
-  const { rows } = await db.query<{ observation_id: string; source_item_id: string; security_id: string }>(
-    `insert into rni_run_observation (run_id, observation_id, source_item_id, security_id, created_at)
-     values ($1, $2, $3, $4, $5)
+  const { rows } = await db.query<{
+    observation_id: string;
+    source_item_id: string;
+    security_id: string;
+    semantic_output_hash: string;
+  }>(
+    `insert into rni_run_observation (
+       run_id, observation_id, source_item_id, security_id, semantic_output_hash, created_at
+     ) values ($1, $2, $3, $4, $5, $6)
      on conflict (run_id, observation_id) do nothing
-     returning observation_id, source_item_id, security_id`,
-    [runId, observationId, sourceItemId, securityId, createdAt],
+     returning observation_id, source_item_id, security_id, semantic_output_hash`,
+    [runId, observationId, sourceItemId, securityId, outputHash, createdAt],
   );
   if (rows[0] !== undefined) return true;
-  const existing = await db.query<{ observation_id: string; source_item_id: string; security_id: string }>(
-    `select observation_id, source_item_id, security_id from rni_run_observation
+  const existing = await db.query<{
+    observation_id: string;
+    source_item_id: string;
+    security_id: string;
+    semantic_output_hash: string;
+  }>(
+    `select observation_id, source_item_id, security_id, semantic_output_hash
+       from rni_run_observation
       where run_id = $1 and observation_id = $2`,
     [runId, observationId],
   );
   const row = existing.rows[0];
   if (row === undefined) fail('run-observation identity conflict without a durable row');
-  if (row.source_item_id !== sourceItemId || row.security_id !== securityId) {
+  if (
+    row.source_item_id !== sourceItemId ||
+    row.security_id !== securityId ||
+    row.semantic_output_hash !== outputHash
+  ) {
     fail('run-observation identity reused with different lineage');
   }
   return false;
@@ -403,8 +439,9 @@ async function assertExistingSemanticSet(
   const { rows: memberships } = await db.query<{
     observation_id: string;
     security_id: string;
+    semantic_output_hash: string;
   }>(
-    `select observation_id, security_id from rni_run_observation
+    `select observation_id, security_id, semantic_output_hash from rni_run_observation
       where run_id = $1 and source_item_id = $2 order by security_id, observation_id`,
     [input.runId, input.sourceItemId],
   );
@@ -415,6 +452,7 @@ async function assertExistingSemanticSet(
     .map(({ id: observation_id, securityId: security_id }) => ({
       observation_id,
       security_id,
+      semantic_output_hash: semanticOutputHash(input.classification, security_id),
     }));
   if (canonical(memberships) !== canonical(expectedMemberships)) {
     fail('durable observation set differs from replay');
@@ -469,6 +507,12 @@ async function assertExistingSemanticSet(
 
 function validateRequest(input: RniSemanticCommitRequest): void {
   const { classification } = input;
+  const requiredDimensions = [
+    'company_fundamentals',
+    'market_trading',
+    'catalyst_event',
+    'retail_narrative',
+  ];
   if (classification.observations.length === 0) fail('empty observation set');
   assertUnique(classification.observations, ({ securityId }) => securityId, 'observation security');
   assertUnique(classification.claims, claimKey, 'claim');
@@ -494,12 +538,24 @@ function validateRequest(input: RniSemanticCommitRequest): void {
     fail('crossed source binding');
   }
   for (const observation of classification.observations) {
+    const dimensions = observation.dimensions.map(({ dimension }) => dimension).sort();
+    if (
+      dimensions.length !== requiredDimensions.length ||
+      canonical(dimensions) !== canonical([...requiredDimensions].sort())
+    ) {
+      fail('observation must contain each frozen dimension exactly once');
+    }
     if (classification.inputHashesBySecurity[observation.securityId] !== observation.inputHash) {
       fail('observation input-hash lineage mismatch');
     }
     if (classification.noise.filter(({ securityId }) => securityId === observation.securityId).length !== 1) {
       fail('missing per-security noise assessment');
     }
+  }
+  const observationSecurityIds = [...observationBySecurity.keys()].sort();
+  const inputHashSecurityIds = Object.keys(classification.inputHashesBySecurity).sort();
+  if (canonical(observationSecurityIds) !== canonical(inputHashSecurityIds)) {
+    fail('input-hash security keys differ from the observation set');
   }
   for (const value of [
     ...classification.claims,
@@ -558,6 +614,7 @@ async function commit(
         stored.observation.id,
         observation.sourceItemId,
         observation.securityId,
+        semanticOutputHash(input.classification, observation.securityId),
         observation.createdAt,
         db,
       ),

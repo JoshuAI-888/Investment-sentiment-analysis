@@ -112,6 +112,30 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
   }
 
   function classification(): RniPersistedClassificationResult {
+    const observations = comparativeObservations.map((observation) => ({
+      ...observation,
+      dimensions: [
+        observation.dimensions[0]!,
+        {
+          dimension: 'market_trading' as const,
+          stance: 'insufficient' as const,
+          score: null,
+          rationale: 'No market-trading support.',
+        },
+        {
+          dimension: 'catalyst_event' as const,
+          stance: 'insufficient' as const,
+          score: null,
+          rationale: 'No catalyst support.',
+        },
+        {
+          dimension: 'retail_narrative' as const,
+          stance: 'insufficient' as const,
+          score: null,
+          rationale: 'No retail-narrative support.',
+        },
+      ],
+    }));
     const claims = [
       {
         sourceItemId: comparativeSource.id,
@@ -148,7 +172,7 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
       },
     ];
     return {
-      observations: comparativeObservations,
+      observations,
       claims,
       citationProposals: claims.map((claim) => ({
         ...claim,
@@ -183,7 +207,7 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
           endOffset: 53,
         },
       ],
-      noise: comparativeObservations.map((observation, index) => ({
+      noise: observations.map((observation, index) => ({
         sourceItemId: comparativeSource.id,
         securityId: observation.securityId,
         evidenceText: index === 0 ? 'NVDA has execution momentum' : 'AMD is still catching up',
@@ -202,7 +226,7 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
         exclusionReason: null,
       })),
       inputHashesBySecurity: Object.fromEntries(
-        comparativeObservations.map((observation) => [observation.securityId, observation.inputHash]),
+        observations.map((observation) => [observation.securityId, observation.inputHash]),
       ),
     };
   }
@@ -268,7 +292,7 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
           ...original.citationProposals.slice(1),
         ],
       }),
-    ).rejects.toThrow('durable claim set differs');
+    ).rejects.toThrow('durable observation set differs');
     const changedEvidence = {
       ...original.claims[0]!,
       evidenceText: 'Changed citation evidence',
@@ -282,14 +306,14 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
           ...original.citationProposals.slice(1),
         ],
       }),
-    ).rejects.toThrow('durable claim set differs');
+    ).rejects.toThrow('durable observation set differs');
     await expect(
       commit({
         ...original,
         claims: original.claims.slice(1),
         citationProposals: original.citationProposals.slice(1),
       }),
-    ).rejects.toThrow('durable claim set differs');
+    ).rejects.toThrow('durable observation set differs');
     const addedClaim = {
       ...original.claims[0]!,
       dimension: 'market_trading' as const,
@@ -304,7 +328,7 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
           { ...original.citationProposals[0]!, ...addedClaim, platform: 'reddit' },
         ],
       }),
-    ).rejects.toThrow('durable claim set differs');
+    ).rejects.toThrow('durable observation set differs');
     await expect(
       commit({
         ...original,
@@ -312,7 +336,7 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
           index === 0 ? { ...theme, endOffset: theme.endOffset - 1 } : theme,
         ),
       }),
-    ).rejects.toThrow('durable claim set differs');
+    ).rejects.toThrow('durable observation set differs');
   });
 
   it('replays valid higher-precision decimals through storage canonicalization', async () => {
@@ -325,7 +349,12 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
         relevance: '0.987654',
         dimensions: observation.dimensions.map((dimension) => ({
           ...dimension,
-          score: observation.stance === 'bullish' ? '0.650001' : '-0.450001',
+          score:
+            dimension.score === null
+              ? null
+              : observation.stance === 'bullish'
+                ? '0.650001'
+                : '-0.450001',
         })),
       })),
       themes: original.themes.map((theme) => ({
@@ -340,6 +369,15 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
     };
     const first = await commit(precise);
     expect(await commit(precise)).toEqual({ ...first, disposition: 'duplicate' });
+    const crossedRoundedNumeric: RniPersistedClassificationResult = {
+      ...precise,
+      observations: precise.observations.map((observation, index) =>
+        index === 0 ? { ...observation, stanceScore: '0.650002' } : observation,
+      ),
+    };
+    await expect(commit(crossedRoundedNumeric)).rejects.toThrow(
+      'durable observation set differs',
+    );
   });
 
   it('serializes concurrent crossed classifications and commits only one complete set', async () => {
@@ -365,8 +403,7 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
 
   it('rejects crossed JSONB dimension scores even when numeric rounding would match', async () => {
     const original = classification();
-    await commit(original);
-    const crossed: RniPersistedClassificationResult = {
+    const precise: RniPersistedClassificationResult = {
       ...original,
       observations: original.observations.map((observation, index) =>
         index === 0
@@ -374,13 +411,67 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
               ...observation,
               dimensions: observation.dimensions.map((dimension) => ({
                 ...dimension,
-                score: '0.650001',
+                score: dimension.score === null ? null : '0.650001',
               })),
             }
           : observation,
       ),
     };
-    await expect(commit(crossed)).rejects.toThrow('observation identity reused');
+    await commit(precise);
+    const crossed: RniPersistedClassificationResult = {
+      ...precise,
+      observations: precise.observations.map((observation, index) =>
+        index === 0
+          ? {
+              ...observation,
+              dimensions: observation.dimensions.map((dimension) => ({
+                ...dimension,
+                score: dimension.score === null ? null : '0.650002',
+              })),
+            }
+          : observation,
+      ),
+    };
+    await expect(commit(crossed)).rejects.toThrow('durable observation set differs');
+  });
+
+  it('requires exactly four frozen dimensions and exact input-hash security keys', async () => {
+    const original = classification();
+    await expect(
+      commit({
+        ...original,
+        observations: original.observations.map((observation, index) =>
+          index === 0
+            ? { ...observation, dimensions: observation.dimensions.slice(0, 3) }
+            : observation,
+        ),
+      }),
+    ).rejects.toThrow('each frozen dimension exactly once');
+    await expect(
+      commit({
+        ...original,
+        observations: original.observations.map((observation, index) =>
+          index === 0
+            ? {
+                ...observation,
+                dimensions: [
+                  ...observation.dimensions.slice(0, 3),
+                  observation.dimensions[0]!,
+                ],
+              }
+            : observation,
+        ),
+      }),
+    ).rejects.toThrow('each frozen dimension exactly once');
+    await expect(
+      commit({
+        ...original,
+        inputHashesBySecurity: {
+          ...original.inputHashesBySecurity,
+          [randomUUID()]: 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        },
+      }),
+    ).rejects.toThrow('input-hash security keys differ');
   });
 
   it('fails closed when an observation identity contains crossed content', async () => {
@@ -392,7 +483,7 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
         index === 0 ? { ...value, claimSummary: 'crossed observation content' } : value,
       ),
     };
-    await expect(commit(crossedObservation)).rejects.toThrow('observation identity reused');
+    await expect(commit(crossedObservation)).rejects.toThrow('durable observation set differs');
   });
 
   it('rolls every semantic child back when one child write fails', async () => {

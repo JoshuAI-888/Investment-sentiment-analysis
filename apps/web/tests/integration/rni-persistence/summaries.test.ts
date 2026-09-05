@@ -113,33 +113,20 @@ describe.skipIf(url === undefined)('RNI D05 cross-source summary persistence', (
     };
   }
 
-  it('persists divergence text while leaving both platform slices byte-for-byte unchanged', async () => {
+  it('fails closed before a standalone summary can bypass cited-synthesis lineage', async () => {
     const before = await getRniPlatformSlices(run.id, pool);
     const input = summary();
-    const result = await persistRniCombinedSummary(input, pool);
+    await expect(persistRniCombinedSummary(input, pool)).rejects.toThrow(
+      'standalone combined-summary writes are retired',
+    );
     const after = await getRniPlatformSlices(run.id, pool);
 
-    expect(result).toEqual({ summary: input, inserted: true });
     expect(after).toEqual(before);
-    expect(await getRniCombinedSummary(run.id, securityId, pool)).toEqual(input);
-
-    const { rows } = await pool.query<{
-      reddit_platform: string;
-      reddit_platform_slice_id: string;
-      x_platform: string;
-      x_platform_slice_id: string;
-    }>(
-      'select reddit_platform, reddit_platform_slice_id, x_platform, x_platform_slice_id from rni_combined_summary',
-    );
-    expect(rows[0]).toEqual({
-      reddit_platform: 'reddit',
-      reddit_platform_slice_id: slices[0].id,
-      x_platform: 'x',
-      x_platform_slice_id: slices[1].id,
-    });
+    expect(await getRniCombinedSummary(run.id, securityId, pool)).toBeUndefined();
+    expect((await pool.query('select id from rni_combined_summary')).rowCount).toBe(0);
   });
 
-  it('preserves an honest partial state when X is unavailable', async () => {
+  it('does not mutate an unavailable component slice while refusing a partial standalone write', async () => {
     await pool.query(
       `update rni_platform_slice
           set status = 'unavailable', eligible_source_count = 0, error_code = 'X_UNAVAILABLE'
@@ -169,7 +156,11 @@ describe.skipIf(url === undefined)('RNI D05 cross-source summary persistence', (
         },
       ],
     });
-    expect((await persistRniCombinedSummary(partial, pool)).summary).toEqual(partial);
+    const before = await getRniPlatformSlices(run.id, pool);
+    await expect(persistRniCombinedSummary(partial, pool)).rejects.toThrow(
+      'atomic cited-synthesis persistence adapter',
+    );
+    expect(await getRniPlatformSlices(run.id, pool)).toEqual(before);
     expect((await getRniPlatformSlices(run.id, pool))[1]).toMatchObject({
       platform: 'x',
       status: 'unavailable',
@@ -177,18 +168,43 @@ describe.skipIf(url === undefined)('RNI D05 cross-source summary persistence', (
     });
   });
 
-  it('is idempotent per run/security and never replaces a prior summary', async () => {
-    const first = await persistRniCombinedSummary(summary(), pool);
-    const duplicate = await persistRniCombinedSummary(
-      summary({ id: randomUUID(), status: 'partial' }),
-      pool,
-    );
-    expect(duplicate).toEqual({ summary: first.summary, inserted: false });
-  });
+  it('preserves historical summary reads and their immutable component references', async () => {
+    const historical = summary();
+    const before = await getRniPlatformSlices(run.id, pool);
+    await pool.query('alter table rni_combined_summary disable trigger rni_combined_summary_requires_cited_artifact');
+    try {
+      await pool.query(
+        `insert into rni_combined_summary (
+           id, run_id, security_id, reddit_platform_slice_id, x_platform_slice_id, status,
+           sections, created_at
+         ) values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)`,
+        [
+          historical.id,
+          historical.runId,
+          historical.securityId,
+          slices[0].id,
+          slices[1].id,
+          historical.status,
+          JSON.stringify(historical.sections),
+          historical.createdAt,
+        ],
+      );
+    } finally {
+      await pool.query('alter table rni_combined_summary enable trigger rni_combined_summary_requires_cited_artifact');
+    }
 
-  it('fails closed when the run has no persisted component slices', async () => {
-    await expect(persistRniCombinedSummary(summary({ runId: randomUUID() }), pool)).rejects.toThrow(
-      'requires persisted Reddit and X slices',
+    expect(await getRniCombinedSummary(run.id, securityId, pool)).toEqual(historical);
+    expect(await getRniPlatformSlices(run.id, pool)).toEqual(before);
+    const { rows } = await pool.query<{
+      reddit_platform_slice_id: string;
+      x_platform_slice_id: string;
+    }>(
+      'select reddit_platform_slice_id, x_platform_slice_id from rni_combined_summary where id = $1',
+      [historical.id],
     );
+    expect(rows[0]).toEqual({
+      reddit_platform_slice_id: slices[0].id,
+      x_platform_slice_id: slices[1].id,
+    });
   });
 });
