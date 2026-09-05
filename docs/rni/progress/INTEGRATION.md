@@ -310,6 +310,7 @@
 | `apps/web/src/rni/contracts/index.ts`, `src/rni/testing/reference-fixtures.ts` | Resolve CR-DATA-001 with one commit-returning source-persistence boundary | `6b67657` | RNI contract test + full contract suite |
 | `docs/features/RNI-00-CONTRACT.md`, `docs/MEMORY.md` | Record the accepted cross-lane persistence rule as D-RNI-08 | `6b67657` | contract/doc review |
 | `apps/web/migrations/0024_rni_universe_upgrade.sql`, `src/repositories/versions.ts` | Make FMP snapshot staging immutable, auditable, payload-idempotent, and independent of activation | `e535624` | disposable PostgreSQL 501-member stage/replay test |
+| `apps/web/migrations/0024_rni_universe_upgrade.sql`, cited-synthesis and model-budget PostgreSQL tests | Implement D-RNI-26 canonical verification stage, reason-bound skipped plans and candidate/selection separation | `CURRENT` | focused PostgreSQL cited publication 21/21 and model budget 15/15; typecheck/lint/diff pass |
 | `apps/web/src/adapters/fmp-universe.ts`, `src/rni/universe/**`, `app/api/rni/universe/sync/route.ts` | Compose authenticated FMP retrieval, strict validation, security-master resolution, and admin-only staging | `e535624` | adapter/unit, service/route integration, lint, typecheck, production build |
 | `apps/web/app/(admin)/admin/settings/universe/page.tsx` | Identify the FMP-current preset and preserve separate human-approved activation on the existing Settings route | `e535624` | `check:copy`; production build route manifest |
 | `apps/web/src/rni/contracts/index.ts`, `src/rni/testing/reference-fixtures.ts` | Resolve CR-SURFACE-01 with citation-ID lookup through the frozen read service | `264ea9c` | RNI contract 9 pass; full contract 79 pass/22 DB-skipped |
@@ -376,6 +377,8 @@
 | IR-09 | P2 | `RESOLVED` | Invalid-snapshot terminal persistence lacks a PostgreSQL replay/lineage assertion | Exact-500 database case binds provider/payload, records failure audit, creates no version and replays without fetch |
 | IR-10 | P2 | `RESOLVED` | Bootstrap conflict, compatible reuse, rollback and append-only lineage branches lack acceptance coverage | Each conflict case now inserts a unique security before a later identity conflict and proves security/import/member/audit rollback |
 | IR-11 | P2 | `RESOLVED` | A worker abandoned after provider dispatch can leave the terminal command without its already-persisted provider-call identity | Provider log and running-command binding share one transaction; post-dispatch abandonment retains the identity without refetch |
+| I07R-01 | P1 | `OPEN` | I07's reader rejects D-RNI-26 `skipped` invocation plans, so accepted no-call artifacts cannot replay | Return to I07 after rebasing the coordinator migration; allow validated skipped descriptors and cover both no-call paths |
+| I07R-02 | P1 | `OPEN` | I07's blocker-characterization tests assert superseded pre-D-RNI-26 schema failures | Convert them to positive canonical-stage/skipped/subset cases plus invalid-stage/reason/role negatives on the corrected integration base |
 
 ## Open risks/blockers
 
@@ -397,6 +400,7 @@
 | `e535624` | Stage validated current FMP S&P 500 snapshots without activating them | lint; typecheck; unit 1,175; contract 78 pass/22 DB-skipped; RNI service/route 16 pass; PostgreSQL universe 4 pass + versions 9 pass; `check:copy`; production build |
 | `264ea9c` | Resolve remaining initial lane contract requests and freeze citation lookup | lint; typecheck; RNI contract 9 pass; full contract 79 pass/22 DB-skipped |
 | `84dca87` | Accept CR-SURFACE-02 and freeze non-poolable Radar pagination | typecheck; focused/full lint; RNI contract 11 pass; full contract 81 pass/22 DB-skipped |
+| `CURRENT` | Implement D-RNI-26 cited-publication schema compatibility | PostgreSQL cited publication 21/21 and model budget 15/15; typecheck; focused lint; diff check |
 | `254fe45` | Merge accepted DATA lane into integration | coordinator typecheck; full contract 81 pass/22 DB-skipped; fresh PostgreSQL DATA 41/41 |
 | `2607140` | Record DATA lane acceptance and close G3 | coordinator review and merged verification evidence |
 | `6470823` | Record ENGINE E02 review findings | semantic review against source coverage, privacy and content-version requirements |

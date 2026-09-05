@@ -549,7 +549,7 @@ create table rni_synthesis_model_invocation (
   constraint rni_synthesis_model_invocation_stage_check
     check (stage in ('verification', 'challenger')),
   constraint rni_synthesis_model_invocation_status_check
-    check (status in ('prepared', 'succeeded', 'failed')),
+    check (status in ('prepared', 'succeeded', 'failed', 'skipped')),
   constraint rni_synthesis_model_invocation_versions_check check (
     length(model_id) > 0 and length(model_revision) > 0 and length(prompt_version) > 0
   ),
@@ -597,6 +597,22 @@ create table rni_synthesis_model_invocation (
         or rni_sanitized_model_usage_valid(terminal_metadata -> 'usage')
       )
     )
+    or (
+      status = 'skipped'
+      and output_hash is null
+      and completed_at is not null
+      and completed_at >= prepared_at
+      and jsonb_typeof(terminal_metadata) = 'object'
+      and terminal_metadata ->> 'outcome' = 'skipped'
+      and terminal_metadata ->> 'reason' in (
+        'no_eligible_claims', 'no_verified_assessments'
+      )
+      and (
+        (stage = 'verification' and terminal_metadata ->> 'reason' = 'no_eligible_claims')
+        or stage = 'challenger'
+      )
+      and terminal_metadata - array['outcome', 'reason'] = '{}'::jsonb
+    )
   ),
   constraint rni_synthesis_model_invocation_stage_unique unique (batch_id, stage),
   constraint rni_synthesis_model_invocation_full_identity_unique
@@ -624,7 +640,7 @@ create trigger rni_synthesis_model_invocation_starts_prepared
 create or replace function rni_synthesis_invocation_transition_valid() returns trigger
 language plpgsql as $$
 begin
-  if old.status <> 'prepared' or new.status not in ('succeeded', 'failed') then
+  if old.status <> 'prepared' or new.status not in ('succeeded', 'failed', 'skipped') then
     raise exception 'RNI synthesis model invocation permits one prepared-to-terminal transition'
       using errcode = 'restrict_violation';
   end if;
@@ -993,56 +1009,75 @@ create or replace function rni_validate_catalyst_assessment(
 declare
   assessment_row rni_catalyst_assessment%rowtype;
   invocation_status text;
-  expected_supporting jsonb;
-  expected_contradicting jsonb;
+  invocation_reason text;
 begin
   select * into assessment_row
     from rni_catalyst_assessment
    where batch_id = value_batch_id and claim_id = value_claim_id;
   if assessment_row.batch_id is null then return; end if;
 
-  select status into invocation_status
+  select status, terminal_metadata ->> 'reason' into invocation_status, invocation_reason
     from rni_synthesis_model_invocation
    where id = assessment_row.verifier_invocation_id;
-  if invocation_status is distinct from 'succeeded' then
-    raise exception 'RNI catalyst assessment requires the terminal successful verifier invocation'
+  if invocation_status not in ('succeeded', 'skipped') then
+    raise exception 'RNI catalyst assessment requires a terminal verifier invocation plan'
       using errcode = 'check_violation',
             constraint = 'rni_catalyst_assessment_terminal_verifier';
   end if;
 
-  select coalesce(jsonb_agg(to_jsonb(citation_id::text) order by citation_id::text), '[]'::jsonb)
-    into expected_supporting
-    from rni_synthesis_citation_role
-   where batch_id = value_batch_id and target_claim_id = value_claim_id
-     and evidence_role = 'corroborating';
-  select coalesce(jsonb_agg(to_jsonb(citation_id::text) order by citation_id::text), '[]'::jsonb)
-    into expected_contradicting
-    from rni_synthesis_citation_role
-   where batch_id = value_batch_id and target_claim_id = value_claim_id
-     and evidence_role = 'counterevidence';
-  if assessment_row.supporting_citation_ids <> expected_supporting
-     or assessment_row.contradicting_citation_ids <> expected_contradicting then
-    raise exception 'RNI catalyst assessment citation sets must equal the exact claim-role edges'
+  if exists (
+    select 1
+      from jsonb_array_elements_text(assessment_row.supporting_citation_ids) as selected(value)
+     where not exists (
+       select 1 from rni_synthesis_citation_role as role
+        where role.batch_id = value_batch_id
+          and role.target_claim_id = value_claim_id
+          and role.evidence_role = 'corroborating'
+          and role.citation_id = selected.value::uuid
+     )
+  ) or exists (
+    select 1
+      from jsonb_array_elements_text(assessment_row.contradicting_citation_ids) as selected(value)
+     where not exists (
+       select 1 from rni_synthesis_citation_role as role
+        where role.batch_id = value_batch_id
+          and role.target_claim_id = value_claim_id
+          and role.evidence_role = 'counterevidence'
+          and role.citation_id = selected.value::uuid
+     )
+  ) or exists (
+    select 1
+      from jsonb_array_elements_text(assessment_row.supporting_citation_ids) as supporting(value)
+      join jsonb_array_elements_text(assessment_row.contradicting_citation_ids) as contradicting(value)
+        on supporting.value = contradicting.value
+  ) then
+    raise exception 'RNI catalyst assessment citations must be selected from exact same-claim role candidates'
       using errcode = 'check_violation',
             constraint = 'rni_catalyst_assessment_exact_citations';
   end if;
   if not (
     (assessment_row.verdict = 'supported'
-      and jsonb_array_length(expected_supporting) > 0
-      and jsonb_array_length(expected_contradicting) = 0)
+      and jsonb_array_length(assessment_row.supporting_citation_ids) > 0
+      and jsonb_array_length(assessment_row.contradicting_citation_ids) = 0)
     or (assessment_row.verdict = 'contradicted'
-      and jsonb_array_length(expected_supporting) = 0
-      and jsonb_array_length(expected_contradicting) > 0)
+      and jsonb_array_length(assessment_row.supporting_citation_ids) = 0
+      and jsonb_array_length(assessment_row.contradicting_citation_ids) > 0)
     or (assessment_row.verdict = 'contested'
-      and jsonb_array_length(expected_supporting) > 0
-      and jsonb_array_length(expected_contradicting) > 0)
+      and jsonb_array_length(assessment_row.supporting_citation_ids) > 0
+      and jsonb_array_length(assessment_row.contradicting_citation_ids) > 0)
     or (assessment_row.verdict = 'unverified'
-      and jsonb_array_length(expected_supporting) = 0
-      and jsonb_array_length(expected_contradicting) = 0)
+      and jsonb_array_length(assessment_row.supporting_citation_ids) = 0
+      and jsonb_array_length(assessment_row.contradicting_citation_ids) = 0)
   ) then
     raise exception 'RNI catalyst assessment verdict does not match its social evidence roles'
       using errcode = 'check_violation',
             constraint = 'rni_catalyst_assessment_verdict_shape';
+  end if;
+  if invocation_status = 'skipped'
+     and (invocation_reason <> 'no_eligible_claims' or assessment_row.verdict <> 'unverified') then
+    raise exception 'RNI skipped verification permits only unverified catalyst assessments'
+      using errcode = 'check_violation',
+            constraint = 'rni_catalyst_assessment_skipped_verifier';
   end if;
 end;
 $$;
@@ -1089,39 +1124,39 @@ returns void language plpgsql as $$
 declare
   selection_row rni_challenger_selection%rowtype;
   invocation_status text;
+  invocation_reason text;
   expected jsonb;
   support_count integer;
   counter_count integer;
 begin
   select * into selection_row from rni_challenger_selection where batch_id = value_batch_id;
   if selection_row.batch_id is null then return; end if;
-  select status into invocation_status
+  select status, terminal_metadata ->> 'reason' into invocation_status, invocation_reason
     from rni_synthesis_model_invocation where id = selection_row.challenger_invocation_id;
-  if invocation_status is distinct from 'succeeded' then
-    raise exception 'RNI challenger selection requires the terminal successful challenger invocation'
+  if invocation_status not in ('succeeded', 'skipped') then
+    raise exception 'RNI challenger selection requires a terminal challenger invocation plan'
       using errcode = 'check_violation',
             constraint = 'rni_challenger_selection_terminal_invocation';
   end if;
 
-  select count(*) filter (where evidence_role = 'corroborating'),
-         count(*) filter (where evidence_role = 'counterevidence')
+  select coalesce(sum(jsonb_array_length(supporting_citation_ids)), 0),
+         coalesce(sum(jsonb_array_length(contradicting_citation_ids)), 0)
     into support_count, counter_count
-    from rni_synthesis_citation_role
-   where batch_id = value_batch_id and target_claim_id is not null;
+    from rni_catalyst_assessment
+   where batch_id = value_batch_id;
   if selection_row.verdict = 'material_challenge' then
     if selection_row.challenged_claim_id is null then
       raise exception 'RNI material challenge must select one persisted catalyst claim'
         using errcode = 'check_violation',
               constraint = 'rni_challenger_selection_shape';
     end if;
-    select coalesce(jsonb_agg(to_jsonb(citation_id::text) order by citation_id::text), '[]'::jsonb)
+    select contradicting_citation_ids
       into expected
-      from rni_synthesis_citation_role
+      from rni_catalyst_assessment
      where batch_id = value_batch_id
-       and target_claim_id = selection_row.challenged_claim_id
-       and evidence_role = 'counterevidence';
+       and claim_id = selection_row.challenged_claim_id;
     if selection_row.citation_ids <> expected or jsonb_array_length(expected) = 0 then
-      raise exception 'RNI material challenge must select the exact counterevidence set'
+      raise exception 'RNI material challenge must select the exact verifier-selected counterevidence set'
         using errcode = 'check_violation',
               constraint = 'rni_challenger_selection_exact_citations';
     end if;
@@ -1139,6 +1174,15 @@ begin
     raise exception 'RNI insufficient challenger selection requires no corroborating or counter evidence'
       using errcode = 'check_violation',
             constraint = 'rni_challenger_selection_shape';
+  end if;
+  if invocation_status = 'skipped'
+     and (
+       invocation_reason not in ('no_eligible_claims', 'no_verified_assessments')
+       or selection_row.verdict <> 'insufficient'
+     ) then
+    raise exception 'RNI skipped challenger permits only an insufficient selection'
+      using errcode = 'check_violation',
+            constraint = 'rni_challenger_selection_skipped_invocation';
   end if;
 end;
 $$;
@@ -1425,22 +1469,22 @@ language plpgsql as $$
 declare
   verifier_status text;
   challenger_status text;
+  verifier_reason text;
+  challenger_reason text;
   input_count integer;
   assessment_count integer;
+  verified_assessment_count integer;
+  expected_verification jsonb;
+  expected_challenger jsonb;
 begin
-  select status into verifier_status
+  select status, terminal_metadata ->> 'reason' into verifier_status, verifier_reason
     from rni_synthesis_model_invocation where id = new.verifier_invocation_id;
-  select status into challenger_status
+  select status, terminal_metadata ->> 'reason' into challenger_status, challenger_reason
     from rni_synthesis_model_invocation where id = new.challenger_invocation_id;
-  if verifier_status is distinct from 'succeeded'
-     or challenger_status is distinct from 'succeeded' then
-    raise exception 'RNI cited synthesis requires distinct terminal successful verifier and challenger invocations'
-      using errcode = 'check_violation',
-            constraint = 'rni_cited_synthesis_terminal_invocations';
-  end if;
   select count(*) into input_count
     from rni_synthesis_claim_input where batch_id = new.batch_id;
-  select count(*) into assessment_count
+  select count(*), count(*) filter (where verdict <> 'unverified')
+    into assessment_count, verified_assessment_count
     from rni_catalyst_assessment where batch_id = new.batch_id;
   if input_count <> assessment_count then
     raise exception 'RNI cited synthesis requires exactly one assessment for every catalyst input'
@@ -1451,6 +1495,60 @@ begin
     raise exception 'RNI cited synthesis requires one persisted challenger selection'
       using errcode = 'check_violation',
             constraint = 'rni_cited_synthesis_challenger_selection';
+  end if;
+  if verifier_status = 'skipped' then
+    if verifier_reason <> 'no_eligible_claims'
+       or challenger_status <> 'skipped'
+       or challenger_reason <> 'no_eligible_claims'
+       or verified_assessment_count <> 0 then
+      raise exception 'RNI no-eligible-claim publication requires both invocation plans skipped and every assessment unverified'
+        using errcode = 'check_violation',
+              constraint = 'rni_cited_synthesis_skipped_invocations';
+    end if;
+  elsif verifier_status = 'succeeded' then
+    if verified_assessment_count = 0 then
+      if challenger_status <> 'skipped'
+         or challenger_reason <> 'no_verified_assessments' then
+        raise exception 'RNI all-unverified publication requires the challenger plan to be skipped'
+          using errcode = 'check_violation',
+                constraint = 'rni_cited_synthesis_skipped_invocations';
+      end if;
+    elsif challenger_status <> 'succeeded' then
+      raise exception 'RNI verified catalyst publication requires a successful challenger invocation'
+        using errcode = 'check_violation',
+              constraint = 'rni_cited_synthesis_terminal_invocations';
+    end if;
+  else
+    raise exception 'RNI cited synthesis requires terminal successful or policy-skipped invocation plans'
+      using errcode = 'check_violation',
+            constraint = 'rni_cited_synthesis_terminal_invocations';
+  end if;
+
+  select coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'claimId', claim_id::text,
+          'verdict', verdict,
+          'supportingCitationIds', supporting_citation_ids,
+          'contradictingCitationIds', contradicting_citation_ids
+        ) order by claim_id::text
+      ),
+      '[]'::jsonb
+    ) into expected_verification
+    from rni_catalyst_assessment
+   where batch_id = new.batch_id;
+  select jsonb_build_object(
+      'verdict', verdict,
+      'challengedClaimId', case when challenged_claim_id is null then null else to_jsonb(challenged_claim_id::text) end,
+      'citationIds', citation_ids
+    ) into expected_challenger
+    from rni_challenger_selection
+   where batch_id = new.batch_id;
+  if new.verification_output_snapshot <> expected_verification
+     or new.challenger_output_snapshot <> expected_challenger then
+    raise exception 'RNI cited synthesis snapshots must equal persisted assessment and challenger selections'
+      using errcode = 'check_violation',
+            constraint = 'rni_cited_synthesis_exact_model_outputs';
   end if;
   perform rni_validate_synthesis_batch_manifests(new.batch_id);
   perform rni_validate_publication_graph(new.id);
@@ -1989,7 +2087,7 @@ begin
   if new.task in ('rni_verification', 'rni_challenger') then
     select stage into synthesis_stage from rni_synthesis_model_invocation where id = new.id;
     if synthesis_stage is distinct from (
-      case when new.task = 'rni_verification' then 'verifier' else 'challenger' end
+      case when new.task = 'rni_verification' then 'verification' else 'challenger' end
     ) then
       raise exception 'RNI synthesis invocation stage does not match its governed model task'
         using errcode = 'check_violation', constraint = 'rni_ai_invocation_synthesis_stage';

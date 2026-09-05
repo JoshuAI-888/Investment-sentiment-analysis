@@ -620,6 +620,31 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
       [invocationId],
     );
     expect(rows.rows[0]!.count).toBe('0');
+
+    const batchId = randomUUID();
+    await pool.query(
+      `insert into rni_synthesis_batch (
+         id, run_id, security_id, assessment_cutoff_at, policy_version,
+         rights_policy_version, ordered_citation_ids, reddit_platform_citation_ids,
+         x_platform_citation_ids, created_at
+       ) values ($1, $2, $3, now(), 'rni-cited-synthesis-policy-v1',
+                 'rni-source-policy-v1', '[]', '[]', '[]', now())`,
+      [batchId, run.runId, run.securityId],
+    );
+    await pool.query(
+      `insert into rni_synthesis_model_invocation (
+         id, batch_id, stage, model_id, model_revision, prompt_version,
+         ordered_claim_ids, input_hash, prepared_snapshot, prepared_at
+       ) values ($1, $2, 'verification', 'gpt-5.6-sol', 'sol-2026-07-09',
+                 'rni_verification-v1', '[]', $3, '{}', now())`,
+      [invocationId, batchId, HASH_A],
+    );
+
+    await expect(reserve(run, invocationId, 'rni_verification')).resolves.toMatchObject({
+      invocation_id: invocationId,
+      decision: 'reserved',
+      denial_code: null,
+    });
   });
 
   it('settles exact usage once while ambiguous calls retain their reservation', async () => {

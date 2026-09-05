@@ -52,6 +52,7 @@ const ids = {
   supportRole: '00000000-0000-4000-8000-000000001971',
   redditPlatformRole: '00000000-0000-4000-8000-000000001972',
   xPlatformRole: '00000000-0000-4000-8000-000000001973',
+  counterCandidateRole: '00000000-0000-4000-8000-000000001974',
   summary: '00000000-0000-4000-8000-000000001980',
   redditStatement: '00000000-0000-4000-8000-000000001981',
   xStatement: '00000000-0000-4000-8000-000000001982',
@@ -249,7 +250,14 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
     }
   }
 
-  async function seedPreparedSynthesis(): Promise<void> {
+  async function seedPreparedSynthesis(options: {
+    readonly verifier?: 'succeeded' | 'skipped';
+    readonly challenger?: 'succeeded' | 'skipped';
+    readonly skipReason?: 'no_eligible_claims' | 'no_verified_assessments';
+  } = {}): Promise<void> {
+    const verifierStatus = options.verifier ?? 'succeeded';
+    const challengerStatus = options.challenger ?? 'succeeded';
+    const unverified = verifierStatus === 'skipped' || challengerStatus === 'skipped';
     await pool.query(
       `insert into rni_synthesis_batch
          (id, run_id, security_id, assessment_cutoff_at, policy_version,
@@ -290,6 +298,11 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
       ids.supportObservation, 'reddit', 'corroborating', null, null,
     ]);
     await pool.query(roleSql, [
+      ids.counterCandidateRole, ids.batch, ids.run, ids.nvda, cutoff, policy, rights,
+      ids.targetClaim, ids.xCitation, ids.xClaim, ids.xSource,
+      ids.xObservation, 'x', 'counterevidence', null, null,
+    ]);
+    await pool.query(roleSql, [
       ids.redditPlatformRole, ids.batch, ids.run, ids.nvda, cutoff, policy, rights,
       null, ids.targetCitation, ids.targetClaim, ids.targetSource,
       ids.targetObservation, 'reddit', 'social_claim', ids.redditAnalytics, H('c'),
@@ -312,16 +325,25 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
                  '2026-09-05T01:01:00Z')`,
         [invocationId, ids.batch, stage, `rni-${stage}-v2`, J([ids.targetClaim]), inputHash],
       );
+      const status = stage === 'verification' ? verifierStatus : challengerStatus;
       await pool.query(
         `update rni_synthesis_model_invocation
-            set status = 'succeeded', output_hash = $2,
-                terminal_metadata = $3, completed_at = '2026-09-05T01:02:00Z'
+            set status = $2, output_hash = $3,
+                terminal_metadata = $4, completed_at = '2026-09-05T01:02:00Z'
           where id = $1`,
-        [
-          invocationId,
-          stage === 'verification' ? H('5') : H('6'),
-          J({ outcome: 'succeeded', responseId: `response-${stage}`, usage: { inputTokens: 10, outputTokens: 4 } }),
-        ],
+        status === 'succeeded'
+          ? [
+              invocationId,
+              status,
+              stage === 'verification' ? H('5') : H('6'),
+              J({ outcome: 'succeeded', responseId: `response-${stage}`, usage: { inputTokens: 10, outputTokens: 4 } }),
+            ]
+          : [
+              invocationId,
+              status,
+              null,
+              J({ outcome: 'skipped', reason: options.skipReason ?? 'no_eligible_claims' }),
+            ],
       );
     }
     await pool.query(
@@ -329,18 +351,26 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
          (batch_id, run_id, security_id, assessment_cutoff_at, policy_version,
           rights_policy_version, claim_id, verifier_invocation_id, verdict,
           supporting_citation_ids, contradicting_citation_ids, assessment_hash)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, 'supported', $9, '[]', $10)`,
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, '[]', $11)`,
       [
         ids.batch, ids.run, ids.nvda, cutoff, policy, rights, ids.targetClaim,
-        ids.verifier, J([ids.supportCitation]), H('7'),
+        ids.verifier,
+        unverified ? 'unverified' : 'supported',
+        J(unverified ? [] : [ids.supportCitation]),
+        H('7'),
       ],
     );
     await pool.query(
       `insert into rni_challenger_selection
          (batch_id, challenger_invocation_id, verdict, challenged_claim_id,
           citation_ids, selection_hash)
-       values ($1, $2, 'no_supported_challenge_found', null, '[]', $3)`,
-      [ids.batch, ids.challenger, H('8')],
+       values ($1, $2, $3, null, '[]', $4)`,
+      [
+        ids.batch,
+        ids.challenger,
+        unverified ? 'insufficient' : 'no_supported_challenge_found',
+        H('8'),
+      ],
     );
   }
 
@@ -349,7 +379,9 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
     readonly combinedText?: string;
     readonly combinedStatus?: 'complete' | 'partial' | 'insufficient';
     readonly combinedCitationIds?: readonly string[];
+    readonly unverified?: boolean;
   } = {}): Promise<void> {
+    const unverified = options.unverified ?? false;
     const client = await pool.connect();
     try {
       await client.query('begin');
@@ -366,8 +398,12 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
             {
               heading: 'Combined summary',
               status: options.combinedStatus ?? 'complete',
-              text: options.combinedText ?? 'The cited platform conclusions align. Separate social evidence corroborates the catalyst claim.',
-              citationIds: options.combinedCitationIds ?? [ids.targetCitation, ids.supportCitation, ids.xCitation],
+              text: options.combinedText ?? (unverified
+                ? 'The cited platform conclusions align.'
+                : 'The cited platform conclusions align. Separate social evidence corroborates the catalyst claim.'),
+              citationIds: options.combinedCitationIds ?? (unverified
+                ? [ids.targetCitation, ids.xCitation]
+                : [ids.targetCitation, ids.supportCitation, ids.xCitation]),
             },
           ]),
         ],
@@ -382,18 +418,29 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
             challenger_output_snapshot, result_snapshot, statement_count, created_at)
          values ($1, $2, $3, $4, $5, $6, $7, $8, $9,
                  'rni-cited-synthesis-v1', $10, $11, $12,
-                 '{}', '{}', $13, '{}', '{}', 4, '2026-09-05T01:03:00Z')`,
+                 '{}', '{}', $13, $14, '{}', $15, '2026-09-05T01:03:00Z')`,
         [
           ids.summary, ids.run, ids.nvda, ids.batch, ids.convergence,
           ids.verifier, H('3'), ids.challenger, H('4'), policy, H('9'), H('a'),
-          J([{ claimId: ids.targetClaim, verdict: 'supported' }]),
+          J([{
+            claimId: ids.targetClaim,
+            verdict: unverified ? 'unverified' : 'supported',
+            supportingCitationIds: unverified ? [] : [ids.supportCitation],
+            contradictingCitationIds: [],
+          }]),
+          J({
+            verdict: unverified ? 'insufficient' : 'no_supported_challenge_found',
+            challengedClaimId: null,
+            citationIds: [],
+          }),
+          unverified ? 3 : 4,
         ],
       );
       const statements = [
         [ids.redditStatement, 0, 'Reddit sentiment', 'complete', 'platform_conclusion', 'Reddit is bullish.', [ids.targetCitation]],
         [ids.xStatement, 1, 'X sentiment', 'complete', 'platform_conclusion', 'X is bullish.', [ids.xCitation]],
         [ids.combinedStatement, 2, 'Combined summary', 'complete', 'cross_source_fact', 'The cited platform conclusions align.', [ids.targetCitation, ids.xCitation]],
-        [ids.catalystStatement, 3, 'Combined summary', 'complete', 'corroborated_catalyst', 'Separate social evidence corroborates the catalyst claim.', [ids.targetCitation, ids.supportCitation]],
+        ...(unverified ? [] : [[ids.catalystStatement, 3, 'Combined summary', 'complete', 'corroborated_catalyst', 'Separate social evidence corroborates the catalyst claim.', [ids.targetCitation, ids.supportCitation]] as const]),
       ] as const;
       for (const [statementId, ordinal, heading, sectionStatus, origin, text, citationIds] of statements) {
         await client.query(
@@ -412,8 +459,10 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
         [ids.xStatement, 0, ids.xPlatformRole, ids.xCitation],
         [ids.combinedStatement, 0, ids.redditPlatformRole, ids.targetCitation],
         [ids.combinedStatement, 1, ids.xPlatformRole, ids.xCitation],
-        [ids.catalystStatement, 0, ids.targetRole, ids.targetCitation],
-        [ids.catalystStatement, 1, ids.supportRole, ids.supportCitation],
+        ...(unverified ? [] : [
+          [ids.catalystStatement, 0, ids.targetRole, ids.targetCitation] as const,
+          [ids.catalystStatement, 1, ids.supportRole, ids.supportCitation] as const,
+        ]),
       ] as const;
       for (const [statementId, ordinal, roleId, citationId] of edges) {
         if (options.omitRedditEdge === true && statementId === ids.redditStatement) continue;
@@ -516,7 +565,7 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
     expect(rows).toEqual([{ id: ids.summary }]);
   });
 
-  it('commits the minimal cited artifact with distinct model lineage and exact sentence edges', async () => {
+  it('commits selected verifier citations from a larger immutable candidate set', async () => {
     await seedBase();
     await seedPreparedSynthesis();
     await publishHappy();
@@ -529,6 +578,15 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
       { id: ids.challenger, stage: 'challenger', status: 'succeeded', ordered_claim_ids: [ids.targetClaim] },
       { id: ids.verifier, stage: 'verification', status: 'succeeded', ordered_claim_ids: [ids.targetClaim] },
     ]);
+    const { rows: selections } = await pool.query(
+      `select supporting_citation_ids, contradicting_citation_ids
+         from rni_catalyst_assessment where batch_id = $1`,
+      [ids.batch],
+    );
+    expect(selections).toEqual([{
+      supporting_citation_ids: [ids.supportCitation],
+      contradicting_citation_ids: [],
+    }]);
     const { rows: edges } = await pool.query(
       `select statement_id, citation_ordinal, citation_id
          from rni_publication_statement_citation
@@ -542,6 +600,47 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
       { statement_id: ids.catalystStatement, citation_ordinal: 0, citation_id: ids.targetCitation },
       { statement_id: ids.catalystStatement, citation_ordinal: 1, citation_id: ids.supportCitation },
     ]);
+  });
+
+  it.each([
+    ['both no-eligible-claim plans', { verifier: 'skipped', challenger: 'skipped', skipReason: 'no_eligible_claims' }],
+    ['the no-verified-assessment challenger plan', { verifier: 'succeeded', challenger: 'skipped', skipReason: 'no_verified_assessments' }],
+  ] as const)('publishes deterministic output with %s explicitly skipped', async (_label, options) => {
+    await seedBase();
+    await seedPreparedSynthesis(options);
+    await publishHappy({ unverified: true });
+
+    const { rows } = await pool.query(
+      `select stage, status, terminal_metadata from rni_synthesis_model_invocation
+        where batch_id = $1 order by stage`,
+      [ids.batch],
+    );
+    expect(rows).toEqual([
+      {
+        stage: 'challenger',
+        status: 'skipped',
+        terminal_metadata: { outcome: 'skipped', reason: options.skipReason },
+      },
+      options.verifier === 'skipped'
+        ? {
+            stage: 'verification',
+            status: 'skipped',
+            terminal_metadata: { outcome: 'skipped', reason: 'no_eligible_claims' },
+          }
+        : expect.objectContaining({ stage: 'verification', status: 'succeeded' }),
+    ]);
+  });
+
+  it('rejects a skipped challenger reason that contradicts successful all-unverified verification', async () => {
+    await seedBase();
+    await seedPreparedSynthesis({
+      verifier: 'succeeded',
+      challenger: 'skipped',
+      skipReason: 'no_eligible_claims',
+    });
+    await expect(publishHappy({ unverified: true })).rejects.toThrow(
+      /all-unverified publication requires the challenger plan to be skipped/,
+    );
   });
 
   it('rejects a future combined summary committed without its complete cited artifact graph', async () => {
