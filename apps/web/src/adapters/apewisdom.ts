@@ -51,8 +51,46 @@ const apeWisdomPage = z.object({
   results: z.array(apeWisdomEntry),
 });
 
-/** Every board this product cross-checks or seeds against (source §4.3's Wave 1–2 scope). */
-export type ApeWisdomFilter = 'all-stocks' | 'wallstreetbets';
+/**
+ * Every **equity** board ApeWisdom publishes.
+ *
+ * The provider also exposes `all`, `all-crypto`, `4chan` and eight crypto-specific boards. They
+ * are deliberately absent: nothing in this product scores crypto, so collecting those boards
+ * would multiply request volume and storage for rows no aggregate will ever read. The stock
+ * boards are the ones where a ticker mention is the signal this product is about.
+ *
+ * `all-stocks` overlaps the individual boards by construction — it is the union. Both are
+ * collected anyway, and the overlap is not deduplicated: `board` is part of the identity, so
+ * "AAPL was 3rd on all-stocks and 1st on wallstreetbets" is two facts, not one fact recorded
+ * twice. Collapsing them would destroy exactly the per-board distinction this exists to keep.
+ */
+export const APEWISDOM_STOCK_FILTERS = [
+  'all-stocks',
+  'wallstreetbets',
+  'stocks',
+  'investing',
+  'options',
+  'Daytrading',
+  'SPACs',
+  'WallStreetbetsELITE',
+  'Wallstreetbetsnew',
+] as const;
+
+export type ApeWisdomFilter = (typeof APEWISDOM_STOCK_FILTERS)[number];
+
+/** What the provider says about the board as a whole, needed to page through it. */
+export type ApeWisdomPageMeta = {
+  /** Total entries across every page of this board. */
+  count: number;
+  /** How many pages there are. ApeWisdom pages at 100 results. */
+  pages: number;
+  currentPage: number;
+};
+
+export type ApeWisdomBoardPage = {
+  entries: ApeWisdomEntry[];
+  meta: ApeWisdomPageMeta;
+};
 
 export async function fetchApeWisdomRanking(
   options: {
@@ -103,4 +141,74 @@ export async function fetchApeWisdomRanking(
     }),
   );
   return { ok: true, data: entries, meta: result.meta };
+}
+
+/**
+ * The same call as `fetchApeWisdomRanking`, but keeping the board metadata the provider sends
+ * alongside the results.
+ *
+ * `fetchApeWisdomRanking` returns entries only, which is all its caller (the universe-scoped
+ * attention collector) has ever needed. Paging through a whole board needs `pages` — without it
+ * a caller can only guess when to stop, and guessing means either a truncated capture or a
+ * request loop that runs until the provider errors. Kept as a separate function rather than a
+ * changed return type so the existing call site and its tests are untouched.
+ */
+export async function fetchApeWisdomBoardPage(
+  options: {
+    filter: ApeWisdomFilter;
+    page?: number;
+    cacheTtlMs?: number;
+    maxStaleMs?: number;
+    headers?: Readonly<Record<string, string>>;
+  },
+  providerMode: 'fixture' | 'live',
+  deps: Omit<WrapperDeps, 'fetcher'> & { fixturesRoot?: string },
+): Promise<ProviderResult<ApeWisdomBoardPage>> {
+  const page = options.page ?? 1;
+  const fetcher = createFetcher(providerMode, {
+    provider: 'apewisdom',
+    endpoint: 'filter',
+    ...(deps.fixturesRoot === undefined ? {} : { root: deps.fixturesRoot }),
+  });
+
+  const result = await callProvider(
+    {
+      provider: 'apewisdom',
+      operation: 'filter',
+      segments: [options.filter, String(page)],
+      schema: apeWisdomPage,
+      request: {
+        url: `https://apewisdom.io/api/v1.0/filter/${options.filter}/page/${page}`,
+        ...(options.headers === undefined ? {} : { headers: options.headers }),
+      },
+      estimatedCostUsd: null,
+      ...(options.cacheTtlMs === undefined ? {} : { cacheTtlMs: options.cacheTtlMs }),
+      ...(options.maxStaleMs === undefined ? {} : { maxStaleMs: options.maxStaleMs }),
+    },
+    { ...deps, fetcher },
+  );
+
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    data: {
+      entries: result.data.results.map(
+        (entry): ApeWisdomEntry => ({
+          rank: entry.rank,
+          ticker: entry.ticker,
+          name: entry.name,
+          mentions: entry.mentions,
+          upvotes: entry.upvotes,
+          rank24hAgo: entry.rank_24h_ago,
+          mentions24hAgo: entry.mentions_24h_ago,
+        }),
+      ),
+      meta: {
+        count: result.data.count,
+        pages: result.data.pages,
+        currentPage: result.data.current_page,
+      },
+    },
+    meta: result.meta,
+  };
 }

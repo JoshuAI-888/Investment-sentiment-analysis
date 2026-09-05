@@ -41,6 +41,12 @@ export const RETENTION_POLICY: readonly RetentionRule[] = [
     why: 'The attention series is what D-30 selected the universe on and what F08 renders. It is a backtest input.',
   },
   {
+    table: 'attention_board_snapshot',
+    retentionClass: 'permanent_corpus',
+    days: 'permanent',
+    why: 'The raw provider board, including tickers outside the universe. Under D-16 collection is forward-only with no backfill, so a board row deleted is a row that cannot be re-observed — the same permanence argument as attention_snapshot, and more so, because nothing else in the system holds these rows.',
+  },
+  {
     table: 'market_snapshot',
     retentionClass: 'permanent_corpus',
     days: 'permanent',

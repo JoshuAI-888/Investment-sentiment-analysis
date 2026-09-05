@@ -58,6 +58,20 @@
       "maxAttempts": 3,
       "triggerEligible": false,
       "notes": "Enabled in the same change that registered its JobHandler (services/jobs/handlers/substack.ts), which is the sequencing this row's previous note asked for: never enabled with no handler, which would surface as a loud, misleading 'no_handler_registered' failure every tick. This is the job that starts D-16's forward-only clock \u2014 Substack needs no API key and no approval, so it is the one axis that can collect while Reddit waits on MT-13. Scoring is deferred: F20's durable queue does not exist yet, so the handler passes deferredScoringQueue() and reports the would-be backlog as `pendingScoring` on each run. Evidence rows are written before any enqueue, so the backlog is reconstructible when the store lands (MEMORY.md B-31 \u00a74)."
+    },
+    {
+      "jobKey": "attention.board",
+      "displayName": "ApeWisdom full-board capture (all stock filters, all pages)",
+      "enabled": true,
+      "scheduleType": "interval",
+      "scheduleExpression": "3600",
+      "displayTimezone": "UTC",
+      "priority": 40,
+      "maxRuntimeSeconds": 300,
+      "concurrencyPolicy": "skip",
+      "maxAttempts": 3,
+      "triggerEligible": false,
+      "notes": "Captures the whole ApeWisdom board into attention_board_snapshot, distinct from attention.snapshot which writes the universe-scoped attention_snapshot series analytics read. Both run. Kept because under D-16 collection is forward-only with no backfill and ApeWisdom is free and keyless: a board row not captured today is gone permanently, while a captured row nobody computes over costs storage and nothing else. Does NOT change what the product computes over \u2014 promoting a ticker out of the raw board into the 100-symbol universe remains an owner decision under D-27/D-30."
     }
   ]
 }

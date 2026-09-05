@@ -15,6 +15,7 @@ export const BITEMPORAL_TABLES = [
   'sentiment_snapshot',
   'security_profile_snapshot',
   'evidence_item',
+  'attention_board_snapshot',
 ] as const;
 
 export type BitemporalTable = (typeof BITEMPORAL_TABLES)[number];
@@ -30,6 +31,11 @@ export const VALID_TIME_COLUMN: Record<BitemporalTable, string> = {
   sentiment_snapshot: 'observed_at',
   security_profile_snapshot: 'observed_at',
   evidence_item: 'available_at',
+  // The instant the board was read. Guarded like every other fact source: it is a time series
+  // the product may compute over later, and an unguarded read of it would be a look-ahead the
+  // same way an unguarded `attention_snapshot` read would be — the fact that nothing reads it
+  // today is exactly when it is cheapest to arm.
+  attention_board_snapshot: 'observed_at',
 };
 
 /**

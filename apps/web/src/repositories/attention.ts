@@ -278,3 +278,75 @@ export async function countComparableAttentionSnapshots(
   );
   return history.filter((row) => row.observedAt.getTime() < query.beforeObservedAt.getTime()).length;
 }
+
+// ── the raw provider board (0015_attention_board_snapshot.sql) ───────────────────────────────
+
+const ATTENTION_BOARD_COLUMNS =
+  'source, board, ticker, name, security_id, rank, mentions, upvotes, rank_24h_ago, ' +
+  'mentions_24h_ago, page, pages_total, provider_methodology_version, observed_at, ' +
+  'ingested_at, raw_hash';
+
+export type NewAttentionBoardRow = {
+  readonly source: 'apewisdom';
+  readonly board: string;
+  readonly ticker: string;
+  readonly name: string;
+  /** Null when the ticker resolves to no active security — the case this table exists for. */
+  readonly securityId: string | null;
+  readonly rank: number;
+  readonly mentions: number;
+  readonly upvotes: number | null;
+  readonly rank24hAgo: number | null;
+  readonly mentions24hAgo: number | null;
+  readonly page: number;
+  readonly pagesTotal: number;
+  readonly providerMethodologyVersion: string;
+  readonly observedAt: Date;
+  readonly ingestedAt?: Date;
+  readonly rawHash: string;
+};
+
+/**
+ * Idempotent per `(source, board, ticker, observed_at, raw_hash)`, the same shape
+ * `insertAttentionSnapshot` uses and for the same reason: **a repeat is not a revision.**
+ * Re-reading a board inside one observation instant and getting identical content is a no-op;
+ * getting *different* content is a successor row, which the bitemporal primary key
+ * (`ingested_at` included) makes storable without the UPDATE the append-only trigger forbids.
+ *
+ * Returns whether a row was written, so a collector can report what it actually added rather
+ * than what it attempted.
+ */
+export async function insertAttentionBoardRow(
+  input: NewAttentionBoardRow,
+  db: Queryable = getPool(),
+): Promise<{ inserted: boolean }> {
+  const ingestedAt = input.ingestedAt ?? new Date();
+  const { rows } = await db.query(
+    `insert into attention_board_snapshot (${ATTENTION_BOARD_COLUMNS})
+     select $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+     where not exists (
+       select 1 from attention_board_snapshot
+       where source = $1 and board = $2 and ticker = $3 and observed_at = $14 and raw_hash = $16
+     )
+     returning ticker`,
+    [
+      input.source,
+      input.board,
+      input.ticker,
+      input.name,
+      input.securityId,
+      input.rank,
+      input.mentions,
+      input.upvotes,
+      input.rank24hAgo,
+      input.mentions24hAgo,
+      input.page,
+      input.pagesTotal,
+      input.providerMethodologyVersion,
+      input.observedAt,
+      ingestedAt,
+      input.rawHash,
+    ],
+  );
+  return { inserted: rows.length > 0 };
+}

@@ -14,6 +14,7 @@ import { registerJobHandler } from '../registry';
 import { attentionSnapshotHandler, ATTENTION_SNAPSHOT_JOB_KEY } from './attention';
 import { marketDataPollHandler, MARKET_DATA_POLL_JOB_KEY } from './market-data';
 import { substackCollectHandler, SUBSTACK_COLLECT_JOB_KEY } from './substack';
+import { attentionBoardHandler, ATTENTION_BOARD_JOB_KEY } from './attention-board';
 
 let registered = false;
 
@@ -29,5 +30,6 @@ export function registerAllJobHandlers(): void {
   registerJobHandler(ATTENTION_SNAPSHOT_JOB_KEY, attentionSnapshotHandler);
   registerJobHandler(MARKET_DATA_POLL_JOB_KEY, marketDataPollHandler);
   registerJobHandler(SUBSTACK_COLLECT_JOB_KEY, substackCollectHandler);
+  registerJobHandler(ATTENTION_BOARD_JOB_KEY, attentionBoardHandler);
   registered = true;
 }

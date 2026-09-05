@@ -74,8 +74,23 @@ describe('the bitemporal table list matches the schema', () => {
     // revision collides with the row it revises, and the only way to store it is the UPDATE
     // that §4.1 forbids — which deletes the value that was knowable at the time.
     const sql = await migrationSql();
+
+    // Tables whose identity is a surrogate uuid, where this property holds trivially: every
+    // insert is a new row, so a revision cannot collide with what it revises and there is no
+    // composite key to inspect. Named with the reason rather than skipped silently, because
+    // "this table has no composite primary key" and "someone forgot ingested_at" look identical
+    // to the regex below.
+    const SURROGATE_KEYED: Record<string, string> = {
+      evidence_item: 'surrogate uuid key; revisions are new rows',
+      attention_board_snapshot:
+        'surrogate uuid key, and necessarily so: its natural identity includes `ticker`, and F03 ' +
+        'forbids ticker text in any primary or foreign key schema-wide. Identity is a unique ' +
+        'INDEX over (source, board, ticker, observed_at, ingested_at) instead — which carries ' +
+        'ingested_at, so the property this case is about is still enforced, just not by a pkey.',
+    };
+
     for (const table of BITEMPORAL_TABLES) {
-      if (table === 'evidence_item') continue; // surrogate uuid key; revisions are new rows
+      if (SURROGATE_KEYED[table] !== undefined) continue;
       const pk = new RegExp(`${table}_pkey\\s+primary key \\(([^)]*)\\)`).exec(sql);
       expect(pk, `${table} has no primary key declaration to check`).not.toBeNull();
       expect(pk?.[1], `${table}'s primary key omits ingested_at`).toContain('ingested_at');

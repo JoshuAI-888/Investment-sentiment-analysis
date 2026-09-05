@@ -83,6 +83,10 @@ describe.skipIf(url === undefined)('F03 DoD — schema invariants', () => {
       security_profile_snapshot: ['observed_at', 'ingested_at'],
       market_snapshot: ['observed_at', 'ingested_at'],
       attention_snapshot: ['observed_at', 'ingested_at'],
+      // The raw provider board. Same pair as attention_snapshot because it is the same kind of
+      // thing — an observation of what a board said at an instant — differing only in that it is
+      // not universe-scoped.
+      attention_board_snapshot: ['observed_at', 'ingested_at'],
       sentiment_snapshot: ['observed_at', 'ingested_at'],
       price_return_snapshot: ['as_of_date', 'computed_at'],
       valuation_snapshot: ['as_of_date', 'computed_at'],
