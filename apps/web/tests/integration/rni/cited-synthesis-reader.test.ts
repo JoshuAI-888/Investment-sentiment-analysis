@@ -2,10 +2,18 @@ import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { sha256Hex } from '../../../src/calc/canonical';
-import { withTransaction } from '../../../src/repositories/client';
+import { canonicalHash, sha256Hex } from '../../../src/calc/canonical';
+import { withTransaction, type Queryable } from '../../../src/repositories/client';
+import {
+  RNI_CITED_SYNTHESIS_CODE_VERSION,
+  replayCitedSynthesis,
+  synthesizeCitedNarrative,
+  type RniCitedSynthesisRequest,
+} from '../../../src/rni/agents';
+import { convergePlatformFacts } from '../../../src/rni/convergence';
 import { PostgresRniSynthesisEvidenceReader } from '../../../src/rni/repositories/cited-synthesis-reader';
 import { databaseUrl, makePool, resetSchema } from '../helpers/db';
+import { convergenceRequest, nonPublishablePlatform, platformInput } from '../../unit/rni/convergence/fixtures';
 
 const cutoff = '2026-09-05T01:00:00.123456Z';
 const rights = 'rni-source-policy-v1';
@@ -15,7 +23,10 @@ const json = JSON.stringify;
 
 type Fixture = Awaited<ReturnType<typeof seed>>;
 
-async function seed(pool: pg.Pool, options: { originalUrl?: string; contentHash?: string; citationText?: string } = {}) {
+async function seed(pool: pg.Pool, options: {
+  originalUrl?: string; contentHash?: string; citationText?: string; noEligibleClaims?: boolean;
+  extraCorroboratingCandidate?: boolean;
+} = {}) {
   const runId = randomUUID();
   const securityId = randomUUID();
   const batchId = randomUUID();
@@ -25,6 +36,7 @@ async function seed(pool: pg.Pool, options: { originalUrl?: string; contentHash?
   const citationIds = [randomUUID(), randomUUID(), randomUUID()];
   const modelIds = [randomUUID(), randomUUID()];
   const analyticsId = randomUUID();
+  const sliceIds = { reddit: randomUUID(), x: randomUUID() };
   const content = ['NVDA catalyst claim.', 'Separate social evidence for NVDA.', 'Persisted but not in the batch.'];
   let configId = '';
   await withTransaction(async (db) => {
@@ -47,10 +59,10 @@ async function seed(pool: pg.Pool, options: { originalUrl?: string; contentHash?
         $4, $5, 'rni-prompts-v1', 'openai_direct', $3)`,
       [runId, randomUUID(), cutoff, universe, configId],
     );
-    const slices = await db.query<{ id: string; platform: string }>(
-      `insert into rni_platform_slice (run_id, platform, status, coverage_disclosure)
-       values ($1, 'reddit', 'complete', 'Sampled Reddit'), ($1, 'x', 'unavailable', 'X unavailable')
-       returning id, platform`, [runId],
+    await db.query(
+      `insert into rni_platform_slice (id, run_id, platform, status, coverage_disclosure)
+       values ($2, $1, 'reddit', $4, 'Sampled Reddit'), ($3, $1, 'x', 'unavailable', 'X unavailable')`,
+      [runId, sliceIds.reddit, sliceIds.x, options.noEligibleClaims ? 'unavailable' : 'complete'],
     );
     for (const [i, sourceId] of sourceIds.entries()) {
       await db.query(
@@ -97,13 +109,15 @@ async function seed(pool: pg.Pool, options: { originalUrl?: string; contentHash?
         methodology_version, calculation_code_version, input_hash, result_hash, artifact_hash,
         input_snapshot, result_snapshot, created_at)
        values ($1, $2, $3, 'reddit', $4, 'method-v1', 'rni-platform-analytics-v1', $5, $5, $5, '{}', '{}', $6)`,
-      [analyticsId, runId, slices.rows.find((row) => row.platform === 'reddit')!.id, securityId, hash, cutoff],
+      [analyticsId, runId, sliceIds.reddit, securityId, hash, cutoff],
     );
     await db.query(
       `insert into rni_synthesis_batch (id, run_id, security_id, assessment_cutoff_at, policy_version,
         rights_policy_version, ordered_citation_ids, reddit_platform_citation_ids, x_platform_citation_ids, created_at)
        values ($1, $2, $3, $4, $5, $6, $7, $8, '[]', $4)`,
-      [batchId, runId, securityId, cutoff, policy, rights, json(citationIds.slice(0, 2).sort()), json([citationIds[0]])],
+      [batchId, runId, securityId, cutoff, policy, rights,
+        json(citationIds.slice(0, options.extraCorroboratingCandidate ? 3 : 2).sort()),
+        json(options.noEligibleClaims ? [] : [citationIds[0]])],
     );
     await db.query(
       `insert into rni_synthesis_claim_input (batch_id, run_id, security_id, assessment_cutoff_at,
@@ -112,7 +126,11 @@ async function seed(pool: pg.Pool, options: { originalUrl?: string; contentHash?
        values ($1, $2, $3, $4, $5, $6, 0, $7, $8, $9, 'reddit', $10)`,
       [batchId, runId, securityId, cutoff, policy, rights, claimIds[0], sourceIds[0], observationIds[0], json([citationIds[0]])],
     );
-    for (const [i, role, target] of [[0, 'social_claim', claimIds[0]], [1, 'corroborating', claimIds[0]], [0, 'social_claim', null]] as const) {
+    for (const [i, role, target] of [
+      [0, 'social_claim', claimIds[0]], [1, 'corroborating', claimIds[0]],
+      [2, 'corroborating', claimIds[0]], [0, 'social_claim', null],
+    ] as const) {
+      if ((target === null && options.noEligibleClaims) || (i === 2 && !options.extraCorroboratingCandidate)) continue;
       await db.query(
         `insert into rni_synthesis_citation_role (batch_id, run_id, security_id, assessment_cutoff_at,
           policy_version, rights_policy_version, target_claim_id, citation_id, evidence_claim_id,
@@ -131,7 +149,58 @@ async function seed(pool: pg.Pool, options: { originalUrl?: string; contentHash?
       );
     }
   }, pool);
-  return { runId, securityId, batchId, sourceIds, claimIds, citationIds, modelIds, configId, content };
+  return { runId, securityId, batchId, sourceIds, claimIds, citationIds, modelIds, configId, content,
+    sliceIds, noEligibleClaims: options.noEligibleClaims ?? false };
+}
+
+async function requestFromReader(
+  fixture: Fixture,
+  reader: PostgresRniSynthesisEvidenceReader,
+): Promise<RniCitedSynthesisRequest> {
+  const verificationInvocation = await reader.getModelInvocation(fixture.modelIds[0]!);
+  const challengerInvocation = await reader.getModelInvocation(fixture.modelIds[1]!);
+  if (verificationInvocation.stage !== 'verification' || challengerInvocation.stage !== 'challenger') {
+    throw new Error('Crossed fixture invocation stages');
+  }
+  const platform = (name: 'reddit' | 'x') => ({
+    ...(name === 'x' || fixture.noEligibleClaims
+      ? nonPublishablePlatform(name, 'unavailable') : platformInput(name)),
+    runId: fixture.runId,
+    securityId: fixture.securityId,
+    runSourceSliceId: fixture.sliceIds[name],
+    windowStart: '2026-09-04T01:00:00Z',
+    windowEnd: cutoff,
+    dataThroughAt: name === 'x' || fixture.noEligibleClaims ? null : '2026-09-05T00:02:00.123456Z',
+  });
+  return {
+    codeVersion: RNI_CITED_SYNTHESIS_CODE_VERSION, policyVersion: policy, rightsPolicyVersion: rights,
+    summaryId: randomUUID(), createdAt: cutoff,
+    verificationInvocation: { ...verificationInvocation, stage: 'verification' },
+    challengerInvocation: { ...challengerInvocation, stage: 'challenger' },
+    convergenceArtifact: convergePlatformFacts(convergenceRequest({
+      asOf: cutoff, reddit: platform('reddit'), x: platform('x'),
+    })),
+    claims: [await reader.getSynthesisClaim(fixture.claimIds[0]!)],
+    citationIds: fixture.citationIds.slice(0, 2).sort(),
+    platformCitationIds: { reddit: fixture.noEligibleClaims ? [] : [fixture.citationIds[0]!], x: [] },
+  };
+}
+
+async function insertAssessment(
+  db: Queryable,
+  fixture: Fixture,
+  verdict: 'supported' | 'contradicted' | 'unverified',
+  supporting: readonly string[] = [],
+  contradicting: readonly string[] = [],
+) {
+  await db.query(
+    `insert into rni_catalyst_assessment (batch_id, run_id, security_id, assessment_cutoff_at,
+      policy_version, rights_policy_version, claim_id, verifier_invocation_id, verdict,
+      supporting_citation_ids, contradicting_citation_ids, assessment_hash)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+    [fixture.batchId, fixture.runId, fixture.securityId, cutoff, policy, rights,
+      fixture.claimIds[0], fixture.modelIds[0], verdict, json(supporting), json(contradicting), hash],
+  );
 }
 
 async function seedGovernedVerification(pool: pg.Pool, fixture: Fixture) {
@@ -311,9 +380,7 @@ describe.skipIf(databaseUrl() === undefined)('I07 batch-scoped cited-synthesis e
     }, pool);
   });
 
-  // These characterize the frozen 0024 contract blockers, not desired publication behavior.
-  // Coordinator fixes should replace the rejection assertions with writer acceptance tests.
-  it('reproduces the governed verification-stage mismatch with otherwise valid persisted routing', async () => {
+  it('accepts canonical verification and challenger stages in governed invocation records', async () => {
     await seedGovernedVerification(pool, fixture);
     const recordDenied = (modelId: string, task: string) => pool.query(
       `insert into rni_ai_model_invocation (id, run_id, config_version, task, ai_route,
@@ -323,58 +390,113 @@ describe.skipIf(databaseUrl() === undefined)('I07 batch-scoped cited-synthesis e
         'budget_exceeded', 'fixture-prices-v1', $1, $6)`,
       [modelId, fixture.runId, fixture.configId, task, hash, cutoff],
     );
-    await expect(recordDenied(fixture.modelIds[0]!, 'rni_verification')).rejects.toMatchObject({
+    await expect(recordDenied(fixture.modelIds[0]!, 'rni_challenger')).rejects.toMatchObject({
       code: '23514', constraint: 'rni_ai_invocation_synthesis_stage',
       message: 'RNI synthesis invocation stage does not match its governed model task',
     });
-    // The equivalent challenger route succeeds, isolating the canonical-stage typo.
+    await expect(recordDenied(fixture.modelIds[1]!, 'rni_verification')).rejects.toMatchObject({
+      code: '23514', constraint: 'rni_ai_invocation_synthesis_stage',
+    });
+    await recordDenied(fixture.modelIds[0]!, 'rni_verification');
     await recordDenied(fixture.modelIds[1]!, 'rni_challenger');
     expect((await pool.query('select id from rni_ai_model_invocation')).rows)
-      .toEqual([{ id: fixture.modelIds[1] }]);
+      .toEqual(expect.arrayContaining(fixture.modelIds.map((id) => ({ id }))));
+    expect((await pool.query('select id from rni_ai_model_invocation')).rowCount).toBe(2);
   });
 
-  it('reproduces the missing truthful non-dispatch terminal state without fabricating model success', async () => {
+  it.each([true, false])('replays with durable skipped plans when noEligibleClaims=%s', async (noEligibleClaims) => {
+    if (noEligibleClaims) {
+      await resetSchema(pool);
+      fixture = await seed(pool, { noEligibleClaims });
+      reader = new PostgresRniSynthesisEvidenceReader(
+        { batchId: fixture.batchId, runId: fixture.runId, securityId: fixture.securityId }, async () => rights, pool,
+      );
+    }
+    const request = await requestFromReader(fixture, reader);
+    const verifier = { verify: vi.fn(async () => ({ assessments: [{
+      claimId: fixture.claimIds[0], verdict: 'unverified', supportingCitationIds: [], contradictingCitationIds: [],
+    }] })) };
+    const challenger = { challenge: vi.fn(async () => { throw new Error('No challenger call expected'); }) };
+    const artifact = await synthesizeCitedNarrative(request, reader, verifier, challenger);
+    await withTransaction(async (db) => {
+      for (const [index, id] of fixture.modelIds.entries()) {
+        const skipped = noEligibleClaims || index === 1;
+        await db.query(
+          `update rni_synthesis_model_invocation set status = $2, output_hash = $3,
+            completed_at = $4, terminal_metadata = $5 where id = $1`,
+          [id, skipped ? 'skipped' : 'succeeded', skipped ? null : canonicalHash(artifact.verificationOutputSnapshot),
+            cutoff, json(skipped ? {
+              outcome: 'skipped', reason: noEligibleClaims ? 'no_eligible_claims' : 'no_verified_assessments',
+            } : { outcome: 'succeeded' })],
+        );
+      }
+    });
+    expect(await reader.getModelInvocation(fixture.modelIds[0]!)).toEqual(request.verificationInvocation);
+    expect(await reader.getModelInvocation(fixture.modelIds[1]!)).toEqual(request.challengerInvocation);
+    const replayed = await replayCitedSynthesis(artifact, reader);
+    const repeated = await replayCitedSynthesis(replayed, reader);
+    expect(canonicalHash(replayed)).toBe(canonicalHash(artifact));
+    expect(canonicalHash(repeated)).toBe(canonicalHash(artifact));
+    expect(verifier.verify).toHaveBeenCalledTimes(noEligibleClaims ? 0 : 1);
+    expect(challenger.challenge).not.toHaveBeenCalled();
+    expect((await pool.query('select id from rni_ai_model_invocation')).rowCount).toBe(0);
+    expect((await pool.query('select id from rni_cited_synthesis_artifact')).rowCount).toBe(0);
+  });
+
+  it.each([
+    ['verification cannot skip for a challenger-only reason', 0, { outcome: 'skipped', reason: 'no_verified_assessments' }],
+    ['unknown reason', 1, { outcome: 'skipped', reason: 'budget_exceeded' }],
+    ['provider output on a no-call plan', 1, { outcome: 'skipped', reason: 'no_eligible_claims', responseId: 'fake' }],
+  ] as const)('rejects invalid skipped plan: %s', async (_label, index, metadata) => {
     await expect(pool.query(
       `update rni_synthesis_model_invocation set status = 'skipped', completed_at = $2,
-        terminal_metadata = '{"outcome":"skipped","reason":"no_eligible_claims"}' where id = $1`,
-      [fixture.modelIds[0], cutoff],
-    )).rejects.toMatchObject({
-      code: '23001',
-      message: 'RNI synthesis model invocation permits one prepared-to-terminal transition',
-    });
-    expect((await pool.query('select status from rni_synthesis_model_invocation')).rows)
-      .toEqual([{ status: 'prepared' }, { status: 'prepared' }]);
-    expect((await pool.query('select id from rni_cited_synthesis_artifact')).rowCount).toBe(0);
-    expect((await pool.query('select status from rni_run where id = $1', [fixture.runId])).rows)
-      .toEqual([{ status: 'running' }]);
+        terminal_metadata = $3 where id = $1`, [fixture.modelIds[index], cutoff, json(metadata)],
+    )).rejects.toMatchObject({ code: '23514', constraint: 'rni_synthesis_model_invocation_terminal_check' });
+    expect((await pool.query('select status from rni_synthesis_model_invocation where id = $1',
+      [fixture.modelIds[index]])).rows).toEqual([{ status: 'prepared' }]);
   });
 
-  it('reproduces candidate-versus-selected evidence rejection and rolls the whole attempted publication back', async () => {
-    await expect(withTransaction(async (db) => {
+  it.each(['unverified', 'supported'] as const)('accepts verifier-selected %s evidence without requiring every candidate', async (verdict) => {
+    await resetSchema(pool);
+    fixture = await seed(pool, { extraCorroboratingCandidate: true });
+    await withTransaction(async (db) => {
       await db.query(
         `update rni_synthesis_model_invocation set status = 'succeeded', output_hash = $2,
           completed_at = $3, terminal_metadata = '{"outcome":"succeeded"}' where id = $1`,
         [fixture.modelIds[0], hash, cutoff],
       );
-      // E08 permits abstention even when corroborating candidates were prepared.
-      await db.query(
-        `insert into rni_catalyst_assessment (batch_id, run_id, security_id, assessment_cutoff_at,
-          policy_version, rights_policy_version, claim_id, verifier_invocation_id, verdict,
-          supporting_citation_ids, contradicting_citation_ids, assessment_hash)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, 'unverified', '[]', '[]', $9)`,
-        [fixture.batchId, fixture.runId, fixture.securityId, cutoff, policy, rights,
-          fixture.claimIds[0], fixture.modelIds[0], hash],
-      );
-    }, pool)).rejects.toMatchObject({
-      code: '23514', constraint: 'rni_catalyst_assessment_exact_citations',
-      message: 'RNI catalyst assessment citation sets must equal the exact claim-role edges',
-    });
-    expect((await pool.query('select claim_id from rni_catalyst_assessment')).rowCount).toBe(0);
-    expect((await pool.query('select id from rni_combined_summary')).rowCount).toBe(0);
-    expect((await pool.query('select id from rni_cited_synthesis_artifact')).rowCount).toBe(0);
-    expect((await pool.query('select status from rni_synthesis_model_invocation where id = $1',
-      [fixture.modelIds[0]])).rows).toEqual([{ status: 'prepared' }]);
-    expect((await pool.query('select status from rni_run where id = $1', [fixture.runId])).rows)
-      .toEqual([{ status: 'running' }]);
+      await insertAssessment(db, fixture, verdict, verdict === 'supported' ? [fixture.citationIds[1]!] : []);
+    }, pool);
+    expect((await pool.query('select verdict, supporting_citation_ids from rni_catalyst_assessment')).rows)
+      .toEqual([{ verdict, supporting_citation_ids: verdict === 'supported' ? [fixture.citationIds[1]] : [] }]);
+    expect((await pool.query(
+      `select citation_id from rni_synthesis_citation_role where evidence_role = 'corroborating'`,
+    )).rowCount).toBe(2);
   });
+
+  it.each(['crossed_role', 'unlisted_candidate', 'social_claim'] as const)(
+    'rejects %s selections and rolls back the attempted assessment', async (invalid) => {
+      await expect(withTransaction(async (db) => {
+        await db.query(
+          `update rni_synthesis_model_invocation set status = 'succeeded', output_hash = $2,
+            completed_at = $3, terminal_metadata = '{"outcome":"succeeded"}' where id = $1`,
+          [fixture.modelIds[0], hash, cutoff],
+        );
+        await insertAssessment(db, fixture, invalid === 'crossed_role' ? 'contradicted' : 'supported',
+          invalid === 'unlisted_candidate' ? [fixture.citationIds[2]!] :
+            invalid === 'social_claim' ? [fixture.citationIds[0]!] : [],
+          invalid === 'crossed_role' ? [fixture.citationIds[1]!] : []);
+      }, pool)).rejects.toMatchObject({
+        code: '23514', constraint: 'rni_catalyst_assessment_exact_citations',
+        message: 'RNI catalyst assessment citations must be selected from exact same-claim role candidates',
+      });
+      expect((await pool.query('select claim_id from rni_catalyst_assessment')).rowCount).toBe(0);
+      expect((await pool.query('select id from rni_combined_summary')).rowCount).toBe(0);
+      expect((await pool.query('select id from rni_cited_synthesis_artifact')).rowCount).toBe(0);
+      expect((await pool.query('select status from rni_synthesis_model_invocation where id = $1',
+        [fixture.modelIds[0]])).rows).toEqual([{ status: 'prepared' }]);
+      expect((await pool.query('select status from rni_run where id = $1', [fixture.runId])).rows)
+        .toEqual([{ status: 'running' }]);
+    },
+  );
 });

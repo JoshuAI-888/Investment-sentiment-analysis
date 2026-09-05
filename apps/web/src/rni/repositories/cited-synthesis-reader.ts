@@ -218,16 +218,30 @@ export class PostgresRniSynthesisEvidenceReader implements RniSynthesisEvidenceR
     const batch = await this.batch();
     const { rows } = await this.db.query(
       `select id as "modelRunId", stage, model_id as "modelId", prompt_version as "promptVersion",
-              ordered_claim_ids as "claimIds"
+              ordered_claim_ids as "claimIds", status, output_hash as "outputHash",
+              terminal_metadata as "terminalMetadata",
+              ${instantSql('prepared_at')} as "preparedAt",
+              ${instantSql('completed_at')} as "completedAt"
          from rni_synthesis_model_invocation
-        where id = $1 and batch_id = $2 and status in ('prepared', 'succeeded')`,
+        where id = $1 and batch_id = $2 and status in ('prepared', 'succeeded', 'skipped')`,
       [modelRunId, this.scope.batchId],
     );
     if (rows.length !== 1) reject();
-    const invocation = z.object({
+    const { status, outputHash, terminalMetadata, preparedAt, completedAt, ...invocation } = z.object({
       modelRunId: uuid, stage: z.enum(['verification', 'challenger']), modelId: z.string().min(1),
       promptVersion: z.string().min(1), claimIds: ids,
+      status: z.enum(['prepared', 'succeeded', 'skipped']), outputHash: z.string().nullable(),
+      terminalMetadata: z.unknown(), preparedAt: rniIsoTimestamp, completedAt: rniIsoTimestamp.nullable(),
     }).strict().parse(rows[0]);
+    if (status === 'skipped') {
+      const metadata = z.object({
+        outcome: z.literal('skipped'),
+        reason: z.enum(['no_eligible_claims', 'no_verified_assessments']),
+      }).strict().parse(terminalMetadata);
+      if (outputHash !== null || completedAt === null ||
+          canonicalInstant(completedAt) < canonicalInstant(preparedAt) ||
+          (invocation.stage === 'verification' && metadata.reason !== 'no_eligible_claims')) reject();
+    }
     const claims = await this.db.query<{ claim_id: string }>(
       `select claim_id from rni_synthesis_claim_input where batch_id = $1 order by ordinal`,
       [this.scope.batchId],
