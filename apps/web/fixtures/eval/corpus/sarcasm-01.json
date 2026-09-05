@@ -1,0 +1,247 @@
+{
+  "id": "sarcasm-01",
+  "bucket": "sarcasm_ambiguity",
+  "pack": {
+    "id": "a4e83983-f7f5-49ec-ac0a-9c8ee8b2314e",
+    "securityId": "0a1be95c-7fbc-46bb-ad09-7668c8724701",
+    "retrievalQuery": "security_id = 0a1be95c-7fbc-46bb-ad09-7668c8724701, axes = [reddit]",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-08T00:00:00.000Z"
+    },
+    "items": [
+      {
+        "item": {
+          "id": "6bf20717-23ea-48f3-b7af-ffc2dc0dae97",
+          "securityId": "0a1be95c-7fbc-46bb-ad09-7668c8724701",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "AMC to the moon 🚀🙄",
+          "snippet": "Sure, this is definitely going to the moon this time. Totally not sarcastic.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.86",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "ef00b3adda924abe9f4f2c1bdb71fb0800000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.2",
+        "flags": [
+          "sarcasm"
+        ],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "7ed68efe-1fa4-42f2-a0a5-ddeb379113bb",
+          "securityId": "0a1be95c-7fbc-46bb-ad09-7668c8724701",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Oh great, more AMC news",
+          "snippet": "Can't wait for another 'this changes everything' headline that changes nothing.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.82",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "7bc0c3e27db64699ba34b03550297cb200000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.2",
+        "flags": [
+          "sarcasm"
+        ],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "abc3a32d-fb41-4cfb-84d2-aba4b4ba9759",
+          "securityId": "0a1be95c-7fbc-46bb-ad09-7668c8724701",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "AMC bagholders unite",
+          "snippet": "Diamond hands, right? Right guys? ...guys?",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.80",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "ed859875e6224273baa39e7577be749800000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.2",
+        "flags": [
+          "sarcasm"
+        ],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "441a41a2-b78d-40e4-baee-016374d4d490",
+          "securityId": "0a1be95c-7fbc-46bb-ad09-7668c8724701",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "AMC thread",
+          "snippet": "Yeah sure, \"fundamentals\" lol, this is a casino and we all know it.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.79",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "612dd4e398a34b85b7547ceb48b9726000000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.2",
+        "flags": [
+          "sarcasm"
+        ],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "2b48a1f1-2413-4add-92bb-250ac3dfd972",
+          "securityId": "0a1be95c-7fbc-46bb-ad09-7668c8724701",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "AMC daily discussion",
+          "snippet": "Another day, another \"just wait for the squeeze\" post.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.77",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "0f452939e8f245f1b9b01b31afd7675a00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.2",
+        "flags": [
+          "sarcasm"
+        ],
+        "excludedReason": null
+      }
+    ],
+    "frames": [
+      {
+        "axis": "reddit",
+        "frameStatement": "observed sample of comments from the subreddits polled — not a sample of retail investors.",
+        "window": {
+          "from": "2026-08-01T00:00:00.000Z",
+          "to": "2026-08-08T00:00:00.000Z"
+        },
+        "retrievedCount": 6,
+        "usedCount": 5,
+        "subredditsPolled": [
+          "wallstreetbets"
+        ],
+        "treeComplete": true,
+        "truncated": false
+      }
+    ],
+    "createdAt": "2026-08-08T00:00:00.000Z"
+  },
+  "labels": [
+    {
+      "itemId": "6bf20717-23ea-48f3-b7af-ffc2dc0dae97",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "sarcastic tone — no confident direction can be read from the text"
+    },
+    {
+      "itemId": "7ed68efe-1fa4-42f2-a0a5-ddeb379113bb",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "sarcastic tone — no confident direction can be read from the text"
+    },
+    {
+      "itemId": "abc3a32d-fb41-4cfb-84d2-aba4b4ba9759",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "sarcastic tone — no confident direction can be read from the text"
+    },
+    {
+      "itemId": "441a41a2-b78d-40e4-baee-016374d4d490",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "sarcastic tone — no confident direction can be read from the text"
+    },
+    {
+      "itemId": "2b48a1f1-2413-4add-92bb-250ac3dfd972",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "sarcastic tone — no confident direction can be read from the text"
+    }
+  ],
+  "expectedOutcome": "unclear_no_direction",
+  "acceptableClaims": [
+    "Reddit-observed comments for AMC this window carry heavy sarcasm; no confident stance direction is reportable."
+  ],
+  "requiredAbstentions": [
+    "stance.amc.formal_score"
+  ],
+  "storedMetrics": [
+    {
+      "metricId": "sentiment.reddit.sampleAdequacy",
+      "display": "0.40"
+    }
+  ],
+  "referenceAnswer": "Reddit-observed sample of comments from the subreddits polled: the AMC discussion this window is dominated by sarcastic and self-mocking language, so no confident stance direction is reported (sample adequacy 0.40). What to monitor next: whether commentary tone shifts away from irony toward substantive claims.",
+  "labelledBy": "F12 lane-build starter corpus (hand-authored fixture for harness machinery, 04-BUILD-LOOP.md scoping note) — NOT the D-35 ≥30-pack production corpus",
+  "labelledAt": "2026-09-04T00:00:00.000Z",
+  "frozen": true
+}

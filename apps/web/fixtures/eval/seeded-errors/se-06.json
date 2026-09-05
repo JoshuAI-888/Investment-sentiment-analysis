@@ -1,0 +1,8 @@
+{
+  "id": "se-06",
+  "packId": "ticker-collision-01",
+  "faultClass": "fabricated_evidence_id",
+  "baseAnswer": "Reddit-observed sample of comments from the subreddits polled: two mentions of \"$F\" were excluded as unrelated word collisions rather than references to Ford. Among the five items retained as genuinely about Ford, the sampled stance leans mildly bullish (shrunk score 0.31, n=5).",
+  "answer": "Reddit-observed sample of comments from the subreddits polled: two mentions of \"$F\" were excluded as unrelated word collisions rather than references to Ford. Among the five items retained as genuinely about Ford, the sampled stance leans mildly bullish (shrunk score 0.31, n=5). (see evidence item 925d5977-1f74-4228-a31f-cc785f67209b for further detail)",
+  "faultDescription": "Cites an evidence item id that does not exist anywhere in this run's pack."
+}

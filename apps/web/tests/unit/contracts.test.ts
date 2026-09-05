@@ -187,6 +187,10 @@ describe('researchRun', () => {
     }
   });
 
+  it('accepts `abstained` (D-42) — insufficient evidence is not a failure', () => {
+    expect(researchRun.safeParse({ ...VALID, status: 'abstained' }).success).toBe(true);
+  });
+
   it('refuses a retraction with no reason or actor', () => {
     // R-18: a retraction with no reason is indistinguishable from a bug.
     expect(researchRun.safeParse({ ...VALID, status: 'retracted' }).success).toBe(false);

@@ -6,3 +6,12 @@ flask==3.1.3
 transformers==5.16.1
 torch==2.13.0
 huggingface_hub==1.29.0
+# Production WSGI server. Flask's own `app.run()` (main.py's `__main__` block) is a development
+# server and says so on every boot; it is fine for a local smoke test and wrong for the deploy
+# target that scores the corpus. Version confirmed available via `pip index versions gunicorn`
+# 2026-09-05, same no-guessing discipline as the four above.
+#
+# The image's CMD stays `./run-tests.sh` deliberately (see ../Dockerfile: "the test command is
+# the image's own entry point, so CI cannot drift from local"). A serving deploy overrides the
+# command instead — see services/scorer/README.md.
+gunicorn==26.2.0

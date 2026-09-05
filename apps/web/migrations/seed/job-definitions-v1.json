@@ -1,0 +1,63 @@
+{
+  "seededAt": "2026-09-05",
+  "basis": "F16a §6 DoD item: 'the trigger-eligible job set is a seeded column' plus the D-16 requirement that the dispatch core have something to dispatch from day one. Four rows: the two Wave-1 collectors already built (F08's attention snapshot, F04's market-data poll), the market-data poll's own D-15 trigger target (the bounded X sampling window job), and F04's Substack collector — seeded disabled because no JobHandler is registered for it yet (`src/services/jobs/handlers/index.ts`'s own doc names it as the next registration to land).",
+  "jobs": [
+    {
+      "jobKey": "market-data.poll",
+      "displayName": "Market data poll (D-15 trigger input)",
+      "enabled": true,
+      "scheduleType": "interval",
+      "scheduleExpression": "300",
+      "displayTimezone": "UTC",
+      "priority": 10,
+      "maxRuntimeSeconds": 120,
+      "concurrencyPolicy": "skip",
+      "maxAttempts": 3,
+      "triggerEligible": true,
+      "notes": "F16 §4.1b step 1: 'the only part of this loop that runs unconditionally, and it is free.' Never gated by budget. Also evaluates F06's price.regime spike method per security and, on a positive verdict, opens a bounded x.sampling_window through JobService."
+    },
+    {
+      "jobKey": "attention.snapshot",
+      "displayName": "Attention snapshot (ApeWisdom board)",
+      "enabled": true,
+      "scheduleType": "interval",
+      "scheduleExpression": "300",
+      "displayTimezone": "UTC",
+      "priority": 20,
+      "maxRuntimeSeconds": 60,
+      "concurrencyPolicy": "skip",
+      "maxAttempts": 3,
+      "triggerEligible": false,
+      "notes": "F08's existing collector (services/attention/collector.ts). Free, keyless, flat poll."
+    },
+    {
+      "jobKey": "x.sampling_window",
+      "displayName": "X sampling window (D-15 triggered, not clock-driven)",
+      "enabled": true,
+      "scheduleType": "interval",
+      "scheduleExpression": "31536000",
+      "displayTimezone": "UTC",
+      "priority": 100,
+      "maxRuntimeSeconds": 300,
+      "concurrencyPolicy": "skip",
+      "maxAttempts": 1,
+      "triggerEligible": true,
+      "farFutureNextDueAt": true,
+      "notes": "D-15 §4.1b: 'the trigger may never dispatch a job that was not registered as trigger-eligible.' This row exists so there is something eligible to dispatch into — it must never be picked up by the ordinary clock scan itself, hence `farFutureNextDueAt`. No JobHandler is registered for this job_key yet: with every X read ceiling at zero (D-32), every fired trigger is refused before JobService.execute would ever need one. Whoever raises the ceilings (D-32's named switch-on trigger) must also register a handler here."
+    },
+    {
+      "jobKey": "substack.collect",
+      "displayName": "Substack RSS collector",
+      "enabled": false,
+      "scheduleType": "interval",
+      "scheduleExpression": "3600",
+      "displayTimezone": "UTC",
+      "priority": 30,
+      "maxRuntimeSeconds": 120,
+      "concurrencyPolicy": "skip",
+      "maxAttempts": 3,
+      "triggerEligible": false,
+      "notes": "F04's collector (services/substack/collector.ts) is merged, but no JobHandler is registered for it yet — seeded disabled rather than enabled-with-no-handler, which would surface as a loud, misleading 'failed: no_handler_registered' run every tick until the handler lands. Flip `enabled` to true in the same change that registers the handler."
+    }
+  ]
+}

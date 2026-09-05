@@ -11,6 +11,7 @@ export * from './cache-key';
 export * from './wrapper';
 export * from './fixtures';
 export * from './substack';
+export * from './substack-publications';
 export * from './market';
 export * from './apewisdom';
 export * from './sec-edgar';

@@ -32,6 +32,9 @@ if (typeof window !== 'undefined') {
   );
 }
 
+/** Named so the live-mode refinement below can compare against the same literal. */
+const APP_BASE_URL_DEFAULT = 'http://localhost:3000';
+
 const providerMode = z.enum(['fixture', 'live']);
 
 const modelTransport = z.enum([
@@ -65,7 +68,7 @@ const shape = {
   DATABASE_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
-  APP_BASE_URL: z.string().url().default('http://localhost:3000'),
+  APP_BASE_URL: z.string().url().default(APP_BASE_URL_DEFAULT),
 
   // Providers (D-12 stack; F04 appends Reddit/Substack/X keys when it lands)
   FMP_API_KEY: z.string().min(1).optional(),
@@ -97,6 +100,16 @@ const shape = {
   AI_MODEL_SYNTHESIS: z.string().min(1).optional(),
   AI_MODEL_VERIFY: z.string().min(1).optional(),
 
+  // Scorer (F20 / D-13)
+  /**
+   * The pinned scorer service's origin — its own deploy target, not a Vercel route (`services/
+   * scorer/README.md`). Required in live mode: without it nothing can score, and D-16's
+   * forward-only collection means an unscorable backlog is not a degraded feature but a growing
+   * one. `services/jobs/scorer-client.ts` took this as a parameter precisely because this key
+   * did not exist; it now defaults to this and keeps the parameter for tests.
+   */
+  SCORER_BASE_URL: z.string().url().optional(),
+
   // Scheduling (F16a)
   QSTASH_TOKEN: z.string().min(1).optional(),
   QSTASH_CURRENT_SIGNING_KEY: z.string().min(1).optional(),
@@ -127,6 +140,7 @@ const REQUIRED_IN_LIVE_MODE = [
   'FRED_API_KEY',
   'SEC_USER_AGENT',
   'X_BEARER_TOKEN',
+  'SCORER_BASE_URL',
   'QSTASH_TOKEN',
   'QSTASH_CURRENT_SIGNING_KEY',
   'QSTASH_NEXT_SIGNING_KEY',
@@ -159,6 +173,25 @@ export const envSchema = z.object(shape).superRefine((value, ctx) => {
         message: 'is required when PROVIDER_MODE=live',
       });
     }
+  }
+
+  // `APP_BASE_URL` cannot go in REQUIRED_IN_LIVE_MODE: it carries a default, so it is never
+  // `undefined` and that check would never fire. The real failure is subtler than absence —
+  // `/api/cron/dispatch` builds its expected URL from this value and compares it against the
+  // `sub` claim QStash signs. A production deploy that never sets it keeps the localhost
+  // default, every real delivery mismatches, and the dispatcher 401s every QStash message
+  // forever while looking perfectly healthy. That is precisely the silent-stall the heartbeat
+  // exists to catch, and under D-16 each missed tick is corpus that cannot be recovered — so
+  // it is worth failing at boot, loudly, instead.
+  if (value.APP_BASE_URL === APP_BASE_URL_DEFAULT) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['APP_BASE_URL'],
+      message:
+        `is still the development default (${APP_BASE_URL_DEFAULT}) with PROVIDER_MODE=live. ` +
+        'It must be the real deployment origin: /api/cron/dispatch compares it against the ' +
+        "`sub` claim QStash signs, so a wrong value 401s every scheduled dispatch silently",
+    });
   }
 
   if (value.ADMIN_EMAIL_ALLOWLIST.length === 0) {

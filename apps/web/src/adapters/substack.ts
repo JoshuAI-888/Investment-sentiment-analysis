@@ -4,8 +4,9 @@
  * Chosen first among the six adapters for the reason `MEMORY.md` D-15 names: **zero lead
  * time**. It needs no key and no approval, unlike Reddit (MT-13, still unfiled) or X. Under
  * D-16 collection is forward-only with no backfill, so this is the one channel that can start
- * the clock today — MT-15 (naming the publication set) is what still blocks *collecting*, not
- * this adapter (`docs/progress/collect.md` — Blocked).
+ * the clock today. MT-15 (naming the publication set) is resolved and wired — see
+ * `./substack-publications.ts` for the confirmed 13-publication list this adapter polls once a
+ * dispatcher (F16a) exists to drive it.
  *
  * **Full bodies are retained** (D-17): `contentHtml` is the raw `content:encoded` payload,
  * un-decoded past what XML entity parsing does — Substack wraps it in CDATA precisely so its

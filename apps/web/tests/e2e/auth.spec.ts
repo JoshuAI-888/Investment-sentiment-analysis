@@ -115,6 +115,48 @@ test.describe('F02 — sign-up and sign-in', () => {
     expect(unauthenticated.status()).toBe(401);
   });
 
+  /**
+   * F11's three research routes were removed from `routes.spec.ts`'s `API_ROUTES` fixture-state
+   * loop (see that file's own comment) since each now genuinely enforces `requireUser()` — this
+   * is the dedicated coverage that removal promised, mirroring the two precedents above. All
+   * three check auth before any repository read, so none of this needs `DATABASE_URL`.
+   */
+  test('POST /api/research requires a session', async ({ request }) => {
+    const unauthenticated = await request.post('/api/research', {
+      data: { securityId: '00000000-0000-0000-0000-000000000000', question: 'what changed?' },
+    });
+    expect(unauthenticated.status()).toBe(401);
+  });
+
+  test('GET /api/research/:runId requires a session', async ({ request }) => {
+    const unauthenticated = await request.get('/api/research/00000000-0000-0000-0000-000000000000');
+    expect(unauthenticated.status()).toBe(401);
+  });
+
+  /**
+   * F16a: `POST /api/cron/dispatch` left `routes.ts`'s generic fixture-state loop for the same
+   * reason the routes above did — it is a real handler now. Its auth is a QStash signature
+   * rather than a session, and F16 §4.1 step 1 requires the check to precede any work, any
+   * database read and any cost, so an unsigned request must be refused outright.
+   */
+  test('POST /api/cron/dispatch rejects an unsigned request', async ({ request }) => {
+    const unsigned = await request.post('/api/cron/dispatch', { data: {} });
+    expect(unsigned.status()).toBe(401);
+  });
+
+  test('POST /api/cron/dispatch rejects a malformed signature', async ({ request }) => {
+    const badSignature = await request.post('/api/cron/dispatch', {
+      headers: { 'upstash-signature': 'not-a-jwt' },
+      data: {},
+    });
+    expect(badSignature.status()).toBe(401);
+  });
+
+  test('GET /api/research/:runId/stream requires a session', async ({ request }) => {
+    const unauthenticated = await request.get('/api/research/00000000-0000-0000-0000-000000000000/stream');
+    expect(unauthenticated.status()).toBe(401);
+  });
+
   test('a wrong password is refused; the correct one still works afterwards', async ({ page, request }) => {
     const email = `e2e-wrong-password-${Date.now()}@example.com`;
     await signUpAndVerify(page, request, email);

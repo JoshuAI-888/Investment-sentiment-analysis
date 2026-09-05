@@ -119,12 +119,34 @@ export type ApiRoute = { readonly path: string; readonly method: 'GET' | 'POST';
  * `401` — the dedicated unauthenticated-`401` coverage for both actually lives in
  * `tests/e2e/auth.spec.ts`'s "F02 — sign-in" describe block, mirroring `GET /api/dashboard`'s
  * precedent immediately above.
+ *
+ * **F11 removes the three research routes.** `POST /api/research`, `GET /api/research/[runId]`
+ * and `GET /api/research/[runId]/stream` all now genuinely enforce `requireUser()` (each checks
+ * it before doing anything else — a run lookup only happens after auth succeeds) and the two
+ * `GET` routes additionally enforce a per-run ownership check (404, not just 401, on a run that
+ * exists but is not the caller's own — lane-review finding 1). None answers `{ state: 'fixture'
+ * }` any more, so this file's generic loop is the wrong tool for them, same reasoning as every
+ * entry above. Dedicated unauthenticated-`401` coverage for all three lives in
+ * `tests/e2e/auth.spec.ts`'s "F02 — sign-in" describe block, mirroring the two precedents
+ * immediately above — this needs no `DATABASE_URL` since the auth check runs before any repository
+ * read.
+ *
+ * **F16a removes `POST /api/cron/dispatch`, and never adds `/api/cron/heartbeat`.** The
+ * dispatcher is no longer F01's `{ state: 'fixture' }` stub: it verifies a QStash signature
+ * before anything else and answers `401` to an unsigned request, which is the whole point of
+ * F16 §4.1 step 1 and of §7's first review step. The generic loop asserts a fixture body, so it
+ * is the wrong tool here for the same reason as every entry above. Dedicated coverage — that an
+ * unsigned POST is rejected, and that the rejection precedes any work — lives in
+ * `tests/e2e/auth.spec.ts`'s "F02 — sign-up and sign-in" describe block, mirroring the
+ * precedents above; the contract suite's `cron-dispatch-signature.test.ts` carries the twelve
+ * positive and negative signature cases. `/api/cron/heartbeat` is deliberately absent from this
+ * list rather than added to it: it was never a fixture route, and it is likewise gated.
+ *
+ * This graduation is the same seam F11's was: `tests/e2e/` is SURFACE-owned, so a COLLECT lane
+ * replacing a route cannot update this list, and the route silently keeps being asserted as a
+ * fixture long after it stopped being one.
  */
 export const API_ROUTES: readonly ApiRoute[] = [
-  { path: '/api/research', method: 'POST', source: 'api/research' },
-  { path: '/api/research/run_fixture', method: 'GET', source: 'api/research/[runId]' },
-  { path: '/api/research/run_fixture/stream', method: 'GET', source: 'api/research/[runId]/stream' },
-  { path: '/api/cron/dispatch', method: 'POST', source: 'api/cron/dispatch' },
   { path: '/api/health/providers', method: 'GET', source: 'api/health/providers' },
   { path: '/api/architecture', method: 'GET', source: 'api/architecture' },
   {

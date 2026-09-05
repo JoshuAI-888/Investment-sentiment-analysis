@@ -59,3 +59,58 @@ pip install -r requirements.txt     # flask only, in practice — the suite neve
 ./run-tests.sh                      # the command CI runs
 docker build -t scorer . && docker run --rm scorer
 ```
+
+## Deploying it as a service
+
+Vercel cannot host this — it is a Docker image with two transformer checkpoints baked in, not a
+serverless function. It needs its own target. The deploy target of record is **Render**.
+
+**The image's `CMD` is `./run-tests.sh` and stays that way.** That is deliberate (see
+`Dockerfile`: "the test command is the image's own entry point, so CI cannot drift from local"),
+and it is also why a Render service that takes the image's default command answers **502** — it
+runs the unit suite, exits 0, and never binds a port. A serving deploy **overrides the command**
+rather than changing the image's default:
+
+```
+gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 300 --graceful-timeout 30 main:app
+```
+
+Each flag is load-bearing:
+
+| Flag | Why |
+|---|---|
+| `--bind 0.0.0.0:$PORT` | Render assigns the port at runtime. Binding a fixed port is the second-most-common 502 after the one above |
+| `--workers 1` | `main.py` loads **both** pinned checkpoints at import, so every worker holds its own full copy. Two workers is roughly 2–3 GB resident and an OOM kill on anything under a 4 GB instance. Scale the instance before the worker count, and only against a measured queue depth |
+| `--timeout 300` | Model loading happens during worker boot. Gunicorn's 30 s default kills the worker mid-load and retries forever, which presents as a service that never becomes healthy |
+| `--graceful-timeout 30` | An in-flight batch finishes rather than being cut off mid-score on a redeploy |
+
+Also set:
+
+- **Health Check Path:** `/health` — `app.py` serves it, liveness-only, no outbound call.
+- **`RUNTIME_VERSION`:** the image digest, per `main.py`'s docstring. `ScorerIdentity.runtimeVersion`
+  exists so a bad *image* is distinguishable from a bad *model pin*, which means it has to come
+  from the deploy pipeline. It defaults to `"unknown"`, and an artifact carrying `"unknown"`
+  cannot answer the question the field was added for.
+- **Instance type:** 2 GB minimum. Below that the checkpoints do not fit.
+- **No spin-down on idle.** `adapters/scorer.ts` sets `SCORER_TIMEOUT_MS` to 30 s; a cold start
+  that reloads both models exceeds that, and the queue would read the timeout as a scorer outage
+  and abstain — a correct response to a wrong signal.
+
+### The Hugging Face rate-limit warning during the build
+
+```
+Warning: You are sending unauthenticated requests to the HF Hub.
+Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+```
+
+Expected, and benign as long as the build succeeds. `download_models.py` fetches both
+checkpoints **by pinned commit SHA at build time only**; the image then sets `HF_HUB_OFFLINE=1`,
+so nothing reaches the Hub at runtime. The warning is about download speed and rate limits, not
+correctness — the SHA pin is what makes the fetch reproducible, and it is unaffected.
+
+Set a build-time `HF_TOKEN` in Render only if the build actually starts failing on HTTP 429.
+Note it belongs to **this service's build environment**, never to `apps/web`: F-21 removed every
+`HF_*` variable from the application, and `tests/unit/codebase-invariants.test.ts` fails the
+build if one reappears there. D-13 reintroduced pinned models *in this service*, pinned by
+commit SHA in the image rather than configured by environment — which is precisely the
+difference between D-13 and what F-21 cut.

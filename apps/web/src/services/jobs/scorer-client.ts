@@ -8,11 +8,15 @@
  * with its budget gate, breaker, rate limiter and call log, in an integration test and in
  * production.
  *
- * **`baseUrl` is a parameter, not an environment read.** `src/env.ts` has no `SCORER_BASE_URL`
- * yet and belongs to F01's tree, so this lane does not add one. Passing it in also keeps the
- * fixture path honest: in `PROVIDER_MODE=fixture` there is no URL at all and the argument is
- * unused, which is exactly the state CI runs in.
+ * **`baseUrl` stays a parameter, and now falls back to `env.SCORER_BASE_URL`.** This file used
+ * to note that `src/env.ts` had no such key and that this lane would not add one to F01's tree;
+ * the key exists as of the Render deploy, and the fallback is what lets a real deployment reach
+ * a real scorer without every call site threading a URL. It remains a *parameter* because the
+ * fixture path depends on that: in `PROVIDER_MODE=fixture` there is no URL at all and the
+ * argument is unused, which is exactly the state CI runs in, and a test that wants a stub host
+ * must be able to say so without setting a process-wide variable.
  */
+import { env } from '@/env';
 import type { WrapperDeps } from '@/adapters/wrapper';
 import type { ScorerId } from '@/adapters/scorer';
 import { postScoreBatch, SCORER_TIMEOUT_MS } from '@/adapters/scorer';
@@ -20,7 +24,10 @@ import type { ScoreBatchPort } from './scoring-worker';
 
 export type ScoreBatchPortOptions = {
   providerMode: 'fixture' | 'live';
-  /** Required in live mode. `postScoreBatch` throws without it rather than calling a stub host. */
+  /**
+   * Defaults to `env.SCORER_BASE_URL`, which is required in live mode. `postScoreBatch` throws
+   * without a URL rather than calling a stub host.
+   */
   baseUrl?: string;
   timeoutMs?: number;
   /** In fixture mode, carries `x-fixture-case`; in live mode the wrapper strips it. */
@@ -31,6 +38,7 @@ export function createScoreBatchPort(
   options: ScoreBatchPortOptions,
   deps: Omit<WrapperDeps, 'fetcher'> & { fixturesRoot?: string },
 ): ScoreBatchPort {
+  const resolvedBaseUrl = options.baseUrl ?? env.SCORER_BASE_URL;
   return async (items) =>
     postScoreBatch(
       {
@@ -39,7 +47,7 @@ export function createScoreBatchPort(
           text: item.text,
           kind: item.kind satisfies ScorerId,
         })),
-        ...(options.baseUrl === undefined ? {} : { baseUrl: options.baseUrl }),
+        ...(resolvedBaseUrl === undefined ? {} : { baseUrl: resolvedBaseUrl }),
         timeoutMs: options.timeoutMs ?? SCORER_TIMEOUT_MS,
         ...(options.headers === undefined ? {} : { headers: options.headers }),
       },

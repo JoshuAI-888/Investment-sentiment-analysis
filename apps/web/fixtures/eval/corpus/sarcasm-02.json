@@ -1,0 +1,245 @@
+{
+  "id": "sarcasm-02",
+  "bucket": "sarcasm_ambiguity",
+  "pack": {
+    "id": "0ed8e225-b670-43ef-869a-eba521b70946",
+    "securityId": "4b04ddeb-15cc-4c48-be55-8827e152cbcd",
+    "retrievalQuery": "security_id = 4b04ddeb-15cc-4c48-be55-8827e152cbcd, axes = [x]",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-08T00:00:00.000Z"
+    },
+    "items": [
+      {
+        "item": {
+          "id": "edcb3596-672e-4c8f-a1c0-bf51e1fb5ca0",
+          "securityId": "4b04ddeb-15cc-4c48-be55-8827e152cbcd",
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "COIN pumping again",
+          "snippet": "Oh sure, COIN is \"decoupling from crypto\" this time — definitely not just following Bitcoin up 3% like every other time.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.84",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "4fb76659f71d40599ccdf0e261ead4ff00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.2",
+        "flags": [
+          "sarcasm"
+        ],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "27b1ac04-6249-4fbe-ac84-515dfd7e4a17",
+          "securityId": "4b04ddeb-15cc-4c48-be55-8827e152cbcd",
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "watched account: COIN take",
+          "snippet": "Another \"this cycle is different\" post about COIN. Groundbreaking analysis as always.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.81",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "e14feba4335f46b48d4a4c6013c71d2d00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.2",
+        "flags": [
+          "sarcasm"
+        ],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "1ef2c6ed-308d-40ce-b346-71f0d6cdf3e7",
+          "securityId": "4b04ddeb-15cc-4c48-be55-8827e152cbcd",
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "COIN volatility commentary",
+          "snippet": "Wow, a 15% swing on COIN — truly shocking for a company whose entire business is volatility.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.79",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "f8f9a7d9457f46a584e1a86f0ebc3c9d00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.2",
+        "flags": [
+          "sarcasm"
+        ],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "53e23c2c-9628-41d8-9bdd-caa41fc45e33",
+          "securityId": "4b04ddeb-15cc-4c48-be55-8827e152cbcd",
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "COIN adoption narrative",
+          "snippet": "Sure, \"mainstream adoption\" is definitely why the stock moves exactly like the BTC chart. Definitely not correlation.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.78",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "57c69640f9294a87b38dbbe68e76619c00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.2",
+        "flags": [
+          "sarcasm"
+        ],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "076bcb2b-5513-49ae-8dc1-89fe4555ca08",
+          "securityId": "4b04ddeb-15cc-4c48-be55-8827e152cbcd",
+          "evidenceType": "social_result",
+          "provider": "x",
+          "title": "COIN earnings reaction",
+          "snippet": "Love how every COIN thread has three people insisting they \"called it\" — never mind the fourteen who did not.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.76",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "e4f739f8c6164362aeb4d9598c213d0500000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "x",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.2",
+        "flags": [
+          "sarcasm"
+        ],
+        "excludedReason": null
+      }
+    ],
+    "frames": [
+      {
+        "axis": "x",
+        "frameStatement": "watched-account sample, collected around a price trigger. Coverage is event-conditional, not continuous.",
+        "window": {
+          "from": "2026-08-01T00:00:00.000Z",
+          "to": "2026-08-08T00:00:00.000Z"
+        },
+        "retrievedCount": 6,
+        "usedCount": 5,
+        "watchlistVersion": "x-watchlist-v1",
+        "triggerEventId": "trigger-coin-price-move-001",
+        "truncated": false
+      }
+    ],
+    "createdAt": "2026-08-08T00:00:00.000Z"
+  },
+  "labels": [
+    {
+      "itemId": "edcb3596-672e-4c8f-a1c0-bf51e1fb5ca0",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "sarcastic tone on the watched-account sample — no confident direction can be read from the text"
+    },
+    {
+      "itemId": "27b1ac04-6249-4fbe-ac84-515dfd7e4a17",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "sarcastic tone on the watched-account sample — no confident direction can be read from the text"
+    },
+    {
+      "itemId": "1ef2c6ed-308d-40ce-b346-71f0d6cdf3e7",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "sarcastic tone on the watched-account sample — no confident direction can be read from the text"
+    },
+    {
+      "itemId": "53e23c2c-9628-41d8-9bdd-caa41fc45e33",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "sarcastic tone on the watched-account sample — no confident direction can be read from the text"
+    },
+    {
+      "itemId": "076bcb2b-5513-49ae-8dc1-89fe4555ca08",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "sarcastic tone on the watched-account sample — no confident direction can be read from the text"
+    }
+  ],
+  "expectedOutcome": "unclear_no_direction",
+  "acceptableClaims": [
+    "Watched-account X posts about COIN this window carry heavy sarcasm about correlation with Bitcoin; no confident stance direction is reportable."
+  ],
+  "requiredAbstentions": [
+    "stance.coin.formal_score"
+  ],
+  "storedMetrics": [
+    {
+      "metricId": "sentiment.x.sampleAdequacy",
+      "display": "0.40"
+    }
+  ],
+  "referenceAnswer": "Watched-account sample, collected around a price trigger: the COIN posts this window are dominated by sarcastic commentary about its correlation with Bitcoin, so no confident stance direction is reported (sample adequacy 0.40). What to monitor next: whether the tone shifts from irony toward substantive claims.",
+  "labelledBy": "F12 lane-build starter corpus (hand-authored fixture for harness machinery, 04-BUILD-LOOP.md scoping note) — NOT the D-35 ≥30-pack production corpus",
+  "labelledAt": "2026-09-04T00:00:00.000Z",
+  "frozen": true
+}

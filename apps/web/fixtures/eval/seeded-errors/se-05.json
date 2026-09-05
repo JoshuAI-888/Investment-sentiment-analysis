@@ -1,0 +1,8 @@
+{
+  "id": "se-05",
+  "packId": "thin-01",
+  "faultClass": "stance_on_thin_sample",
+  "baseAnswer": "Only 2 relevant Reddit-observed comment(s) were found for ZVIA over the 2026-08-01 to 2026-08-08 window. That is below the five-item threshold, so no stance score is reported for this window — this is a stated abstention, not a smaller number.",
+  "answer": "Reddit-observed sentiment for ZVIA this window is bullish (shrunk score 0.45, n=2), suggesting positive momentum is building.",
+  "faultDescription": "Asserts a formal stance score on a 2-item sample, violating the n<5 abstention rule (B5)."
+}

@@ -10,23 +10,50 @@ from __future__ import annotations
 
 from flask import Flask, jsonify, request
 
-from pinning import PINNED_MODELS, PinnedModel
+from pinning import PinnedModel
 from scoring import ScoreBackend, ScoreItem, score_batch
 
 
 def create_app(
     backends: dict[str, ScoreBackend],
     runtime_version: str,
-    models: dict[str, PinnedModel] | None = None,
+    models_by_kind: dict[str, PinnedModel],
 ) -> Flask:
-    model_by_id = models if models is not None else {m.scorer_id: m for m in PINNED_MODELS}
+    """
+    `models_by_kind` is keyed by **item kind** (`substack_post`, `x_snippet`, ...), not by
+    scorer id — the same keys `backends` uses, because `/score` looks both up by the kind on the
+    incoming item. Several kinds legitimately map to one model: F20 §4.1 routes all long-form
+    prose to FinBERT and all short social text to Twitter-RoBERTa.
+
+    **It used to be optional, defaulting to `{m.scorer_id: m for m in PINNED_MODELS}`, and that
+    default was keyed wrongly.** `/score` does `model_by_kind[kind]`, so any caller taking the
+    default got a service that raised `KeyError` on every scoring request. Nothing caught it
+    because every call site — `main.py` and all four test constructions — passes the argument, so
+    the default was unexercised as well as wrong. It is now required: there is no sensible
+    default anyway, since the kind-to-model mapping lives in `main.py` and is deployment
+    knowledge this module does not have.
+    """
+    model_by_kind = models_by_kind
     app = Flask(__name__)
 
     @app.get("/health")
     def health():
         # Liveness only — F20 §4.1 is stateless and makes no outbound call to answer this,
         # the same discipline F04 §4.5 states for `/api/health/providers`.
-        return jsonify({"status": "ok", "scorers": sorted(model_by_id.keys())})
+        #
+        # `scorers` reports the distinct pinned models, derived from each entry's own
+        # `scorer_id` rather than from the dict's keys. Reading the keys is what made this
+        # endpoint answer `["reddit_post", "substack_post", "x_snippet", ...]` under the label
+        # "scorers" in the first production deploy — five item kinds presented as five scorers,
+        # where there have only ever been two. `kinds` reports what the service actually
+        # accepts, which is the other genuinely useful fact and was previously unavailable.
+        return jsonify(
+            {
+                "status": "ok",
+                "scorers": sorted({model.scorer_id for model in model_by_kind.values()}),
+                "kinds": sorted(model_by_kind.keys()),
+            }
+        )
 
     @app.post("/score")
     def score():
@@ -50,7 +77,7 @@ def create_app(
             results_by_kind[kind] = score_batch(
                 items=items,
                 backend=backends[kind],
-                model=model_by_id[kind],
+                model=model_by_kind[kind],
                 runtime_version=runtime_version,
             )
 

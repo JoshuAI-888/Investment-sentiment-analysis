@@ -272,6 +272,20 @@ export type CollectMarketSnapshotsOptions = {
    */
   readonly headersBySymbol?: Readonly<Record<string, Readonly<Record<string, string>>>>;
   readonly deps?: Omit<WrapperDeps, 'fetcher'>;
+  /**
+   * F16 §4.1b (D-15): the market-data poll is also the input half of the price trigger, which
+   * needs the *full* daily-bar series to compute `price.regime` over a 21-session window — this
+   * collector itself only ever persists the single newest usable bar (this module's own top
+   * doc). Rather than have F16a's trigger issue a second, duplicate `fetchDailyBars` call per
+   * security against the same flat-rate, unlimited endpoint (D-31), this optional hook hands the
+   * caller the exact series this run already fetched, for every security whose call succeeded —
+   * called once per security, right after a successful provider response and before this
+   * collector's own bar-selection/validation logic runs, so a caller sees the provider's raw
+   * series regardless of whether this collector found a persistable bar in it. Never called on a
+   * provider failure — there is no series to hand over. Additive and optional: omitting it
+   * changes nothing about this collector's own behaviour.
+   */
+  readonly onBarsFetched?: (security: Pick<Security, 'id' | 'symbol'>, bars: readonly DailyBar[]) => void;
 };
 
 export type CollectMarketSnapshotsOutcome = {
@@ -365,6 +379,8 @@ export async function collectMarketSnapshots(
         });
         continue;
       }
+
+      options.onBarsFetched?.(security, bars.data);
 
       if (bars.data.length === 0) {
         failures.push({

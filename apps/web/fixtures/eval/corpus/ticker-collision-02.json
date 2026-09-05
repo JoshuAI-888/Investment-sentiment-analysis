@@ -1,0 +1,313 @@
+{
+  "id": "ticker-collision-02",
+  "bucket": "ticker_collision",
+  "pack": {
+    "id": "e9a9a6bb-59b1-42eb-b57e-6300fb3eed60",
+    "securityId": "dd725a46-e35c-4d62-950a-c129a1c3d4b0",
+    "retrievalQuery": "security_id = dd725a46-e35c-4d62-950a-c129a1c3d4b0, axes = [reddit]",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-08T00:00:00.000Z"
+    },
+    "items": [
+      {
+        "item": {
+          "id": "6011214d-b0e2-4a3a-b67a-55e8593a660a",
+          "securityId": "dd725a46-e35c-4d62-950a-c129a1c3d4b0",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "this ad campaign is so meta",
+          "snippet": "The whole campaign is making fun of itself — incredibly meta marketing, honestly.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.06",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "5798190d906646a8965fce8fe1e67c1300000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": false,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": null,
+        "flags": [
+          "ticker_collision"
+        ],
+        "excludedReason": "matched cashtag $META without a corroborating company-name reference — \"meta\" used as an adjective, not the company"
+      },
+      {
+        "item": {
+          "id": "4b091933-353c-4431-a389-e919782cc30e",
+          "securityId": "dd725a46-e35c-4d62-950a-c129a1c3d4b0",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "grading essays today",
+          "snippet": "Kind of meta that this essay about self-reflection barely reflects on anything.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.05",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "e2f3526889b74bce89dd72effbcce27f00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": false,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": null,
+        "flags": [
+          "ticker_collision"
+        ],
+        "excludedReason": "matched cashtag $META without a corroborating company-name reference — \"meta\" used as an adjective, not the company"
+      },
+      {
+        "item": {
+          "id": "c6de55da-2fcc-4ca4-ab3f-b7fce054f3ac",
+          "securityId": "dd725a46-e35c-4d62-950a-c129a1c3d4b0",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "META ad revenue beat",
+          "snippet": "Meta's ad revenue came in ahead of estimates again this quarter.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.55",
+          "relevanceScore": "0.80",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "f2159c92dcbc4d9a8b45eae178027bf800000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "dd5326a2-6e1b-4d7d-8637-6449b2a3105b",
+          "securityId": "dd725a46-e35c-4d62-950a-c129a1c3d4b0",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Reality Labs losses narrow",
+          "snippet": "Reality Labs losses narrowed versus last quarter's guidance.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.50",
+          "relevanceScore": "0.78",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "be26ebe4b4c5488aa922b8e14707695900000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "2008549e-03f0-434b-a2d9-15a63f1ece4e",
+          "securityId": "dd725a46-e35c-4d62-950a-c129a1c3d4b0",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Threads engagement climbing",
+          "snippet": "Threads daily actives keep climbing according to the latest numbers.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "neutral",
+          "stanceScore": "0.07",
+          "relevanceScore": "0.74",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "b32a40a5d38547f9a12351e6e31ec4ea00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "a729b39f-142f-40f4-931c-6269469ace21",
+          "securityId": "dd725a46-e35c-4d62-950a-c129a1c3d4b0",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Meta AI capex ramp",
+          "snippet": "Meta's AI infrastructure capex guide keeps getting revised up.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "neutral",
+          "stanceScore": "0.05",
+          "relevanceScore": "0.73",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "b46d478a3b44495fbb3345d1cf2fa2ee00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "add93f6e-d4f7-4799-92ad-e7ff51d32e3d",
+          "securityId": "dd725a46-e35c-4d62-950a-c129a1c3d4b0",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Zuckerberg efficiency comments",
+          "snippet": "Management reiterated the \"year of efficiency\" cost-discipline language.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.48",
+          "relevanceScore": "0.76",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "5173f795bd394b32bc9f88b59550a48d00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      }
+    ],
+    "frames": [
+      {
+        "axis": "reddit",
+        "frameStatement": "observed sample of comments from the subreddits polled — not a sample of retail investors.",
+        "window": {
+          "from": "2026-08-01T00:00:00.000Z",
+          "to": "2026-08-08T00:00:00.000Z"
+        },
+        "retrievedCount": 9,
+        "usedCount": 5,
+        "subredditsPolled": [
+          "stocks"
+        ],
+        "treeComplete": true,
+        "truncated": false
+      }
+    ],
+    "createdAt": "2026-08-08T00:00:00.000Z"
+  },
+  "labels": [
+    {
+      "itemId": "6011214d-b0e2-4a3a-b67a-55e8593a660a",
+      "expectedStance": null,
+      "expectedRelevant": false,
+      "note": "generic internet-slang use of \"meta\" (self-referential), unrelated to the company"
+    },
+    {
+      "itemId": "4b091933-353c-4431-a389-e919782cc30e",
+      "expectedStance": null,
+      "expectedRelevant": false,
+      "note": "generic internet-slang use of \"meta\" (self-referential), unrelated to the company"
+    },
+    {
+      "itemId": "c6de55da-2fcc-4ca4-ab3f-b7fce054f3ac",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuinely about Meta the company"
+    },
+    {
+      "itemId": "dd5326a2-6e1b-4d7d-8637-6449b2a3105b",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuinely about Meta the company"
+    },
+    {
+      "itemId": "2008549e-03f0-434b-a2d9-15a63f1ece4e",
+      "expectedStance": "neutral",
+      "expectedRelevant": true,
+      "note": "genuinely about Meta the company"
+    },
+    {
+      "itemId": "a729b39f-142f-40f4-931c-6269469ace21",
+      "expectedStance": "neutral",
+      "expectedRelevant": true,
+      "note": "genuinely about Meta the company"
+    },
+    {
+      "itemId": "add93f6e-d4f7-4799-92ad-e7ff51d32e3d",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuinely about Meta the company"
+    }
+  ],
+  "expectedOutcome": "stance_scored",
+  "acceptableClaims": [
+    "After the collision guard excludes generic (\"self-referential\") uses of the word \"meta\", the remaining Reddit-observed sample for META leans mildly bullish (n=5)."
+  ],
+  "requiredAbstentions": [],
+  "storedMetrics": [
+    {
+      "metricId": "sentiment.reddit.shrunkScore",
+      "display": "0.34"
+    }
+  ],
+  "referenceAnswer": "Reddit-observed sample of comments from the subreddits polled: two generic, self-referential uses of the word \"meta\" were excluded as unrelated to the company. Among the five items retained as genuinely about Meta, the sampled stance leans mildly bullish (shrunk score 0.34, n=5).",
+  "labelledBy": "F12 lane-build starter corpus (hand-authored fixture for harness machinery, 04-BUILD-LOOP.md scoping note) — NOT the D-35 ≥30-pack production corpus",
+  "labelledAt": "2026-09-04T00:00:00.000Z",
+  "frozen": true
+}

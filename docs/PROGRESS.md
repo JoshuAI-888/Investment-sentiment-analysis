@@ -88,15 +88,64 @@ done. Separately, **MT-15 is now fully confirmed by the owner**: 13 Substack pub
 10 of 11 GICS sectors (Utilities a disclosed gap after two research passes found nothing that
 clears the weekly-cadence bar). See `DEPLOY.md` MT-15 and `MEMORY.md` **B-30**/**D-36**.
 
+**2026-09-04 — MT-06 resolved (D-39).** LLM access is provisioned in Vercel: `AI_GATEWAY_API_KEY`,
+`MODEL_TRANSPORT_DEFAULT=vercel_gateway` and the three D-34 task routes are set, owner-confirmed.
+Not independently verified by this session — Vercel's API doesn't expose secret values, only that
+the project deploys cleanly with no runtime errors in the last 7 days. **F10, F11 and F12 are now
+unblocked** and await lane allocation at the Wave 2 gate; a live-mode misconfiguration will still
+surface via F01 §4.2's existing boot assertion. See `MEMORY.md` D-39.
+
+**2026-09-04 — MT-15's Substack list wired into F04's config (D-40).** The confirmed
+13-publication set is now a committed, zod-validated artifact
+(`migrations/seed/substack-publications-v1.json` + `src/adapters/substack-publications.ts`),
+mirroring `universe-seed.ts`'s pattern for the symbol list. This is the adapters-layer half only
+— no `app_setting`/`config_version` row yet (needs F15's governance machinery and a live
+`DATABASE_URL`) and **no polling starts from this alone**, since F16a's dispatcher still doesn't
+exist. MT-08 is unaffected. See `MEMORY.md` D-40.
+
+**2026-09-04 — Wave 2 gate certified; F10/F11/F12 contract-frozen and allocated to three
+temporary lanes (D-41, D-42).** A2/A3 are the one named exception (no measuring instrument until
+F19). `src/contracts/evidence-pack.ts` freezes `EvidencePack`/`ClassifiedItem` on top of the
+already-merged `evidence.ts`/`research.ts` contracts; migration `0014` adds the missing
+`abstained` research-run state. See "Wave 3 lanes" below and `MEMORY.md` D-41/D-42.
+
+**2026-09-04 — F10, F11 and F12 merged (D-43).** Built in parallel worktrees against the frozen
+contracts, one adversarial review round each, all findings fixed. DoD: F10 9/11, F11 9/13, F12
+5/10 — genuinely outstanding items (persistence, real F10↔F11 integration, F12's real ≥30-pack
+corpus, live-model verification) are named with triggers, not dropped. **F21 is now unblocked for
+lane allocation** (it depends on F12 and F20, both merged) — not allocated this session. See
+"Wave 3 lanes" below and `MEMORY.md` D-43.
+
+**2026-09-05 — F16a merged; the dispatcher exists.** Until today `/api/cron/dispatch` was F01's
+`{ state: 'fixture' }` stub, so the QStash schedule confirmed under MT-04 had been firing every
+five minutes into a 200-with-no-effect, and **zero `job_definition` rows existed** for it to claim
+in any case. Both are now closed (`progress/collect.md`, `MEMORY.md` **D-44**). The same PR
+carried F10/F11/F12 — ~14,600 lines that had been built, reviewed and CI-fixed on a branch no PR
+was ever opened for, so `main` had never received them — plus **the Substack collector**, the
+first channel that can actually collect (no key, no approval), and the pinned scorer's Render
+deploy.
+
+**What still stands between this and a collecting system**, both recorded in `MEMORY.md` **B-31**:
+
+1. **F20's scoring queue has no durable store.** `ScoringQueuePort` is an interface with
+   consumers and test fakes — no implementation, no table in any migration. `substack.collect` is
+   therefore deliberately unregistered: registering it against an in-memory `Map` would report
+   evidence as enqueued and then silently never score it. **Owner decision pending** — start
+   D-16's clock now with scoring deferred (the collector's write-before-enqueue ordering makes an
+   unscored backlog recoverable by design), or build the store first.
+2. **The D-15 price trigger structurally abstains**, for a reason unrelated to D-32's zero X
+   ceiling: `priceRegimeInputs` declares `close_unadjusted` where `computePriceRegime` accepts
+   only `adjusted_close`. F04 supplying adjusted-close data is what starts it firing.
+
 **Next work, in order:**
 
 1. **`DEPLOY.md` MT-13** — file the Reddit application. **Confirmed unfiled on 2026-09-03.** Free,
    and now unambiguously the longest lead in the plan: it is the only remaining blocker whose
    clock someone else controls.
-2. ~~**`DEPLOY.md` MT-15**~~ — **confirmed 2026-09-04.** 13 Substack publications, 10/11 GICS
-   sectors. **This is still the only channel that can collect today** — no key, no approval — but
-   collection now waits on wiring the confirmed list into F04's Substack config (COLLECT), an
-   engineering task rather than an owner decision.
+2. ~~**`DEPLOY.md` MT-15**~~ — **confirmed 2026-09-04, wired 2026-09-04 (D-40).** 13 Substack
+   publications, 10/11 GICS sectors, now a committed, validated config artifact
+   (`substack-publications.ts`). **This is still the only channel that can collect today** — no
+   key, no approval — but *collecting* still needs F16a's dispatcher, which does not exist yet.
 3. ~~**F01**~~ — **merged 2026-09-03.** The repository now has a toolchain, a gate and a
    shape to be parallel in.
 4. ~~**F03 → F22 → F05**~~ — **all merged 2026-09-03.** The Wave 1 skeleton SPINE owed is
@@ -167,17 +216,31 @@ rather than lettered so the two never read as the same thing.
 > total of **160–210 h**. The gap predates the lane split and is unresolved — treat the lane
 > figures above as the registry's own numbers, not as a schedule.
 
-## Not yet allocated to a lane
+## Wave 3 lanes (allocated 2026-09-04, D-42; all three merged 2026-09-04, D-43)
 
-Wave 3 is allocated at the Wave 2 gate, when it is known which lane has capacity and whether
-F10's corpora arrived.
+The Wave 2 gate is certified (D-41), so `06-PARALLEL-LANES.md` §1b's "full three-lane parallelism
+begins at the Wave 2 gate" condition is met. **Three temporary lanes**, scoped like RNI's
+DATA/ENGINE/SURFACE rather than the legacy SPINE/COLLECT/SURFACE partition (F10/F11/F12 don't fit
+that split without every lane touching `src/contracts/`) — see `MEMORY.md` D-42 for the frozen
+contracts (`src/contracts/evidence-pack.ts`) and the path map.
+
+**All three built in parallel worktrees, each through one full adversarial review round, merged
+in dependency order (F10 → F11 → F12).** See `MEMORY.md` D-43 for the full record — the
+`ModelClient` convergence decision, the two F12 judge/store limitations required in this file by
+F12's own DoD, and the itemized list of what's still genuinely outstanding (persistence, real F10↔F11
+integration, F12's real ≥30-pack corpus, live-model verification).
+
+| ID | Feature | Wave | Status | Lane | Notes |
+|---|---|---|---|---|---|
+| F10 | Evidence and stance pipeline | 3 | `merged` 2026-09-04 | F10-lane | 9/11 DoD. Deferred: F12-corpus-gated B1/B2/B5; availability-checker persistence (no repository write exists) |
+| F11 | Research agent and verifier | 3 | `merged` 2026-09-04 | F11-lane | 9/13 DoD. Deferred: real (non-in-memory) persistence; F12-corpus-gated B3/B4/B6/B7/B8; total-30s-p95 measurement (needs F19) |
+| F12 | Evaluation harness and judge | 3 | `merged` 2026-09-04 | F12-lane | 5/10 DoD. Deferred: the real ≥30-pack/≥40-answer corpus and a real Tier C/B7/B8 run (need F10+F11 live plus human labelling); D4 backtest harness confirmed out of scope (~2027, per `01-PRODUCT-SPEC.md` Tier D) |
+
+## Not yet allocated to a lane
 
 | ID | Feature | Wave | Status | Blocker |
 |---|---|---|---|---|
-| F10 | Evidence and stance pipeline | 3 | `blocked` | **MT-06.** Reworked: real corpora, three sampling frames |
-| F11 | Research agent and verifier | 3 | `blocked` | **MT-06.** Now also the **measurement path** for F21 |
-| F12 | Evaluation harness and judge | 3 | `blocked` | **MT-06** and **OQ-7.** Extended with Tier D; ports finsent's harness (D-18) |
-| F21 | MCP server and MCP Apps surface | 3 | `not started` | — **New (D-10).** Placed at the Wave 3 exit, not after Wave 5 |
+| F21 | MCP server and MCP Apps surface | 3 | `not started` | — **New (D-10).** Placed at the Wave 3 exit, not after Wave 5. **Unblocked for lane allocation 2026-09-04** — F12 and F20 both merged (D-43) — not yet allocated |
 
 Status values: `not started` · `in progress` · `in review` · `merged` · `blocked` · `deferred`
 
@@ -197,8 +260,8 @@ Status values: `not started` · `in progress` · `in review` · `merged` · `blo
 | Wave | Gate | State |
 |---|---|---|
 | 1 | Walking skeleton **through the scoring boundary and the PIT store**: Reddit → raw store → queue → pinned scorer → analytics → artifact → Inspector → replay. CI green on both deploy targets. Scorer determinism and outage-abstention proven. Look-ahead guard fires. Collector live. Growth measured in MB/month. **OTP sign-in works and a non-allowlisted address is refused every operator route** (F02 — added 2026-09-03; this row omitted it while `03-ROADMAP.md`'s Wave 1 exit gate required it) | not reached |
-| 2 | Dashboard, leaderboard and ticker page on live data; every number inspectable; **per-axis thresholds re-derived**; A2–A6 pass | not reached |
-| 3 | Research streams, verifies, abstains; Tier B passes; Tier C judge gate passes; **Tier D1–D3 pass**; A1 passes; **F21 exposes the tool surface with no corpus leak** | not reached |
+| 2 | Dashboard, leaderboard and ticker page on live data; every number inspectable; **per-axis thresholds re-derived**; A2–A6 pass | **certified 2026-09-04 (D-41)** — A4/A5/A6 pass; A2/A3 named as a disclosed exception, no measuring instrument until F19 (Wave 4–5) |
+| 3 | Research streams, verifies, abstains; Tier B passes; Tier C judge gate passes; **Tier D1–D3 pass**; A1 passes; **F21 exposes the tool surface with no corpus leak** | not reached — F10/F11/F12 merged 2026-09-04 (D-43), harness mechanics proven, but the gate itself needs the real ≥30-pack corpus, a live Tier B/C/D run, real F10↔F11 integration and F21 (not yet allocated) |
 | 4 | Operator negative-auth and dispatcher idempotency pass; config/universe changes versioned with working rollback; trigger thresholds operator-editable and audited | not reached |
 | 5 | Source §20 DoD (less the multi-tenant items D-11 voids) + Tiers A, B, C, D1–D3 | not reached |
 | **—** | **Tier D4 promotion** — not part of "done". Runnable ~12 months after the collector starts | **~2027** |
