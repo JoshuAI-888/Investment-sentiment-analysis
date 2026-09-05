@@ -28,7 +28,7 @@ import type {
 } from '../composition';
 import type { RniConvergenceArtifact } from '../convergence';
 import { replayPlatformFacts } from '../convergence';
-import { replayPlatformAnalytics, type RniPlatformAnalyticsArtifact } from '../analytics';
+import type { RniPlatformAnalyticsArtifact } from '../analytics';
 import {
   rniCitation,
   rniCombinedSummary,
@@ -41,6 +41,7 @@ import {
   PostgresRniSynthesisEvidenceReader,
   type RniActiveSynthesisRightsLookup,
 } from './cited-synthesis-reader';
+import { validateRniConvergenceComponents } from './engine-artifacts';
 
 const PLATFORM_ORDER = ['reddit', 'x'] as const;
 const SYNTHESIS_ID_NAMESPACE = 'rni-cited-synthesis-persistence-v1';
@@ -251,46 +252,29 @@ async function loadModelRoutes(
   return new Map(rows.map((row) => [row.task, row]));
 }
 
-type PlatformArtifactRow = {
-  readonly id: string;
-  readonly run_id: string;
-  readonly security_id: string;
-  readonly platform_slice_id: string;
-  readonly methodology_version: string;
-  readonly calculation_code_version: RniPlatformAnalyticsArtifact['calculationCodeVersion'];
-  readonly input_hash: string;
-  readonly result_hash: string;
-  readonly platform: RniPlatform;
-  readonly artifact_hash: string;
-  readonly input_snapshot: {
-    readonly input: RniPlatformAnalyticsArtifact['inputSnapshot'];
-    readonly methodology: RniPlatformAnalyticsArtifact['methodologySnapshot'];
-  };
-  readonly result_snapshot: RniPlatformAnalyticsArtifact['result'];
-};
-
 function record(value: unknown): Readonly<Record<string, unknown>> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
     ? (value as Readonly<Record<string, unknown>>)
     : null;
 }
 
-function positiveWeightSourceIds(row: PlatformArtifactRow): string[] {
-  const result = record(row.result_snapshot);
+function positiveWeightSourceIds(artifact: RniPlatformAnalyticsArtifact): string[] {
+  const platform = artifact.inputSnapshot.platform;
+  const result = record(artifact.result);
   const trace = result?.['weightTrace'];
-  if (!Array.isArray(trace)) fail(`invalid durable ${row.platform} analytics weight trace`);
+  if (!Array.isArray(trace)) fail(`invalid durable ${platform} analytics weight trace`);
   const sourceIds: string[] = [];
   for (const entry of trace) {
     const item = record(entry);
     const sourceItemId = item?.['sourceItemId'];
     const weight = item?.['weight'];
     if (typeof sourceItemId !== 'string' || typeof weight !== 'string') {
-      fail(`invalid durable ${row.platform} analytics weight trace`);
+      fail(`invalid durable ${platform} analytics weight trace`);
     }
     try {
       if (new D(weight).greaterThan('0')) sourceIds.push(sourceItemId);
     } catch {
-      fail(`invalid durable ${row.platform} analytics weight`);
+      fail(`invalid durable ${platform} analytics weight`);
     }
   }
   return sortedUnique(sourceIds);
@@ -300,65 +284,21 @@ async function loadPlatformSourceIds(
   convergence: { readonly row: ConvergenceRow; readonly artifact: RniConvergenceArtifact },
   db: Queryable,
 ): Promise<ReadonlyMap<RniPlatform, readonly string[]>> {
-  const ids = [convergence.row.reddit_analytics_id, convergence.row.x_analytics_id];
-  const { rows } = await db.query<PlatformArtifactRow>(
-    `select id, run_id, security_id, platform_slice_id, methodology_version, calculation_code_version,
-            input_hash, result_hash, platform, artifact_hash, input_snapshot, result_snapshot
-       from rni_platform_analytics_artifact where id = any($1::uuid[])
-       order by platform for share`,
-    [ids],
-  );
-  if (rows.length !== 2) fail('missing separate Reddit or X analytics lineage');
-  const byPlatform = new Map(rows.map((row) => [row.platform, row]));
+  // Use D12's exact E06/E05 projection check for preparation, commit and accepted replay.
+  // Replaying E07 and matching component hashes alone does not bind its asserted facts.
+  const components = await validateRniConvergenceComponents(convergence.artifact, db);
   for (const platform of PLATFORM_ORDER) {
-    const row = byPlatform.get(platform);
-    const fact = convergence.artifact.result.platforms[platform];
     if (
-      row === undefined ||
-      row.id !==
-        (platform === 'reddit'
-          ? convergence.row.reddit_analytics_id
-          : convergence.row.x_analytics_id) ||
-      row.artifact_hash !== fact.analyticsArtifactHash
+      components[platform].id !==
+      (platform === 'reddit' ? convergence.row.reddit_analytics_id : convergence.row.x_analytics_id)
     ) {
       fail(`crossed ${platform} analytics identity`);
-    }
-    const artifact: RniPlatformAnalyticsArtifact = {
-      runId: row.run_id,
-      runSourceSliceId: row.platform_slice_id,
-      methodologyVersion: row.methodology_version,
-      calculationCodeVersion: row.calculation_code_version,
-      inputSetHash: row.input_hash,
-      resultHash: row.result_hash,
-      inputSnapshot: row.input_snapshot.input,
-      methodologySnapshot: row.input_snapshot.methodology,
-      result: row.result_snapshot,
-    };
-    try {
-      replayPlatformAnalytics(artifact);
-    } catch {
-      fail(`invalid durable ${platform} analytics snapshot`);
-    }
-    if (
-      canonicalHash(artifact) !== row.artifact_hash ||
-      row.run_id !== fact.runId ||
-      row.security_id !== fact.securityId ||
-      row.platform_slice_id !== fact.runSourceSliceId ||
-      artifact.inputSnapshot.platform !== platform ||
-      artifact.inputSnapshot.securityId !== fact.securityId ||
-      artifact.inputSnapshot.runId !== fact.runId ||
-      artifact.inputSnapshot.runSourceSliceId !== fact.runSourceSliceId ||
-      artifact.methodologyVersion !== fact.methodologyVersion ||
-      iso(artifact.inputSnapshot.current.windowStart) !== iso(fact.windowStart) ||
-      iso(artifact.inputSnapshot.current.windowEnd) !== iso(fact.windowEnd)
-    ) {
-      fail(`crossed ${platform} analytics snapshot/hash lineage`);
     }
   }
   return new Map(
     PLATFORM_ORDER.map((platform) => [
       platform,
-      positiveWeightSourceIds(byPlatform.get(platform)!),
+      positiveWeightSourceIds(components[platform].artifact),
     ]),
   );
 }

@@ -4,6 +4,7 @@ import type pg from 'pg';
 
 import { canonicalHash, canonicalInstant, sha256Hex } from '../../../src/calc/canonical';
 import {
+  replayCitedSynthesis,
   synthesizeCitedNarrative,
   type RniChallengerInferencePort,
   type RniChallengerModelInput,
@@ -17,11 +18,13 @@ import {
 import { convergePlatformFacts } from '../../../src/rni/convergence';
 import type {
   RniConvergenceDimensionInput,
+  RniConvergenceArtifact,
   RniConvergenceRequest,
 } from '../../../src/rni/convergence';
 import { calculatePlatformAnalytics } from '../../../src/rni/analytics';
 import { methodology, platformInput } from '../../unit/rni/analytics/fixtures';
 import { PostgresRniCitedSynthesisPersistence } from '../../../src/rni/repositories/cited-synthesis-persistence';
+import { PostgresRniSynthesisEvidenceReader } from '../../../src/rni/repositories/cited-synthesis-reader';
 import { withTransaction } from '../../../src/repositories/client';
 import { databaseUrl, makePool, resetSchema, truncateAll } from '../helpers/db';
 
@@ -66,6 +69,13 @@ type SeedOptions = {
   readonly unavailable?: 'reddit' | 'x' | 'both';
   readonly excerptOnly?: boolean;
   readonly supportScore?: string;
+  readonly projectionTamper?:
+    | 'stance'
+    | 'score'
+    | 'dimensions'
+    | 'attention'
+    | 'status'
+    | 'freshness';
 };
 
 const DIMENSIONS = [
@@ -115,6 +125,7 @@ describe.skipIf(url === undefined)('RNI cited-synthesis PostgreSQL persistence',
     sourceId: string;
     platform: 'reddit' | 'x';
     score: string;
+    unavailable?: boolean;
   }) {
     const template = platformInput(input.platform);
     const source = await pool.query<{
@@ -160,6 +171,24 @@ describe.skipIf(url === undefined)('RNI cited-synthesis PostgreSQL persistence',
         },
         comparison: null,
         baseline: [],
+        ...(input.unavailable === true
+          ? {
+              sliceStatus: 'unavailable' as const,
+              current: {
+                ...template.current,
+                windowStart: '2026-09-04T12:00:00.000123Z',
+                windowEnd: CUTOFF,
+                observations: [],
+              },
+              confidenceComponents: Object.fromEntries(
+                Object.keys(template.confidenceComponents).map((key) => [key, '0']),
+              ) as typeof template.confidenceComponents,
+              confidencePenalties: Object.fromEntries(
+                Object.keys(template.confidencePenalties).map((key) => [key, '0']),
+              ) as typeof template.confidencePenalties,
+              confidenceReadiness: { narrativeStageTerminal: true, catalystStageTerminal: true },
+            }
+          : {}),
       },
       {
         ...methodology('rni-methodology-v1'),
@@ -330,11 +359,11 @@ describe.skipIf(url === undefined)('RNI cited-synthesis PostgreSQL persistence',
          data_through_at, computed_at
        )
        select $7::uuid, id, 'reddit', $10, case when $10 = 'unavailable' then 0 else 2 end, 'Sampled Reddit coverage',
-              $9::timestamptz, $9::timestamptz
+              case when $10 = 'unavailable' then null else $9::timestamptz end, $9::timestamptz
          from inserted_run
        union all
        select $8::uuid, id, 'x', $11, case when $11 = 'unavailable' then 0 else 1 end, 'Configured X coverage',
-              $9::timestamptz, $9::timestamptz
+              case when $11 = 'unavailable' then null else $9::timestamptz end, $9::timestamptz
          from inserted_run`,
       [
         runId,
@@ -584,6 +613,7 @@ describe.skipIf(url === undefined)('RNI cited-synthesis PostgreSQL persistence',
       sourceId: targetSourceId,
       platform: 'reddit',
       score: '0.7',
+      unavailable: options.unavailable === 'reddit' || options.unavailable === 'both',
     });
     const xArtifact = await persistAnalytics({
       id: xAnalyticsId,
@@ -593,8 +623,9 @@ describe.skipIf(url === undefined)('RNI cited-synthesis PostgreSQL persistence',
       sourceId: xSourceId,
       platform: 'x',
       score: '0.5',
+      unavailable: options.unavailable === 'x' || options.unavailable === 'both',
     });
-    const convergenceArtifact = convergePlatformFacts({
+    let convergenceArtifact = convergePlatformFacts({
       asOf: CUTOFF,
       reddit: {
         platform: 'reddit',
@@ -664,6 +695,25 @@ describe.skipIf(url === undefined)('RNI cited-synthesis PostgreSQL persistence',
         staleAfterHours: '24',
       },
     });
+    if (options.projectionTamper !== undefined) {
+      const original = convergenceArtifact.inputSnapshot;
+      const changes: Partial<RniConvergenceRequest['reddit']> =
+        options.projectionTamper === 'stance'
+          ? { stance: 'bearish', stanceScore: '-0.9' }
+          : options.projectionTamper === 'score'
+            ? { stanceScore: '0.9' }
+            : options.projectionTamper === 'dimensions'
+              ? { dimensions: dimensions('-0.9') }
+              : options.projectionTamper === 'attention'
+                ? { effectiveAttention: '99' }
+                : options.projectionTamper === 'status'
+                  ? { status: 'partial' }
+                  : { dataThroughAt: '2026-09-05T11:29:59.999999Z' };
+      convergenceArtifact = convergePlatformFacts({
+        ...original,
+        reddit: { ...original.reddit, ...changes },
+      });
+    }
     await pool.query(
       `insert into rni_convergence_artifact (
          id, run_id, security_id, reddit_analytics_id, reddit_artifact_hash,
@@ -796,6 +846,201 @@ describe.skipIf(url === undefined)('RNI cited-synthesis PostgreSQL persistence',
     if (challengerInput === undefined) throw new Error('Expected eligible challenger input');
     return { preparation, artifact, challengerInput };
   }
+
+  it.each(['stance', 'score', 'dimensions', 'attention', 'status', 'freshness'] as const)(
+    'rejects self-consistent E07 %s tampering against exact durable E06/E05 before preparation',
+    async (projectionTamper) => {
+      const fixture = await seed({ projectionTamper });
+      await expect(adapter.prepare(intent(fixture))).rejects.toThrow(/projection/);
+      expect(await publicationCount()).toBe(0);
+      const { rows } = await pool.query<{ batches: string; invocations: string }>(
+        `select (select count(*) from rni_synthesis_batch)::text as batches,
+                (select count(*) from rni_synthesis_model_invocation)::text as invocations`,
+      );
+      expect(rows[0]).toEqual({ batches: '0', invocations: '0' });
+    },
+  );
+
+  it('rejects a fully hash-consistent historical bearish publication over bullish E05 on accepted load, with every database guard enabled', async () => {
+    const fixture = await seed();
+    const calls = ports(fixture);
+    const published = await synthesizeAndCommitCitedNarrative(
+      intent(fixture),
+      adapter,
+      calls.verifier,
+      calls.challenger,
+    );
+    const prior = published.artifact;
+    const convergence: RniConvergenceArtifact = convergePlatformFacts({
+      ...prior.requestSnapshot.convergenceArtifact.inputSnapshot,
+      reddit: {
+        ...prior.requestSnapshot.convergenceArtifact.inputSnapshot.reddit,
+        stance: 'bearish',
+        stanceScore: '-0.9',
+      },
+    });
+    const { rows: batchRows } = await pool.query<{ id: string }>(
+      'select id from rni_synthesis_batch',
+    );
+    const reader = new PostgresRniSynthesisEvidenceReader(
+      { batchId: batchRows[0]!.id, runId: fixture.runId, securityId: fixture.securityId },
+      async () => activeRightsPolicy,
+      pool,
+    );
+    // Construct the historical corruption through public E07/E08 calculation. E08 alone
+    // faithfully cites the false E07 conclusion; all component IDs/hashes remain unchanged.
+    const crossed = await synthesizeCitedNarrative(
+      { ...prior.requestSnapshot, convergenceArtifact: convergence },
+      reader,
+      { verify: async () => ({ assessments: prior.verificationOutputSnapshot }) },
+      { challenge: async () => prior.challengerOutputSnapshot },
+    );
+    expect(await replayCitedSynthesis(crossed, reader)).toEqual(crossed);
+    expect(crossed.result.platformConclusions.reddit.stance).toBe('bearish');
+    expect(
+      crossed.requestSnapshot.convergenceArtifact.inputSnapshot.reddit.analyticsArtifactHash,
+    ).toBe(prior.requestSnapshot.convergenceArtifact.inputSnapshot.reddit.analyticsArtifactHash);
+
+    // Snapshot and rebuild only this fixture's publication graph, following real INSERT,
+    // hydration and terminal transitions. No trigger or constraint is disabled, and the
+    // writer/validator is not mocked. This models a publication accepted by the old writer.
+    const tables = [
+      'rni_convergence_artifact',
+      'rni_synthesis_batch',
+      'rni_synthesis_claim_input',
+      'rni_synthesis_citation_role',
+      'rni_synthesis_model_invocation',
+      'rni_catalyst_assessment',
+      'rni_challenger_selection',
+      'rni_combined_summary',
+      'rni_cited_synthesis_artifact',
+      'rni_publication_statement',
+      'rni_publication_statement_citation',
+    ] as const;
+    const graph = new Map<(typeof tables)[number], Record<string, unknown>[]>();
+    for (const table of tables) {
+      const { rows } = await pool.query<{ row: Record<string, unknown> }>(
+        `select to_jsonb(stored) as row from ${table} stored`,
+      );
+      graph.set(
+        table,
+        rows.map(({ row }) => row),
+      );
+    }
+    Object.assign(graph.get('rni_convergence_artifact')![0]!, {
+      input_hash: convergence.inputHash,
+      result_hash: convergence.resultHash,
+      input_snapshot: convergence.inputSnapshot,
+      result_snapshot: convergence.result,
+    });
+    Object.assign(graph.get('rni_combined_summary')![0]!, {
+      status: crossed.result.summary.status,
+      sections: crossed.result.summary.sections,
+    });
+    Object.assign(graph.get('rni_cited_synthesis_artifact')![0]!, {
+      verification_input_hash: crossed.verificationInputHash,
+      challenger_input_hash: crossed.challengerInputHash,
+      input_hash: crossed.inputHash,
+      result_hash: crossed.resultHash,
+      request_snapshot: crossed.requestSnapshot,
+      model_input_snapshot: crossed.modelInputSnapshot,
+      verification_output_snapshot: crossed.verificationOutputSnapshot,
+      challenger_output_snapshot: crossed.challengerOutputSnapshot,
+      result_snapshot: crossed.result,
+      statement_count: crossed.result.statements.length,
+    });
+    expect(crossed.result.statements).toHaveLength(prior.result.statements.length);
+    for (const row of graph.get('rni_publication_statement')!) {
+      const statement = crossed.result.statements[Number(row['ordinal'])]!;
+      expect(statement.citationIds).toEqual(row['citation_ids']);
+      Object.assign(row, {
+        heading: statement.heading,
+        origin: statement.origin,
+        statement_text: statement.text,
+        section_status: crossed.result.summary.sections.find(
+          ({ heading }) => heading === statement.heading,
+        )!.status,
+      });
+    }
+    await withTransaction(async (tx) => {
+      await tx.query(
+        'truncate rni_convergence_artifact, rni_synthesis_batch, rni_combined_summary cascade',
+      );
+      for (const table of tables) {
+        for (const row of graph.get(table)!) {
+          let inserted = row;
+          let snapshot: Record<string, unknown> | undefined;
+          let modelInput: unknown;
+          if (table === 'rni_synthesis_model_invocation') {
+            modelInput =
+              row['stage'] === 'verification'
+                ? crossed.modelInputSnapshot
+                : {
+                    ...crossed.modelInputSnapshot,
+                    invocation: crossed.requestSnapshot.challengerInvocation,
+                    verification: crossed.verificationOutputSnapshot,
+                  };
+            snapshot = {
+              ...(row['prepared_snapshot'] as Record<string, unknown>),
+              convergenceArtifactHash: canonicalHash(convergence),
+            };
+            delete snapshot['modelInput'];
+            inserted = {
+              ...row,
+              status: 'prepared',
+              output_hash: null,
+              terminal_metadata: null,
+              completed_at: null,
+              input_hash: row['stage'] === 'verification' ? canonicalHash(modelInput) : null,
+              prepared_snapshot:
+                row['stage'] === 'verification' ? { ...snapshot, modelInput } : snapshot,
+            };
+          }
+          await tx.query(
+            `insert into ${table} select * from jsonb_populate_record(null::${table}, $1::jsonb)`,
+            [J(inserted)],
+          );
+          if (table === 'rni_synthesis_model_invocation') {
+            if (row['stage'] === 'challenger') {
+              await tx.query(
+                'update rni_synthesis_model_invocation set input_hash = $2, prepared_snapshot = $3::jsonb where id = $1',
+                [row['id'], canonicalHash(modelInput), J({ ...snapshot, modelInput })],
+              );
+            }
+            await tx.query(
+              `update rni_synthesis_model_invocation set status = $2, output_hash = $3,
+                 terminal_metadata = $4::jsonb, completed_at = $5 where id = $1`,
+              [
+                row['id'],
+                row['status'],
+                row['output_hash'],
+                J(row['terminal_metadata']),
+                row['completed_at'],
+              ],
+            );
+          }
+        }
+      }
+    }, pool);
+    expect(await publicationCount()).toBe(1);
+    expect((await pool.query<{ role: string }>('show session_replication_role')).rows[0]).toEqual({
+      session_replication_role: 'origin',
+    });
+    const guards = await pool.query<{ disabled: string }>(
+      `select count(*)::text as disabled from pg_trigger
+        where tgrelid = any($1::regclass[]) and tgenabled <> 'O'`,
+      [[...tables]],
+    );
+    expect(guards.rows[0]!.disabled).toBe('0');
+    const historical = new PostgresRniCitedSynthesisPersistence(
+      { ...intent(fixture), convergenceArtifactHash: canonicalHash(convergence) },
+      async () => activeRightsPolicy,
+      pool,
+    );
+    await expect(historical.loadAccepted(crossed.result.summary.id)).rejects.toThrow(
+      /overall stance projection/,
+    );
+  });
 
   it('persists selected verifier subsets and hydrates exactly the dispatched challenger input', async () => {
     const fixture = await seed({ lateEligible: true, excerptOnly: true });
