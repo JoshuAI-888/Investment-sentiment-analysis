@@ -1549,3 +1549,776 @@ comment on table rni_synthesis_citation_role is
   'Claim-specific Reddit/X evidence role with point-in-time, rights, run, security, self-citation and exact analytics protections.';
 comment on table rni_cited_synthesis_artifact is
   'Immutable hash-addressed E08 replay snapshots linked to exact E07 facts, verifier/challenger lineage, assessments, challenger selection and ordered publication trace.';
+
+-- D-RNI-21 — immutable RNI model capability/configuration lineage and atomic AI spend control.
+-- Capability discovery is live integration work; this migration stores its evidence without
+-- manufacturing provider slugs or credentials. Historical non-RNI model routes remain nullable.
+create table rni_model_capability_snapshot (
+  id                          text        primary key,
+  ai_route                    text        not null,
+  configured_model_id         text        not null,
+  provider                    text        not null,
+  canonical_provider_model_id text        not null,
+  model_revision              text        not null,
+  response_hash               text        not null,
+  observed_at                 timestamptz not null,
+  expires_at                  timestamptz not null,
+  available                   boolean     not null,
+  supports_responses          boolean     not null,
+  supports_structured_outputs boolean     not null,
+  supports_web_search         boolean     not null,
+  reasoning_efforts           jsonb       not null,
+  created_at                  timestamptz not null default now(),
+
+  constraint rni_model_capability_route_check
+    check (ai_route in ('openai_direct', 'vercel_ai_gateway')),
+  constraint rni_model_capability_identity_check check (
+    length(id) > 0 and length(configured_model_id) > 0 and provider = 'openai'
+    and length(canonical_provider_model_id) > 0 and length(model_revision) > 0
+  ),
+  constraint rni_model_capability_hash_check check (response_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_model_capability_window_check check (expires_at > observed_at),
+  constraint rni_model_capability_reasoning_check check (
+    jsonb_typeof(reasoning_efforts) = 'array'
+    and reasoning_efforts <@ '["none", "low", "medium", "high", "xhigh", "max"]'::jsonb
+  ),
+  constraint rni_model_capability_direct_identity_check check (
+    ai_route <> 'openai_direct' or configured_model_id = canonical_provider_model_id
+  ),
+  constraint rni_model_capability_full_identity_unique unique (
+    id, ai_route, configured_model_id, provider, canonical_provider_model_id, model_revision
+  )
+);
+
+create trigger rni_model_capability_snapshot_append_only
+  before update or delete on rni_model_capability_snapshot
+  for each row execute function reject_mutation();
+
+create table rni_ai_config (
+  config_version             bigint      primary key references config_version (id),
+  ai_route                   text        not null,
+  model_policy_version       text        not null,
+  budget_policy_version      text        not null,
+  manual_run_hard_usd        numeric     not null,
+  full_universe_hard_usd     numeric     not null,
+  rolling_24h_hard_usd       numeric     not null,
+  monthly_warning_usd        numeric     not null,
+  monthly_hard_usd           numeric     not null,
+  currency                   text        not null default 'USD',
+  created_at                 timestamptz not null default now(),
+
+  constraint rni_ai_config_route_check
+    check (ai_route in ('openai_direct', 'vercel_ai_gateway')),
+  constraint rni_ai_config_versions_check
+    check (length(model_policy_version) > 0 and length(budget_policy_version) > 0),
+  constraint rni_ai_config_limits_check check (
+    manual_run_hard_usd > 0
+    and manual_run_hard_usd <= full_universe_hard_usd
+    and full_universe_hard_usd <= rolling_24h_hard_usd
+    and rolling_24h_hard_usd <= monthly_warning_usd
+    and monthly_warning_usd <= monthly_hard_usd
+  ),
+  constraint rni_ai_config_currency_check check (currency = 'USD'),
+  constraint rni_ai_config_route_unique unique (config_version, ai_route)
+);
+
+create or replace function rni_validate_ai_config() returns trigger
+language plpgsql as $$
+declare
+  config_status text;
+begin
+  select status into config_status from config_version where id = new.config_version;
+  if config_status is distinct from 'draft' then
+    raise exception 'RNI AI configuration can only be attached to a draft successor config'
+      using errcode = 'check_violation', constraint = 'rni_ai_config_requires_draft';
+  end if;
+  if new.model_policy_version <> 'rni-balanced-model-policy-v1'
+     or new.budget_policy_version <> 'rni-ai-budget-policy-v1' then
+    raise exception 'RNI AI configuration uses an unapproved policy version'
+      using errcode = 'check_violation', constraint = 'rni_ai_config_approved_policy';
+  end if;
+  if new.manual_run_hard_usd <> 2
+       or new.full_universe_hard_usd <> 25
+       or new.rolling_24h_hard_usd <> 50
+       or new.monthly_warning_usd <> 300
+       or new.monthly_hard_usd <> 500 then
+    raise exception 'D-RNI-21 policy v1 requires the owner-approved 2/25/50/300/500 USD limits'
+      using errcode = 'check_violation', constraint = 'rni_ai_config_policy_v1_limits';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger rni_ai_config_valid
+  before insert on rni_ai_config
+  for each row execute function rni_validate_ai_config();
+create trigger rni_ai_config_append_only
+  before update or delete on rni_ai_config
+  for each row execute function reject_mutation();
+
+alter table model_route
+  add column ai_route text null,
+  add column canonical_provider_model_id text null,
+  add column reasoning_effort text null,
+  add column capability_snapshot_id text null,
+  add column policy_version text null,
+  add constraint model_route_rni_lineage_complete_check check (
+    task not in (
+      'rni_discovery', 'rni_relationship', 'rni_classifier', 'rni_verification', 'rni_challenger'
+    )
+    or (
+      ai_route is not null and canonical_provider_model_id is not null
+      and reasoning_effort is not null and capability_snapshot_id is not null
+      and policy_version is not null
+    )
+  ) not valid,
+  add constraint model_route_rni_ai_route_check check (
+    ai_route is null or ai_route in ('openai_direct', 'vercel_ai_gateway')
+  ),
+  add constraint model_route_rni_reasoning_check check (
+    reasoning_effort is null or reasoning_effort in ('none', 'low', 'medium', 'high', 'xhigh', 'max')
+  ),
+  add constraint model_route_rni_config_fk foreign key (config_version, ai_route)
+    references rni_ai_config (config_version, ai_route) not valid,
+  add constraint model_route_rni_capability_fk foreign key (
+    capability_snapshot_id, ai_route, primary_model, primary_provider,
+    canonical_provider_model_id, model_revision
+  ) references rni_model_capability_snapshot (
+    id, ai_route, configured_model_id, provider, canonical_provider_model_id, model_revision
+  ) not valid,
+  add constraint model_route_rni_invocation_identity_unique unique (
+    config_version, task, ai_route, capability_snapshot_id
+  ),
+  add constraint model_route_rni_task_route_unique unique (config_version, task, ai_route);
+
+create or replace function rni_validate_model_route() returns trigger
+language plpgsql as $$
+declare
+  config_row rni_ai_config%rowtype;
+  capability_row rni_model_capability_snapshot%rowtype;
+  config_status text;
+  expected_model text;
+begin
+  if new.task not in (
+    'rni_discovery', 'rni_relationship', 'rni_classifier', 'rni_verification', 'rni_challenger'
+  ) then
+    return new;
+  end if;
+
+  select * into config_row from rni_ai_config where config_version = new.config_version;
+  select status into config_status from config_version where id = new.config_version;
+  select * into capability_row from rni_model_capability_snapshot where id = new.capability_snapshot_id;
+  if config_row.config_version is null or capability_row.id is null then
+    raise exception 'RNI model routes require durable configuration and capability lineage'
+      using errcode = 'check_violation', constraint = 'model_route_rni_lineage';
+  end if;
+  if config_status is distinct from 'draft' then
+    raise exception 'RNI model routes can only be added to a draft successor config'
+      using errcode = 'check_violation', constraint = 'model_route_rni_requires_draft';
+  end if;
+  if new.ai_route is distinct from config_row.ai_route
+     or new.policy_version is distinct from config_row.model_policy_version
+     or new.primary_provider <> 'openai'
+     or new.fallback_chain <> '[]'::jsonb
+     or new.reasoning_effort <> 'low'
+     or not capability_row.available
+     or not capability_row.supports_responses
+     or not capability_row.supports_structured_outputs
+     or not (capability_row.reasoning_efforts ? 'low') then
+    raise exception 'RNI model route is not an available OpenAI low-reasoning no-fallback route'
+      using errcode = 'check_violation', constraint = 'model_route_rni_policy';
+  end if;
+  if new.task = 'rni_discovery' and not capability_row.supports_web_search then
+    raise exception 'RNI discovery requires a Web Search-capable model snapshot'
+      using errcode = 'check_violation', constraint = 'model_route_rni_discovery_capability';
+  end if;
+  if new.policy_version = 'rni-balanced-model-policy-v1' then
+    expected_model := case
+      when new.task in ('rni_discovery', 'rni_relationship', 'rni_classifier') then 'gpt-5.6-terra'
+      else 'gpt-5.6-sol'
+    end;
+    if new.canonical_provider_model_id <> expected_model then
+      raise exception 'RNI balanced policy task/model mapping is invalid'
+        using errcode = 'check_violation', constraint = 'model_route_rni_balanced_mapping';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger model_route_rni_valid
+  before insert or update on model_route
+  for each row execute function rni_validate_model_route();
+
+create or replace function rni_reject_locked_model_route_mutation() returns trigger
+language plpgsql as $$
+declare
+  route_task text := case when tg_op = 'DELETE' then old.task else new.task end;
+  route_config bigint := case when tg_op = 'DELETE' then old.config_version else new.config_version end;
+  config_status text;
+begin
+  if route_task in (
+    'rni_discovery', 'rni_relationship', 'rni_classifier', 'rni_verification', 'rni_challenger'
+  ) then
+    select status into config_status from config_version where id = route_config;
+    if config_status is distinct from 'draft' then
+      raise exception 'Activated RNI model routes are immutable; create a successor config'
+        using errcode = 'restrict_violation';
+    end if;
+  end if;
+  return case when tg_op = 'DELETE' then old else new end;
+end;
+$$;
+
+create trigger model_route_rni_locked
+  before update or delete on model_route
+  for each row execute function rni_reject_locked_model_route_mutation();
+
+create or replace function rni_validate_ai_config_activation() returns trigger
+language plpgsql as $$
+declare
+  route_count integer;
+  task_count integer;
+  stale_count integer;
+begin
+  if new.status = 'active' and old.status is distinct from 'active'
+     and exists (select 1 from rni_ai_config where config_version = new.id) then
+    select count(*), count(distinct task), count(*) filter (where c.expires_at <= clock_timestamp())
+      into route_count, task_count, stale_count
+      from model_route mr
+      join rni_model_capability_snapshot c on c.id = mr.capability_snapshot_id
+     where mr.config_version = new.id
+       and mr.task in (
+         'rni_discovery', 'rni_relationship', 'rni_classifier',
+         'rni_verification', 'rni_challenger'
+       );
+    if route_count <> 5 or task_count <> 5 then
+      raise exception 'Active RNI configuration requires exactly five governed task routes'
+        using errcode = 'check_violation', constraint = 'rni_ai_config_exact_routes';
+    end if;
+    if stale_count <> 0 then
+      raise exception 'Active RNI configuration requires fresh capability snapshots'
+        using errcode = 'check_violation', constraint = 'rni_ai_config_fresh_capabilities';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger rni_ai_config_activation_valid
+  before update on config_version
+  for each row execute function rni_validate_ai_config_activation();
+
+alter table rni_run
+  add constraint rni_run_config_route_unique unique (id, config_version, ai_route);
+
+create table rni_run_execution_scope (
+  run_id       uuid        primary key references rni_run (id),
+  scope_kind   text        not null,
+  security_id  uuid        null references security (id),
+  created_at   timestamptz not null default now(),
+
+  constraint rni_run_execution_scope_kind_check
+    check (scope_kind in ('manual_ticker', 'full_universe')),
+  constraint rni_run_execution_scope_security_check check (
+    (scope_kind = 'manual_ticker' and security_id is not null)
+    or (scope_kind = 'full_universe' and security_id is null)
+  ),
+  constraint rni_run_execution_scope_identity_unique unique (run_id, scope_kind)
+);
+
+create or replace function rni_validate_run_execution_scope() returns trigger
+language plpgsql as $$
+declare
+  run_row rni_run%rowtype;
+begin
+  select * into run_row from rni_run where id = new.run_id;
+  if new.scope_kind = 'manual_ticker' then
+    if run_row.trigger <> 'manual' then
+      raise exception 'Manual ticker budget scope requires a manual run'
+        using errcode = 'check_violation', constraint = 'rni_run_scope_manual_trigger';
+    end if;
+    if not exists (
+      select 1 from universe_member
+       where universe_version = run_row.universe_version
+         and security_id = new.security_id and enabled
+    ) then
+      raise exception 'Manual ticker budget scope must name an enabled run-universe member'
+        using errcode = 'check_violation', constraint = 'rni_run_scope_universe_member';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger rni_run_execution_scope_valid
+  before insert on rni_run_execution_scope
+  for each row execute function rni_validate_run_execution_scope();
+create trigger rni_run_execution_scope_append_only
+  before update or delete on rni_run_execution_scope
+  for each row execute function reject_mutation();
+
+create table rni_ai_model_invocation (
+  id                        uuid        primary key,
+  run_id                    uuid        not null,
+  config_version            bigint      not null,
+  task                      text        not null,
+  ai_route                  text        not null,
+  capability_snapshot_id    text        not null,
+  request_hash              text        not null,
+  decision                  text        not null,
+  estimated_cost_usd        numeric     null,
+  denial_code               text        null,
+  price_book_version        text        not null,
+  reservation_cost_event_id uuid        null references cost_event (id),
+  synthesis_invocation_id   uuid        null references rni_synthesis_model_invocation (id),
+  created_at                timestamptz not null default now(),
+
+  constraint rni_ai_invocation_task_check check (task in (
+    'rni_discovery', 'rni_relationship', 'rni_classifier', 'rni_verification', 'rni_challenger'
+  )),
+  constraint rni_ai_invocation_hash_check check (request_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_ai_invocation_decision_check check (decision in ('reserved', 'denied')),
+  constraint rni_ai_invocation_decision_shape_check check (
+    (decision = 'reserved' and estimated_cost_usd is not null and estimated_cost_usd >= 0
+      and denial_code is null and reservation_cost_event_id is not null)
+    or
+    (decision = 'denied' and estimated_cost_usd is null
+      and denial_code is not null and reservation_cost_event_id is null)
+  ),
+  constraint rni_ai_invocation_synthesis_identity_check check (
+    (task in ('rni_verification', 'rni_challenger') and synthesis_invocation_id = id)
+    or (task not in ('rni_verification', 'rni_challenger') and synthesis_invocation_id is null)
+  ),
+  constraint rni_ai_invocation_run_fk foreign key (run_id, config_version, ai_route)
+    references rni_run (id, config_version, ai_route),
+  constraint rni_ai_invocation_config_fk foreign key (config_version, ai_route)
+    references rni_ai_config (config_version, ai_route),
+  constraint rni_ai_invocation_scope_fk foreign key (run_id)
+    references rni_run_execution_scope (run_id),
+  constraint rni_ai_invocation_route_fk foreign key (config_version, task, ai_route)
+    references model_route (config_version, task, ai_route),
+  constraint rni_ai_invocation_capability_fk foreign key (capability_snapshot_id)
+    references rni_model_capability_snapshot (id)
+);
+
+create or replace function rni_validate_ai_invocation_capability() returns trigger
+language plpgsql as $$
+declare
+  route_row model_route%rowtype;
+  capability_row rni_model_capability_snapshot%rowtype;
+  synthesis_stage text;
+begin
+  select * into route_row from model_route
+   where config_version = new.config_version and task = new.task and ai_route = new.ai_route;
+  select * into capability_row from rni_model_capability_snapshot
+   where id = new.capability_snapshot_id;
+  if capability_row.id is null
+     or capability_row.ai_route <> route_row.ai_route
+     or capability_row.configured_model_id <> route_row.primary_model
+     or capability_row.provider <> route_row.primary_provider
+     or capability_row.canonical_provider_model_id <> route_row.canonical_provider_model_id
+     or capability_row.model_revision <> route_row.model_revision
+     or not capability_row.available
+     or not capability_row.supports_responses
+     or not capability_row.supports_structured_outputs
+     or not (capability_row.reasoning_efforts ? route_row.reasoning_effort)
+     or (new.task = 'rni_discovery' and not capability_row.supports_web_search)
+     or capability_row.observed_at > new.created_at
+     or capability_row.expires_at <= new.created_at then
+    raise exception 'RNI invocation requires a fresh exact capability snapshot for its immutable route'
+      using errcode = 'check_violation', constraint = 'rni_ai_invocation_fresh_capability';
+  end if;
+  if new.task in ('rni_verification', 'rni_challenger') then
+    select stage into synthesis_stage from rni_synthesis_model_invocation where id = new.id;
+    if synthesis_stage is distinct from (
+      case when new.task = 'rni_verification' then 'verifier' else 'challenger' end
+    ) then
+      raise exception 'RNI synthesis invocation stage does not match its governed model task'
+        using errcode = 'check_violation', constraint = 'rni_ai_invocation_synthesis_stage';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger rni_ai_model_invocation_capability_valid
+  before insert on rni_ai_model_invocation
+  for each row execute function rni_validate_ai_invocation_capability();
+
+create table rni_ai_model_settlement (
+  invocation_id        uuid        primary key references rni_ai_model_invocation (id),
+  request_hash         text        not null,
+  provider_request_id  text        not null,
+  outcome              text        not null,
+  input_tokens         integer     not null,
+  cached_input_tokens  integer     not null,
+  output_tokens        integer     not null,
+  web_search_calls     integer     not null,
+  actual_cost_usd      numeric     not null,
+  actual_cost_event_id uuid        not null references cost_event (id),
+  completed_at         timestamptz not null default now(),
+
+  constraint rni_ai_settlement_hash_check check (request_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_ai_settlement_outcome_check check (outcome in ('succeeded', 'failed')),
+  constraint rni_ai_settlement_usage_check check (
+    input_tokens >= 0 and cached_input_tokens >= 0 and cached_input_tokens <= input_tokens
+    and output_tokens >= 0 and web_search_calls >= 0 and actual_cost_usd >= 0
+  )
+);
+
+create table rni_ai_budget_warning (
+  config_version   bigint      not null references rni_ai_config (config_version),
+  environment      text        not null,
+  period_start     timestamptz not null,
+  warning_code     text        not null,
+  effective_usd    numeric     not null,
+  emitted_at       timestamptz not null default now(),
+  primary key (environment, period_start, warning_code),
+  constraint rni_ai_budget_warning_code_check check (warning_code = 'monthly_warning'),
+  constraint rni_ai_budget_warning_amount_check check (effective_usd >= 0)
+);
+
+create index rni_ai_model_invocation_run_idx on rni_ai_model_invocation (run_id, created_at);
+create index rni_ai_model_invocation_window_idx on rni_ai_model_invocation (created_at);
+
+do $$
+declare
+  table_name text;
+begin
+  foreach table_name in array array[
+    'rni_ai_model_invocation', 'rni_ai_model_settlement', 'rni_ai_budget_warning'
+  ]
+  loop
+    execute format(
+      'create trigger %I_append_only before update or delete on %I
+         for each row execute function reject_mutation()',
+      table_name, table_name
+    );
+  end loop;
+end;
+$$;
+
+create or replace function rni_ai_effective_spend(
+  p_environment text,
+  p_from timestamptz,
+  p_to timestamptz,
+  p_run_id uuid default null
+) returns numeric
+language sql stable as $$
+  select coalesce(sum(coalesce(s.actual_cost_usd, i.estimated_cost_usd)), 0)
+    from rni_ai_model_invocation i
+    join rni_run r on r.id = i.run_id
+    join config_version cv on cv.id = i.config_version
+    left join rni_ai_model_settlement s on s.invocation_id = i.id
+   where i.decision = 'reserved'
+     and cv.environment = p_environment
+     and i.created_at >= p_from and i.created_at < p_to
+     and (p_run_id is null or i.run_id = p_run_id)
+$$;
+
+create or replace function rni_reserve_ai_invocation(
+  p_invocation_id uuid,
+  p_run_id uuid,
+  p_task text,
+  p_request_hash text,
+  p_capability_snapshot_id text,
+  p_price_book_version text
+) returns table (
+  invocation_id uuid,
+  decision text,
+  estimated_cost_usd numeric,
+  denial_code text,
+  warning_emitted boolean
+)
+language plpgsql as $$
+declare
+  existing rni_ai_model_invocation%rowtype;
+  run_row rni_run%rowtype;
+  scope_row rni_run_execution_scope%rowtype;
+  config_row rni_ai_config%rowtype;
+  route_row model_route%rowtype;
+  now_at timestamptz := clock_timestamp();
+  input_price numeric;
+  output_price numeric;
+  search_price numeric := 0;
+  estimate numeric;
+  run_spend numeric;
+  rolling_spend numeric;
+  month_spend numeric;
+  run_limit numeric;
+  deny text;
+  reservation_event uuid;
+  warning_inserted boolean := false;
+  warning_rows integer := 0;
+  run_environment text;
+  config_status text;
+  month_start timestamptz;
+begin
+  if p_request_hash !~ '^[0-9a-f]{64}$' then
+    raise exception 'RNI invocation request hash must be lowercase SHA-256'
+      using errcode = 'check_violation';
+  end if;
+
+  select * into run_row from rni_run where id = p_run_id for share;
+  if run_row.id is null then raise exception 'RNI run % not found', p_run_id; end if;
+  select * into config_row from rni_ai_config where config_version = run_row.config_version;
+  select * into scope_row from rni_run_execution_scope where run_id = p_run_id;
+  select * into route_row from model_route
+   where config_version = run_row.config_version and task = p_task and ai_route = run_row.ai_route;
+  if config_row.config_version is null or scope_row.run_id is null or route_row.task is null then
+    raise exception 'RNI invocation requires exact run scope, route and configuration lineage'
+      using errcode = 'check_violation';
+  end if;
+
+  select status, environment into strict config_status, run_environment
+    from config_version where id = run_row.config_version for share;
+
+  perform pg_advisory_xact_lock(hashtextextended('rni-ai-budget:' || run_environment, 0));
+  select * into existing from rni_ai_model_invocation where id = p_invocation_id;
+  if existing.id is not null then
+    if existing.run_id <> p_run_id or existing.task <> p_task
+       or existing.request_hash <> p_request_hash
+       or existing.capability_snapshot_id <> p_capability_snapshot_id
+       or existing.price_book_version <> p_price_book_version then
+      raise exception 'RNI invocation idempotency key was reused with different intent'
+        using errcode = 'unique_violation';
+    end if;
+    return query select existing.id, existing.decision, existing.estimated_cost_usd,
+      existing.denial_code, false;
+    return;
+  end if;
+  if config_status <> 'active' or run_row.status not in ('requested', 'running') then
+    raise exception 'RNI invocation requires an active config and a non-terminal run'
+      using errcode = 'check_violation';
+  end if;
+
+  select unit_price into input_price from unit_price_book
+   where price_book_version = p_price_book_version and provider = 'openai'
+     and service = 'openai_responses'
+     and operation_or_model = route_row.canonical_provider_model_id
+     and unit_type = 'input_token' and currency = 'USD'
+     and effective_from <= now_at and (effective_until is null or effective_until > now_at);
+  select unit_price into output_price from unit_price_book
+   where price_book_version = p_price_book_version and provider = 'openai'
+     and service = 'openai_responses'
+     and operation_or_model = route_row.canonical_provider_model_id
+     and unit_type = 'output_token' and currency = 'USD'
+     and effective_from <= now_at and (effective_until is null or effective_until > now_at);
+  if p_task = 'rni_discovery' then
+    select unit_price into search_price from unit_price_book
+     where price_book_version = p_price_book_version and provider = 'openai'
+       and service = 'openai_web_search' and operation_or_model = 'web_search'
+       and unit_type = 'search' and currency = 'USD'
+       and effective_from <= now_at and (effective_until is null or effective_until > now_at);
+  end if;
+
+  if input_price is null or output_price is null or search_price is null then
+    insert into rni_ai_model_invocation (
+      id, run_id, config_version, task, ai_route, capability_snapshot_id, request_hash,
+      decision, denial_code, price_book_version, synthesis_invocation_id, created_at
+    ) values (
+      p_invocation_id, p_run_id, run_row.config_version, p_task, run_row.ai_route,
+      p_capability_snapshot_id, p_request_hash, 'denied', 'unpriced_component',
+      p_price_book_version,
+      case when p_task in ('rni_verification', 'rni_challenger') then p_invocation_id else null end,
+      now_at
+    );
+    return query select p_invocation_id, 'denied'::text, null::numeric,
+      'unpriced_component'::text, false;
+    return;
+  end if;
+
+  estimate := route_row.max_input_tokens * input_price
+    + route_row.max_output_tokens * output_price + search_price;
+  month_start := date_trunc('month', now_at at time zone 'UTC') at time zone 'UTC';
+  run_limit := case when scope_row.scope_kind = 'manual_ticker'
+    then config_row.manual_run_hard_usd else config_row.full_universe_hard_usd end;
+  run_spend := rni_ai_effective_spend(
+    run_environment,
+    '-infinity'::timestamptz, 'infinity'::timestamptz, p_run_id
+  );
+  rolling_spend := rni_ai_effective_spend(
+    run_environment,
+    now_at - interval '24 hours', now_at + interval '1 microsecond'
+  );
+  month_spend := rni_ai_effective_spend(
+    run_environment,
+    month_start, now_at + interval '1 microsecond'
+  );
+
+  deny := case
+    when estimate > route_row.max_cost_usd then 'route_hard_limit'
+    when run_spend + estimate > run_limit then 'run_hard_limit'
+    when rolling_spend + estimate > config_row.rolling_24h_hard_usd then 'rolling_24h_hard_limit'
+    when month_spend + estimate > config_row.monthly_hard_usd then 'monthly_hard_limit'
+    else null
+  end;
+  if deny is not null then
+    insert into rni_ai_model_invocation (
+      id, run_id, config_version, task, ai_route, capability_snapshot_id, request_hash,
+      decision, denial_code, price_book_version, synthesis_invocation_id, created_at
+    ) values (
+      p_invocation_id, p_run_id, run_row.config_version, p_task, run_row.ai_route,
+      p_capability_snapshot_id, p_request_hash, 'denied', deny,
+      p_price_book_version,
+      case when p_task in ('rni_verification', 'rni_challenger') then p_invocation_id else null end,
+      now_at
+    );
+    return query select p_invocation_id, 'denied'::text, null::numeric, deny, false;
+    return;
+  end if;
+
+  insert into cost_event (
+    occurred_at, provider, service, operation_or_model, feature, request_id, unit_type,
+    request_units, billable_units, unit_price, currency, price_book_version, cost_usd,
+    cost_status, cache_status, metadata
+  ) values (
+    now_at, 'openai', 'rni_ai_reservation', route_row.canonical_provider_model_id, 'rni',
+    p_invocation_id::text, 'call', 1, 1, estimate, 'USD', p_price_book_version, estimate,
+    'estimated', 'miss', jsonb_build_object(
+      'run_id', p_run_id, 'task', p_task, 'ai_route', run_row.ai_route,
+      'capability_snapshot_id', p_capability_snapshot_id
+    )
+  ) returning id into reservation_event;
+  insert into rni_ai_model_invocation (
+    id, run_id, config_version, task, ai_route, capability_snapshot_id, request_hash,
+    decision, estimated_cost_usd, price_book_version, reservation_cost_event_id,
+    synthesis_invocation_id, created_at
+  ) values (
+    p_invocation_id, p_run_id, run_row.config_version, p_task, run_row.ai_route,
+    p_capability_snapshot_id, p_request_hash, 'reserved', estimate,
+    p_price_book_version, reservation_event,
+    case when p_task in ('rni_verification', 'rni_challenger') then p_invocation_id else null end,
+    now_at
+  );
+
+  if month_spend + estimate >= config_row.monthly_warning_usd then
+    insert into rni_ai_budget_warning (
+      config_version, environment, period_start, warning_code, effective_usd, emitted_at
+    ) values (
+      config_row.config_version,
+      run_environment,
+      month_start, 'monthly_warning', month_spend + estimate, now_at
+    ) on conflict do nothing;
+    get diagnostics warning_rows = row_count;
+    warning_inserted := warning_rows = 1;
+  end if;
+  return query select p_invocation_id, 'reserved'::text, estimate, null::text, warning_inserted;
+end;
+$$;
+
+create or replace function rni_settle_ai_invocation(
+  p_invocation_id uuid,
+  p_request_hash text,
+  p_provider_request_id text,
+  p_outcome text,
+  p_input_tokens integer,
+  p_cached_input_tokens integer,
+  p_output_tokens integer,
+  p_web_search_calls integer
+) returns numeric
+language plpgsql as $$
+declare
+  invocation_row rni_ai_model_invocation%rowtype;
+  settlement_row rni_ai_model_settlement%rowtype;
+  route_row model_route%rowtype;
+  input_price numeric;
+  output_price numeric;
+  search_price numeric := 0;
+  actual numeric;
+  actual_event uuid;
+begin
+  select * into invocation_row from rni_ai_model_invocation where id = p_invocation_id;
+  if invocation_row.id is null or invocation_row.decision <> 'reserved' then
+    raise exception 'Only a reserved RNI invocation can be settled'
+      using errcode = 'check_violation';
+  end if;
+  if invocation_row.request_hash <> p_request_hash then
+    raise exception 'RNI settlement request hash does not match its reservation'
+      using errcode = 'check_violation';
+  end if;
+  select * into settlement_row from rni_ai_model_settlement where invocation_id = p_invocation_id;
+  if settlement_row.invocation_id is not null then
+    if settlement_row.request_hash <> p_request_hash
+       or settlement_row.provider_request_id <> p_provider_request_id
+       or settlement_row.outcome <> p_outcome
+       or settlement_row.input_tokens <> p_input_tokens
+       or settlement_row.cached_input_tokens <> p_cached_input_tokens
+       or settlement_row.output_tokens <> p_output_tokens
+       or settlement_row.web_search_calls <> p_web_search_calls then
+      raise exception 'RNI settlement replay differs from the committed result'
+        using errcode = 'unique_violation';
+    end if;
+    return settlement_row.actual_cost_usd;
+  end if;
+  select * into route_row from model_route
+   where config_version = invocation_row.config_version and task = invocation_row.task
+     and ai_route = invocation_row.ai_route
+     and capability_snapshot_id = invocation_row.capability_snapshot_id;
+  if p_outcome not in ('succeeded', 'failed')
+     or p_input_tokens < 0 or p_cached_input_tokens < 0
+     or p_cached_input_tokens > p_input_tokens or p_output_tokens < 0
+     or p_input_tokens > route_row.max_input_tokens
+     or p_output_tokens > route_row.max_output_tokens
+     or p_web_search_calls < 0
+     or (invocation_row.task = 'rni_discovery' and p_web_search_calls > 1)
+     or (invocation_row.task <> 'rni_discovery' and p_web_search_calls <> 0) then
+    raise exception 'RNI settlement usage exceeds the reserved invocation envelope'
+      using errcode = 'check_violation';
+  end if;
+  select unit_price into input_price from unit_price_book
+   where price_book_version = invocation_row.price_book_version and provider = 'openai'
+     and service = 'openai_responses'
+     and operation_or_model = route_row.canonical_provider_model_id
+     and unit_type = 'input_token' and currency = 'USD';
+  select unit_price into output_price from unit_price_book
+   where price_book_version = invocation_row.price_book_version and provider = 'openai'
+     and service = 'openai_responses'
+     and operation_or_model = route_row.canonical_provider_model_id
+     and unit_type = 'output_token' and currency = 'USD';
+  if invocation_row.task = 'rni_discovery' then
+    select unit_price into search_price from unit_price_book
+     where price_book_version = invocation_row.price_book_version and provider = 'openai'
+       and service = 'openai_web_search' and operation_or_model = 'web_search'
+       and unit_type = 'search' and currency = 'USD';
+  end if;
+  if input_price is null or output_price is null or search_price is null then
+    raise exception 'RNI settlement price components are unavailable'
+      using errcode = 'check_violation';
+  end if;
+  actual := p_input_tokens * input_price + p_output_tokens * output_price
+    + p_web_search_calls * search_price;
+  if actual > invocation_row.estimated_cost_usd then
+    raise exception 'RNI actual cost exceeds its worst-case reservation'
+      using errcode = 'check_violation';
+  end if;
+  insert into cost_event (
+    occurred_at, provider, service, operation_or_model, feature, request_id, unit_type,
+    request_units, billable_units, unit_price, currency, price_book_version, cost_usd,
+    cost_status, cache_status, metadata, supersedes_cost_event_id
+  ) values (
+    clock_timestamp(), 'openai', 'rni_ai_actual', route_row.canonical_provider_model_id,
+    'rni', p_invocation_id::text, 'call', 1, 1, actual, 'USD',
+    invocation_row.price_book_version, actual, 'reconciled', 'miss',
+    jsonb_build_object('provider_request_id', p_provider_request_id, 'outcome', p_outcome),
+    invocation_row.reservation_cost_event_id
+  ) returning id into actual_event;
+  insert into rni_ai_model_settlement (
+    invocation_id, request_hash, provider_request_id, outcome, input_tokens,
+    cached_input_tokens, output_tokens, web_search_calls, actual_cost_usd,
+    actual_cost_event_id
+  ) values (
+    p_invocation_id, p_request_hash, p_provider_request_id, p_outcome, p_input_tokens,
+    p_cached_input_tokens, p_output_tokens, p_web_search_calls, actual, actual_event
+  );
+  return actual;
+end;
+$$;
+
+comment on table rni_ai_config is
+  'Versioned D-RNI-21 route selection and AI spend ceilings. Secrets and provider credentials never enter this table.';
+comment on table rni_ai_model_invocation is
+  'One immutable pre-dispatch decision. Reserved calls retain worst-case exposure until an exact settlement exists; denied calls never dispatch.';
+comment on table rni_ai_budget_warning is
+  'Once-only calendar-month warning evidence, serialized with reservation decisions.';

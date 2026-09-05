@@ -35,7 +35,7 @@
 | I09 | Wire QStash jobs/manual idempotent refresh | `NOT_STARTED` | Signed redelivery/double-click tests |
 | I10 | Seed RNI Direct routes and optional Gateway selection | `IN_PROGRESS` | I10A starts versioned Direct/Gateway resolution and pre-dispatch budget enforcement under D-RNI-21; live parity remains I11 |
 | I10A | Enforce balanced runtime model policy and exact route lineage | `PASSED` | Direct default, five-task Terra/Sol low mapping, fresh capabilities, Gateway provider/canonical identity and stable cache semantics; unit/contract/eval regression and independent review pass |
-| I10B | Persist immutable route capabilities and atomic RNI AI budgets | `IN_PROGRESS` | Additive migration 0024 schema and PostgreSQL acceptance gates for D-RNI-21; transports remain a later I10 slice |
+| I10B | Persist immutable route capabilities and atomic RNI AI budgets | `PASSED` | Additive migration 0024 schema; PostgreSQL 11/11 focused and 129/129 RNI regression; transports remain I10C |
 | I11 | Run live Reddit, X and FMP gates | `NOT_STARTED` | Provider audit IDs and screenshots/log links |
 | I12 | Full regression, preview, production approval and smoke | `NOT_STARTED` | `joshuai` approval + production evidence |
 
@@ -395,6 +395,7 @@
 | `CURRENT` | Complete I10A runtime route policy | Direct defaults to exact Terra/Sol task mapping with low reasoning; all invocations retain dispatch, canonical model, capability and policy lineage; Gateway discovery requires actual OpenAI provider metadata; unit 1,360, contract 107/22 skipped, RNI eval 18/1 live skip, typecheck/lint/diff and independent re-review PASS |
 | `CURRENT` | Start I10B persisted routing and AI budget substrate | Extend coordinator-owned migration 0024 only: immutable capability/config/run lineage plus atomic worst-case reservation, settlement, rolling-day/month enforcement and once-only warning evidence under D-RNI-21 |
 | `CURRENT` | Resolve CR-DATA-005 overall convergence provenance | D-RNI-23 makes overall platform stance a deterministic weighted projection of persisted E05 overall scores through the exact E06 current weight trace; no frozen contract or schema expansion |
+| `CURRENT` | Complete I10B persisted routing and AI budget substrate | Migration 0024 preserves activation and per-call capability snapshots, exact run/config/task lineage, synthesis invocation identity, numeric reservation/settlement, 2/25/50/300/500 enforcement and once-only monthly warnings; focused 11/11 and full RNI PostgreSQL 129/129 |
 
 ## I10A handoff
 
@@ -415,6 +416,27 @@
   immutable capability/config lineage and atomic budget reservations; I11 must prove live Direct
   and Gateway responses. Frozen contracts were not changed. Independent review returned PASS
   after Direct alias, Gateway-provider, arbitrary-config, cache-key and telemetry findings closed.
+
+## I10B handoff
+
+- **Status:** `PASSED`; I10 remains `IN_PROGRESS` for I10C live Direct/Gateway transport,
+  configuration activation and application adapters.
+- **Files changed:** `apps/web/migrations/0024_rni_universe_upgrade.sql` and
+  `apps/web/tests/integration/rni/model-routing-budget.test.ts`.
+- **Tests run:** focused I10B PostgreSQL 11/11; complete RNI PostgreSQL integration 129/129;
+  full unit 1,360/1,360; full contract 107/107 with 22 database-gated skips; RNI eval 18/18
+  with one credential-gated live skip; TypeScript, scoped ESLint and diff check.
+- **Result:** config activation requires the exact five balanced routes, no fallback, approved
+  policy versions/limits and fresh OpenAI capability evidence. Capability refreshes append new
+  snapshots without rewriting the active config; every invocation pins the fresh exact snapshot
+  it used. A database-serialized reservation prices maximum input/output plus the discovery Web
+  Search call, permits exact boundaries and denies over-limit or unpriced dispatches. Settlement
+  supersedes the estimate once; absent/ambiguous settlement retains the reservation. Verifier and
+  challenger ledger IDs must equal their prepared synthesis invocation IDs.
+- **Risks/handoff:** migration 0024 still requires an ephemeral Neon rehearsal before preview.
+  I10C must expose these functions only through server-owned adapters and activate a successor
+  configuration from live capability discovery; I11 owns provider request evidence. Frozen RNI
+  contracts and credentials were untouched.
 
 ## I07A handoff
 
