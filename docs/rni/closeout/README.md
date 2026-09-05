@@ -18,6 +18,10 @@ until the coordinator has integrated, verified, committed, and pushed the prior 
 | [Wave 4](WAVE-4-PRODUCTION-COMPOSITION.md) | Non-fixture executor, authority-input inventory, and offline G6 evidence | Composition and read-only reviews; no overlapping writers |
 | [Wave 5](WAVE-5-LIVE-AND-CLOSEOUT.md) | Bounded G7 evidence and explicit G8 production approval | Independent source checks only when the coordinator permits |
 
+The current Wave 0 proposal is
+[`WAVE-0-OWNER-DECISIONS.md`](WAVE-0-OWNER-DECISIONS.md). It has no implementation authority until
+`joshuai` approves its exact text or supplies explicit replacements.
+
 ## How to create every code session
 
 1. In Codex, create a **new task** for the saved investment-sentiment-analysis project.

@@ -7,6 +7,9 @@ items below, the coordinator has frozen the resulting interfaces and acceptance 
 checkpoint is committed and pushed. Silence, an existing accepted change request, or approval of
 this planning document is not approval of the semantics.
 
+The complete proposed decisions and exact approval wording are in
+[`WAVE-0-OWNER-DECISIONS.md`](WAVE-0-OWNER-DECISIONS.md).
+
 Required decisions:
 
 1. **D-RNI-34 content identity:** stable source, immutable content version, retrieval-to-content
