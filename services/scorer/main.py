@@ -39,7 +39,9 @@ def build_app():
     from app import create_app
 
     runtime_version = os.environ.get("RUNTIME_VERSION", "unknown")
-    return create_app(backends=backends_by_kind, runtime_version=runtime_version, models=models_by_kind)
+    return create_app(
+        backends=backends_by_kind, runtime_version=runtime_version, models_by_kind=models_by_kind
+    )
 
 
 app = build_app()
