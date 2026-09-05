@@ -6,7 +6,7 @@ import {
 } from '@/services/auth';
 import {
   createLiveRniReadService,
-  findLatestRniRunId,
+  findLatestVisibleRniRunId,
   findRunSecurityByTicker,
   RniReadError,
   rniEnvironment,
@@ -28,7 +28,7 @@ export default async function NvdaRawDataExplorerPage() {
 
   try {
     const environment = rniEnvironment();
-    const runId = await findLatestRniRunId(environment);
+    const runId = await findLatestVisibleRniRunId(environment);
     const security = runId ? await findRunSecurityByTicker(runId, 'NVDA', environment) : null;
     if (!runId || !security) {
       return (

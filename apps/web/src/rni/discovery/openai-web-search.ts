@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import { withRniInputSchemaRefinements } from '../agents/input-schema-authority';
 import { serializeRniModelInput } from '../agents/model-input';
 import { canonicalizeRedditUrl, isRedditHost } from './reddit-url';
 import type {
@@ -42,48 +43,50 @@ type DiscoveryPromptGovernance = {
   readonly serializeInput: (input: RedditDiscoveryRequest) => string;
 };
 
-export const rniDiscoveryModelInput = z
-  .object({
-    queryId: z.string().uuid(),
-    mode: z.enum(['scheduled_community', 'on_demand_security']),
-    windowStart: z.string().datetime({ offset: true }),
-    windowEnd: z.string().datetime({ offset: true }),
-    communities: z.array(z.string().regex(/^r\/[A-Za-z0-9_]+$/u)).min(1),
-    securities: z.array(
-      z
-        .object({
-          ticker: z.string().regex(/^[A-Z][A-Z0-9.-]{0,9}$/u),
-          companyName: z.string().min(1),
-          aliases: z.array(z.string().min(1)),
-        })
-        .strict(),
-    ),
-    maxCandidates: z.number().int().min(1).max(100),
-  })
-  .strict()
-  .superRefine((request, context) => {
-    if (new Date(request.windowEnd).getTime() <= new Date(request.windowStart).getTime()) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['windowEnd'],
-        message: 'windowEnd must be after windowStart',
-      });
-    }
-    if (new Set(request.communities.map((value) => value.toLowerCase())).size !== request.communities.length) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['communities'],
-        message: 'communities must be unique ignoring case',
-      });
-    }
-    if (request.mode === 'on_demand_security' && request.securities.length === 0) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['securities'],
-        message: 'on-demand discovery requires at least one security',
-      });
-    }
-  });
+export const rniDiscoveryModelInput = withRniInputSchemaRefinements(
+  z
+    .object({
+      queryId: z.string().uuid(),
+      mode: z.enum(['scheduled_community', 'on_demand_security']),
+      windowStart: z.string().datetime({ offset: true }),
+      windowEnd: z.string().datetime({ offset: true }),
+      communities: z.array(z.string().regex(/^r\/[A-Za-z0-9_]+$/u)).min(1),
+      securities: z.array(
+        z
+          .object({
+            ticker: z.string().regex(/^[A-Z][A-Z0-9.-]{0,9}$/u),
+            companyName: z.string().min(1),
+            aliases: z.array(z.string().min(1)),
+          })
+          .strict(),
+      ),
+      maxCandidates: z.number().int().min(1).max(100),
+    })
+    .strict(),
+  [
+    {
+      kind: 'ordered_instants',
+      earlierField: 'windowStart',
+      laterField: 'windowEnd',
+      issuePath: ['windowEnd'],
+      message: 'windowEnd must be after windowStart',
+    },
+    {
+      kind: 'unique_case_insensitive_strings',
+      field: 'communities',
+      issuePath: ['communities'],
+      message: 'communities must be unique ignoring case',
+    },
+    {
+      kind: 'nonempty_array_when_literal',
+      discriminantField: 'mode',
+      discriminantValue: 'on_demand_security',
+      arrayField: 'securities',
+      issuePath: ['securities'],
+      message: 'on-demand discovery requires at least one security',
+    },
+  ] as const,
+);
 
 const candidateSchema = z
   .object({

@@ -65,7 +65,14 @@ export class RniCombinedExecutionService {
     if (
       record.planHash !== payload.planHash ||
       hashRniModelInput(payload) !==
-        hashRniModelInput(combinedDeliveryFor(payload.runId, payload.planHash, payload.attempt))
+        hashRniModelInput(
+          combinedDeliveryFor(
+            payload.runId,
+            payload.planHash,
+            payload.attempt,
+            record.version === 'rni-execution-v2' ? record.runManifestHash : undefined,
+          ),
+        )
     ) {
       throw new RniOrchestrationError('CONFLICT');
     }
@@ -263,6 +270,94 @@ export class RniCombinedExecutionService {
     });
   }
 
+  /**
+   * Full-universe v2 closeout. Unlike the historical/manual two-step path, the release row,
+   * immutable receipt, execution/run/job terminal projections and both audit records are written
+   * in one transaction. The callback receives the one commit timestamp it must persist on the
+   * release; no staged member becomes visible before this transaction commits.
+   */
+  async commitFullUniversePublication(
+    input: RniCombinedLease,
+    expected: RniCombinedArtifact,
+    publish: (
+      tx: RniOrchestrationTransaction,
+      fence: RniCombinedFence,
+      artifact: RniCombinedArtifact,
+      committedAt: string,
+    ) => Promise<unknown>,
+  ): Promise<'committed' | 'duplicate'> {
+    const lease = leaseSchema.parse(input);
+    const artifact = combinedArtifact.parse(expected);
+    return this.deps.store.transact(this.deps.partition, async (tx) => {
+      const record = await this.read(tx, lease.delivery);
+      if (
+        artifact.runId !== record.run.id ||
+        artifact.planHash !== record.planHash ||
+        record.version !== 'rni-execution-v2' ||
+        record.plan.scopePreview.kind !== 'full_universe' ||
+        (artifact.status === 'complete' &&
+          Object.values(record.platforms).some((platform) => platform.slice.status !== 'complete'))
+      ) {
+        throw new RniOrchestrationError('CONFLICT');
+      }
+      if (record.combined.publication !== null) {
+        const proof = this.matchesProof(record, lease, artifact.artifactHash);
+        if (
+          hashRniModelInput(proof.artifact) !== hashRniModelInput(artifact) ||
+          record.combined.status !== 'complete'
+        ) {
+          throw new RniOrchestrationError('CONFLICT');
+        }
+        return 'duplicate';
+      }
+
+      const fence = this.fence(record, lease);
+      const committedAt = new Date(this.now()).toISOString();
+      if (
+        Date.parse(committedAt) >= Date.parse(fence.expiresAt) ||
+        Date.parse(committedAt) >= Date.parse(fence.deadline)
+      ) {
+        throw new RniOrchestrationError('STALE_EXECUTION');
+      }
+      const committed = combinedArtifact.parse(
+        await publish(tx, fence, artifact, committedAt),
+      );
+      if (hashRniModelInput(committed) !== hashRniModelInput(artifact)) {
+        throw new RniOrchestrationError('CONFLICT');
+      }
+      const stillValid = this.fence(record, lease);
+      record.combined.publication = {
+        artifact: committed,
+        token: lease.token,
+        attempt: fence.attempt,
+        acquiredAt: fence.acquiredAt,
+        expiresAt: stillValid.expiresAt,
+        committedAt,
+      };
+      record.combined.status = 'complete';
+      record.combined.lease = null;
+      record.combined.errorCode = null;
+      record.combined.outcomeToken = lease.token;
+      record.combined.outcomeHash = hashRniModelInput(committed);
+      record.run.status = committed.status === 'insufficient' ? 'failed' : committed.status;
+      record.run.completedAt = committedAt;
+      await tx.putExecution(record);
+      await tx.audit({
+        event: 'combined_committed',
+        runId: record.run.id,
+        actor: 'rni-worker',
+        at: committedAt,
+      });
+      await tx.audit({
+        event: 'combined_terminal',
+        runId: record.run.id,
+        actor: 'rni-worker',
+        at: committedAt,
+      });
+      return 'committed';
+    });
+  }
+
   /** Expiry never authorizes a read/publication; a validated durable receipt is the only exception. */
   async finish(
     input: RniCombinedLease,
@@ -344,7 +439,12 @@ export class RniCombinedExecutionService {
           state.status = 'pending';
           state.lease = null;
           state.notBefore = new Date(now + delay).toISOString();
-          state.delivery = combinedDeliveryFor(record.run.id, record.planHash, state.attempt + 1);
+          state.delivery = combinedDeliveryFor(
+            record.run.id,
+            record.planHash,
+            state.attempt + 1,
+            record.version === 'rni-execution-v2' ? record.runManifestHash : undefined,
+          );
           await tx.putExecution(record);
           await tx.enqueueCombined(state.delivery, state.notBefore);
           await tx.audit({

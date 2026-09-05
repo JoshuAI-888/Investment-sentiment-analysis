@@ -20,6 +20,11 @@ import {
   type RniCombinedSummary,
 } from '../../contracts';
 import { RniReadError } from '../errors';
+import {
+  loadRniResultVisibility,
+  type ReleasedRniResultItem,
+  type RniResultVisibility,
+} from './visibility';
 
 const uuid = z.string().uuid();
 const versionId = z.string().regex(/^[1-9]\d*$/u);
@@ -81,6 +86,7 @@ export type UniverseRow = {
 
 export class ReadSnapshot {
   private readonly artifactCache = new Map<string, ReturnType<ReadSnapshot['loadArtifacts']>>();
+  private readonly visibilityCache = new Map<string, Promise<RniResultVisibility>>();
   constructor(
     readonly db: Queryable,
     readonly environment: string,
@@ -115,6 +121,113 @@ export class ReadSnapshot {
             ? s.errorCode
             : 'PROVIDER_UNAVAILABLE',
     }));
+  }
+
+  async requireResultVisibility(
+    runId: string,
+    securityId?: string,
+  ): Promise<ReleasedRniResultItem | null> {
+    let visibility = this.visibilityCache.get(runId);
+    if (!visibility) {
+      visibility = loadRniResultVisibility(runId, this.environment, this.db);
+      this.visibilityCache.set(runId, visibility);
+    }
+    const result = await visibility;
+    if (result.kind === 'legacy_or_manual') return null;
+    if (securityId === undefined) return null;
+    if (!uuid.safeParse(securityId).success) throw new RniReadError('INVALID_REQUEST');
+    const item = result.items.get(securityId);
+    if (!item) throw new RniReadError('CITATION_INVALID');
+    return item;
+  }
+
+  /**
+   * Proves that a citation/source is part of an accepted publication that is currently visible.
+   * A v2 full-universe staging row is deliberately insufficient: the exact synthesis must be an
+   * immutable member of the released aggregate. Historical and manual raw-source exploration
+   * retains the contract's run-observation boundary.
+   */
+  async requirePublishedEvidenceVisibility(
+    target: Readonly<{ kind: 'citation'; id: string }> | Readonly<{ kind: 'source'; id: string }>,
+  ): Promise<void> {
+    if (!uuid.safeParse(target.id).success) throw new RniReadError('INVALID_REQUEST');
+
+    if (target.kind === 'source') {
+      const { rows: legacy } = await this.db.query<{ visible: boolean }>(
+        `select exists (
+           select 1
+             from rni_run_observation observation
+             join rni_run run on run.id = observation.run_id
+             join config_version config on config.id = run.config_version
+             join universe_version universe on universe.id = run.universe_version
+             join rni_run_execution_scope scope on scope.run_id = run.id
+             left join rni_orchestration_execution execution on execution.run_id = run.id
+            where observation.source_item_id = $1
+              and config.environment = $2 and universe.environment = $2
+              and (
+                scope.scope_kind = 'manual_ticker'
+                or (
+                  scope.scope_kind = 'full_universe'
+                  and (
+                    execution.run_id is null
+                    or execution.record ->> 'version' = 'rni-execution-v1'
+                  )
+                )
+              )
+         ) as visible`,
+        [target.id, this.environment],
+      );
+      if (legacy[0]?.visible === true) return;
+    }
+
+    const { rows: candidates } = await this.db.query<{
+      runId: string;
+      securityId: string;
+      synthesisId: string;
+    }>(
+      `select distinct artifact.run_id as "runId", artifact.security_id as "securityId",
+              artifact.id as "synthesisId"
+         from rni_publication_statement_citation edge
+         join rni_publication_statement statement
+           on statement.id = edge.statement_id
+          and statement.synthesis_id = edge.synthesis_id
+          and statement.batch_id = edge.batch_id
+         join rni_cited_synthesis_artifact artifact
+           on artifact.id = statement.synthesis_id and artifact.batch_id = statement.batch_id
+         join rni_synthesis_citation_role role
+           on role.id = edge.citation_role_id
+          and role.batch_id = edge.batch_id
+          and role.citation_id = edge.citation_id
+          and role.run_id = artifact.run_id
+          and role.security_id = artifact.security_id
+         join rni_claim_citation citation
+           on citation.id = edge.citation_id
+          and citation.claim_id = role.evidence_claim_id
+          and citation.source_item_id = role.source_item_id
+         join rni_run run on run.id = artifact.run_id
+         join config_version config on config.id = run.config_version
+         join universe_version universe on universe.id = run.universe_version
+        where config.environment = $1 and universe.environment = $1
+          and ($2::uuid is null or edge.citation_id = $2)
+          and ($3::uuid is null or role.source_item_id = $3)`,
+      [
+        this.environment,
+        target.kind === 'citation' ? target.id : null,
+        target.kind === 'source' ? target.id : null,
+      ],
+    );
+
+    for (const candidate of candidates) {
+      try {
+        const released = await this.requireResultVisibility(candidate.runId, candidate.securityId);
+        if (released === null || released.citedSynthesisId === candidate.synthesisId) return;
+      } catch (error) {
+        if (error instanceof RniReadError && ['CONFLICT', 'CITATION_INVALID'].includes(error.code))
+          continue;
+        throw error;
+      }
+    }
+    throw new RniReadError('CITATION_INVALID');
   }
 
   async securities(runId: string) {
@@ -161,6 +274,7 @@ export class ReadSnapshot {
     );
     if (!rows.length) throw new RniReadError('SOURCE_NOT_FOUND');
     if (rows[0]!.source_status !== 'active') throw new RniReadError('FORBIDDEN');
+    await this.requirePublishedEvidenceVisibility({ kind: 'source', id });
     const source = await getRniSourceById(id, this.db);
     if (!source) throw new RniReadError('SOURCE_NOT_FOUND');
     if (
@@ -206,6 +320,7 @@ export class ReadSnapshot {
       [id, this.environment],
     );
     if (!rows.length) throw new RniReadError('CITATION_INVALID');
+    await this.requirePublishedEvidenceVisibility({ kind: 'citation', id });
     const citation = await getRniCitationById(id, this.db);
     if (!citation) throw new RniReadError('CITATION_INVALID');
     const source = await this.evidence(citation.sourceItemId);
@@ -219,15 +334,24 @@ export class ReadSnapshot {
   }
 
   async publication(runId: string, securityId: string): Promise<RniCombinedSummary | null> {
+    const releasedItem = await this.requireResultVisibility(runId, securityId);
     const summaries = await this.db.query(
       `select id, run_id as "runId", security_id as "securityId", status, sections,
         to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as "createdAt"
         from rni_combined_summary where run_id = $1 and security_id = $2`,
       [runId, securityId],
     );
-    if (!summaries.rows.length) return null;
+    if (!summaries.rows.length) {
+      if (releasedItem) throw new RniReadError('CITATION_INVALID');
+      return null;
+    }
     if (summaries.rows.length !== 1) throw new RniReadError('CITATION_INVALID');
     const summary = rniCombinedSummary.parse(summaries.rows[0]);
+    if (
+      releasedItem &&
+      (summary.id !== releasedItem.citedSynthesisId || summary.status !== releasedItem.status)
+    )
+      throw new RniReadError('CITATION_INVALID');
     const { rows: artifacts } = await this.db.query<{
       statement_count: number;
       batch_id: string;
@@ -253,6 +377,12 @@ export class ReadSnapshot {
     );
     const a = artifacts[0];
     if (!a) throw new RniReadError('CITATION_INVALID');
+    if (
+      releasedItem &&
+      (a.result_hash !== releasedItem.citedSynthesisResultHash ||
+        a.convergence_artifact_id !== releasedItem.convergenceArtifactId)
+    )
+      throw new RniReadError('CITATION_INVALID');
     const artifact: RniCitedSynthesisArtifact = {
       calculationCodeVersion: a.calculation_code_version,
       policyVersion: a.policy_version,
@@ -503,6 +633,9 @@ export class ReadSnapshot {
   }
 
   private async loadArtifacts(runId: string, securityId: string, summaryId?: string) {
+    const releasedItem = await this.requireResultVisibility(runId, securityId);
+    if (releasedItem && summaryId !== undefined && summaryId !== releasedItem.citedSynthesisId)
+      throw new RniReadError('CITATION_INVALID');
     const { rows } = await this.db.query<{
       id: string;
       input_snapshot: RniConvergenceArtifact['inputSnapshot'];
@@ -513,16 +646,21 @@ export class ReadSnapshot {
       calculation_code_version: RniConvergenceArtifact['calculationCodeVersion'];
       reddit_analytics_id: string;
       x_analytics_id: string;
+      artifact_hash: string | null;
     }>(
       `select c.* from rni_convergence_artifact c
        where c.run_id = $1 and c.security_id = $2
          and ($3::uuid is null or exists (select 1 from rni_cited_synthesis_artifact p
            where p.id = $3 and p.convergence_artifact_id = c.id))
+         and ($4::uuid is null or c.id = $4)
        order by c.created_at desc, c.id desc limit 1`,
-      [runId, securityId, summaryId ?? null],
+      [runId, securityId, summaryId ?? null, releasedItem?.convergenceArtifactId ?? null],
     );
     const row = rows[0];
-    if (!row) return null;
+    if (!row) {
+      if (releasedItem) throw new RniReadError('CITATION_INVALID');
+      return null;
+    }
     const convergence = replayPlatformFacts({
       calculationCodeVersion: row.calculation_code_version,
       policyVersion: row.policy_version,
@@ -531,6 +669,13 @@ export class ReadSnapshot {
       inputSnapshot: row.input_snapshot,
       result: row.result_snapshot,
     });
+    if (
+      releasedItem &&
+      (row.id !== releasedItem.convergenceArtifactId ||
+        row.artifact_hash !== releasedItem.convergenceArtifactHash ||
+        canonicalHash(convergence) !== releasedItem.convergenceArtifactHash)
+    )
+      throw new RniReadError('CITATION_INVALID');
     for (const platform of ['reddit', 'x'] as const) {
       const fact = convergence.result.platforms[platform];
       if (fact.runId !== runId || fact.securityId !== securityId || fact.platform !== platform)

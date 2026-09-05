@@ -76,7 +76,13 @@ export class RniPlatformExecutionService {
       payload.planHash !== record.planHash ||
       hashRniModelInput(payload) !==
         hashRniModelInput(
-          deliveryFor(payload.runId, payload.platform, payload.planHash, payload.attempt),
+          deliveryFor(
+            payload.runId,
+            payload.platform,
+            payload.planHash,
+            payload.attempt,
+            record.version === 'rni-execution-v2' ? record.runManifestHash : undefined,
+          ),
         )
     ) {
       throw new RniOrchestrationError('CONFLICT');
@@ -227,6 +233,7 @@ export class RniPlatformExecutionService {
             lease.delivery.platform,
             record.planHash,
             state.attempt + 1,
+            record.version === 'rni-execution-v2' ? record.runManifestHash : undefined,
           );
           await tx.putExecution(record);
           await tx.enqueue(state.delivery, state.notBefore);

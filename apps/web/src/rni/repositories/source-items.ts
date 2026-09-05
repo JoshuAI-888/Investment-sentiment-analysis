@@ -78,6 +78,43 @@ export type RniSourcePersistenceResult = {
   readonly outboxInserted: boolean;
 };
 
+/**
+ * Transaction-scoped form used when the source-first graph must commit atomically with an
+ * internal delivery/checkpoint. The caller owns BEGIN/COMMIT and must not perform provider I/O
+ * while that transaction is open.
+ */
+export async function persistRniSourceInTransaction(
+  input: RniSourceItem,
+  db: Queryable,
+): Promise<RniSourcePersistenceResult> {
+  const source = rniSourceItem.parse(input);
+  const persistedSource = await insertOrReadSource(source, db);
+  const retrieval = await insertOrReadRetrieval(persistedSource.row.id, source, db);
+  const content = await insertOrReadContentVersion(
+    persistedSource.row.id,
+    retrieval.id,
+    source,
+    db,
+  );
+  const outbox = await insertOrReadOutboxEvent(
+    persistedSource.row.id,
+    retrieval.id,
+    content.id,
+    source.createdAt,
+    db,
+  );
+  return {
+    source: sourceFromRow(persistedSource.row),
+    sourceInserted: persistedSource.inserted,
+    retrievalId: retrieval.id,
+    retrievalInserted: retrieval.inserted,
+    contentVersionId: content.id,
+    contentVersionInserted: content.inserted,
+    outboxEventId: outbox.id,
+    outboxInserted: outbox.inserted,
+  };
+}
+
 async function findByIdentity(source: RniSourceItem, db: Queryable): Promise<SourceRow> {
   const identityClause =
     source.externalId === null
@@ -279,34 +316,7 @@ export async function persistRniSource(
   input: RniSourceItem,
   pool: pg.Pool = getPool(),
 ): Promise<RniSourcePersistenceResult> {
-  const source = rniSourceItem.parse(input);
-  return withTransaction(async (tx) => {
-    const persistedSource = await insertOrReadSource(source, tx);
-    const retrieval = await insertOrReadRetrieval(persistedSource.row.id, source, tx);
-    const content = await insertOrReadContentVersion(
-      persistedSource.row.id,
-      retrieval.id,
-      source,
-      tx,
-    );
-    const outbox = await insertOrReadOutboxEvent(
-      persistedSource.row.id,
-      retrieval.id,
-      content.id,
-      source.createdAt,
-      tx,
-    );
-    return {
-      source: sourceFromRow(persistedSource.row),
-      sourceInserted: persistedSource.inserted,
-      retrievalId: retrieval.id,
-      retrievalInserted: retrieval.inserted,
-      contentVersionId: content.id,
-      contentVersionInserted: content.inserted,
-      outboxEventId: outbox.id,
-      outboxInserted: outbox.inserted,
-    };
-  }, pool);
+  return withTransaction((tx) => persistRniSourceInTransaction(input, tx), pool);
 }
 
 /** PostgreSQL adapter for the frozen commit-before-interpret source persistence boundary. */

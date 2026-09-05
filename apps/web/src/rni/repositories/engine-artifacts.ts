@@ -289,6 +289,7 @@ async function component(
     calculation_code_version: RniPlatformAnalyticsArtifact['calculationCodeVersion'];
     input_hash: string;
     result_hash: string;
+    artifact_hash: string | null;
     input_snapshot: StoredPlatformSnapshot;
     result_snapshot: RniPlatformAnalyticsResult;
     slice_status: string;
@@ -409,12 +410,13 @@ async function commitConvergence(
     calculation_code_version: string;
     input_hash: string;
     result_hash: string;
+    artifact_hash: string | null;
     input_snapshot: unknown;
     result_snapshot: unknown;
     created_at: string;
   }>(
     `select reddit_analytics_id, reddit_artifact_hash, x_analytics_id, x_artifact_hash,
-            policy_version, calculation_code_version, input_hash, result_hash,
+            policy_version, calculation_code_version, input_hash, result_hash, artifact_hash,
             input_snapshot, result_snapshot, ${timestampMicros('created_at')} as created_at
        from rni_convergence_artifact where run_id = $1 and security_id = $2`,
     [runId, securityId],
@@ -430,6 +432,7 @@ async function commitConvergence(
         row.calculation_code_version !== artifact.calculationCodeVersion ||
         row.input_hash !== artifact.inputHash ||
         row.result_hash !== artifact.resultHash ||
+        (row.artifact_hash !== null && row.artifact_hash !== artifactHash) ||
         canonical(row.input_snapshot) !== canonical(artifact.inputSnapshot) ||
         canonical(row.result_snapshot) !== canonical(artifact.result) ||
         row.created_at !== canonicalInstant(artifact.inputSnapshot.asOf),
@@ -441,8 +444,8 @@ async function commitConvergence(
     `insert into rni_convergence_artifact (
        id, run_id, security_id, reddit_analytics_id, reddit_artifact_hash,
        x_analytics_id, x_artifact_hash, policy_version, calculation_code_version,
-       input_hash, result_hash, input_snapshot, result_snapshot, created_at
-     ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13::jsonb, $14)
+       input_hash, result_hash, artifact_hash, input_snapshot, result_snapshot, created_at
+     ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14::jsonb, $15)
      on conflict (run_id, security_id, input_hash) do nothing returning id`,
     [
       randomUUID(),
@@ -456,6 +459,7 @@ async function commitConvergence(
       artifact.calculationCodeVersion,
       artifact.inputHash,
       artifact.resultHash,
+      artifactHash,
       JSON.stringify(artifact.inputSnapshot),
       JSON.stringify(artifact.result),
       artifact.inputSnapshot.asOf,

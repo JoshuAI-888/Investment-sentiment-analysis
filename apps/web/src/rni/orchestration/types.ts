@@ -90,7 +90,7 @@ export const refreshPlan = z
   });
 export type RniRefreshPlan = z.infer<typeof refreshPlan>;
 
-export const platformDelivery = z
+const platformDeliveryV1 = z
   .object({
     version: z.literal('rni-platform-v1'),
     runId: z.string().uuid(),
@@ -100,14 +100,30 @@ export const platformDelivery = z
     attempt: z.number().int().min(1).max(3),
   })
   .strict();
+const platformDeliveryV2 = platformDeliveryV1
+  .omit({ version: true })
+  .extend({ version: z.literal('rni-platform-v2'), runManifestHash: digest })
+  .strict();
+export const platformDelivery = z.discriminatedUnion('version', [
+  platformDeliveryV1,
+  platformDeliveryV2,
+]);
 export type RniPlatformDelivery = z.infer<typeof platformDelivery>;
 
-export const combinedDelivery = platformDelivery
-  .omit({ platform: true })
+const combinedDeliveryV1 = platformDeliveryV1
+  .omit({ platform: true, version: true })
   .extend({
     version: z.literal('rni-combined-v1'),
   })
   .strict();
+const combinedDeliveryV2 = platformDeliveryV2
+  .omit({ platform: true, version: true })
+  .extend({ version: z.literal('rni-combined-v2') })
+  .strict();
+export const combinedDelivery = z.discriminatedUnion('version', [
+  combinedDeliveryV1,
+  combinedDeliveryV2,
+]);
 export type RniCombinedDelivery = z.infer<typeof combinedDelivery>;
 
 export const combinedArtifact = z
@@ -179,23 +195,38 @@ const platformExecution = z
   })
   .strict();
 
-export const executionRecord = z
+const executionRecordShape = {
+  partition: identifier,
+  jobRunId: z.string().uuid(),
+  run: rniRun,
+  plan: refreshPlan,
+  planHash: digest,
+  coalesceKey: digest,
+  coalesceUntil: instant,
+  deadline: instant,
+  rerunOf: z.string().uuid().nullable(),
+  reservedCostUsd: amount,
+  platforms: z.object({ reddit: platformExecution, x: platformExecution }).strict(),
+  combined: combinedExecution,
+} as const;
+
+const executionRecordV1 = z
   .object({
     version: z.literal('rni-execution-v1'),
-    partition: identifier,
-    jobRunId: z.string().uuid(),
-    run: rniRun,
-    plan: refreshPlan,
-    planHash: digest,
-    coalesceKey: digest,
-    coalesceUntil: instant,
-    deadline: instant,
-    rerunOf: z.string().uuid().nullable(),
-    reservedCostUsd: amount,
-    platforms: z.object({ reddit: platformExecution, x: platformExecution }).strict(),
-    combined: combinedExecution,
+    ...executionRecordShape,
   })
   .strict();
+const executionRecordV2 = z
+  .object({
+    version: z.literal('rni-execution-v2'),
+    runManifestHash: digest,
+    ...executionRecordShape,
+  })
+  .strict();
+export const executionRecord = z.discriminatedUnion('version', [
+  executionRecordV1,
+  executionRecordV2,
+]);
 export type RniExecutionRecord = z.infer<typeof executionRecord>;
 
 const runCommand = z
@@ -254,7 +285,8 @@ export interface RniOrchestrationTransaction {
   /** Under the scheduled job lock; retained through the skip/advance or create transaction. */
   isScheduledJobBusy(jobId: string): Promise<boolean>;
   createJob(input: NewJobRun): Promise<JobRun>;
-  createExecution(record: RniExecutionRecord): Promise<void>;
+  /** Returns the exact persisted authority, including any repository-admitted v2 manifest. */
+  createExecution(record: RniExecutionRecord): Promise<RniExecutionRecord>;
   putExecution(record: RniExecutionRecord): Promise<void>;
   admitBudget(input: {
     runId: string;

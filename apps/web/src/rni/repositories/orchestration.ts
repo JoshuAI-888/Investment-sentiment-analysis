@@ -14,6 +14,7 @@ import {
   type RniTaskEnvelope,
 } from '@/rni/contracts';
 import { RniOrchestrationError } from '@/rni/orchestration/budget';
+import { combinedDeliveryFor, deliveryFor } from '@/rni/orchestration/refresh';
 import {
   executionRecord,
   type RniCombinedDelivery,
@@ -24,6 +25,21 @@ import {
   type RniPlatformDelivery,
   type RniRefreshPlan,
 } from '@/rni/orchestration/types';
+import {
+  RNI_WORKER_MANIFEST_TASKS,
+  hashRniWorkerPriceBook,
+  type RniWorkerManifest,
+  type RniWorkerManifestMember,
+  type RniWorkerPriceBookValue,
+} from '@/rni/orchestration/worker-manifest';
+import {
+  RniWorkerManifestRepositoryError,
+  assembleRniWorkerManifest,
+  loadRniWorkerManifestAuthorities,
+  persistRniWorkerManifest,
+  readRniWorkerBuildEnvironment,
+  type RniWorkerBuildEnvironment,
+} from '@/rni/repositories/worker-manifest';
 
 const JOB_DEFINITION_COLUMNS =
   'id, job_key, display_name, enabled, schedule_type, schedule_expression, display_timezone, ' +
@@ -66,6 +82,78 @@ export function queryableForRniOrchestrationTransaction(
 }
 
 type DefinitionIds = { manualJobId: string; scheduledJobId: string };
+
+type ManifestAdmissionConfigRow = {
+  config_checksum: string;
+  model_policy_version: string;
+  budget_policy_version: string;
+  universe_snapshot_hash: string;
+};
+
+type ManifestAdmissionRouteRow = {
+  task: (typeof RNI_WORKER_MANIFEST_TASKS)[number];
+  transport: string;
+  primary_provider: string;
+  primary_model: string;
+  canonical_provider_model_id: string;
+  model_revision: string;
+  reasoning_effort: string;
+  policy_version: string;
+  calibration_version: string;
+  capability_snapshot_id: string;
+  prompt_version: string;
+  temperature: string;
+  fallback_chain: string[];
+  allowed_data_classes: string[];
+  max_input_bytes: number;
+  max_input_tokens: number;
+  max_output_tokens: number;
+  max_tool_calls: number;
+  timeout_ms: number;
+  max_cost_usd: string;
+  capability_response_hash: string;
+  capability_observed_at: string;
+  capability_expires_at: string;
+  capability_available: boolean;
+  supports_responses: boolean;
+  supports_structured_outputs: boolean;
+  supports_web_search: boolean;
+  reasoning_efforts: string[];
+};
+
+type ManifestAdmissionPriceHeaderRow = {
+  price_book_version: string;
+  source_url: string;
+  response_hash: string;
+  observed_at: string;
+  first_tier_input_ceiling: number;
+};
+
+type ManifestAdmissionPriceUnitRow = {
+  provider: 'openai';
+  service: 'openai_responses' | 'openai_web_search';
+  operation_or_model: string;
+  unit_type: 'input_token' | 'output_token' | 'search';
+  unit_price: string;
+  currency: 'USD';
+  effective_from: string;
+  effective_until: string | null;
+  source_reference: string;
+};
+
+type ManifestAdmissionMemberRow = {
+  security_id: string;
+  ticker: string;
+  company_name: string;
+  exchange: string;
+  asset_type: string;
+  currency: string;
+  aliases: string[];
+  selection_source: string;
+  provider_symbol: string;
+  provider_company_name: string;
+  constituent_first_added_at: string | null;
+};
 
 /** Provision the two operational definitions against the active config without resetting cadence. */
 export async function ensureRniJobDefinitions(
@@ -155,6 +243,7 @@ class PostgresRniOrchestrationTransaction implements RniOrchestrationTransaction
   constructor(
     private readonly partition: string,
     private readonly db: Queryable,
+    private readonly buildEnvironment?: RniWorkerBuildEnvironment,
   ) {}
 
   async getCommand(key: string): Promise<unknown | null> {
@@ -412,8 +501,10 @@ class PostgresRniOrchestrationTransaction implements RniOrchestrationTransaction
     return claimed.run;
   }
 
-  async createExecution(input: RniExecutionRecord): Promise<void> {
-    const record = executionRecord.parse(input);
+  async createExecution(input: RniExecutionRecord): Promise<RniExecutionRecord> {
+    const proposed = executionRecord.parse(input);
+    const admission = await this.admitWorkerManifest(proposed);
+    const record = admission.record;
     if (record.partition !== this.partition) throw new RniOrchestrationError('CONFLICT');
     await this.db.query(
       `insert into rni_run (
@@ -488,6 +579,371 @@ class PostgresRniOrchestrationTransaction implements RniOrchestrationTransaction
         JSON.stringify(record),
       ],
     );
+    try {
+      const persisted = await persistRniWorkerManifest(admission.manifest, this.db);
+      if (
+        persisted.runId !== record.run.id ||
+        persisted.runManifestHash !== admission.record.runManifestHash
+      ) {
+        throw new RniOrchestrationError('CONFLICT');
+      }
+    } catch (error) {
+      if (error instanceof RniOrchestrationError) throw error;
+      if (error instanceof RniWorkerManifestRepositoryError) {
+        throw new RniOrchestrationError(error.code === 'CONFLICT' ? 'CONFLICT' : 'INVALID_PLAN');
+      }
+      throw error;
+    }
+    return record;
+  }
+
+  private async admitWorkerManifest(proposed: RniExecutionRecord): Promise<{
+    readonly record: Extract<RniExecutionRecord, { version: 'rni-execution-v2' }>;
+    readonly manifest: RniWorkerManifest;
+  }> {
+    if (proposed.version !== 'rni-execution-v1') throw new RniOrchestrationError('CONFLICT');
+    try {
+      const config = await this.loadManifestAdmissionConfig(proposed);
+      const routes = await this.loadManifestAdmissionRoutes(proposed);
+      const priceBook = await this.loadManifestAdmissionPriceBook(proposed.run.requestedAt);
+      const members = await this.loadManifestAdmissionMembers(proposed);
+      const promptVersions = Object.fromEntries(
+        routes.map(({ task, prompt_version }) => [task, prompt_version]),
+      ) as Record<(typeof RNI_WORKER_MANIFEST_TASKS)[number], string>;
+      const authorities = await loadRniWorkerManifestAuthorities(
+        {
+          configVersion: proposed.plan.configVersion,
+          promptVersions,
+          buildEnvironment: this.buildEnvironment ?? readRniWorkerBuildEnvironment(),
+        },
+        this.db,
+      );
+      const assembled = assembleRniWorkerManifest(
+        {
+          version: 'rni-worker-manifest-v2',
+          environment: this.partition,
+          partition: this.partition,
+          runId: proposed.run.id,
+          jobRunId: proposed.jobRunId,
+          planHash: proposed.planHash,
+          trigger: proposed.run.trigger,
+          acceptedAt: proposed.run.requestedAt,
+          deadline: proposed.deadline,
+          scope:
+            proposed.plan.scopePreview.kind === 'ticker'
+              ? {
+                  kind: 'manual_ticker',
+                  selectedSecurityId: proposed.plan.scopePreview.securityId,
+                }
+              : { kind: 'full_universe' },
+          windows: {
+            timezone: proposed.plan.timezone,
+            windowStart: proposed.plan.windowStart,
+            windowEnd: proposed.plan.windowEnd,
+            comparisonStart: proposed.plan.comparisonStart,
+            comparisonEnd: proposed.plan.comparisonEnd,
+            assessmentCutoffAt: proposed.plan.windowEnd,
+          },
+          configuration: {
+            version: proposed.plan.configVersion,
+            checksum: config.config_checksum,
+            aiRoute: proposed.plan.aiRoute,
+            modelPolicyVersion: config.model_policy_version,
+            budgetPolicyVersion: config.budget_policy_version,
+            promptSetVersion: proposed.plan.promptVersion,
+            aggregateBudgets: proposed.plan.budgets,
+          },
+          universe: {
+            version: proposed.plan.universeVersion,
+            snapshotHash: config.universe_snapshot_hash,
+          },
+          modelRoutes: routes.map((route) => ({
+            task: route.task,
+            aiRoute: proposed.plan.aiRoute,
+            transport: route.transport,
+            provider: route.primary_provider,
+            configuredModelId: route.primary_model,
+            canonicalProviderModelId: route.canonical_provider_model_id,
+            modelRevision: route.model_revision,
+            reasoningEffort: route.reasoning_effort,
+            policyVersion: route.policy_version,
+            calibrationVersion: route.calibration_version,
+            capability: {
+              snapshotId: route.capability_snapshot_id,
+              responseHash: route.capability_response_hash,
+              observedAt: route.capability_observed_at,
+              expiresAt: route.capability_expires_at,
+              available: route.capability_available,
+              supportsResponses: route.supports_responses,
+              supportsStructuredOutputs: route.supports_structured_outputs,
+              supportsWebSearch: route.supports_web_search,
+              reasoningEfforts: route.reasoning_efforts,
+              requiresResponses: true,
+              requiresStructuredOutputs: true,
+              requiresWebSearch: route.task === 'rni_discovery',
+            },
+            temperature: route.temperature,
+            fallbackChain: route.fallback_chain,
+            allowedDataClasses: route.allowed_data_classes,
+            envelope: {
+              task: route.task,
+              maxInputBytes: route.max_input_bytes,
+              maxInputTokensReserved: route.max_input_tokens,
+              maxOutputTokens: route.max_output_tokens,
+              maxToolCalls: route.max_tool_calls,
+              timeoutMs: route.timeout_ms,
+              maxCostUsd: route.max_cost_usd,
+            },
+            priceBook,
+          })),
+          orchestration: {
+            maxAttempts: proposed.plan.maxAttempts,
+            maxRuntimeMs: proposed.plan.maxRuntimeMs,
+            leaseMs: proposed.plan.leaseMs,
+            baseBackoffMs: proposed.plan.baseBackoffMs,
+            maxBackoffMs: proposed.plan.maxBackoffMs,
+            coalesceMs: proposed.plan.coalesceMs,
+            calls: proposed.plan.calls,
+            maxCostUsd: proposed.plan.maxCostUsd,
+          },
+          coverage: proposed.plan.coverage,
+          members,
+        },
+        authorities,
+      );
+      const runManifestHash = assembled.runManifestHash;
+      const record = executionRecord.parse({
+        ...proposed,
+        version: 'rni-execution-v2',
+        runManifestHash,
+        platforms: {
+          reddit: {
+            ...proposed.platforms.reddit,
+            delivery: deliveryFor(
+              proposed.run.id,
+              'reddit',
+              proposed.planHash,
+              proposed.platforms.reddit.delivery.attempt,
+              runManifestHash,
+            ),
+          },
+          x: {
+            ...proposed.platforms.x,
+            delivery: deliveryFor(
+              proposed.run.id,
+              'x',
+              proposed.planHash,
+              proposed.platforms.x.delivery.attempt,
+              runManifestHash,
+            ),
+          },
+        },
+        combined: {
+          ...proposed.combined,
+          delivery: combinedDeliveryFor(
+            proposed.run.id,
+            proposed.planHash,
+            proposed.combined.delivery.attempt,
+            runManifestHash,
+          ),
+        },
+      });
+      if (record.version !== 'rni-execution-v2') throw new RniOrchestrationError('CONFLICT');
+      return { record, manifest: assembled.manifest };
+    } catch (error) {
+      if (error instanceof RniOrchestrationError) throw error;
+      if (error instanceof RniWorkerManifestRepositoryError || error instanceof z.ZodError) {
+        throw new RniOrchestrationError(
+          error instanceof RniWorkerManifestRepositoryError && error.code === 'CONFLICT'
+            ? 'CONFLICT'
+            : 'INVALID_PLAN',
+        );
+      }
+      throw error;
+    }
+  }
+
+  private async loadManifestAdmissionConfig(
+    record: RniExecutionRecord,
+  ): Promise<ManifestAdmissionConfigRow> {
+    const { rows } = await this.db.query<ManifestAdmissionConfigRow>(
+      `select config.checksum as config_checksum,
+              ai.model_policy_version,ai.budget_policy_version,
+              universe.source_payload_hash as universe_snapshot_hash
+         from config_version config
+         join rni_ai_config ai on ai.config_version=config.id
+         join universe_version universe on universe.id=$3
+        where config.id=$1 and config.environment=$2 and config.status='active'
+          and universe.environment=$2 and universe.status='active'
+          and universe.source_provider='fmp'
+          and universe.source_endpoint='/stable/sp500-constituent'
+          and universe.source_payload_hash is not null
+          and universe.selected_count between 501 and 600
+        for share of config,universe`,
+      [record.plan.configVersion, this.partition, record.plan.universeVersion],
+    );
+    if (rows.length !== 1) throw new RniOrchestrationError('INVALID_PLAN');
+    return rows[0]!;
+  }
+
+  private async loadManifestAdmissionRoutes(
+    record: RniExecutionRecord,
+  ): Promise<readonly ManifestAdmissionRouteRow[]> {
+    const { rows } = await this.db.query<ManifestAdmissionRouteRow>(
+      `select route.task,route.transport,route.primary_provider,route.primary_model,
+              route.canonical_provider_model_id,route.model_revision,route.reasoning_effort,
+              route.policy_version,route.calibration_version,
+              route.capability_snapshot_id,route.prompt_version,route.temperature::text,
+              route.fallback_chain,route.allowed_data_classes,route.max_input_bytes,
+              route.max_input_tokens,route.max_output_tokens,route.max_tool_calls,
+              route.timeout_ms,route.max_cost_usd::text,
+              capability.response_hash as capability_response_hash,
+              to_char(capability.observed_at at time zone 'UTC',
+                'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as capability_observed_at,
+              to_char(capability.expires_at at time zone 'UTC',
+                'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as capability_expires_at,
+              capability.available as capability_available,capability.supports_responses,
+              capability.supports_structured_outputs,capability.supports_web_search,
+              capability.reasoning_efforts
+         from model_route route
+         join rni_model_capability_snapshot capability
+           on capability.id=route.capability_snapshot_id
+          and capability.ai_route=route.ai_route
+          and capability.configured_model_id=route.primary_model
+          and capability.provider=route.primary_provider
+          and capability.canonical_provider_model_id=route.canonical_provider_model_id
+          and capability.model_revision=route.model_revision
+        where route.config_version=$1 and route.ai_route=$2
+          and route.task=any($3::text[])
+        order by array_position($3::text[],route.task)`,
+      [record.plan.configVersion, record.plan.aiRoute, RNI_WORKER_MANIFEST_TASKS],
+    );
+    if (
+      rows.length !== RNI_WORKER_MANIFEST_TASKS.length ||
+      rows.some((row, index) => row.task !== RNI_WORKER_MANIFEST_TASKS[index])
+    ) {
+      throw new RniOrchestrationError('INVALID_PLAN');
+    }
+    return rows;
+  }
+
+  private async loadManifestAdmissionPriceBook(
+    acceptedAt: string,
+  ): Promise<RniWorkerManifest['modelRoutes'][number]['priceBook']> {
+    const header = await this.db.query<ManifestAdmissionPriceHeaderRow>(
+      `select evidence.price_book_version,evidence.source_url,evidence.response_hash,
+              to_char(evidence.observed_at at time zone 'UTC',
+                'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as observed_at,
+              evidence.first_tier_input_ceiling
+         from rni_price_book_evidence evidence
+         join unit_price_book price
+           on price.price_book_version=evidence.price_book_version
+        where evidence.observed_at <= $1
+          and price.provider='openai' and price.currency='USD'
+          and price.effective_from <= $1
+          and (price.effective_until is null or price.effective_until > $1)
+          and ((price.service='openai_responses'
+                and price.operation_or_model in ('gpt-5.6-terra','gpt-5.6-sol')
+                and price.unit_type in ('input_token','output_token'))
+            or (price.service='openai_web_search' and price.operation_or_model='web_search'
+                and price.unit_type='search'))
+        group by evidence.price_book_version,evidence.source_url,evidence.response_hash,
+                 evidence.observed_at,evidence.first_tier_input_ceiling
+       having count(*)=5
+        order by evidence.observed_at desc,evidence.price_book_version desc
+        limit 1`,
+      [acceptedAt],
+    );
+    const selected = header.rows[0];
+    if (selected === undefined) throw new RniOrchestrationError('INVALID_PLAN');
+    const unitRows = await this.db.query<ManifestAdmissionPriceUnitRow>(
+      `select provider,service,operation_or_model,unit_type,unit_price::text,currency,
+              to_char(effective_from at time zone 'UTC',
+                'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as effective_from,
+              case when effective_until is null then null else
+                to_char(effective_until at time zone 'UTC',
+                  'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') end as effective_until,
+              source_reference
+         from unit_price_book
+        where price_book_version=$1 and provider='openai' and currency='USD'
+          and effective_from <= $2 and (effective_until is null or effective_until > $2)
+          and ((service='openai_responses'
+                and operation_or_model in ('gpt-5.6-terra','gpt-5.6-sol')
+                and unit_type in ('input_token','output_token'))
+            or (service='openai_web_search' and operation_or_model='web_search'
+                and unit_type='search'))
+        order by provider collate "C",service collate "C",operation_or_model collate "C",
+                 unit_type collate "C"`,
+      [selected.price_book_version, acceptedAt],
+    );
+    if (unitRows.rows.length !== 5) throw new RniOrchestrationError('INVALID_PLAN');
+    const value: RniWorkerPriceBookValue = {
+      version: selected.price_book_version,
+      sourceUrl: selected.source_url,
+      responseHash: selected.response_hash,
+      observedAt: selected.observed_at,
+      firstTierInputCeiling: selected.first_tier_input_ceiling,
+      units: unitRows.rows.map((unit) => ({
+        provider: unit.provider,
+        service: unit.service,
+        operationOrModel: unit.operation_or_model,
+        unitType: unit.unit_type,
+        unitPrice: unit.unit_price,
+        currency: unit.currency,
+        effectiveFrom: unit.effective_from,
+        effectiveUntil: unit.effective_until,
+        sourceReference: unit.source_reference,
+      })) as RniWorkerPriceBookValue['units'],
+    };
+    return { ...value, snapshotHash: hashRniWorkerPriceBook(value) };
+  }
+
+  private async loadManifestAdmissionMembers(
+    record: RniExecutionRecord,
+  ): Promise<RniWorkerManifestMember[]> {
+    const { rows } = await this.db.query<ManifestAdmissionMemberRow>(
+      `select security.id::text as security_id,security.symbol as ticker,
+              security.name as company_name,security.exchange,security.asset_type,
+              security.currency,security.aliases,member.selection_source,
+              member.provider_symbol,member.provider_company_name,
+              case when member.constituent_first_added_at is null then null else
+                to_char(member.constituent_first_added_at at time zone 'UTC',
+                  'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') end as constituent_first_added_at
+         from universe_member member
+         join security on security.id=member.security_id
+        where member.universe_version=$1 and member.enabled
+          and ($2::uuid is null or security.id=$2)
+        order by security.symbol collate "C",security.exchange collate "C",security.id`,
+      [
+        record.plan.universeVersion,
+        record.plan.scopePreview.kind === 'ticker' ? record.plan.scopePreview.securityId : null,
+      ],
+    );
+    const expected =
+      record.plan.scopePreview.kind === 'full_universe'
+        ? record.plan.scopePreview.securityCount
+        : 1;
+    if (
+      rows.length !== expected ||
+      (record.plan.scopePreview.kind === 'full_universe' &&
+        (rows.length < 501 || rows.length > 600))
+    ) {
+      throw new RniOrchestrationError('INVALID_PLAN');
+    }
+    return rows.map((member, index) => ({
+      ordinal: index + 1,
+      securityId: member.security_id,
+      ticker: member.ticker,
+      companyName: member.company_name,
+      exchange: member.exchange,
+      assetType: member.asset_type,
+      currency: member.currency,
+      aliases: member.aliases,
+      selectionSource: member.selection_source,
+      providerSymbol: member.provider_symbol,
+      providerCompanyName: member.provider_company_name,
+      constituentFirstAddedAt: member.constituent_first_added_at,
+    }));
   }
 
   async putExecution(input: RniExecutionRecord): Promise<void> {
@@ -699,14 +1155,42 @@ class PostgresRniOrchestrationTransaction implements RniOrchestrationTransaction
   async assertPublicationFences(): Promise<void> {
     for (const runId of this.committedPublicationRuns) {
       const { rowCount } = await this.db.query(
-        `select 1 from rni_orchestration_execution
-          where run_id=$1 and partition=$2
-            and record #>> '{combined,publication,token}' = record #>> '{combined,lease,token}'
-            and (record #>> '{combined,publication,attempt}')::integer
-              = (record #>> '{combined,attempt}')::integer
-            and clock_timestamp() < (record #>> '{combined,lease,expiresAt}')::timestamptz
-            and clock_timestamp() < deadline
-          for update`,
+        `select 1
+           from rni_orchestration_execution e
+           left join rni_full_universe_publication_release release_row
+             on release_row.run_id = e.run_id
+           left join rni_orchestration_publication_receipt receipt
+             on receipt.run_id = e.run_id
+          where e.run_id=$1 and e.partition=$2
+            and (e.record #>> '{combined,publication,attempt}')::integer
+              = (e.record #>> '{combined,attempt}')::integer
+            and clock_timestamp()
+              < (e.record #>> '{combined,publication,expiresAt}')::timestamptz
+            and clock_timestamp() < e.deadline
+            and (
+              (
+                release_row.run_id is null
+                and e.record #>> '{combined,status}' = 'running'
+                and e.record #>> '{combined,publication,token}'
+                  = e.record #>> '{combined,lease,token}'
+                and e.record #>> '{combined,publication,expiresAt}'
+                  = e.record #>> '{combined,lease,expiresAt}'
+              )
+              or (
+                release_row.run_id is not null
+                and e.record ->> 'version' = 'rni-execution-v2'
+                and e.record #>> '{combined,status}' = 'complete'
+                and e.record #> '{combined,lease}' = 'null'::jsonb
+                and e.record #>> '{combined,publication,token}'
+                  = e.record #>> '{combined,outcomeToken}'
+                and release_row.combined_token::text
+                  = e.record #>> '{combined,publication,token}'
+                and receipt.token = release_row.combined_token
+                and receipt.artifact_hash = release_row.aggregate_hash
+                and receipt.committed_at = release_row.released_at
+              )
+            )
+          for update of e`,
         [runId, this.partition],
       );
       if (rowCount !== 1) throw new RniOrchestrationError('STALE_EXECUTION');
@@ -809,7 +1293,10 @@ class PostgresRniOrchestrationTransaction implements RniOrchestrationTransaction
 }
 
 export class PostgresRniOrchestrationStore implements RniOrchestrationStore {
-  constructor(private readonly pool: pg.Pool = getPool()) {}
+  constructor(
+    private readonly pool: pg.Pool = getPool(),
+    private readonly buildEnvironment?: RniWorkerBuildEnvironment,
+  ) {}
 
   async transact<T>(
     partition: string,
@@ -817,7 +1304,11 @@ export class PostgresRniOrchestrationStore implements RniOrchestrationStore {
   ): Promise<T> {
     const trustedPartition = partitionName.parse(partition);
     const client = await this.pool.connect();
-    const transaction = new PostgresRniOrchestrationTransaction(trustedPartition, client);
+    const transaction = new PostgresRniOrchestrationTransaction(
+      trustedPartition,
+      client,
+      this.buildEnvironment,
+    );
     try {
       await client.query('begin');
       // Match I10's order exactly. Every lifecycle transaction may project run state after

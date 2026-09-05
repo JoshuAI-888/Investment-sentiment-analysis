@@ -80,6 +80,7 @@ export class PostgresRniReadService implements RniReadService {
   async getSecuritySummary(runId: string, securityId: string): Promise<RniCombinedSummary> {
     return this.database.snapshot(async (store) => {
       await this.requireSecurity(store, runId, securityId);
+      await store.requireResultVisibility(runId, securityId);
       if (pending(await store.slices(runId))) throw new RniReadError('CONFLICT');
       const summary = await store.publication(runId, securityId);
       if (!summary) throw new RniReadError('CONFLICT');
@@ -107,6 +108,7 @@ export class PostgresRniReadService implements RniReadService {
     const after = readCursor(query.cursor, query.runId);
     return this.database.snapshot(async (store) => {
       const run = await store.run(query.runId);
+      await store.requireResultVisibility(run.id);
       const slices = await store.slices(run.id);
       const securities = await store.securities(run.id);
       // An immutable universe/run scope binds pagination; a forged/outdated cursor is rejected.
@@ -146,6 +148,7 @@ export class PostgresRniReadService implements RniReadService {
     securityId: string,
     slices: readonly RniPlatformSlice[],
   ) {
+    await store.requireResultVisibility(runId, securityId);
     let publication: RniCombinedSummary | null = null;
     let restricted = false;
     if (!pending(slices)) {

@@ -31,6 +31,7 @@ const ids = {
 
 const hashes = {
   plan: 'a'.repeat(64),
+  manifest: 'e'.repeat(64),
   input: 'b'.repeat(64),
   output: 'c'.repeat(64),
   changed: 'd'.repeat(64),
@@ -54,6 +55,7 @@ function subject(overrides: Partial<RniSourceWorkflowSubjectV2> = {}): RniSource
     version: 'rni-source-workflow-subject-v2',
     runId: ids.run,
     planHash: hashes.plan,
+    runManifestHash: hashes.manifest,
     platform: 'reddit',
     outerAttempt: 1,
     outerToken: ids.outerToken,
@@ -84,6 +86,7 @@ function authority(
   return {
     runId: subjectInput.runId,
     planHash: subjectInput.planHash,
+    runManifestHash: subjectInput.runManifestHash,
     platform: subjectInput.platform,
     outerAttempt: subjectInput.outerAttempt,
     outerToken: subjectInput.outerToken,
@@ -361,6 +364,19 @@ describe('D-RNI-34 source workflow checkpoint', () => {
         }),
       'STALE_AUTHORITY',
     );
+    expectCheckpointError(
+      () =>
+        completeRniSourceWorkflowCheckpoint(checkpoint, {
+          ...mutationInput(checkpoint, {
+            authority: {
+              ...authority(checkpoint.delivery.subject),
+              runManifestHash: hashes.changed,
+            },
+          }),
+          outputHash: hashes.output,
+        }),
+      'STALE_AUTHORITY',
+    );
   });
 
   it('rejects a mutation timestamp before the current outer lease acquisition', () => {
@@ -579,6 +595,7 @@ describe('D-RNI-34 source workflow checkpoint', () => {
     const variants: Array<[string, RniSourceWorkflowDeliveryV2]> = [
       ['run', delivery(subject({ runId: '00000000-0000-4000-8000-000000000201' }))],
       ['plan', delivery(subject({ planHash: hashes.changed }))],
+      ['manifest', delivery(subject({ runManifestHash: hashes.changed }))],
       ['platform', delivery(subject({ platform: 'x' }))],
       ['outer attempt', delivery(subject({ outerAttempt: 2 }))],
       ['outer token', delivery(subject({ outerToken: '00000000-0000-4000-8000-000000000202' }))],

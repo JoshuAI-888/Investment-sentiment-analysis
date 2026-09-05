@@ -489,6 +489,7 @@ const workerManifestShape = z
     partition: exactText,
     runId: canonicalUuid,
     jobRunId: canonicalUuid,
+    planHash: digest,
     trigger: z.enum(['schedule', 'manual', 'api']),
     acceptedAt: instant,
     deadline: instant,

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import {
   createLiveRniReadService,
-  findLatestRniRunId,
+  findLatestVisibleRniRunId,
   rniEnvironment,
 } from '@/rni/read-model';
 import { authorizeRniRead, mapRniReadError, rniRequestId } from '@/rni/http';
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   if (unauthorized) return unauthorized;
   try {
     const search = new URL(request.url).searchParams;
-    const runId = search.get('runId') ?? (await findLatestRniRunId(rniEnvironment()));
+    const runId = search.get('runId') ?? (await findLatestVisibleRniRunId(rniEnvironment()));
     if (!runId) {
       return NextResponse.json({ data: null }, { status: 200 });
     }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { RniCombinedExecutionService, type RniCombinedLease } from '@/rni/orchestration/combined';
-import { combinedDeliveryFor } from '@/rni/orchestration/refresh';
+import { combinedDeliveryFor, deliveryFor } from '@/rni/orchestration/refresh';
 import { relayRniCombinedOutbox } from '@/rni/orchestration/outbox';
 import type { RniCombinedArtifact } from '@/rni/orchestration/types';
 import { harness, scope, START, uuid } from './fixture';
@@ -31,6 +31,53 @@ async function acquired(h: Harness): Promise<RniCombinedLease> {
   const claim = await h.combinedWorker.claim(h.record(h.runId).combined.delivery);
   if (claim.status !== 'acquired') throw new Error('combined lease');
   return claim.lease;
+}
+
+async function readyFullUniverseV2() {
+  const h = harness();
+  const { runId } = await h.service.requestManualRefresh({
+    idempotencyKey: 'combined-full-v2',
+    scope: { kind: 'full_universe' },
+  });
+  for (const platform of ['reddit', 'x'] as const) {
+    const claim = await h.worker.claim(h.record(runId).platforms[platform].delivery);
+    if (claim.status !== 'acquired') throw new Error('platform lease');
+    await h.worker.finish(claim.lease, {
+      status: 'complete',
+      eligibleSourceCount: 2,
+      dataThroughAt: START,
+      computedAt: START,
+    });
+  }
+  const previous = h.record(runId);
+  const runManifestHash = 'f'.repeat(64);
+  const next = {
+    ...previous,
+    version: 'rni-execution-v2' as const,
+    runManifestHash,
+    platforms: {
+      reddit: {
+        ...previous.platforms.reddit,
+        delivery: deliveryFor(runId, 'reddit', previous.planHash, 1, runManifestHash),
+      },
+      x: {
+        ...previous.platforms.x,
+        delivery: deliveryFor(runId, 'x', previous.planHash, 1, runManifestHash),
+      },
+    },
+    combined: {
+      ...previous.combined,
+      delivery: combinedDeliveryFor(runId, previous.planHash, 1, runManifestHash),
+    },
+  };
+  h.store.data.executions.set(runId, next);
+  const artifact: RniCombinedArtifact = {
+    runId,
+    planHash: next.planHash,
+    artifactHash: 'a'.repeat(64),
+    status: 'complete',
+  };
+  return { ...h, runId, artifact, delivery: next.combined.delivery };
 }
 const publish = (h: Harness, lease: RniCombinedLease) =>
   h.combinedWorker.commitPublication(lease, h.artifact, (tx, _fence, artifact) =>
@@ -98,6 +145,33 @@ describe('D-RNI-27 combined publication lifecycle', () => {
     expect(h.record(h.runId).platforms).toEqual(before);
     expect(h.store.data.publications.size).toBe(1);
     expect(h.store.data.audits.filter((e) => e.event === 'combined_terminal')).toHaveLength(1);
+  });
+
+  it('commits a v2 full-universe release and terminal projections in one transaction', async () => {
+    const h = await readyFullUniverseV2();
+    const lease = await acquired(h);
+    const publishFull = vi.fn(async (tx, fence, artifact, committedAt) => {
+      expect(committedAt).toBe(START);
+      expect(fence.token).toBe(lease.token);
+      return h.store.publish(tx, artifact);
+    });
+    expect(
+      await h.combinedWorker.commitFullUniversePublication(lease, h.artifact, publishFull),
+    ).toBe('committed');
+    expect(h.record(h.runId).run).toMatchObject({ status: 'complete', completedAt: START });
+    expect(h.record(h.runId).combined).toMatchObject({
+      status: 'complete',
+      lease: null,
+      outcomeToken: lease.token,
+      publication: { committedAt: START },
+    });
+    expect(h.store.data.publications.size).toBe(1);
+    expect(h.store.data.audits.filter(({ event }) => event === 'combined_committed')).toHaveLength(1);
+    expect(h.store.data.audits.filter(({ event }) => event === 'combined_terminal')).toHaveLength(1);
+    expect(
+      await h.combinedWorker.commitFullUniversePublication(lease, h.artifact, publishFull),
+    ).toBe('duplicate');
+    expect(publishFull).toHaveBeenCalledOnce();
   });
 
   it('rejects crossed payloads and tokens before any publishing effect', async () => {

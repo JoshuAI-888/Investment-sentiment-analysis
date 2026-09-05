@@ -6,6 +6,14 @@ import { databaseUrl, makePool, resetSchema, truncateAll } from '../helpers/db';
 import { reserveRniAiInvocation, settleRniAiInvocation } from '../../../src/repositories/versions';
 import { rniModelTask } from '../../../src/rni/contracts';
 import { hashRniModelInput } from '../../../src/rni/agents/model-input';
+import {
+  hashRniWorkerManifest,
+  hashRniWorkerSnapshotValue,
+} from '../../../src/rni/orchestration/worker-manifest';
+import {
+  buildRniFullUniversePublication,
+  type RniFullUniversePublication,
+} from '../../../src/rni/orchestration/full-universe-publication';
 import { RniRefreshService, validateRniExecution } from '../../../src/rni/orchestration/refresh';
 import { RniPlatformExecutionService } from '../../../src/rni/orchestration/execution';
 import { RniCombinedExecutionService } from '../../../src/rni/orchestration/combined';
@@ -14,8 +22,16 @@ import {
   findRniJobRun,
   PostgresRniOrchestrationStore,
   PostgresRniOutbox,
+  queryableForRniOrchestrationTransaction,
 } from '../../../src/rni/repositories/orchestration';
+import {
+  finalizeRniFullUniversePublication,
+  stageRniFullUniversePublicationMember,
+} from '../../../src/rni/repositories/full-universe-publication';
+import { loadRniWorkerManifest } from '../../../src/rni/repositories/worker-manifest';
+import { loadRniResultVisibility } from '../../../src/rni/read-model/repositories/visibility';
 import { PostgresRniAiRouteSettingsService } from '../../../src/rni/settings/ai-route/repositories/store';
+import { seedTestWorkerAuthorities } from './helpers/worker-authorities';
 
 const TABLES = [
   'job_run',
@@ -28,6 +44,132 @@ const TABLES = [
   'audit_event',
 ] as const;
 const HASH = 'a'.repeat(64);
+
+async function seedFullUniversePublicationPrerequisites(
+  pool: pg.Pool,
+  publication: RniFullUniversePublication,
+  createdAt: string,
+): Promise<void> {
+  const securityIds = publication.members.map(({ securityId }) => securityId);
+  const synthesisIds = publication.members.map(({ citedSynthesisId }) => citedSynthesisId);
+  const synthesisHashes = publication.members.map(
+    ({ citedSynthesisResultHash }) => citedSynthesisResultHash,
+  );
+  const convergenceIds = publication.members.map(
+    ({ convergenceArtifactId }) => convergenceArtifactId,
+  );
+  const convergenceHashes = publication.members.map(
+    ({ convergenceArtifactHash }) => convergenceArtifactHash,
+  );
+  const sections = JSON.stringify([
+    {
+      heading: 'Reddit sentiment',
+      status: 'complete',
+      text: 'Exact fixture Reddit result.',
+      citationIds: [],
+    },
+    {
+      heading: 'X sentiment',
+      status: 'complete',
+      text: 'Exact fixture X result.',
+      citationIds: [],
+    },
+    {
+      heading: 'Combined summary',
+      status: 'complete',
+      text: 'Exact fixture combined result.',
+      citationIds: [],
+    },
+  ]);
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    // D-RNI-33 is the subject of this test. Replica mode is confined to manufacturing the 501
+    // already-published upstream synthesis/convergence prerequisites; it is reset before any
+    // staging, release, receipt, orchestration, or read-gate operation under test.
+    await client.query('set local session_replication_role = replica');
+    await client.query(
+      `insert into rni_combined_summary
+       (id,run_id,security_id,reddit_platform_slice_id,x_platform_slice_id,status,sections,created_at)
+       select input.synthesis_id,$1,input.security_id,$2,$3,'complete',$4::jsonb,$5
+         from unnest($6::uuid[],$7::uuid[]) input(security_id,synthesis_id)`,
+      [
+        publication.runId,
+        publication.platforms.reddit.sliceId,
+        publication.platforms.x.sliceId,
+        sections,
+        createdAt,
+        securityIds,
+        synthesisIds,
+      ],
+    );
+    await client.query(
+      `insert into rni_convergence_artifact
+       (id,run_id,security_id,reddit_analytics_id,reddit_artifact_hash,x_analytics_id,
+        x_artifact_hash,policy_version,calculation_code_version,input_hash,result_hash,
+        input_snapshot,result_snapshot,created_at,artifact_hash)
+       select input.convergence_id,$1,input.security_id,gen_random_uuid(),$2,gen_random_uuid(),$3,
+         'release-fixture-policy','release-fixture-convergence-v1',$4,$5,'{}'::jsonb,'{}'::jsonb,
+         $6,input.convergence_hash
+       from unnest($7::uuid[],$8::uuid[],$9::text[]) input(
+         security_id,convergence_id,convergence_hash
+       )`,
+      [
+        publication.runId,
+        hashRniModelInput({ platform: 'reddit', runId: publication.runId }),
+        hashRniModelInput({ platform: 'x', runId: publication.runId }),
+        hashRniModelInput({ kind: 'convergence-input', runId: publication.runId }),
+        hashRniModelInput({ kind: 'convergence-result', runId: publication.runId }),
+        createdAt,
+        securityIds,
+        convergenceIds,
+        convergenceHashes,
+      ],
+    );
+    await client.query(
+      `insert into rni_cited_synthesis_artifact
+       (id,run_id,security_id,batch_id,convergence_artifact_id,verifier_invocation_id,
+        verification_input_hash,challenger_invocation_id,challenger_input_hash,
+        calculation_code_version,policy_version,input_hash,result_hash,request_snapshot,
+        model_input_snapshot,verification_output_snapshot,challenger_output_snapshot,
+        result_snapshot,statement_count,created_at)
+       select input.synthesis_id,$1,input.security_id,gen_random_uuid(),input.convergence_id,
+         gen_random_uuid(),$2,gen_random_uuid(),$3,'release-fixture-synthesis-v1',
+         'release-fixture-policy',$4,input.synthesis_hash,'{}'::jsonb,'{}'::jsonb,'[]'::jsonb,
+         '{}'::jsonb,'{}'::jsonb,3,$5
+       from unnest($6::uuid[],$7::uuid[],$8::uuid[],$9::text[]) input(
+         security_id,synthesis_id,convergence_id,synthesis_hash
+       )`,
+      [
+        publication.runId,
+        hashRniModelInput({ kind: 'verification-input', runId: publication.runId }),
+        hashRniModelInput({ kind: 'challenger-input', runId: publication.runId }),
+        hashRniModelInput({ kind: 'synthesis-input', runId: publication.runId }),
+        createdAt,
+        securityIds,
+        synthesisIds,
+        convergenceIds,
+        synthesisHashes,
+      ],
+    );
+    await client.query('commit');
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+const BUILD = {
+  deploymentId: 'rni-test-deployment',
+  commitSha: '5'.repeat(40),
+  artifactHash: '6'.repeat(64),
+  sourceAdapterVersions: { reddit: 'reddit-test-v1', x: 'x-test-v1' },
+  semanticCodeVersion: 'semantic-test-v1',
+  analyticsCodeVersion: 'analytics-test-v1',
+  convergenceCodeVersion: 'convergence-test-v1',
+  citedSynthesisCodeVersion: 'synthesis-test-v1',
+} as const;
 
 describe.skipIf(databaseUrl() === undefined)('I09 — PostgreSQL orchestration store', () => {
   let pool: pg.Pool;
@@ -81,43 +223,112 @@ describe.skipIf(databaseUrl() === undefined)('I09 — PostgreSQL orchestration s
       await pool.query(
         `insert into model_route
          (config_version,task,transport,primary_provider,primary_model,model_revision,
-          fallback_chain,prompt_version,schema_version,max_input_tokens,max_output_tokens,
+          fallback_chain,prompt_version,schema_version,calibration_version,
+          max_input_tokens,max_output_tokens,
           timeout_ms,max_cost_usd,ai_route,canonical_provider_model_id,reasoning_effort,
           capability_snapshot_id,policy_version,max_input_bytes,max_tool_calls)
          values ($1,$2,'openai_responses','openai',$3,'i09-revision','[]',$2||'-v1',
-           'rni-schema-v1',1024,256,30000,0.1,'openai_direct',$3,'low',$3,
+           'rni-schema-v1','rni-i09-calibration-v1',1024,256,30000,0.1,'openai_direct',$3,'low',$3,
            'rni-balanced-model-policy-v1',1024,$4)`,
         [configVersion, task, model, task === 'rni_discovery' ? 3 : 0],
       );
     }
+    await seedTestWorkerAuthorities(pool, configVersion);
+    for (const task of rniModelTask.options) {
+      const prompt = {
+        version: `${task}-v1`,
+        contentHash: '1'.repeat(64),
+        inputSchemaVersion: `${task}-input-v1`,
+        inputSchemaHash: '2'.repeat(64),
+        outputSchemaVersion: `${task}-output-v1`,
+        outputSchemaHash: '3'.repeat(64),
+        toolVersion: `${task}-tools-v1`,
+        toolHash: '4'.repeat(64),
+      };
+      await pool.query(
+        `insert into rni_worker_manifest_authority
+         (authority_kind,authority_key,version,snapshot_hash,value)
+         values ('prompt',$1,$2,$3,$4)`,
+        [task, prompt.version, hashRniWorkerSnapshotValue(prompt), JSON.stringify(prompt)],
+      );
+    }
+    await pool.query(
+      `insert into rni_worker_manifest_authority
+       (authority_kind,authority_key,version,snapshot_hash,value)
+       values ('build','default',$1,$2,$3)`,
+      [BUILD.deploymentId, hashRniWorkerSnapshotValue(BUILD), JSON.stringify(BUILD)],
+    );
     await pool.query(`update config_version set status='active',activated_at=now() where id=$1`, [
       configVersion,
     ]);
-    // A preserved legacy-sized universe is a supported live read/selection input, not an FMP claim.
+    const providerCallId = (
+      await pool.query<{ id: string }>(
+        `insert into provider_call_log
+         (provider,operation,request_fingerprint,status_code,latency_ms,cache_status,
+          items_returned,started_at)
+         values ('fmp','/stable/sp500-constituent','rni-manifest-fixture',200,1,'miss',501,
+           now()-interval '1 hour') returning id`,
+      )
+    ).rows[0]!.id;
     universeVersion = (
       await pool.query<{ id: string }>(
         `insert into universe_version
-         (environment,config_version,status,selected_count,created_by,change_reason,activated_at)
-         values ('test',$1,'active',100,'coordinator','Preserved legacy fixture',now())
+         (environment,config_version,status,selected_count,created_by,change_reason,activated_at,
+          source_provider,source_endpoint,source_retrieved_at,source_payload_hash,
+          provider_call_id,approved_by)
+         values ('test',$1,'active',501,'coordinator','D-RNI-32 admission fixture',now(),
+           'fmp','/stable/sp500-constituent',now()-interval '1 hour',$2,$3,'coordinator')
          returning id::text`,
-        [configVersion],
+        [configVersion, HASH, providerCallId],
       )
     ).rows[0]!.id;
     await pool.query(
       `with inserted as (
-         insert into security (symbol,name,exchange,asset_type,currency)
+         insert into security (symbol,name,exchange,asset_type,currency,aliases)
          select case when n=1 then 'NVDA' else 'T'||lpad(n::text,3,'0') end,
            case when n=1 then 'NVIDIA Corporation' else 'Fixture company '||n::text end,
-           'NASDAQ','equity','USD' from generate_series(1,100) n returning id
-       ) insert into universe_member (universe_version,security_id,added_by,selection_source)
-         select $1,id,'coordinator','preset' from inserted`,
+           'NASDAQ','equity','USD',jsonb_build_array(
+             case when n=1 then 'NVDA' else 'T'||lpad(n::text,3,'0') end
+           ) from generate_series(1,501) n returning id,symbol,name
+       ) insert into universe_member
+         (universe_version,security_id,added_by,selection_source,provider_symbol,
+          provider_company_name,constituent_first_added_at)
+         select $1,id,'coordinator','fmp_sp500',symbol,name,'2020-01-01T00:00:00Z'
+           from inserted`,
       [universeVersion],
+    );
+    await pool.query(
+      `insert into rni_price_book_evidence
+       (price_book_version,source_url,response_hash,observed_at,first_tier_input_ceiling)
+       values ('rni-manifest-price-v1','https://example.test/approved-prices',$1,
+         now()-interval '1 hour',200000)`,
+      [HASH],
+    );
+    await pool.query(
+      `insert into unit_price_book
+       (price_book_version,provider,service,operation_or_model,unit_type,unit_price,currency,
+        effective_from,source_reference)
+       values
+       ('rni-manifest-price-v1','openai','openai_responses','gpt-5.6-sol','input_token',
+         0.00001,'USD',now()-interval '1 day','approved fixture'),
+       ('rni-manifest-price-v1','openai','openai_responses','gpt-5.6-sol','output_token',
+         0.00002,'USD',now()-interval '1 day','approved fixture'),
+       ('rni-manifest-price-v1','openai','openai_responses','gpt-5.6-terra','input_token',
+         0.00001,'USD',now()-interval '1 day','approved fixture'),
+       ('rni-manifest-price-v1','openai','openai_responses','gpt-5.6-terra','output_token',
+         0.00002,'USD',now()-interval '1 day','approved fixture'),
+       ('rni-manifest-price-v1','openai','openai_web_search','web_search','search',
+         0.01,'USD',now()-interval '1 day','approved fixture')`,
     );
     securityId = (await pool.query<{ id: string }>(`select id from security where symbol='NVDA'`))
       .rows[0]!.id;
     definitions = await ensureRniJobDefinitions('test', pool);
     clock = Date.now();
-    store = new PostgresRniOrchestrationStore(pool);
+    store = new PostgresRniOrchestrationStore(pool, {
+      deploymentId: BUILD.deploymentId,
+      commitSha: BUILD.commitSha,
+      artifactHash: BUILD.artifactHash,
+    });
     const dependencies = {
       store,
       partition: 'test',
@@ -201,7 +412,24 @@ describe.skipIf(databaseUrl() === undefined)('I09 — PostgreSQL orchestration s
       universeVersion,
     });
     const record = await execution(accepted.runId);
+    expect(record.version).toBe('rni-execution-v2');
+    if (record.version !== 'rni-execution-v2') throw new Error('Expected v2 execution');
     expect(record.run).toMatchObject({ status: 'requested', configVersion, universeVersion });
+    expect(record.platforms.reddit.delivery).toMatchObject({
+      version: 'rni-platform-v2',
+      runManifestHash: record.runManifestHash,
+    });
+    expect(record.platforms.x.delivery).toMatchObject({
+      version: 'rni-platform-v2',
+      runManifestHash: record.runManifestHash,
+    });
+    const workerManifest = await loadRniWorkerManifest(record.run.id, record.runManifestHash, pool);
+    expect(workerManifest.scope).toEqual({
+      kind: 'manual_ticker',
+      selectedSecurityId: securityId,
+    });
+    expect(workerManifest.members).toHaveLength(1);
+    expect(workerManifest.members[0]).toMatchObject({ securityId, ticker: 'NVDA', ordinal: 1 });
     expect(await findRniJobRun(record.jobRunId, pool)).toMatchObject({
       id: record.jobRunId,
       jobId: definitions.manualJobId,
@@ -245,6 +473,300 @@ describe.skipIf(databaseUrl() === undefined)('I09 — PostgreSQL orchestration s
     ).toEqual([{ scope_kind: 'manual_ticker', security_id: securityId }]);
   });
 
+  it('atomically admits a complete FMP universe as one v2 manifest and enqueues only its v2 deliveries', async () => {
+    const accepted = await service.requestManualRefresh({
+      idempotencyKey: randomUUID(),
+      scope: { kind: 'full_universe' },
+    });
+    const record = await execution(accepted.runId);
+    expect(record.version).toBe('rni-execution-v2');
+    if (record.version !== 'rni-execution-v2') throw new Error('Expected v2 execution');
+    expect(record.plan.scopePreview).toEqual({
+      kind: 'full_universe',
+      universeVersion,
+      securityCount: 501,
+    });
+    expect(record.platforms.reddit.delivery).toMatchObject({
+      version: 'rni-platform-v2',
+      runManifestHash: record.runManifestHash,
+    });
+    expect(record.platforms.x.delivery).toMatchObject({
+      version: 'rni-platform-v2',
+      runManifestHash: record.runManifestHash,
+    });
+    const manifest = await loadRniWorkerManifest(record.run.id, record.runManifestHash, pool);
+    expect(manifest.members).toHaveLength(501);
+    expect(manifest.universe).toEqual({ version: universeVersion, snapshotHash: HASH });
+    expect(hashRniWorkerManifest(manifest)).toBe(record.runManifestHash);
+    expect(
+      (
+        await pool.query<{ count: number }>(
+          `select count(*)::integer as count from rni_worker_run_manifest_authority
+            where run_id=$1`,
+          [record.run.id],
+        )
+      ).rows[0]!.count,
+    ).toBe(16);
+    expect(
+      (await new PostgresRniOutbox('test', 'platform', pool).pending(record.run.requestedAt, 10))
+        .map((entry) =>
+          typeof entry === 'object' && entry !== null && 'delivery' in entry
+            ? entry.delivery
+            : null,
+        )
+        .every(
+          (delivery) =>
+            typeof delivery === 'object' &&
+            delivery !== null &&
+            'version' in delivery &&
+            delivery.version === 'rni-platform-v2',
+        ),
+    ).toBe(true);
+
+    const redditClaim = await worker.claim(record.platforms.reddit.delivery);
+    if (redditClaim.status !== 'acquired') throw new Error('Expected Reddit v2 lease');
+    clock += 1;
+    await worker.finish(redditClaim.lease, {
+      status: 'complete',
+      eligibleSourceCount: 501,
+      dataThroughAt: record.plan.windowEnd,
+      computedAt: new Date(clock).toISOString(),
+    });
+    const xClaim = await worker.claim(record.platforms.x.delivery);
+    if (xClaim.status !== 'acquired') throw new Error('Expected X v2 lease');
+    clock += 1;
+    await worker.finish(xClaim.lease, {
+      status: 'complete',
+      eligibleSourceCount: 501,
+      dataThroughAt: record.plan.windowEnd,
+      computedAt: new Date(clock).toISOString(),
+    });
+    const ready = await execution(record.run.id);
+    if (
+      ready.version !== 'rni-execution-v2' ||
+      ready.plan.scopePreview.kind !== 'full_universe' ||
+      ready.platforms.reddit.outcomeHash === null ||
+      ready.platforms.x.outcomeHash === null
+    ) {
+      throw new Error('Expected terminal v2 platform slices');
+    }
+    const redditStatus = ready.platforms.reddit.slice.status;
+    const xStatus = ready.platforms.x.slice.status;
+    if (
+      redditStatus === 'pending' ||
+      redditStatus === 'running' ||
+      xStatus === 'pending' ||
+      xStatus === 'running'
+    ) {
+      throw new Error('Expected terminal platform statuses');
+    }
+    const release = buildRniFullUniversePublication({
+      manifest: {
+        runId: ready.run.id,
+        planHash: ready.planHash,
+        runManifestHash: ready.runManifestHash,
+        universeVersion: manifest.universe.version,
+        assessmentCutoffAt: manifest.windows.assessmentCutoffAt,
+        memberSetHash: manifest.memberSetHash,
+        members: manifest.members.map(({ ordinal, securityId: memberSecurityId }) => ({
+          ordinal,
+          securityId: memberSecurityId,
+        })),
+      },
+      platforms: {
+        reddit: {
+          runId: ready.run.id,
+          planHash: ready.planHash,
+          runManifestHash: ready.runManifestHash,
+          universeVersion: manifest.universe.version,
+          assessmentCutoffAt: manifest.windows.assessmentCutoffAt,
+          memberSetHash: manifest.memberSetHash,
+          platform: 'reddit',
+          sliceId: ready.platforms.reddit.slice.id,
+          status: redditStatus,
+          outcomeHash: ready.platforms.reddit.outcomeHash,
+        },
+        x: {
+          runId: ready.run.id,
+          planHash: ready.planHash,
+          runManifestHash: ready.runManifestHash,
+          universeVersion: manifest.universe.version,
+          assessmentCutoffAt: manifest.windows.assessmentCutoffAt,
+          memberSetHash: manifest.memberSetHash,
+          platform: 'x',
+          sliceId: ready.platforms.x.slice.id,
+          status: xStatus,
+          outcomeHash: ready.platforms.x.outcomeHash,
+        },
+      },
+      items: manifest.members.map(({ ordinal, securityId: memberSecurityId }) => ({
+        runId: ready.run.id,
+        planHash: ready.planHash,
+        runManifestHash: ready.runManifestHash,
+        universeVersion: manifest.universe.version,
+        assessmentCutoffAt: manifest.windows.assessmentCutoffAt,
+        memberSetHash: manifest.memberSetHash,
+        ordinal,
+        securityId: memberSecurityId,
+        citedSynthesisId: randomUUID(),
+        citedSynthesisResultHash: hashRniModelInput({
+          kind: 'cited-synthesis',
+          ordinal,
+          runId: ready.run.id,
+        }),
+        convergenceArtifactId: randomUUID(),
+        convergenceArtifactHash: hashRniModelInput({
+          kind: 'convergence',
+          ordinal,
+          runId: ready.run.id,
+        }),
+        status: 'complete',
+      })),
+    });
+    expect(release.expectedMemberCount).toBe(501);
+    await seedFullUniversePublicationPrerequisites(pool, release, new Date(clock).toISOString());
+    expect(
+      (await pool.query<{ session_replication_role: string }>('show session_replication_role'))
+        .rows[0],
+    ).toEqual({ session_replication_role: 'origin' });
+
+    const combinedClaim = await combined.claim(ready.combined.delivery);
+    if (combinedClaim.status !== 'acquired') throw new Error('Expected combined v2 lease');
+    const fence = await combined.effectFence(combinedClaim.lease);
+    const artifact = {
+      runId: release.runId,
+      planHash: release.planHash,
+      artifactHash: release.aggregateHash,
+      status: release.status,
+    } as const;
+    const stageMembers = async (members: readonly RniFullUniversePublication['members'][number][]) =>
+      store.transact('test', async (tx) => {
+        const db = queryableForRniOrchestrationTransaction(tx);
+        for (const member of members) {
+          await stageRniFullUniversePublicationMember(release, member.securityId, fence, db);
+        }
+      });
+    await stageMembers(release.members.slice(0, 500));
+    await expect(loadRniResultVisibility(release.runId, 'test', pool)).rejects.toMatchObject({
+      code: 'CONFLICT',
+    });
+
+    const counts = async () =>
+      (
+        await pool.query<{
+          staged: number;
+          releases: number;
+          receipts: number;
+          remaining: string;
+          released_at: Date | null;
+          combined_status: string;
+        }>(
+          `select
+             (select count(*)::integer from rni_full_universe_publication_item where run_id=$1) staged,
+             (select count(*)::integer from rni_full_universe_publication_release where run_id=$1) releases,
+             (select count(*)::integer from rni_orchestration_publication_receipt where run_id=$1) receipts,
+             remaining_admission_usd::text remaining,released_at,
+             record #>> '{combined,status}' combined_status
+           from rni_orchestration_execution where run_id=$1`,
+          [release.runId],
+        )
+      ).rows[0]!;
+    expect(await counts()).toMatchObject({
+      staged: 500,
+      releases: 0,
+      receipts: 0,
+      combined_status: 'running',
+      released_at: null,
+    });
+    await expect(
+      combined.commitFullUniversePublication(
+        combinedClaim.lease,
+        artifact,
+        async (tx, activeFence, _expected, committedAt) =>
+          (
+            await finalizeRniFullUniversePublication(
+              release,
+              activeFence,
+              committedAt,
+              queryableForRniOrchestrationTransaction(tx),
+            )
+          ).artifact,
+      ),
+    ).rejects.toThrow(/one exact atomic visible set/u);
+    expect(await counts()).toMatchObject({
+      staged: 500,
+      releases: 0,
+      receipts: 0,
+      combined_status: 'running',
+      released_at: null,
+    });
+
+    await stageMembers(release.members.slice(500));
+    await expect(
+      combined.commitFullUniversePublication(
+        combinedClaim.lease,
+        artifact,
+        async (tx, activeFence, _expected, committedAt) => {
+          const finalized = await finalizeRniFullUniversePublication(
+            release,
+            activeFence,
+            committedAt,
+            queryableForRniOrchestrationTransaction(tx),
+          );
+          return { ...finalized.artifact, artifactHash: 'f'.repeat(64) };
+        },
+      ),
+    ).rejects.toThrow('CONFLICT');
+    expect(await counts()).toMatchObject({
+      staged: 501,
+      releases: 0,
+      receipts: 0,
+      combined_status: 'running',
+      released_at: null,
+    });
+
+    await expect(
+      combined.commitFullUniversePublication(
+        combinedClaim.lease,
+        artifact,
+        async (tx, activeFence, _expected, committedAt) =>
+          (
+            await finalizeRniFullUniversePublication(
+              release,
+              activeFence,
+              committedAt,
+              queryableForRniOrchestrationTransaction(tx),
+            )
+          ).artifact,
+      ),
+    ).resolves.toBe('committed');
+    expect(await counts()).toMatchObject({
+      staged: 501,
+      releases: 1,
+      receipts: 1,
+      remaining: '0',
+      combined_status: 'complete',
+    });
+    expect((await execution(release.runId)).run).toMatchObject({ status: 'complete' });
+    expect(await findRniJobRun(ready.jobRunId, pool)).toMatchObject({ status: 'succeeded' });
+    const visible = await loadRniResultVisibility(release.runId, 'test', pool);
+    expect(visible.kind).toBe('released_v2_full_universe');
+    if (visible.kind !== 'released_v2_full_universe') throw new Error('Expected released result');
+    expect(visible.aggregate.aggregateHash).toBe(release.aggregateHash);
+    expect(visible.items.size).toBe(501);
+    expect(visible.items.get(release.members[500]!.securityId)).toEqual(
+      expect.objectContaining({ ordinal: 501, status: 'complete' }),
+    );
+    await expect(
+      combined.commitFullUniversePublication(
+        combinedClaim.lease,
+        artifact,
+        async () => {
+          throw new Error('Duplicate release must not invoke publisher');
+        },
+      ),
+    ).resolves.toBe('duplicate');
+  }, 120_000);
   it('records both internal orchestration principals as services', async () => {
     await store.transact('test', async (tx) => {
       await tx.audit({

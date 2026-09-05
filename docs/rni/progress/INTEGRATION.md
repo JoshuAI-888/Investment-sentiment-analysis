@@ -32,7 +32,7 @@
 | I07D | Close DATA D10 exact semantic-identity review findings | `PASSED` | Migration 0024 requires one exact SHA-256 E05 output identity per run/security observation; PostgreSQL schema/universe 23/23 |
 | I07E | Compose trusted cited-synthesis persistence boundary | `PASSED` | SQL-free trusted prepare, zero-model accepted replay and opaque-preparation atomic commit; composition 13/13, independent re-review PASS |
 | I08 | Compose SURFACE routes/nav/API with auth | `PASSED` | Accepted PostgreSQL read model plus authenticated production pages/APIs, guarded fixture demos, live route settings, shared nav and honest states; PostgreSQL 48/48, focused unit 28/28, build/bundle/type/lint pass; expanded Chromium 17/18 then corrected audit 2/2 |
-| I09 | Wire QStash jobs/manual idempotent refresh | `IN_PROGRESS` | Durable control plane plus reviewed D-RNI-32/33/34 manifest/release/checkpoint contracts pass; transactional persistence/read gating and the real production acquisition/analysis/publication executor remain |
+| I09 | Wire QStash jobs/manual idempotent refresh | `IN_PROGRESS` | New work is v2-only; crossed slice/rights/read bypasses and prompt-schema authority are closed. D-RNI-34/D-RNI-33, confidence/readiness authority, real pipeline composition and live proof remain |
 | I10 | Seed RNI Direct routes and optional Gateway selection | `PASSED` | Direct-default/Gateway-parity routing, append-only capability/price evidence, budgets and admin-staged task envelopes pass; live parity remains I11 |
 | I10A | Enforce balanced runtime model policy and exact route lineage | `PASSED` | Direct default, five-task Terra/Sol low mapping, fresh capabilities, Gateway provider/canonical identity and stable cache semantics; unit/contract/eval regression and independent review pass |
 | I10B | Persist immutable route capabilities and atomic RNI AI budgets | `PASSED` | Additive migration 0024 schema; PostgreSQL 11/11 focused and 129/129 RNI regression; transports remain I10C |
@@ -393,10 +393,12 @@
 
 ## I09 control-plane integration checkpoint
 
-- **Status:** `IN_PROGRESS`. The durable control plane and pure D-RNI-32/33/34 contracts are
-  accepted locally; the production worker pipeline is not configured and every manual, rerun,
-  schedule and worker entry point therefore fails closed before creating work, claiming a
-  delivery or contacting a provider.
+- **Status:** `IN_PROGRESS`. The durable control plane and the next D-RNI-32/33/34 persistence
+  slice are accepted locally. Every newly admitted manual ticker or full-universe execution is
+  v2 and receives an exact immutable worker manifest; historical v1 remains readable only. The
+  production acquisition/analysis/publication pipeline is not composed, so
+  `getProductionRniWorkerExecutor()` still returns unavailable and live entry points fail closed
+  before provider effects.
 - **Behaviour:** manual refresh, rerun and schedule admission resolve immutable future-run plans,
   snapshot the active route, task envelopes and D-RNI-30 budgets, serialize aggregate admission,
   and atomically create the existing job/run identities plus separate Reddit/X deliveries. Exact
@@ -410,27 +412,54 @@
   unchanged. D-RNI-31 adds one versioned full-universe schedule control with pause/resume,
   bounded interval or five-field cron, IANA timezone, next-five preview and forward-only due-state
   advancement. Budget, orchestration and job locks use one consistent order.
-- **Delegated production contracts:** the canonical v2 worker manifest pins exact D-RNI-21 routes,
-  complete source/policy values, pricing applicability, ordered members, build identity and
-  microsecond time fences. The full-universe release index self-validates its member identities,
-  counts, derived status and aggregate hash without pooling stance. The source checkpoint binds
-  retrieval/content/outbox identity, immutable lease/backoff policy, exact retry arithmetic and
-  parent attempt/token/deadline authority. All three remain effect-ineligible until their
-  relational lineage and commit-time fences are persisted and wired.
-- **Coordinator verification:** RNI unit **623/623**, contract **38/38**, eval **18 passed / 1
-  credential-gated live skip**, serialized RNI PostgreSQL **351/351**, focused final review
-  **175/175**, TypeScript, full lint, production build, bundle/copy scans and integrated RNI
-  Chromium **37/37** pass. The final independent review reports no remaining P0/P1/P2 finding in
-  the accepted control plane or pure contracts.
-- **Remaining composition:** persist and validate the v2 manifest atomically at admission; add
-  durable exact-content checkpoints/outboxes under the parent lease; stage and atomically release
-  the complete full-universe set with a read visibility gate; then compose the non-fixture worker
-  across acquisition, source-first persistence, E05/E06/E07 analytics, I10-governed calls and
-  I07 publication. The provisional `rni-workflow-source.ts` is unexported and rejected for
-  production because it lacks exact retrieval/content/outbox binding and a deferred commit-time
-  lease fence. After composition, run the required `gpt-6-astra` max review and live QStash,
-  Reddit Web Search, X, FMP and Direct/Gateway gates. No credential value has been read, printed
-  or committed.
+- **Persisted production authority:** the canonical v2 worker manifest pins exact D-RNI-21
+  routes/capabilities/prices, complete typed source/policy authorities, the ordered ticker or
+  501-member full-universe set, build identity and microsecond time fences. Compiled prompt,
+  input-schema and tool hashes are verified against typed runtime definitions before provider I/O.
+  The safe executor shell derives immutable model-call configuration from this manifest and now
+  carries exact platform-slice authority through composition.
+- **Prompt-schema authority:** the actual five Zod task schemas mechanically compile the governed
+  input authority; custom refinements are represented as stable declarative rule data, and no
+  function source is hashed. Typecheck, scoped lint, 128 focused tests and 6 explicit schema-drift
+  tests pass. The correction intentionally changes the five prompt input hashes, so existing
+  reviewed worker-authority packs are stale and must be regenerated and re-approved before seeding.
+- **Checkpoint and publication boundaries:** the manifest-bound source-checkpoint repository
+  persists parent attempt/token/deadline authority, retrieval/content/outbox identity, retry
+  arithmetic and terminal replay; eight focused PostgreSQL cases pass. Full-universe member
+  artifacts stage under the live manifest/lease, an exact persisted-lineage selector supplies the
+  release set, and one transaction publishes the release manifest, receipt and terminal state.
+  Reads remain invisible before release and expose all 501 members only after it; the atomic
+  PostgreSQL closeout covers a missing member, crossed callback rollback and exact replay. The
+  narrow `delivery.id` trigger typo is fixed, and the suite confirms normal PostgreSQL origin mode
+  before exercising the actual D-RNI-33 release path.
+- **Adversarial authority corrections:** a full-universe member cannot cross the manifest's exact
+  Reddit/X platform-slice authority. Source registration and analytics projection require the
+  exact rights-policy snapshot pinned by the manifest. Citation and evidence lookups for v2 runs
+  pass through aggregate release visibility, and `loadExactEvidence` requires both a live child
+  checkpoint lease and its live parent execution authority. These checks prevent a caller from
+  publishing or reading a valid artifact under a different slice, rights policy or expired child
+  lineage. At final full-universe commit, the repository reselects and exact-compares every member
+  under the same transaction before any release write; withdrawing source rights after preparation
+  therefore fails closed instead of publishing from a stale precheck. Focused 28 unit and 7
+  PostgreSQL tests cover the correction.
+- **Confidence authority:** unowned empirical constants were removed from analytics projection;
+  confidence now fails closed as unavailable instead of manufacturing a production score. A
+  non-null score is not authorized until the owner approves exact deterministic formulas and
+  normalization for all seven confidence components and four penalties, with manifest-bound eval,
+  narrative-readiness and catalyst-readiness lineage.
+- **Coordinator verification:** RNI unit **708/708 across 45 files**, contract **38/38**, eval **18 passed / 1
+  credential-gated live skip**, and all tracked RNI PostgreSQL **362/362 across 32 files** pass. The provisional
+  workflow adapter remains excluded from production and acceptance evidence.
+- **Remaining composition and approvals:** D-RNI-34 cannot yet represent repeated or changed
+  content with one unambiguous retrieval/content/outbox/checkpoint identity; the storage semantics
+  require owner approval before Migration `0024` changes. D-RNI-33 still needs a null-safe,
+  independently recomputed database validator rather than trusting caller-provided release JSON;
+  that high-blast rewrite also awaits explicit approval. After those decisions, compose the real
+  acquisition, source-first persistence, E05/E06/E07 analytics, I10-governed calls and I07
+  publication pipeline and rerun final adversarial/preview gates. Owner-approved production
+  authority values, the confidence/readiness authority above, a real build environment, live
+  credentials, G7 evidence and G8 approval are not present. No credential value has been read,
+  printed or committed.
 
 ### CR-SURFACE-06 decision
 
@@ -585,8 +614,8 @@
 | IR-09 | P2 | `RESOLVED` | Invalid-snapshot terminal persistence lacks a PostgreSQL replay/lineage assertion | Exact-500 database case binds provider/payload, records failure audit, creates no version and replays without fetch |
 | IR-10 | P2 | `RESOLVED` | Bootstrap conflict, compatible reuse, rollback and append-only lineage branches lack acceptance coverage | Each conflict case now inserts a unique security before a later identity conflict and proves security/import/member/audit rollback |
 | IR-11 | P2 | `RESOLVED` | A worker abandoned after provider dispatch can leave the terminal command without its already-persisted provider-call identity | Provider log and running-command binding share one transaction; post-dispatch abandonment retains the identity without refetch |
-| I07R-01 | P1 | `OPEN` | I07's reader rejects D-RNI-26 `skipped` invocation plans, so accepted no-call artifacts cannot replay | Return to I07 after rebasing the coordinator migration; allow validated skipped descriptors and cover both no-call paths |
-| I07R-02 | P1 | `OPEN` | I07's blocker-characterization tests assert superseded pre-D-RNI-26 schema failures | Convert them to positive canonical-stage/skipped/subset cases plus invalid-stage/reason/role negatives on the corrected integration base |
+| I07R-01 | P1 | `RESOLVED` | I07's reader rejected D-RNI-26 `skipped` invocation plans, so accepted no-call artifacts could not replay | The integrated reader accepts validated reason-bound skipped descriptors and exact no-call replay; I07 PostgreSQL/composition gates pass |
+| I07R-02 | P1 | `RESOLVED` | I07's blocker-characterization tests asserted superseded pre-D-RNI-26 schema failures | Tests now cover canonical stage/skipped/subset success plus invalid stage/reason/role failures on the integrated base |
 
 ## Open risks/blockers
 
@@ -594,6 +623,12 @@
 |---|---|---|---|---|---|
 | 2026-09-05 | `READY` | FMP plan entitlement not yet probed | joshuai | Endpoint and fail-closed path specified | G7 |
 | 2026-09-05 | `READY` | Migration `0024` has passed disposable local PostgreSQL only; ephemeral Neon forward apply remains a deployment gate | coordinator + joshuai | Clean and forward migration tests preserve the historical active version and enforce 600/601 | G6/G7 |
+| 2026-09-05 | `AWAITING_APPROVAL` | D-RNI-34 repeated/changed-content retrieval, content-version, outbox and checkpoint identity is not coherent under the current schema | coordinator + joshuai | Exact failing lineage was isolated; no high-blast schema change was made without owner-approved semantics | G6 |
+| 2026-09-05 | `AWAITING_APPROVAL` | D-RNI-33 release validation does not yet independently reconstruct and recompute every stored member/status/hash invariant | coordinator + joshuai | Repository/read gates fail closed; validator rewrite is held for explicit approval | G6 |
+| 2026-09-05 | `AWAITING_OWNER_DECISION` | Exact deterministic formulas/normalization for seven confidence components and four penalties, plus manifest-bound eval/narrative/catalyst readiness lineage, are absent | joshuai | Unowned empirical constants were removed; production confidence fails closed as unavailable | G6 |
+| 2026-09-05 | `RESOLVED` | Prompt input authority was hand-described and could drift from the five runtime Zod schemas | coordinator | Schemas mechanically compile the authority; refinements are declarative and function source is not hashed; typecheck/lint, 128 focused and 6 drift tests pass. Regenerate/review authority packs because input hashes changed | G6 evidence |
+| 2026-09-05 | `BLOCKED_EXTERNAL` | Owner authority values, production build environment and live provider/deployment credentials are absent | joshuai | Typed parsers/verifiers and fail-closed executor shell are implemented without inventing values | G6/G7 |
+| 2026-09-05 | `NOT_REQUESTED` | G8 production approval | joshuai | No closeout or production claim before G6/G7 evidence and explicit approval | G8 |
 
 ## Integration commits
 
@@ -673,6 +708,10 @@
 | `CURRENT` | Accept and integrate I08 live consumption | PostgreSQL read/settings 48/48; live-composition unit 28/28; production build, bundle scan, typecheck, scoped lint and diff pass; expanded Chromium 17/18 then corrected audit 2/2; production pages and APIs are authenticated and fixture-free |
 | `CURRENT` | Accept I09 durable control-plane checkpoint | Manual/rerun/schedule admission, separate stage leases, signed QStash receiver, transactional outboxes, future-run budgets and schedule controls pass; live entry points remain fail-closed without a production executor |
 | `CURRENT` | Delegate and harden D-RNI-32/33/34 foundations | v2 manifest, self-verifying aggregate release and parent-authority checkpoint contracts pass focused 175/175 independent review; final local gates are unit 623/623, contract 38/38, PostgreSQL 351/351, eval 18/1 live skip, Chromium 37/37, type/lint/build/bundle/copy; database wiring remains |
+| `CURRENT` | Integrate v2 authority, checkpoints and atomic full-universe release | v2 admission/repository, typed compiled authority verification, source checkpoints 8 PostgreSQL cases, exact artifact selection, 501-member atomic release/read visibility and safe manifest-bound executor composition; unit 708/708 across 45 files, contract 38/38, eval 18/1 live skip, tracked PostgreSQL 362/362 across 32 files; `delivery.id` trigger typo fixed and origin-mode proof passes |
+| `CURRENT` | Close adversarial slice, rights and v2 read-visibility bypasses | Full-universe slice authority is exact; source/analytics rights bind to the manifest; v2 citations/evidence require aggregate release visibility; exact evidence requires live child and parent authority. Empirical confidence constants are removed and non-null confidence awaits owner formulas/readiness lineage |
+| `CURRENT` | Close prompt-schema authority drift | Actual five Zod schemas mechanically compile input authority; custom refinements are stable declarative rule data; function source is never hashed; typecheck/scoped lint, 128 focused tests and 6 drift tests pass. Prompt input hashes intentionally change, requiring regenerated/reviewed authority packs |
+| `CURRENT` | Close commit-time full-universe rights race | Final commit reselects and exact-compares every member inside the release transaction before writes; post-preparation rights withdrawal fails closed. Focused unit 28/28 and PostgreSQL 7/7, followed by full unit 708/708 and tracked PostgreSQL 362/362; D-RNI-33/34 remain open |
 
 ## I10A handoff
 

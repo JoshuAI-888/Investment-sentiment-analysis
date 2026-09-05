@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RniRefreshService } from '@/rni/orchestration/refresh';
+import { RniRefreshService, combinedDeliveryFor, deliveryFor } from '@/rni/orchestration/refresh';
 import { harness, scope, START, uuid } from './fixture';
 
 describe('RNI durable refresh command primitives', () => {
@@ -44,6 +44,43 @@ describe('RNI durable refresh command primitives', () => {
     expect(h.record(later.runId).reservedCostUsd).toBe('0.66');
     expect(h.record(first.runId)).toEqual(original);
     expect(h.store.planReads).toBe(2);
+  });
+
+  it('enqueues only the exact v2 deliveries returned by repository admission', async () => {
+    const h = harness();
+    const runManifestHash = 'f'.repeat(64);
+    h.store.admitExecution = (record) => ({
+      ...record,
+      version: 'rni-execution-v2',
+      runManifestHash,
+      platforms: {
+        reddit: {
+          ...record.platforms.reddit,
+          delivery: deliveryFor(record.run.id, 'reddit', record.planHash, 1, runManifestHash),
+        },
+        x: {
+          ...record.platforms.x,
+          delivery: deliveryFor(record.run.id, 'x', record.planHash, 1, runManifestHash),
+        },
+      },
+      combined: {
+        ...record.combined,
+        delivery: combinedDeliveryFor(record.run.id, record.planHash, 1, runManifestHash),
+      },
+    });
+    const accepted = await h.service.requestManualRefresh({ idempotencyKey: 'v2', scope });
+    const record = h.record(accepted.runId);
+    expect(record).toMatchObject({ version: 'rni-execution-v2', runManifestHash });
+    expect([...h.store.data.outbox.values()].map(({ delivery }) => delivery)).toEqual([
+      record.platforms.reddit.delivery,
+      record.platforms.x.delivery,
+    ]);
+    expect(
+      [...h.store.data.outbox.values()].every(
+        ({ delivery }) =>
+          delivery.version === 'rni-platform-v2' && delivery.runManifestHash === runManifestHash,
+      ),
+    ).toBe(true);
   });
 
   it('rejects a crossed same key and rejects manual-to-rerun key reuse', async () => {

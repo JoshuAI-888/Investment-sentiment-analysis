@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import {
   createLiveRniReadService,
-  findLatestRniRunId,
+  findLatestVisibleRniRunId,
   findRunSecurityByTicker,
   rniEnvironment,
 } from '@/rni/read-model';
@@ -23,7 +23,7 @@ export async function GET(
     const environment = rniEnvironment();
     const runId =
       new URL(request.url).searchParams.get('runId') ??
-      (await findLatestRniRunId(environment));
+      (await findLatestVisibleRniRunId(environment));
     if (!runId) {
       return rniErrorResponse(404, 'RUN_NOT_FOUND', 'No RNI run exists yet.', requestId);
     }

@@ -129,6 +129,7 @@ function fixture() {
     })),
     slices: vi.fn(async () => slices),
     securities: vi.fn(async () => [security]),
+    requireResultVisibility: vi.fn(async () => null),
     publication: vi.fn(async (): Promise<RniCombinedSummary | null> => summary),
     artifacts: vi.fn(async () => ({ convergence, reddit, x })),
     citation: vi.fn(async (id: string) => ({
@@ -157,6 +158,20 @@ function fixture() {
 afterEach(() => vi.restoreAllMocks());
 
 describe('I08 source-separated read projections', () => {
+  it('keeps operational reads available while result reads enforce the visibility gate', async () => {
+    const { service, store } = fixture();
+    store.requireResultVisibility.mockRejectedValue(new RniReadError('CONFLICT'));
+    await expect(service.getRun(runId)).resolves.toMatchObject({ id: runId });
+    expect(store.requireResultVisibility).not.toHaveBeenCalled();
+    await expect(service.getRadarPage({ runId })).rejects.toMatchObject({ code: 'CONFLICT' });
+    await expect(service.getSecurityDetail(runId, security.id)).rejects.toMatchObject({
+      code: 'CONFLICT',
+    });
+    await expect(service.getSecuritySummary(runId, security.id)).rejects.toMatchObject({
+      code: 'CONFLICT',
+    });
+  });
+
   it('uses security-specific analytics, full cited explanations and four independent dimensions', async () => {
     const { service } = fixture();
     const page = await service.getRadarPage({ runId });

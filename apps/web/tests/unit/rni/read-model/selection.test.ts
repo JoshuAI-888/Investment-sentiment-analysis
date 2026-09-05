@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Queryable } from '@/repositories/client';
 import {
   findLatestRniRunId,
+  findLatestVisibleRniRunId,
   findLatestStagedUniverseId,
   findRunSecurityByTicker,
 } from '@/rni/read-model';
@@ -14,6 +15,7 @@ describe('RNI live read selection', () => {
   it('returns honest empty selections when no run or staged universe exists', async () => {
     const db = dbWith([]);
     await expect(findLatestRniRunId('test', db)).resolves.toBeNull();
+    await expect(findLatestVisibleRniRunId('test', db)).resolves.toBeNull();
     await expect(findLatestStagedUniverseId('test', db)).resolves.toBeNull();
   });
 
@@ -21,6 +23,12 @@ describe('RNI live read selection', () => {
     await expect(
       findLatestRniRunId('test', dbWith([{ id: '00000000-0000-4000-8000-000000000001' }])),
     ).resolves.toBe('00000000-0000-4000-8000-000000000001');
+    await expect(
+      findLatestVisibleRniRunId(
+        'test',
+        dbWith([{ id: '00000000-0000-4000-8000-000000000002' }]),
+      ),
+    ).resolves.toBe('00000000-0000-4000-8000-000000000002');
     await expect(findLatestStagedUniverseId('test', dbWith([{ id: '9007199254740993' }]))).resolves.toBe(
       '9007199254740993',
     );

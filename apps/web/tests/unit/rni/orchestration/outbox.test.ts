@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  relayRniCombinedOutbox,
   relayRniPlatformOutbox,
   type RniPlatformOutboxPort,
   type RniQstashPublisherPort,
 } from '@/rni/orchestration/outbox';
 import { hashRniModelInput } from '@/rni/agents/model-input';
-import { harness, scope, START } from './fixture';
+import { combinedDeliveryFor, deliveryFor } from '@/rni/orchestration/refresh';
+import { harness, scope, START, uuid } from './fixture';
 
 describe('RNI transactional outbox relay primitive', () => {
   it('recovers an ambiguous publish/ack crash with the exact same delivery identity and one acquired execution', async () => {
@@ -86,5 +88,42 @@ describe('RNI transactional outbox relay primitive', () => {
     expect(acknowledged).toBe(false);
     entry.notBefore = '2026-09-05T00:01:00.000Z';
     expect(await relayRniPlatformOutbox({ outbox, publisher, now: new Date(START) })).toBe(0);
+  });
+
+  it('preserves the manifest hash when validating and publishing v2 deliveries', async () => {
+    const runId = uuid(42);
+    const planHash = 'a'.repeat(64);
+    const runManifestHash = 'b'.repeat(64);
+    const platform = deliveryFor(runId, 'reddit', planHash, 2, runManifestHash);
+    const combined = combinedDeliveryFor(runId, planHash, 3, runManifestHash);
+    const published: unknown[] = [];
+    const outboxFor = (value: typeof platform | typeof combined): RniPlatformOutboxPort => ({
+      pending: async () => [{ delivery: value, notBefore: START }],
+      markPublished: async ({ payloadHash }) => {
+        expect(payloadHash).toBe(hashRniModelInput(value));
+      },
+    });
+    const publisher = {
+      publish: async ({ payload }: { payload: typeof platform | typeof combined }) => {
+        published.push(payload);
+        return { messageId: `v2-${String(published.length)}` };
+      },
+    };
+
+    expect(
+      await relayRniPlatformOutbox({
+        outbox: outboxFor(platform),
+        publisher,
+        now: new Date(START),
+      }),
+    ).toBe(1);
+    expect(
+      await relayRniCombinedOutbox({
+        outbox: outboxFor(combined),
+        publisher,
+        now: new Date(START),
+      }),
+    ).toBe(1);
+    expect(published).toEqual([platform, combined]);
   });
 });

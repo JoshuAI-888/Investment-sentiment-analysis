@@ -278,6 +278,13 @@ export class PostgresRniAiRouteSettingsService implements RniAiRouteSettingsServ
         );
       }
       await tx.query(
+        `insert into rni_worker_config_authority
+           (config_version,authority_kind,authority_key,version,snapshot_hash)
+         select $1,authority_kind,authority_key,version,snapshot_hash
+           from rni_worker_config_authority where config_version=$2`,
+        [nextId, previous.id],
+      );
+      await tx.query(
         `insert into rni_ai_config (config_version,ai_route,model_policy_version,
         budget_policy_version,manual_run_hard_usd,full_universe_hard_usd,rolling_24h_hard_usd,
         monthly_warning_usd,monthly_hard_usd,currency)
@@ -408,6 +415,13 @@ export class PostgresRniAiRouteSettingsService implements RniAiRouteSettingsServ
           [nextId, previous.id],
         );
       }
+      await tx.query(
+        `insert into rni_worker_config_authority
+           (config_version,authority_kind,authority_key,version,snapshot_hash)
+         select $1,authority_kind,authority_key,version,snapshot_hash
+           from rni_worker_config_authority where config_version=$2`,
+        [nextId, previous.id],
+      );
       await tx.query(
         `insert into rni_ai_config (config_version,ai_route,model_policy_version,
         budget_policy_version,manual_run_hard_usd,full_universe_hard_usd,rolling_24h_hard_usd,

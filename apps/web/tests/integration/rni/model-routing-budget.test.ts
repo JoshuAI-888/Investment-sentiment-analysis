@@ -13,6 +13,7 @@ import {
 } from '../../../src/repositories/versions';
 import { RNI_APPROVED_TASK_ENVELOPES } from '../../../src/rni/config';
 import { loadRniImmutableModelRunConfig } from '../../../src/services/jobs/rni-model-runtime';
+import { seedTestWorkerAuthorities } from './helpers/worker-authorities';
 
 const url = databaseUrl();
 const HASH_A = 'a'.repeat(64);
@@ -113,6 +114,7 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
         [configVersion, task, model, capability],
       );
     }
+    await seedTestWorkerAuthorities(pool, configVersion);
     await pool.query(
       `update config_version set status = 'active', activated_at = now() where id = $1`,
       [configVersion],

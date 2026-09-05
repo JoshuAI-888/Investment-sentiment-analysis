@@ -42,7 +42,13 @@ export function relayRniPlatformOutbox(deps: {
   limit?: number;
 }): Promise<number> {
   return relay(deps, platformDelivery, (delivery) =>
-    deliveryFor(delivery.runId, delivery.platform, delivery.planHash, delivery.attempt),
+    deliveryFor(
+      delivery.runId,
+      delivery.platform,
+      delivery.planHash,
+      delivery.attempt,
+      delivery.version === 'rni-platform-v2' ? delivery.runManifestHash : undefined,
+    ),
   );
 }
 
@@ -53,7 +59,12 @@ export function relayRniCombinedOutbox(deps: {
   limit?: number;
 }): Promise<number> {
   return relay(deps, combinedDelivery, (delivery) =>
-    combinedDeliveryFor(delivery.runId, delivery.planHash, delivery.attempt),
+    combinedDeliveryFor(
+      delivery.runId,
+      delivery.planHash,
+      delivery.attempt,
+      delivery.version === 'rni-combined-v2' ? delivery.runManifestHash : undefined,
+    ),
   );
 }
 

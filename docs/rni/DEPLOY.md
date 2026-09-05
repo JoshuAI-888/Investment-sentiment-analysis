@@ -5,6 +5,41 @@ This runbook contains the actions that cannot safely be inferred or automated. I
 **Production approver:** `joshuai`  
 **Confirmed scope:** isolated RNI vertical slice; Reddit through OpenAI Web Search; X independent; current FMP S&P 500 universe; read-only MCP skeleton.
 
+## Current G6 closeout status
+
+The local integration is not an RNI 1.0 release candidate yet. New manual ticker and full-universe
+executions are admitted only with an immutable v2 worker manifest. Typed compiled-authority
+verification, manifest-bound source checkpoints, exact full-universe artifact selection, atomic
+release/receipt/read visibility and the safe production-executor shell pass locally, including a
+501-member PostgreSQL closeout. Crossed full-universe slice authority and v2 citation/evidence
+visibility bypasses are closed: source registration and analytics bind the exact manifest rights,
+evidence loading requires live child and parent execution authority, and the final full-universe
+commit reselects/exact-compares every member inside the same transaction before any release write.
+A rights withdrawal after preparation therefore fails closed.
+`getProductionRniWorkerExecutor()` still returns unavailable because the real
+acquisition/analysis/publication pipeline has not been composed.
+
+Do not request G7 or G8, enable the production heartbeat, or describe RNI 1.0 as complete until:
+
+- `joshuai` approves the D-RNI-34 repeated/changed-content identity semantics and the resulting
+  Migration `0024` correction passes clean/forward PostgreSQL and ephemeral Neon gates;
+- `joshuai` explicitly approves the D-RNI-33 self-verifying database-validator rewrite and the
+  database independently reconstructs member slices/status/hashes rather than trusting release
+  JSON supplied by the caller;
+- owner authority values and an immutable build identity are seeded through a reviewed command,
+  and the non-fixture executor is fully composed;
+- `joshuai` approves exact deterministic formulas and normalization for all seven confidence
+  components and four penalties, plus manifest-bound eval, narrative-readiness and
+  catalyst-readiness lineage; until then production confidence must remain unavailable;
+- production-equivalent credentials and environment values are present and the live Reddit Web
+  Search, X, FMP, Direct/Gateway, QStash and preview evidence completes G7; and
+- `joshuai` gives the separate G8 production approval.
+
+The latest local evidence is RNI unit 708/708 across 45 files, contract 38/38, eval 18 passed with one
+credential-gated live skip, and all tracked RNI PostgreSQL 362/362 across 32 files. The narrow `delivery.id`
+trigger typo is fixed; the release tests explicitly verify normal PostgreSQL origin mode before
+the D-RNI-33 path. The provisional workflow adapter is not part of the accepted production path.
+
 ## 1. Human-owned decisions before deployment
 
 Record owner, reviewer, date, and evidence for:
@@ -97,6 +132,48 @@ Human/reviewer steps:
 6. Apply production migration using the migration role.
 7. Seed versioned default configuration, security master, themes, policies, prompts, and evaluation set.
 8. Verify a publication-to-source lineage query and cross-tenant denial.
+
+Before applying Migration `0024` outside a disposable branch, confirm that both pending schema
+decisions in the G6 status above have explicit owner approval. A passing local suite does not
+authorize the D-RNI-34 content-identity or D-RNI-33 release-validator semantic changes.
+
+### Reviewed RNI worker authority pack
+
+Before activating an RNI configuration, export the owner-reviewed worker authorities to a secure
+JSON file that is not committed to Git. The file must name one existing **draft** `configVersion`,
+all ten config-bound snapshots under `authorities`, all five compiled prompt snapshots under
+`prompts`, and the exact deployment build snapshot under `build`. Every snapshot has exactly
+`version`, `snapshotHash`, and the complete object `value`; no field is defaulted by the command.
+
+The required keys are:
+
+```text
+authorities: source_configuration, reddit_queries, x_queries, rights_policy, ambiguity,
+             taxonomy, classification, analytics, convergence, budget
+prompts:     rni_discovery, rni_relationship, rni_classifier, rni_verification, rni_challenger
+build:       one snapshot whose version equals value.deploymentId
+```
+
+Set `RNI_DEPLOYMENT_ID`, `RNI_COMMIT_SHA`, and `RNI_ARTIFACT_SHA256` to the immutable deployment
+being reviewed. Then run from the repository root:
+
+```bash
+pnpm --dir apps/web rni:seed-worker-authorities /secure/path/reviewed-worker-authorities.json
+```
+
+The command validates every strict source/policy authority, recomputes every snapshot hash,
+recomputes prompt/content/input/output/tool hashes from the compiled application, and matches the
+build to the deployment environment before connecting to PostgreSQL. It then locks the explicit
+draft configuration and writes all sixteen append-only authorities plus ten config bindings in one
+transaction. An active/missing target or a crossed same-version replay aborts the complete
+transaction. Output contains only authority kinds/keys, versions, hashes and inserted/duplicate
+states; inspect it before separately activating the unchanged draft.
+
+The prompt input authority is compiled mechanically from the actual five Zod task schemas; custom
+refinements are stable declarative rule data and function source is never hashed. The completed
+authority correction intentionally changed prompt input hashes. Regenerate the complete authority
+pack with the current build, review every changed prompt/input hash, and obtain fresh approval;
+never reuse a pack or approval created against the earlier hashes.
 
 Neon supports branching for isolated development/testing and pgvector for vector search; validate current operational guidance in [Neon branching](https://neon.com/docs/guides/branching-intro) and [vector search optimisation](https://neon.com/docs/ai/ai-vector-search-optimization).
 
@@ -215,9 +292,11 @@ selection.
    `rni-scheduled:<environment>` job definitions through the application helper. Confirm the
    scheduled job remains full-universe, skip-concurrency, zero-jitter and free of caller-supplied
    dependencies or active windows.
-8. Do not enable the heartbeat until the reviewed production worker executor is present. The
-   current integration checkpoint intentionally returns unavailable before creating manual or
-   scheduled work, claiming deliveries or contacting providers when that executor is absent.
+8. Do not enable the heartbeat until the reviewed production worker executor is fully composed.
+   The current safe shell verifies the immutable v2 manifest, compiled authorities, parent lease
+   and exact platform slice, but `getProductionRniWorkerExecutor()` intentionally returns
+   unavailable while the real acquisition/analysis/publication dependencies are absent. Live
+   entry points must continue to fail closed before provider effects.
 9. Use the existing durable job/queue mechanisms for multi-stage processing. Queue consumers must
    be idempotent because delivery is at least once; Reddit and X jobs retain independent states.
    A 503 from a busy/deferred worker is retryable; terminal duplicate, stale or expired deliveries
@@ -255,6 +334,12 @@ coalescing against the next scheduled run.
 ## 10. Release verification
 
 Run the full story in Production or a production-equivalent environment:
+
+Precondition: G6 is complete, both approved schema corrections have passed clean/forward and
+ephemeral-Neon verification, exact owner authority/build identities are recorded, and the
+production executor factory is non-null. The approved confidence formula/readiness lineage and
+current regenerated prompt-authority pack must also be present. Do not substitute the provisional
+workflow adapter or caller-declared release JSON for those checks.
 
 1. Search a named ticker/company.
 2. Start a bounded full run using OpenAI Direct.

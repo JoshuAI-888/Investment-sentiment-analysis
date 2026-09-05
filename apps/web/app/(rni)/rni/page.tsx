@@ -6,7 +6,7 @@ import {
 } from '@/services/auth';
 import {
   createLiveRniReadService,
-  findLatestRniRunId,
+  findLatestVisibleRniRunId,
   RniReadError,
   rniEnvironment,
 } from '@/rni/read-model';
@@ -26,7 +26,7 @@ export default async function RniRadarPage() {
   }
 
   try {
-    const runId = await findLatestRniRunId(rniEnvironment());
+    const runId = await findLatestVisibleRniRunId(rniEnvironment());
     if (!runId) {
       return (
         <ReadSurfaceState

@@ -231,6 +231,9 @@ export const rniFullUniversePublication = aggregateWithoutHash
 
 export type RniFullUniversePublicationInput = z.input<typeof rniFullUniversePublicationInput>;
 export type RniFullUniversePublication = z.output<typeof rniFullUniversePublication>;
+export type RniFullUniversePublicationAuthority = Readonly<
+  Pick<RniFullUniversePublicationInput, 'manifest' | 'platforms'>
+>;
 
 type PublicationIdentity = z.output<typeof publicationIdentity>;
 

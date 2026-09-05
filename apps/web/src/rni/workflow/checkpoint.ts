@@ -30,6 +30,7 @@ export const rniSourceWorkflowSubjectV2 = z
     version: z.literal('rni-source-workflow-subject-v2'),
     runId: uuid,
     planHash: digest,
+    runManifestHash: digest,
     platform: z.enum(['reddit', 'x']),
     outerAttempt: z.number().int().min(1).max(3),
     outerToken: uuid,
@@ -76,6 +77,7 @@ export const rniSourceWorkflowAuthorityV2 = z
   .object({
     runId: uuid,
     planHash: digest,
+    runManifestHash: digest,
     platform: z.enum(['reddit', 'x']),
     outerAttempt: z.number().int().min(1).max(3),
     outerToken: uuid,
@@ -401,6 +403,7 @@ function assertAuthority(
   if (
     subject.runId !== authority.runId ||
     subject.planHash !== authority.planHash ||
+    subject.runManifestHash !== authority.runManifestHash ||
     subject.platform !== authority.platform ||
     subject.outerAttempt !== authority.outerAttempt ||
     subject.outerToken !== authority.outerToken ||

@@ -11,14 +11,26 @@ import { rniModelTask } from '../../../src/rni/contracts';
 import { RniRefreshService, validateRniExecution } from '../../../src/rni/orchestration/refresh';
 import { RniPlatformExecutionService } from '../../../src/rni/orchestration/execution';
 import { RniCombinedExecutionService } from '../../../src/rni/orchestration/combined';
+import { hashRniWorkerSnapshotValue } from '../../../src/rni/orchestration/worker-manifest';
 import type { RniExecutionRecord } from '../../../src/rni/orchestration/types';
 import {
   ensureRniJobDefinitions,
   PostgresRniOrchestrationStore,
 } from '../../../src/rni/repositories/orchestration';
+import { seedTestWorkerAuthorities } from './helpers/worker-authorities';
 
 const HASH = 'a'.repeat(64);
 const PRICE_BOOK = 'rni-fence-price-v1';
+const BUILD = {
+  deploymentId: 'rni-fence-deployment',
+  commitSha: '5'.repeat(40),
+  artifactHash: '6'.repeat(64),
+  sourceAdapterVersions: { reddit: 'reddit-fence-v1', x: 'x-fence-v1' },
+  semanticCodeVersion: 'semantic-fence-v1',
+  analyticsCodeVersion: 'analytics-fence-v1',
+  convergenceCodeVersion: 'convergence-fence-v1',
+  citedSynthesisCodeVersion: 'synthesis-fence-v1',
+} as const;
 type PublicationProof = NonNullable<RniExecutionRecord['combined']['publication']>;
 
 describe.skipIf(databaseUrl() === undefined)(
@@ -76,35 +88,78 @@ describe.skipIf(databaseUrl() === undefined)(
         await pool.query(
           `insert into model_route
          (config_version,task,transport,primary_provider,primary_model,model_revision,
-          fallback_chain,prompt_version,schema_version,max_input_tokens,max_output_tokens,
+          fallback_chain,prompt_version,schema_version,calibration_version,
+          max_input_tokens,max_output_tokens,
           timeout_ms,max_cost_usd,ai_route,canonical_provider_model_id,reasoning_effort,
           capability_snapshot_id,policy_version,max_input_bytes,max_tool_calls)
          values ($1,$2,'openai_responses','openai',$3,'fence-revision','[]',$2||'-v1',
-           'rni-schema-v1',1024,256,30000,0.1,'openai_direct',$3,'low',$3,
+           'rni-schema-v1','rni-fence-calibration-v1',1024,256,30000,0.1,'openai_direct',$3,'low',$3,
            'rni-balanced-model-policy-v1',1024,$4)`,
           [configVersion, task, model, task === 'rni_discovery' ? 3 : 0],
         );
       }
+      await seedTestWorkerAuthorities(pool, configVersion);
+      for (const task of rniModelTask.options) {
+        const prompt = {
+          version: `${task}-v1`,
+          contentHash: '1'.repeat(64),
+          inputSchemaVersion: `${task}-input-v1`,
+          inputSchemaHash: '2'.repeat(64),
+          outputSchemaVersion: `${task}-output-v1`,
+          outputSchemaHash: '3'.repeat(64),
+          toolVersion: `${task}-tools-v1`,
+          toolHash: '4'.repeat(64),
+        };
+        await pool.query(
+          `insert into rni_worker_manifest_authority
+         (authority_kind,authority_key,version,snapshot_hash,value)
+         values ('prompt',$1,$2,$3,$4)`,
+          [task, prompt.version, hashRniWorkerSnapshotValue(prompt), JSON.stringify(prompt)],
+        );
+      }
+      await pool.query(
+        `insert into rni_worker_manifest_authority
+       (authority_kind,authority_key,version,snapshot_hash,value)
+       values ('build','default',$1,$2,$3)`,
+        [BUILD.deploymentId, hashRniWorkerSnapshotValue(BUILD), JSON.stringify(BUILD)],
+      );
       await pool.query(`update config_version set status='active',activated_at=now() where id=$1`, [
         configVersion,
       ]);
+      const providerCallId = (
+        await pool.query<{ id: string }>(
+          `insert into provider_call_log
+         (provider,operation,request_fingerprint,status_code,latency_ms,cache_status,
+          items_returned,started_at)
+         values ('fmp','/stable/sp500-constituent','rni-fence-manifest-fixture',200,1,'miss',501,
+           now()-interval '1 hour') returning id`,
+        )
+      ).rows[0]!.id;
       const universeVersion = (
         await pool.query<{ id: string }>(
           `insert into universe_version
-         (environment,config_version,status,selected_count,created_by,change_reason,activated_at)
-         values ('test',$1,'active',100,'coordinator','Preserved legacy fixture',now())
+         (environment,config_version,status,selected_count,created_by,change_reason,activated_at,
+          source_provider,source_endpoint,source_retrieved_at,source_payload_hash,
+          provider_call_id,approved_by)
+         values ('test',$1,'active',501,'coordinator','D-RNI-32 fencing fixture',now(),
+           'fmp','/stable/sp500-constituent',now()-interval '1 hour',$2,$3,'coordinator')
          returning id::text`,
-          [configVersion],
+          [configVersion, HASH, providerCallId],
         )
       ).rows[0]!.id;
       await pool.query(
         `with inserted as (
-         insert into security (symbol,name,exchange,asset_type,currency)
+         insert into security (symbol,name,exchange,asset_type,currency,aliases)
          select case when n=1 then 'NVDA' else 'T'||lpad(n::text,3,'0') end,
            case when n=1 then 'NVIDIA Corporation' else 'Fixture company '||n::text end,
-           'NASDAQ','equity','USD' from generate_series(1,100) n returning id
-       ) insert into universe_member (universe_version,security_id,added_by,selection_source)
-         select $1,id,'coordinator','preset' from inserted`,
+           'NASDAQ','equity','USD',jsonb_build_array(
+             case when n=1 then 'NVDA' else 'T'||lpad(n::text,3,'0') end
+           ) from generate_series(1,501) n returning id,symbol,name
+       ) insert into universe_member
+         (universe_version,security_id,added_by,selection_source,provider_symbol,
+          provider_company_name,constituent_first_added_at)
+         select $1,id,'coordinator','fmp_sp500',symbol,name,'2020-01-01T00:00:00Z'
+           from inserted`,
         [universeVersion],
       );
       await pool.query(
@@ -113,15 +168,17 @@ describe.skipIf(databaseUrl() === undefined)(
        values ($1,'https://example.test/fence-prices',$2,now()-interval '1 hour',272000)`,
         [PRICE_BOOK, HASH],
       );
-      for (const unit of ['input_token', 'output_token']) {
-        await pool.query(
-          `insert into unit_price_book
+      for (const model of ['gpt-5.6-terra', 'gpt-5.6-sol']) {
+        for (const unit of ['input_token', 'output_token']) {
+          await pool.query(
+            `insert into unit_price_book
          (price_book_version,provider,service,operation_or_model,unit_type,unit_price,currency,
           effective_from,source_reference)
-         values ($1,'openai','openai_responses','gpt-5.6-terra',$2,0.00001,'USD',
+         values ($1,'openai','openai_responses',$2,$3,0.00001,'USD',
            now()-interval '1 hour','I09 fencing fixture')`,
-          [PRICE_BOOK, unit],
-        );
+            [PRICE_BOOK, model, unit],
+          );
+        }
       }
       await pool.query(
         `insert into unit_price_book
@@ -133,7 +190,11 @@ describe.skipIf(databaseUrl() === undefined)(
       );
       const definitions = await ensureRniJobDefinitions('test', pool);
       clock = Date.now();
-      store = new PostgresRniOrchestrationStore(pool);
+      store = new PostgresRniOrchestrationStore(pool, {
+        deploymentId: BUILD.deploymentId,
+        commitSha: BUILD.commitSha,
+        artifactHash: BUILD.artifactHash,
+      });
       const deps = { store, partition: 'test', now: () => new Date(clock), newId: randomUUID };
       service = new RniRefreshService({
         ...deps,
@@ -409,7 +470,10 @@ describe.skipIf(databaseUrl() === undefined)(
         );
         expect(
           await Promise.race([
-            effect.then(() => 'authorized', () => 'rejected'),
+            effect.then(
+              () => 'authorized',
+              () => 'rejected',
+            ),
             new Promise<'blocked'>((resolve) => setTimeout(() => resolve('blocked'), 100)),
           ]),
         ).toBe('blocked');

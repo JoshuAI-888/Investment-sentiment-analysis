@@ -629,6 +629,13 @@ export async function stageRniTaskEnvelopeSuccessor(
       [successorId, activeRow.id],
     );
     await tx.query(
+      `insert into rni_worker_config_authority
+         (config_version,authority_kind,authority_key,version,snapshot_hash)
+       select $1,authority_kind,authority_key,version,snapshot_hash
+         from rni_worker_config_authority where config_version=$2`,
+      [successorId, activeRow.id],
+    );
+    await tx.query(
       `insert into model_route (
          config_version, task, transport, primary_provider, primary_model, model_revision,
          fallback_chain, prompt_version, schema_version, calibration_version, temperature,

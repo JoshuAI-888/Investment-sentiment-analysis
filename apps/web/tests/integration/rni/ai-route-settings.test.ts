@@ -9,6 +9,7 @@ import {
   findActiveConfigVersion,
   findRniModelRunRoutes,
 } from '../../../src/repositories/versions';
+import { seedTestWorkerAuthorities } from './helpers/worker-authorities';
 
 describe.skipIf(!databaseUrl())('live AI-route settings', () => {
   let pool: pg.Pool;
@@ -96,6 +97,7 @@ describe.skipIf(!databaseUrl())('live AI-route settings', () => {
        values ($1,'test','global','*','monthly',123,234,'{"block":true}')`,
       [original],
     );
+    await seedTestWorkerAuthorities(pool, original);
     await pool.query(`update config_version set status='active',activated_at=now() where id=$1`, [
       original,
     ]);

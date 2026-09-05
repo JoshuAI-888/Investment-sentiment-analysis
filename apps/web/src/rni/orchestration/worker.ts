@@ -8,13 +8,19 @@ import { combinedDelivery, platformDelivery, type RniExecutionRecord } from './t
 
 export const RNI_WORKER_PATH = '/api/internal/rni/worker';
 const MAX_BODY_BYTES = 32_768;
-const delivery = z.discriminatedUnion('version', [platformDelivery, combinedDelivery]);
+const delivery = z.union([platformDelivery, combinedDelivery]);
 
 export type RniWorkerServices = {
   platform: Pick<RniPlatformExecutionService, 'claim' | 'heartbeat' | 'finish'>;
   combined: Pick<
     RniCombinedExecutionService,
-    'claim' | 'effectFence' | 'heartbeat' | 'commitPublication' | 'finish' | 'fail'
+    | 'claim'
+    | 'effectFence'
+    | 'heartbeat'
+    | 'commitPublication'
+    | 'commitFullUniversePublication'
+    | 'finish'
+    | 'fail'
   >;
   /** Reconstruct and validate the committed record in the trusted environment partition. */
   readExecution(runId: string): Promise<RniExecutionRecord>;
@@ -23,7 +29,7 @@ export type RniWorkerServices = {
 /**
  * Production composition must provide BOTH real pipelines. Implementations own heartbeat,
  * per-provider lease/budget checks, source-first checkpoints and durable finish/retry. Combined
- * publication must use services.combined.commitPublication with the transaction-bound I07 writer.
+ * publication must use the matching transaction-bound combined commit method with the I07 writer.
  * A returned promise alone is not success: the receiver verifies committed terminal/retry state.
  */
 export interface RniWorkerExecutor {
@@ -108,7 +114,7 @@ async function boundedBody(request: Request): Promise<string> {
 function processed(record: RniExecutionRecord, lease: RniExecutionLease | RniCombinedLease) {
   if (record.run.id !== lease.delivery.runId || record.planHash !== lease.delivery.planHash)
     return false;
-  if (lease.delivery.version === 'rni-platform-v1') {
+  if ('platform' in lease.delivery) {
     const state = record.platforms[lease.delivery.platform];
     if (state.attempt !== lease.delivery.attempt || state.lease !== null) return false;
     return (
@@ -175,7 +181,7 @@ export async function receiveRniWorkerRequest(
     const executor = requireRniWorkerExecutor(await deps.resolveExecutor());
     const services = await deps.createServices();
     const claim =
-      payload.version === 'rni-platform-v1'
+      'platform' in payload
         ? await services.platform.claim(payload)
         : await services.combined.claim(payload);
     if (claim.status === 'busy' || claim.status === 'deferred') {
@@ -195,7 +201,7 @@ export async function receiveRniWorkerRequest(
       );
     }
     // Discriminate the acquired lease itself so crossed platform/combined payloads cannot route.
-    if (claim.lease.delivery.version === 'rni-platform-v1') {
+    if ('platform' in claim.lease.delivery) {
       await executor.platform({
         lease: claim.lease as RniExecutionLease,
         record: claim.record,

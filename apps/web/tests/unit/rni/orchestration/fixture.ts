@@ -111,6 +111,7 @@ export class TransactionalStore implements RniOrchestrationStore {
   afterPutExecution?: () => void;
   failPlanResolution = false;
   crossedJob = false;
+  admitExecution?: (record: RniExecutionRecord) => RniExecutionRecord;
   planReads = 0;
   transactions = 0;
   private tail: Promise<void> = Promise.resolve();
@@ -200,7 +201,9 @@ export class TransactionalStore implements RniOrchestrationStore {
         return this.crossedJob ? { ...result, configVersion: '999' } : result;
       },
       createExecution: async (record) => {
-        draft.executions.set(record.run.id, structuredClone(record));
+        const persisted = this.admitExecution?.(structuredClone(record)) ?? record;
+        draft.executions.set(record.run.id, structuredClone(persisted));
+        return structuredClone(persisted);
       },
       putExecution: async (record) => {
         draft.executions.set(record.run.id, structuredClone(record));

@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import type pg from 'pg';
 
 import { canonicalHash, canonicalInstant, sha256Hex } from '../../../src/calc/canonical';
+import { seedTestWorkerAuthorities } from '../rni/helpers/worker-authorities';
 import {
   replayCitedSynthesis,
   synthesizeCitedNarrative,
@@ -362,6 +363,7 @@ describe.skipIf(url === undefined)('RNI cited-synthesis PostgreSQL persistence',
         ],
       );
     }
+    await seedTestWorkerAuthorities(pool, configVersion);
     await pool.query(
       `update config_version set status = 'active', activated_at = now(), approved_by = 'owner'
         where id = $1`,

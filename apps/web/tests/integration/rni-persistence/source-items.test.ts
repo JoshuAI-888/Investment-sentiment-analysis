@@ -65,6 +65,8 @@ describe.skipIf(url === undefined)('RNI D01 source-first persistence', () => {
       'rni_source_content_version',
       'rni_source_item',
       'rni_source_retrieval',
+      'rni_source_workflow_checkpoint',
+      'rni_source_workflow_delivery',
     ]);
   });
 

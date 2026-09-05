@@ -19,10 +19,12 @@ import {
 } from './budget';
 import { previewRniSchedule } from './schedules';
 import {
+  combinedDelivery,
   commandRecord,
   executionRecord,
   identifier,
   instant,
+  platformDelivery,
   refreshPlan,
   type RniExecutionRecord,
   type RniOrchestrationDependencies,
@@ -37,29 +39,39 @@ export function deliveryFor(
   platform: RniPlatform,
   planHash: string,
   attempt: number,
+  runManifestHash?: string,
 ): RniPlatformDelivery {
-  return {
-    version: 'rni-platform-v1',
+  const identity = {
     runId,
     platform,
     planHash,
     attempt,
-    deliveryKey: `rni-platform-${hashRniModelInput({ runId, platform, planHash, attempt })}`,
+    ...(runManifestHash === undefined ? {} : { runManifestHash }),
   };
+  return platformDelivery.parse({
+    version: runManifestHash === undefined ? 'rni-platform-v1' : 'rni-platform-v2',
+    ...identity,
+    deliveryKey: `rni-platform-${hashRniModelInput(identity)}`,
+  });
 }
 
 export function combinedDeliveryFor(
   runId: string,
   planHash: string,
   attempt: number,
+  runManifestHash?: string,
 ): RniCombinedDelivery {
-  return {
-    version: 'rni-combined-v1',
+  const identity = {
     runId,
     planHash,
     attempt,
-    deliveryKey: `rni-combined-${hashRniModelInput({ runId, planHash, attempt })}`,
+    ...(runManifestHash === undefined ? {} : { runManifestHash }),
   };
+  return combinedDelivery.parse({
+    version: runManifestHash === undefined ? 'rni-combined-v1' : 'rni-combined-v2',
+    ...identity,
+    deliveryKey: `rni-combined-${hashRniModelInput(identity)}`,
+  });
 }
 
 function coalesceIdentity(partition: string, plan: RniRefreshPlan): string {
@@ -114,7 +126,13 @@ export function validateRniExecution(
         (state.slice.status !== 'running' || state.attempt !== state.delivery.attempt)) ||
       hashRniModelInput(state.delivery) !==
         hashRniModelInput(
-          deliveryFor(record.run.id, platform, record.planHash, state.delivery.attempt),
+          deliveryFor(
+            record.run.id,
+            platform,
+            record.planHash,
+            state.delivery.attempt,
+            record.version === 'rni-execution-v2' ? record.runManifestHash : undefined,
+          ),
         )
     ) {
       throw new RniOrchestrationError('CONFLICT');
@@ -130,7 +148,12 @@ export function validateRniExecution(
     combined.attempt > combined.delivery.attempt ||
     hashRniModelInput(combined.delivery) !==
       hashRniModelInput(
-        combinedDeliveryFor(record.run.id, record.planHash, combined.delivery.attempt),
+        combinedDeliveryFor(
+          record.run.id,
+          record.planHash,
+          combined.delivery.attempt,
+          record.version === 'rni-execution-v2' ? record.runManifestHash : undefined,
+        ),
       ) ||
     (combined.status !== 'waiting' && !terminalPlatforms) ||
     (combined.status === 'waiting' &&
@@ -521,9 +544,13 @@ export class RniRefreshService implements RniCommandService {
         publication: null,
       },
     });
-    await tx.createExecution(record);
-    await tx.enqueue(record.platforms.reddit.delivery, at);
-    await tx.enqueue(record.platforms.x.delivery, at);
-    return record;
+    const persisted = validateRniExecution(
+      await tx.createExecution(record),
+      this.deps.partition,
+      runId,
+    );
+    await tx.enqueue(persisted.platforms.reddit.delivery, at);
+    await tx.enqueue(persisted.platforms.x.delivery, at);
+    return persisted;
   }
 }
