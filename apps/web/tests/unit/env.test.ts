@@ -16,6 +16,7 @@ const VALID_LIVE: Record<string, string> = {
   X_BEARER_TOKEN: 'x-bearer',
   MODEL_TRANSPORT_DEFAULT: 'vercel_gateway',
   AI_GATEWAY_API_KEY: 'gateway',
+  OPENAI_API_KEY: 'openai',
   AI_MODEL_FAST: 'openai/gpt-5-mini',
   AI_MODEL_SYNTHESIS: 'anthropic/claude-opus-5',
   AI_MODEL_VERIFY: 'openai/gpt-5.2',
@@ -53,6 +54,7 @@ const REQUIRED_IN_LIVE_MODE = [
   'AI_MODEL_FAST',
   'AI_MODEL_SYNTHESIS',
   'AI_MODEL_VERIFY',
+  'OPENAI_API_KEY',
 ] as const;
 
 describe('env schema', () => {
@@ -73,6 +75,17 @@ describe('env schema', () => {
     if (!result.ok) return;
     expect(result.env.PROVIDER_MODE).toBe('fixture');
     expect(result.env.FEATURE_X).toBe(false);
+    expect(result.env.AI_GATEWAY_BASE_URL).toBe('https://ai-gateway.vercel.sh/v1');
+  });
+
+  it('accepts an explicit AI Gateway base URL for a controlled compatible endpoint', () => {
+    const result = parseEnv({
+      ...VALID_LIVE,
+      AI_GATEWAY_BASE_URL: 'https://gateway.example.com/v1',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.env.AI_GATEWAY_BASE_URL).toBe('https://gateway.example.com/v1');
   });
 
   it.each(REQUIRED_IN_LIVE_MODE)('rejects a missing %s by name', (key) => {

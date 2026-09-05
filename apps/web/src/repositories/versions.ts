@@ -60,6 +60,194 @@ export async function findActiveConfigVersion(
     : configVersion.parse(camelizeRow(row as Record<string, unknown>));
 }
 
+export type RniModelRunRouteRow = {
+  readonly run_id: string;
+  readonly config_version: string;
+  readonly ai_route: 'openai_direct' | 'vercel_ai_gateway';
+  readonly resolved_at: Date;
+  readonly task:
+    | 'rni_discovery'
+    | 'rni_relationship'
+    | 'rni_classifier'
+    | 'rni_verification'
+    | 'rni_challenger';
+  readonly provider: string;
+  readonly configured_model_id: string;
+  readonly canonical_provider_model_id: string;
+  readonly model_revision: string;
+  readonly reasoning_effort: string;
+  readonly prompt_version: string;
+  readonly policy_version: string;
+  readonly capability_snapshot_id: string;
+  readonly capability_response_hash: string;
+  readonly capability_observed_at: Date;
+  readonly capability_expires_at: Date;
+  readonly supports_responses: boolean;
+  readonly supports_structured_outputs: boolean;
+  readonly supports_web_search: boolean;
+};
+
+/**
+ * Load one run's immutable task mapping while selecting the newest still-fresh capability
+ * evidence for each exact route identity. Capability refreshes are append-only and intentionally
+ * do not rewrite the activated config; each call records the fresh snapshot it actually used.
+ */
+export async function findRniModelRunRoutes(
+  runId: string,
+  db: Queryable = getPool(),
+): Promise<readonly RniModelRunRouteRow[]> {
+  const { rows } = await db.query<RniModelRunRouteRow>(
+    `select r.id as run_id, r.config_version::text as config_version, r.ai_route,
+            statement_timestamp() as resolved_at, mr.task, mr.primary_provider as provider,
+            mr.primary_model as configured_model_id,
+            mr.canonical_provider_model_id, mr.model_revision, mr.reasoning_effort,
+            mr.prompt_version, mr.policy_version,
+            capability.id as capability_snapshot_id,
+            capability.response_hash as capability_response_hash,
+            capability.observed_at as capability_observed_at,
+            capability.expires_at as capability_expires_at,
+            capability.supports_responses, capability.supports_structured_outputs,
+            capability.supports_web_search
+       from rni_run r
+       join config_version cv
+         on cv.id = r.config_version and cv.status in ('active', 'superseded')
+       join model_route mr
+         on mr.config_version = r.config_version and mr.ai_route = r.ai_route
+       join lateral (
+         select c.*
+           from rni_model_capability_snapshot c
+          where c.ai_route = mr.ai_route
+            and c.configured_model_id = mr.primary_model
+            and c.provider = mr.primary_provider
+            and c.canonical_provider_model_id = mr.canonical_provider_model_id
+            and c.model_revision = mr.model_revision
+            and c.available and c.supports_responses and c.supports_structured_outputs
+            and c.reasoning_efforts ? mr.reasoning_effort
+            and (mr.task <> 'rni_discovery' or c.supports_web_search)
+            and c.observed_at <= statement_timestamp()
+            and c.expires_at > statement_timestamp()
+          order by c.observed_at desc, c.id desc
+          limit 1
+       ) capability on true
+      where r.id = $1 and r.status in ('requested', 'running')
+        and mr.task in (
+          'rni_discovery', 'rni_relationship', 'rni_classifier',
+          'rni_verification', 'rni_challenger'
+        )
+      order by mr.task`,
+    [runId],
+  );
+  return rows;
+}
+
+/** Pick the newest complete, currently effective OpenAI RNI price-book version. */
+export async function findCurrentRniPriceBookVersion(
+  db: Queryable = getPool(),
+): Promise<string> {
+  const { rows } = await db.query<{ price_book_version: string }>(
+    `select price_book_version
+       from unit_price_book
+      where provider = 'openai' and currency = 'USD'
+        and effective_from <= clock_timestamp()
+        and (effective_until is null or effective_until > clock_timestamp())
+        and (
+          (service = 'openai_responses'
+            and operation_or_model in ('gpt-5.6-terra', 'gpt-5.6-sol')
+            and unit_type in ('input_token', 'output_token'))
+          or (service = 'openai_web_search' and operation_or_model = 'web_search'
+            and unit_type = 'search')
+        )
+      group by price_book_version
+     having count(*) = 5
+      order by max(effective_from) desc, price_book_version desc
+      limit 1`,
+  );
+  const version = rows[0]?.price_book_version;
+  if (version === undefined) {
+    throw new Error('No complete currently effective RNI OpenAI price book is available');
+  }
+  return version;
+}
+
+export type RniAiReservation = {
+  readonly invocationId: string;
+  readonly decision: 'reserved' | 'denied';
+  readonly estimatedCostUsd: string | null;
+  readonly denialCode: string | null;
+  readonly warningEmitted: boolean;
+};
+
+export async function reserveRniAiInvocation(
+  input: {
+    readonly invocationId: string;
+    readonly runId: string;
+    readonly task: RniModelRunRouteRow['task'];
+    readonly requestHash: string;
+    readonly capabilitySnapshotId: string;
+    readonly priceBookVersion: string;
+  },
+  db: Queryable = getPool(),
+): Promise<RniAiReservation> {
+  const { rows } = await db.query<{
+    invocation_id: string;
+    decision: 'reserved' | 'denied';
+    estimated_cost_usd: string | null;
+    denial_code: string | null;
+    warning_emitted: boolean;
+  }>(
+    `select * from rni_reserve_ai_invocation($1, $2, $3, $4, $5, $6)`,
+    [
+      input.invocationId,
+      input.runId,
+      input.task,
+      input.requestHash,
+      input.capabilitySnapshotId,
+      input.priceBookVersion,
+    ],
+  );
+  const row = rows[0];
+  if (row === undefined) throw new Error('RNI AI reservation returned no decision');
+  return {
+    invocationId: row.invocation_id,
+    decision: row.decision,
+    estimatedCostUsd: row.estimated_cost_usd,
+    denialCode: row.denial_code,
+    warningEmitted: row.warning_emitted,
+  };
+}
+
+export async function settleRniAiInvocation(
+  input: {
+    readonly invocationId: string;
+    readonly requestHash: string;
+    readonly providerRequestId: string;
+    readonly outcome: 'succeeded' | 'failed';
+    readonly inputTokens: number;
+    readonly cachedInputTokens: number;
+    readonly outputTokens: number;
+    readonly webSearchCalls: number;
+  },
+  db: Queryable = getPool(),
+): Promise<string> {
+  const { rows } = await db.query<{ actual_cost_usd: string }>(
+    `select rni_settle_ai_invocation($1, $2, $3, $4, $5, $6, $7, $8)
+       as actual_cost_usd`,
+    [
+      input.invocationId,
+      input.requestHash,
+      input.providerRequestId,
+      input.outcome,
+      input.inputTokens,
+      input.cachedInputTokens,
+      input.outputTokens,
+      input.webSearchCalls,
+    ],
+  );
+  const cost = rows[0]?.actual_cost_usd;
+  if (cost === undefined) throw new Error('RNI AI settlement returned no cost');
+  return cost;
+}
+
 export type ActivationAudit = {
   actorId: string;
   actorRole: string;

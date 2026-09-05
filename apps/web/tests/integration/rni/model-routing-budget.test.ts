@@ -3,6 +3,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type pg from 'pg';
 
 import { databaseUrl, makePool, resetSchema } from '../helpers/db';
+import {
+  findCurrentRniPriceBookVersion,
+  findRniModelRunRoutes,
+  reserveRniAiInvocation,
+  settleRniAiInvocation,
+} from '../../../src/repositories/versions';
+import { loadRniImmutableModelRunConfig } from '../../../src/services/jobs/rni-model-runtime';
 
 const url = databaseUrl();
 const HASH_A = 'a'.repeat(64);
@@ -205,6 +212,73 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
     );
     return rows[0]!;
   }
+
+  it('composes fresh run routes with the effective price book and budget functions', async () => {
+    const run = await createRun(await seedGovernedConfig(), 'manual_ticker');
+
+    const rows = await findRniModelRunRoutes(run.runId, pool);
+    const config = await loadRniImmutableModelRunConfig(run.runId, async () => rows);
+    const priceBookVersion = await findCurrentRniPriceBookVersion(pool);
+    const invocationId = randomUUID();
+    const reservation = await reserveRniAiInvocation(
+      {
+        invocationId,
+        runId: run.runId,
+        task: 'rni_classifier',
+        requestHash: HASH_A,
+        capabilitySnapshotId: 'terra-capability',
+        priceBookVersion,
+      },
+      pool,
+    );
+    const actualCost = await settleRniAiInvocation(
+      {
+        invocationId,
+        requestHash: HASH_A,
+        providerRequestId: 'resp_i10c_repository',
+        outcome: 'succeeded',
+        inputTokens: 1,
+        cachedInputTokens: 0,
+        outputTokens: 1,
+        webSearchCalls: 0,
+      },
+      pool,
+    );
+
+    expect(config).toMatchObject({
+      runId: run.runId,
+      configVersion: run.configVersion,
+      aiRoute: 'openai_direct',
+    });
+    expect(config.resolvedModels).toHaveLength(5);
+    expect(priceBookVersion).toBe('rni-prices-v1');
+    expect(reservation).toMatchObject({ decision: 'reserved', denialCode: null });
+    expect(actualCost).toBe('0.002');
+  });
+
+  it('keeps an in-flight run on its immutable route after a successor supersedes the config', async () => {
+    const run = await createRun(await seedGovernedConfig(), 'manual_ticker');
+    await pool.query(
+      `update config_version set status = 'superseded' where id = $1`,
+      [run.configVersion],
+    );
+
+    const rows = await findRniModelRunRoutes(run.runId, pool);
+    const reservation = await reserveRniAiInvocation(
+      {
+        invocationId: randomUUID(),
+        runId: run.runId,
+        task: 'rni_classifier',
+        requestHash: HASH_A,
+        capabilitySnapshotId: 'terra-capability',
+        priceBookVersion: 'rni-prices-v1',
+      },
+      pool,
+    );
+
+    expect(rows).toHaveLength(5);
+    expect(reservation.decision).toBe('reserved');
+  });
 
   it('activates exactly five fresh balanced routes and locks their lineage', async () => {
     const seed = await seedGovernedConfig();

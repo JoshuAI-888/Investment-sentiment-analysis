@@ -14,3 +14,4 @@ export * from './scoring-worker';
 export * from './scorer-client';
 export * from './rescore';
 export * from './stance-availability';
+export * from './rni-model-runtime';

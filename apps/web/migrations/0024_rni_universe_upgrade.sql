@@ -2088,8 +2088,9 @@ begin
       existing.denial_code, false;
     return;
   end if;
-  if config_status <> 'active' or run_row.status not in ('requested', 'running') then
-    raise exception 'RNI invocation requires an active config and a non-terminal run'
+  if config_status not in ('active', 'superseded')
+     or run_row.status not in ('requested', 'running') then
+    raise exception 'RNI invocation requires a dispatchable immutable config and a non-terminal run'
       using errcode = 'check_violation';
   end if;
 

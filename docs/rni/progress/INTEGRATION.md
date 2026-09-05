@@ -36,7 +36,8 @@
 | I10 | Seed RNI Direct routes and optional Gateway selection | `IN_PROGRESS` | I10A starts versioned Direct/Gateway resolution and pre-dispatch budget enforcement under D-RNI-21; live parity remains I11 |
 | I10A | Enforce balanced runtime model policy and exact route lineage | `PASSED` | Direct default, five-task Terra/Sol low mapping, fresh capabilities, Gateway provider/canonical identity and stable cache semantics; unit/contract/eval regression and independent review pass |
 | I10B | Persist immutable route capabilities and atomic RNI AI budgets | `PASSED` | Additive migration 0024 schema; PostgreSQL 11/11 focused and 129/129 RNI regression; transports remain I10C |
-| I10C | Compose live Direct/Gateway transports and governed recorder | `IN_PROGRESS` | Server-only capability/configuration transport and I10B reservation/settlement composition; no live claim until I11 |
+| I10C | Compose live Direct/Gateway transports and governed recorder | `IN_PROGRESS` | I10C1 transport/recorder passed; live capability discovery and successor staging remain I10C2; no live claim until I11 |
+| I10C1 | Compose provider-pinned transports and governed recorder | `PASSED` | Direct and OpenAI-only Gateway Responses adapters, immutable run-config loading, pre-dispatch reservation and usage-based settlement; PostgreSQL 153/153 serial RNI sweep |
 | I11 | Run live Reddit, X and FMP gates | `NOT_STARTED` | Provider audit IDs and screenshots/log links |
 | I12 | Full regression, preview, production approval and smoke | `NOT_STARTED` | `joshuai` approval + production evidence |
 
@@ -399,6 +400,7 @@
 | `CURRENT` | Complete I10B persisted routing and AI budget substrate | Migration 0024 preserves activation and per-call capability snapshots, exact run/config/task lineage, synthesis invocation identity, numeric reservation/settlement, 2/25/50/300/500 enforcement and once-only monthly warnings; focused 11/11 and full RNI PostgreSQL 129/129 |
 | `CURRENT` | Accept and merge DATA D12 analytics/convergence persistence | corrected tip `cf2b635` closes exact observation/component/slice lineage and D-RNI-23 overall projection findings; coordinator D12 15/15 and post-merge D12/I10B 26/26 with typecheck/lint/diff pass; merge `59ab04a` |
 | `CURRENT` | Start I10C live transport/configuration composition | Add server-only Direct and provider-pinned Gateway adapters, capability discovery/config loading and an I10B-backed invocation recorder; credentials are environment-only and live evidence remains I11 |
+| `CURRENT` | Complete I10C1 governed transport and recorder composition | Direct and OpenAI-only Gateway adapters validate exact provider/model routing; immutable run routes survive successor activation; reservation precedes dispatch and settlement uses provider token/tool telemetry rather than provider-reported cost |
 
 ## I10A handoff
 
@@ -437,9 +439,35 @@
   supersedes the estimate once; absent/ambiguous settlement retains the reservation. Verifier and
   challenger ledger IDs must equal their prepared synthesis invocation IDs.
 - **Risks/handoff:** migration 0024 still requires an ephemeral Neon rehearsal before preview.
-  I10C must expose these functions only through server-owned adapters and activate a successor
-  configuration from live capability discovery; I11 owns provider request evidence. Frozen RNI
-  contracts and credentials were untouched.
+  I10C must expose these functions only through server-owned adapters and stage a successor
+  configuration from live capability discovery; production activation remains an explicit human
+  action and I11 owns provider request evidence. Frozen RNI contracts and credentials were
+  untouched.
+
+## I10C1 handoff
+
+- **Status:** `PASSED`; I10 remains `IN_PROGRESS` for I10C2 capability discovery, price evidence
+  and successor configuration staging. No live provider or deployment claim is made.
+- **Files changed:** `apps/web/src/env.ts`, `apps/web/src/repositories/versions.ts`,
+  `apps/web/src/services/jobs/{index,rni-model-runtime}.ts`, migration `0024`, focused environment,
+  transport and PostgreSQL route/budget tests, this tracker, the master tracker and deployment
+  runbook.
+- **Tests run:** focused environment/transport 39/39; focused PostgreSQL route/budget plus
+  transport 20/20; complete serialized RNI PostgreSQL integration 153/153; full unit
+  1,362/1,362; full contract 107/107 with 22 database-gated skips; RNI eval 18/18 with one
+  credential-gated live skip; TypeScript, scoped ESLint and diff check.
+- **Result:** live processes require the Direct-default OpenAI credential independently of the
+  legacy application transport. Direct sends governed Responses requests. Gateway sends the same
+  evaluated OpenAI family with an explicit OpenAI-only provider filter, no model fallback and
+  fail-closed validation of returned provider/model-attempt metadata. One immutable five-task run
+  config is loaded from fresh capability evidence. Every invocation reserves the applicable
+  I10B price-book maximum before dispatch and settles only from complete token and Web Search
+  telemetry; provider-reported cost is retained as telemetry but cannot settle the ledger.
+- **Risks/handoff:** capability catalogue discovery, price evidence and successor staging remain
+  I10C2. Ambiguous calls deliberately retain their reservation for reconciliation. The disposable
+  PostgreSQL suites share schema state and therefore require `--no-file-parallelism`; the initial
+  parallel sweep collided during resets, while the serialized complete sweep passed 153/153.
+  No credential value was read or stored and no frozen contract changed.
 
 ## I07A handoff
 

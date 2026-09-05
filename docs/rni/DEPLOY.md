@@ -58,7 +58,7 @@ OPENAI_API_KEY
 OPENAI_PROJECT_ID
 AI_ROUTE_DEFAULT=openai_direct
 AI_GATEWAY_API_KEY                 # optional
-AI_GATEWAY_BASE_URL                # optional
+AI_GATEWAY_BASE_URL                # optional; defaults to https://ai-gateway.vercel.sh/v1
 FMP_API_KEY
 X_BEARER_TOKEN
 QSTASH_TOKEN
@@ -102,6 +102,15 @@ Neon supports branching for isolated development/testing and pgvector for vector
 7. Do not enable fallback to an unevaluated model.
 8. Verify pre-dispatch worst-case reservation rejects calls that would cross the D-RNI-21 per-run,
    rolling-day or calendar-month hard limits, and that the monthly warning is observable.
+9. Set `OPENAI_API_KEY` for every live RNI deployment even when the legacy application transport
+   uses Gateway: D-RNI-21 keeps RNI Direct as the independent default route.
+10. If Gateway is selected for a successor configuration, keep the request provider filter pinned
+    to OpenAI, configure no fallback model, and require returned routing metadata to match the exact
+    evaluated OpenAI model. Do not activate a staged successor until I11 live parity evidence and
+    the explicit human approval gate pass.
+11. Seed or discover a complete effective RNI price book before dispatch. Missing model-token or
+    Web Search prices fail closed; Gateway-reported cost is observability evidence, not ledger
+    settlement authority.
 
 ## 6. Sources and discovery
 
