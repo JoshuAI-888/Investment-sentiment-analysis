@@ -143,6 +143,13 @@ export class RniPlatformExecutionService {
     }
   }
 
+  /** Check the original authority after awaited writes, even after terminal/retry clears it. */
+  private assertLeaseWindow(expiresAt: string, deadline: string) {
+    const now = this.deps.now().getTime();
+    if (!Number.isFinite(now) || Date.parse(expiresAt) <= now || Date.parse(deadline) <= now)
+      throw new RniOrchestrationError('STALE_EXECUTION');
+  }
+
   /** The I07 adapter must check this fence at each provider/commit boundary, and pass its signal. */
   async heartbeat(lease: RniExecutionLease): Promise<void> {
     platformDelivery.parse(lease.delivery);
@@ -151,10 +158,12 @@ export class RniPlatformExecutionService {
       const record = await this.read(tx, lease.delivery);
       const now = this.deps.now().getTime();
       this.assertLease(record, lease, now);
+      const originalExpiry = record.platforms[lease.delivery.platform].lease!.expiresAt;
       record.platforms[lease.delivery.platform].lease!.expiresAt = new Date(
         Math.min(now + record.plan.leaseMs, Date.parse(record.deadline)),
       ).toISOString();
       await tx.putExecution(record);
+      this.assertLeaseWindow(originalExpiry, record.deadline);
     });
   }
 
@@ -181,6 +190,7 @@ export class RniPlatformExecutionService {
         return 'duplicate';
       }
       this.assertLease(record, lease, now);
+      const originalExpiry = state.lease!.expiresAt;
       if (
         'computedAt' in outcome &&
         (Date.parse(outcome.computedAt) > now ||
@@ -226,6 +236,7 @@ export class RniPlatformExecutionService {
             actor: 'rni-worker',
             at,
           });
+          this.assertLeaseWindow(originalExpiry, record.deadline);
           return 'retry';
         }
       }
@@ -241,6 +252,7 @@ export class RniPlatformExecutionService {
       state.outcomeHash = outputHash;
       state.outcomeToken = lease.token;
       await this.saveTerminal(tx, record, at);
+      this.assertLeaseWindow(originalExpiry, record.deadline);
       return 'complete';
     });
   }

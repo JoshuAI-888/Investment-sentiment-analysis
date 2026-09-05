@@ -100,6 +100,8 @@ export class TransactionalStore implements RniOrchestrationStore {
   failEnqueue = false;
   failAudit = false;
   afterAudit?: () => void;
+  afterPutExecution?: () => void;
+  failPlanResolution = false;
   crossedJob = false;
   planReads = 0;
   transactions = 0;
@@ -142,6 +144,7 @@ export class TransactionalStore implements RniOrchestrationStore {
         ) ?? null,
       resolveActivePlan: async (requestedScope) => {
         this.planReads++;
+        if (this.failPlanResolution) throw new Error('active plan unavailable');
         const plan = structuredClone(this.activePlan);
         plan.scopePreview =
           requestedScope.kind === 'full_universe'
@@ -193,6 +196,7 @@ export class TransactionalStore implements RniOrchestrationStore {
       },
       putExecution: async (record) => {
         draft.executions.set(record.run.id, structuredClone(record));
+        this.afterPutExecution?.();
       },
       admitBudget: async ({ runId, costUsd }) => {
         const reserved = [...draft.admissions.values()].reduce(

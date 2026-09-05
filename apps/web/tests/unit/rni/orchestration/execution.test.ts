@@ -300,4 +300,42 @@ describe('RNI platform execution primitives', () => {
     const future = deliveryFor(h.runId, 'reddit', h.delivery.planHash, 2);
     await expect(h.worker.claim(future)).rejects.toThrow('CONFLICT');
   });
+
+  it.each(
+    (['complete', 'retry', 'heartbeat'] as const).flatMap((operation) =>
+      [10_000, 120_000].map((elapsed) => ({ operation, elapsed })),
+    ),
+  )(
+    'rolls back $operation when the final awaited write reaches $elapsed ms',
+    async ({ operation, elapsed }) => {
+      const h = await setup();
+      await h.worker.finish(await acquired(h, 'x'), complete);
+      const lease = await acquired(h);
+      const before = structuredClone(h.store.data);
+      if (operation === 'heartbeat') h.store.afterPutExecution = () => h.advance(elapsed);
+      else h.store.afterAudit = () => h.advance(elapsed);
+      const action =
+        operation === 'heartbeat'
+          ? h.worker.heartbeat(lease)
+          : h.worker.finish(
+              lease,
+              operation === 'complete'
+                ? complete
+                : { status: 'failed', errorCode: 'PROVIDER_TRANSIENT' },
+            );
+      await expect(action).rejects.toThrow('STALE_EXECUTION');
+      // Includes both slices, the combined/retry outboxes, audit, and existing admission/job state.
+      expect(h.store.data).toEqual(before);
+    },
+  );
+
+  it('cannot renew a lease whose original authority expires during the heartbeat write', async () => {
+    const h = await setup(),
+      lease = await acquired(h);
+    h.advance(5000);
+    const before = structuredClone(h.store.data);
+    h.store.afterPutExecution = () => h.advance(5000);
+    await expect(h.worker.heartbeat(lease)).rejects.toThrow('STALE_EXECUTION');
+    expect(h.store.data).toEqual(before);
+  });
 });

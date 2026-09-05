@@ -297,7 +297,6 @@ export class RniRefreshService implements RniCommandService {
           Date.parse(intent.dueAt) > Date.parse(at)
         )
           throw new RniOrchestrationError('NOT_DUE');
-        scope = rniManualRefreshScope.parse(definition.scope);
         // Forward-only: advance from now and perform one bounded fire, never a catch-up burst.
         scheduled = {
           jobId: definition.id,
@@ -305,6 +304,37 @@ export class RniRefreshService implements RniCommandService {
           dueAt: intent.dueAt,
           nextDueAt: previewRniSchedule(definition, new Date(at), 1)[0]!.dueAt,
         };
+        // Resolve no new-work scope, configuration or model plan for an already-busy job.
+        // This read holds the scheduled job lock through the atomic skip/advance transaction.
+        if (await tx.isScheduledJobBusy(definition.id)) {
+          await tx.putCommand({
+            disposition: 'skipped',
+            key,
+            intentHash,
+            acceptedAt: at,
+            jobId: scheduled.jobId,
+            dueAt: scheduled.dueAt,
+            nextDueAt: scheduled.nextDueAt,
+          });
+          await tx.advanceSchedule(scheduled);
+          await tx.audit({
+            event: 'schedule_skipped',
+            runId: null,
+            actor: deps.actor,
+            at,
+            jobId: scheduled.jobId,
+            dueAt: scheduled.dueAt,
+          });
+          return {
+            disposition: 'skipped',
+            reason: 'busy',
+            idempotencyKey: intent.idempotencyKey,
+            jobId: scheduled.jobId,
+            dueAt: scheduled.dueAt,
+            nextDueAt: scheduled.nextDueAt,
+          };
+        }
+        scope = rniManualRefreshScope.parse(definition.scope);
       } else if (intent.kind === 'rerun') {
         const old = await tx.getExecution(intent.runId);
         if (old === null) throw new RniOrchestrationError('NOT_FOUND');
@@ -352,34 +382,6 @@ export class RniRefreshService implements RniCommandService {
           throw new RniOrchestrationError('CONFLICT');
         disposition = 'duplicate';
       } else {
-        if (scheduled !== null && (await tx.isScheduledJobBusy(definition.id))) {
-          await tx.putCommand({
-            disposition: 'skipped',
-            key,
-            intentHash,
-            acceptedAt: at,
-            jobId: scheduled.jobId,
-            dueAt: scheduled.dueAt,
-            nextDueAt: scheduled.nextDueAt,
-          });
-          await tx.advanceSchedule(scheduled);
-          await tx.audit({
-            event: 'schedule_skipped',
-            runId: null,
-            actor: deps.actor,
-            at,
-            jobId: scheduled.jobId,
-            dueAt: scheduled.dueAt,
-          });
-          return {
-            disposition: 'skipped',
-            reason: 'busy',
-            idempotencyKey: intent.idempotencyKey,
-            jobId: scheduled.jobId,
-            dueAt: scheduled.dueAt,
-            nextDueAt: scheduled.nextDueAt,
-          };
-        }
         record = await this.createExecution(
           tx,
           intent,

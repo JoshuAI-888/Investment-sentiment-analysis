@@ -162,15 +162,18 @@ describe('RNI durable refresh command primitives', () => {
     );
   });
 
-  it('coalesces Run now with a due schedule, then replays signed-fire intent after schedule advancement', async () => {
+  it('skips a due schedule while Run now is active, then replays that skip after advancement', async () => {
     const h = harness();
     const manual = await h.service.requestManualRefresh({ idempotencyKey: 'run-now', scope });
     const results = await Promise.all(
       Array.from({ length: 3 }, () => h.service.schedule({ jobId: uuid(800), dueAt: START })),
     );
-    expect(
-      results.every((result) => result.disposition !== 'skipped' && result.runId === manual.runId),
-    ).toBe(true);
+    expect(results.every((result) => result.disposition === 'skipped')).toBe(true);
+    expect(h.store.data.executions.has(manual.runId)).toBe(true);
+    expect(h.store.planReads).toBe(1);
+    expect(h.store.data.audits.filter((event) => event.event === 'schedule_skipped')).toHaveLength(
+      1,
+    );
     expect(h.store.data.jobs).toHaveLength(1);
     expect(h.store.data.definition.nextDueAt.toISOString()).toBe('2026-09-05T00:05:00.000Z');
     expect(h.store.data.definition.version).toBe(2);
@@ -230,4 +233,30 @@ describe('RNI durable refresh command primitives', () => {
       'skipped',
     );
   });
+
+  it.each(['invalid', 'unavailable'] as const)(
+    'skips a locked busy job without resolving its %s active plan',
+    async (mode) => {
+      const h = harness();
+      await h.service.requestManualRefresh({ idempotencyKey: 'manual', scope });
+      h.advance(6000);
+      if (mode === 'invalid') h.store.activePlan.maxAttempts = 99;
+      else h.store.failPlanResolution = true;
+      const beforePlanReads = h.store.planReads;
+      const requests = await Promise.all(
+        Array.from({ length: 3 }, () => h.service.schedule({ jobId: uuid(800), dueAt: START })),
+      );
+      expect(requests.every((result) => result.disposition === 'skipped')).toBe(true);
+      expect(new Set(requests.map((result) => JSON.stringify(result))).size).toBe(1);
+      expect(h.store.planReads).toBe(beforePlanReads);
+      expect(h.store.data.definition.nextDueAt.toISOString()).toBe('2026-09-05T00:05:06.000Z');
+      expect(h.store.data.definition.version).toBe(2);
+      expect(
+        h.store.data.audits.filter((event) => event.event === 'schedule_skipped'),
+      ).toHaveLength(1);
+      expect(h.store.data.jobs).toHaveLength(1);
+      expect(h.store.data.admissions.size).toBe(1);
+      expect(h.store.data.outbox.size).toBe(2);
+    },
+  );
 });
