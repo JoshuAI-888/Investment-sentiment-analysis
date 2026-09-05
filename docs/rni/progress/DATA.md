@@ -24,6 +24,7 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | D09 | Full DATA lane verification and handoff                     | `READY_FOR_REVIEW` | Latest-tip RNI 41/41; type/contract 103/103 green                            |
 | D10 | Atomic E05 semantic persistence adapter                      | `READY_FOR_REVIEW` | PostgreSQL D10 11/11 and cross-run exact-output identity guard                |
 | D11 | Retire standalone combined-summary writes                    | `READY_FOR_REVIEW` | D-RNI-19 fail-closed/read compatibility 3/3; full DATA 51/51                  |
+| D12 | Persist ENGINE analytics and convergence artifacts           | `READY_FOR_REVIEW` | Separate immutable platform rows and exact convergence; PostgreSQL 7/7        |
 
 ## Task evidence
 
@@ -216,6 +217,32 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 - **Handoff:** INTEGRATION should use only the atomic cited-synthesis adapter for future summary
   writes and may keep the DATA reader for historical/current projection reads.
 
+### D12 — Persist ENGINE analytics and convergence artifacts
+
+- **Status:** `READY_FOR_REVIEW`
+- **Files:** `apps/web/src/rni/repositories/engine-artifacts.ts`,
+  `apps/web/tests/integration/rni-persistence/engine-artifacts.test.ts`, and this progress file.
+- **Tests:** focused PostgreSQL `7/7`; full serial DATA persistence `58/58`; RNI contract `37/37`;
+  TypeScript and scoped ESLint pass; `git diff --check`, DATA ownership, frozen-contract, and
+  exact-base checks pass; independent adversarial re-review passes with no remaining findings.
+- **Result:** the frozen persistence port writes one immutable transaction per Reddit or X
+  analytics artifact and one separate convergence transaction. Canonical full-artifact hashes,
+  exact input/result snapshots, methodology/policy/code lineage, and platform-slice ownership are
+  retained. Convergence resolves and stores the exact persisted Reddit/X IDs and hashes; exact
+  replay returns `duplicate`, while crossed run/security/platform/slice, bytes, hashes, scalar
+  lineage, or durable component bindings fail closed. Advisory locks serialize platform and
+  convergence identities, and forced child-write failure rolls back without a partial artifact.
+- **Review correction:** exact duplicate validation compares every durable field, including slice
+  and creation time for platform artifacts and component IDs/hashes plus policy/code/result hash
+  for convergence. A schema-valid adversarial row bound to an alternate persisted Reddit artifact
+  is rejected rather than accepted as an exact replay. Creation timestamps are read as lossless
+  six-digit UTC text, so sub-millisecond durable differences also reject exact replay.
+- **Risk:** no DATA blocker or contract request. The adapter consumes but does not modify the
+  integration-owned migration `0024`; composition wiring remains INTEGRATION scope.
+- **Handoff:** INTEGRATION may inject `PostgresRniAnalyticsArtifactPersistence` behind the frozen
+  port. It must continue committing the two platform artifacts independently before convergence;
+  no pooled artifact is created.
+
 ## Required invariants
 
 - One external source row, many security links and observations.
@@ -325,9 +352,10 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | migration clean apply    | `READY_FOR_REVIEW` | D09 migration Vitest              | Clean apply through `0023`; pass                                                         |
 | migration forward apply  | `READY_FOR_REVIEW` | D09 migration Vitest              | Populated legacy schema preserved; pass                                                  |
 | repository unit          | `READY_FOR_REVIEW` | full ESLint + TypeScript + unit   | No errors; 1171/1171                                                                     |
-| database integration     | `READY_FOR_REVIEW` | DATA persistence + fixture Vitest | Post-D11 serial DATA 51/51 pass                                                         |
+| database integration     | `READY_FOR_REVIEW` | DATA persistence + fixture Vitest | Post-D12 serial DATA 58/58 pass                                                         |
 | semantic persistence     | `READY_FOR_REVIEW` | D10 PostgreSQL Vitest             | Exact-hash/cross-run/replay/validation/concurrency/rollback 11/11 pass                  |
 | summary compatibility    | `READY_FOR_REVIEW` | D11 PostgreSQL Vitest             | Standalone fail-closed, historical read, unchanged slices 3/3 pass                     |
+| engine artifacts         | `READY_FOR_REVIEW` | D12 PostgreSQL Vitest             | Platform/convergence identity, replay, concurrency, rollback 7/7 pass                  |
 | concurrency/idempotency  | `READY_FOR_REVIEW` | D06 PostgreSQL Vitest             | 8 concurrent deliveries + forced rollback; 3/3 pass                                      |
 | repository required gate | `READY_FOR_REVIEW` | full unit/contract/integration    | Latest-tip type and contract 103/103 pass; prior full gate 396/397 with known clock race |
 
@@ -343,6 +371,8 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | DATA-R6 | P1       | `FIXED` | Rounded observation numerics could hide crossed replay output | Exact unrounded per-security semantic output hash is persisted and compared       |
 | DATA-R7 | P1       | `FIXED` | D10 accepted incomplete dimensions or extra input-hash keys   | Exact four-dimension and observation/hash-key-set validation rejects both         |
 | DATA-R8 | P1       | `FIXED` | Crossed exact output could attach the same observation to Run B | Ordered observation locks plus prior-membership hash check reject cross-run reuse |
+| DATA-R9 | P1       | `FIXED` | Convergence replay omitted durable scalar/component comparisons | Exact duplicate check covers all stored fields; adversarial binding test passes    |
+| DATA-R10 | P2      | `FIXED` | JS `Date` truncated durable creation timestamps to milliseconds | SQL returns UTC microsecond text; sub-millisecond replay regression passes          |
 
 ## Open risks/blockers
 
@@ -369,20 +399,20 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | f8b7af9     | D10 atomic E05 semantic persistence                    | D10 9/9; DATA 50/50; TypeScript; scoped lint                      |
 | b799b6d     | D10 exact replay correction and D11 writer retirement | D10 10/10; D11 3/3; DATA 50/50; TypeScript; scoped lint           |
 | 746c9bc     | D10 cross-run observation identity correction         | D10 11/11; D11 3/3; DATA 51/51; TypeScript; scoped lint           |
-| this commit | Final integration-tip rebase evidence                 | D10/D11 14/14; DATA 51/51; TypeScript; scoped lint                |
+| this commit | D12 immutable ENGINE artifact persistence             | D12 7/7; DATA 58/58; RNI contract 37/37; TypeScript; scoped lint  |
 
 ## Handoff
 
 ```text
 RNI LANE     DATA
 BRANCH       feat/rni-data-source-first
-BASE SHA     2099936 (current integration base)
+BASE SHA     5a75969 (coordinator-accepted integration base)
 STATUS       READY_FOR_REVIEW
-TASKS        11/11 ready for coordinator review
-TESTS        typecheck and scoped lint pass; D10 11/11; D11 3/3; serial DATA 51/51; diff/ownership/contracts clean
+TASKS        12/12 ready for coordinator review
+TESTS        typecheck/scoped lint; D12 7/7; serial DATA 58/58; RNI contract 37/37; independent review PASS
 CONTRACT     CR-DATA-001 and 002 accepted; CR-DATA-003 and 004 resolved
 RISKS        no DATA blocker; one previously known non-RNI integration clock race
-FILES        migrations 0020-0023; DATA repositories; RNI persistence tests/fixtures; DATA.md; D10/D11 consume but do not edit migration 0024
-COMMITS      prior D01-D09 history; f8b7af9 (D10); b799b6d (D10 review/D11); 746c9bc (cross-run correction); this commit (final integration-tip evidence)
+FILES        migrations 0020-0023; DATA repositories; RNI persistence tests/fixtures; DATA.md; D10-D12 consume but do not edit migration 0024
+COMMITS      prior D01-D09 history; f8b7af9 (D10); b799b6d (D10 review/D11); 746c9bc (cross-run correction); this commit (D12)
 DEMO PROOF   one comparative source persists distinct bullish NVDA and bearish AMD observations
 ```
