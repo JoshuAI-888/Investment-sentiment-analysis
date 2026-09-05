@@ -13,6 +13,19 @@
  *
  * `no-float-in-analytics` does not cover this path: it is armed over `calc/` and `analytics/`,
  * and `services/jobs/` is neither.
+ *
+ * **`SCANNED` names F20's scoring files explicitly, not `readdir`'d — corrected 2026-09-05,
+ * F16a.** `services/jobs/` stopped being F20-only the moment F16a's dispatch core landed
+ * alongside it (`schedule.ts`, `heartbeat.ts`, `x-ceiling.ts`, ...) — an ordinary `readdir` over
+ * the whole directory swept those files into a check whose own doc, one paragraph up, says its
+ * subject is "the scoring modules." None of F16a's files touch a sentiment score: `schedule.ts`
+ * parses cron fields and calendar components, `heartbeat.ts` formats a duration for a log line,
+ * `x-ceiling.ts` parses an operator-set read-count ceiling from an environment variable — every
+ * one of those is exactly the kind of ordinary integer parsing this test was never meant to
+ * forbid, and F20's own `Trace`-based behavioural assertion above (unaffected by this change)
+ * remains the test that actually proves a score survives the path unmangled. Enumerating F20's
+ * real scoring files by name is what keeps this test testing what its own doc says it tests,
+ * regardless of what else `services/jobs/` grows into later.
  */
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -35,7 +48,21 @@ import {
 } from './fakes';
 
 const WEB_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
-const SCANNED = [path.join(WEB_ROOT, 'src/services/jobs'), path.join(WEB_ROOT, 'src/adapters/scorer.ts')];
+const SCORING_JOB_FILES = [
+  'index.ts',
+  'ports.ts',
+  'rescore.ts',
+  'routing.ts',
+  'scorer-client.ts',
+  'scores.ts',
+  'scoring-queue.ts',
+  'scoring-worker.ts',
+  'stance-availability.ts',
+];
+const SCANNED = [
+  ...SCORING_JOB_FILES.map((name) => path.join(WEB_ROOT, 'src/services/jobs', name)),
+  path.join(WEB_ROOT, 'src/adapters/scorer.ts'),
+];
 
 /**
  * Values chosen so a float round-trip is *visible*. `String(Number('0.100000'))` is `'0.1'`;
