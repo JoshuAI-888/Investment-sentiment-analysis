@@ -1,0 +1,102 @@
+# Manual database operations against a real deployment — DEPLOY.md MT-08's first two steps.
+#
+# **Why a workflow rather than a script someone runs locally.** `pnpm migrate` and
+# `pnpm seed:universe` need `DATABASE_URL` and nothing else, but they cannot run from Vercel:
+# a build runs before the deployment exists and a serverless function is the wrong place to
+# apply DDL. That leaves someone's laptop, which means the schema of record depends on who ran
+# what and when. Here every run is logged, attributed and repeatable.
+#
+# **`workflow_dispatch` only — never on push.** A migration that runs automatically is a
+# migration that runs during an unrelated deploy, and under D-17's permanent corpus there is no
+# clean rollback from a half-applied schema. Someone decides to run this, every time.
+#
+# This file is `.github/workflows/`, which F01 §4.4b owns — added by the coordinator as a deploy
+# operation rather than by a lane, per CLAUDE.md's rule that a lane never writes a workflow.
+name: Database
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'What to run'
+        required: true
+        type: choice
+        default: migrate
+        options:
+          - migrate
+          - seed-universe
+          - migrate-then-seed
+      environment:
+        description: 'APP_ENVIRONMENT for the universe seed (its version rows are scoped to this)'
+        required: true
+        type: choice
+        default: production
+        options:
+          - production
+          - preview
+
+permissions:
+  contents: read
+
+# Two concurrent migrations against one database is the one thing this must never allow.
+# No `cancel-in-progress`: cancelling a run mid-DDL is how a schema ends up half-applied.
+concurrency:
+  group: database-${{ github.ref }}
+
+jobs:
+  run:
+    name: ${{ inputs.operation }} (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Requires a `database` environment in repo settings holding DATABASE_URL. Beyond keeping
+    # the secret out of the default scope, an environment can carry required reviewers — which
+    # is the mechanism to reach for if this should ever need a second pair of eyes.
+    environment: database
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # These scripts touch the database and no provider. Fixture mode keeps it that way, and
+      # keeps this workflow honest about needing exactly one secret.
+      PROVIDER_MODE: fixture
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Fail early if the secret is absent
+        # Without this the failure surfaces as a connection error inside a script, which reads
+        # like a database problem rather than a missing-secret one.
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "::error::DATABASE_URL is not set. Add it to the 'database' environment in"
+            echo "::error::Settings -> Environments -> database -> Environment secrets."
+            echo "::error::Use Neon's POOLED connection string (its hostname contains '-pooler')."
+            exit 1
+          fi
+
+      - name: Migrate
+        if: inputs.operation == 'migrate' || inputs.operation == 'migrate-then-seed'
+        working-directory: apps/web
+        # Idempotent: already-applied migrations are reported as skipped, not reapplied.
+        run: pnpm migrate
+
+      - name: Seed universe
+        if: inputs.operation == 'seed-universe' || inputs.operation == 'migrate-then-seed'
+        working-directory: apps/web
+        # Also idempotent, and deliberately more than that: it refuses to reinsert a symbol an
+        # administrator removed, so re-running it can never resurrect a deleted member.
+        env:
+          APP_ENVIRONMENT: ${{ inputs.environment }}
+        run: pnpm seed:universe
