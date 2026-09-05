@@ -29,6 +29,7 @@
 | I06R3 | Make command abandonment and stage completion fail-closed | `PASSED` | D-RNI-16; active conflict, stale terminalization, atomic rollback, invalid replay and bootstrap integrity tests pass |
 | I06R4 | Retain abandoned-command provider lineage and prove bootstrap rollback | `PASSED` | typecheck/lint; PostgreSQL command/bootstrap 9/9; IR-10/11 resolved |
 | I07 | Compose DATA repositories and ENGINE services | `IN_PROGRESS` | Semantic/artifact ports plus migration-backed D-RNI-19 trace; DATA D10 adapter and final cited-synthesis adapters/composition remain |
+| I07D | Close DATA D10 exact semantic-identity review findings | `IN_PROGRESS` | Add coordinator-owned exact per-security output hash to migration 0024; DATA validates four dimensions and exact security/hash key sets |
 | I08 | Compose SURFACE routes/nav/API with auth | `NOT_STARTED` | Authenticated preview e2e |
 | I09 | Wire QStash jobs/manual idempotent refresh | `NOT_STARTED` | Signed redelivery/double-click tests |
 | I10 | Seed RNI Direct routes and optional Gateway selection | `NOT_STARTED` | D-RNI-21 policy locked; legacy route unchanged, budget enforcement and parity tests pending |
@@ -380,6 +381,7 @@
 | `CURRENT` | Add D-RNI-22 semantic storage to migration 0024 | nullable historical-compatible claim dimension, immutable run/observation membership and exact E05 quality sidecar; clean/forward disposable PostgreSQL migration gate 5/5 |
 | `CURRENT` | Compose E06/E07 artifact persistence boundary | Reddit/X artifacts commit independently; convergence binds their exact complete-artifact hashes and rejects crossed storage identity; focused composition 5/5, typecheck/scoped lint pass |
 | `CURRENT` | Persist D-RNI-19 cited-synthesis lineage in migration 0024 | PostgreSQL schema/universe 23/23; typecheck/scoped lint/diff pass; four adversarial P1 findings closed; independent re-review PASS; broader persistence 38/41 because three superseded D05 standalone-write expectations now reach the intended trace guard and are assigned to DATA D11 |
+| `CURRENT` | Start I07D after DATA D10 adversarial review | D10 focused 9/9 and DATA 50/50 pass, but review found storage-rounding identity collision plus incomplete four-dimension/input-hash-set validation; shared hash column assigned to coordinator and adapter corrections returned to DATA |
 
 ## I07A handoff
 
