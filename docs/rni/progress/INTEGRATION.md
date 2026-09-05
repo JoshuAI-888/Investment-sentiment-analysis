@@ -69,6 +69,10 @@
 | CR-DATA-004 | DATA | `RESOLVED_NO_CHANGE` | I06 synchronizer owns duplicate, completeness, NVDA, ambiguous, and unresolved validation; transport schema remains structural | DATA, INTEGRATION | `e535624` + `264ea9c` |
 | CR-DATA-005 | DATA | `ACCEPTED` | D-RNI-23 defines E07 overall stance from persisted E05 overall scores and the exact committed E06 weight trace; DATA validates the projection and rejects caller-only changes | DATA, ENGINE, INTEGRATION | D-RNI-23 |
 | CR-ENGINE-001 | ENGINE | `ACCEPTED_FOR_I07` | Persist claim-bound point-in-time corroboration, separate verifier/challenger invocations, citation roles, analytics lineage and ordered sentence trace; no P0 source-kind expansion or factual-verification copy | DATA, ENGINE, INTEGRATION | D-RNI-19 / current I02G commit |
+| CR-I07-001 | I07 | `ACCEPTED` | Use the frozen `verification` stage for the governed verifier task; `verifier` was an invalid migration literal | ENGINE, INTEGRATION | D-RNI-26 |
+| CR-I07-002 | I07 | `ACCEPTED` | Persist an explicit, reason-bound `skipped` terminal state when deterministic E08 policy correctly avoids verifier or challenger dispatch | ENGINE, INTEGRATION | D-RNI-26 |
+| CR-I07-003 | I07 | `ACCEPTED` | Persist role edges as the eligible evidence candidates supplied to E08, while assessment arrays record and validate a same-role subset selected by the verifier | DATA, ENGINE, INTEGRATION | D-RNI-26 |
+| CR-I07-004 | I07 | `ACCEPTED` | Resolve the frozen P0 source-rights version from server-owned active configuration and inject it into the trusted reader; a batch row cannot declare itself active | DATA, ENGINE, INTEGRATION | D-RNI-26 |
 | CR-SURFACE-01 | SURFACE | `ACCEPTED` | Add `RniReadService.getCitation(citationId)` returning frozen `RniCitation`; evidence remains a second source-ID read | DATA, SURFACE, INTEGRATION | `264ea9c` |
 | CR-SURFACE-02 | SURFACE | `ACCEPTED` | Add a cursor-paginated Radar page with run lineage, security identity, two non-poolable platform-labelled cells, and explicit pending/aligned/divergent/partial/insufficient cross-source state | DATA, ENGINE, SURFACE, INTEGRATION | `84dca87` / D-RNI-13 |
 | CR-SURFACE-03 | SURFACE | `ACCEPTED` | Add a bounded security-detail read with canonical identity and exactly four cited dimension assignments for each independently labelled platform | DATA, ENGINE, SURFACE, INTEGRATION | `ce80424` / D-RNI-14 |
@@ -192,6 +196,51 @@
   unknown-publication corroboration, wrong-host/search-result URLs, inactive rights policies,
   self-citation and cross-run/security roles; persist/replay separate verifier/challenger runs and
   prove every non-coverage sentence resolves through stored citation edges.
+
+### I07 cited-publication compatibility decisions
+
+- **CR-I07-001 current behaviour:** migration `0024` permits only `verification` and `challenger`
+  synthesis stages, while its governed-invocation trigger looked for the impossible literal
+  `verifier`. A valid I10 `rni_verification` reservation therefore failed before dispatch.
+  **Requested shape and decision:** compare `rni_verification` with the canonical
+  `verification` stage already frozen by E08 and D-RNI-19. This is a corrective migration change,
+  not a new public stage. **Acceptance:** the exact prepared verification invocation reserves
+  through I10, while a challenger or unrelated invocation remains rejected.
+- **CR-I07-002 current behaviour:** E08 deliberately makes no verifier call when every claim is
+  on a non-publishable platform and makes no challenger call when every verifier assessment is
+  `unverified`; migration `0024` nevertheless permits only `prepared`, `succeeded` or `failed` and
+  requires both invocations to be `succeeded` before publication. **Requested shape and decision:**
+  a persisted invocation plan may transition once from `prepared` to `skipped`, with null output
+  hash and an allowlisted terminal reason of `no_eligible_claims` or
+  `no_verified_assessments`. A skipped call has no governed AI-ledger invocation because no
+  provider dispatch or spend reservation occurs. **Compatibility:** successful and failed call
+  lineage is unchanged; no fabricated provider response or usage is permitted. **Acceptance:**
+  publish the two deterministic no-call paths with exact skipped reasons, reject inconsistent
+  skip/stage/result combinations, and retain the one-transition and append-only guards.
+- **CR-I07-003 current behaviour:** migration `0024` requires an assessment's citation arrays to
+  equal every eligible corroborating/counterevidence role edge and validates challenger output
+  against all candidate roles. E08 instead supplies those roles as bounded candidates and allows
+  the verifier to select a valid same-role subset or remain `unverified`. **Requested shape and
+  decision:** keep candidate role rows immutable, require every selected assessment citation to
+  be a candidate with the matching claim and role, preserve verdict/selection shape and validate
+  the challenger against the verifier-selected contradicting set. **Compatibility:** no role,
+  assessment or public artifact field changes; the database becomes consistent with the accepted
+  E08 semantics without weakening run/security/cutoff/rights/self-citation protections.
+  **Acceptance:** selected subsets, unverified-with-candidates and exact strongest-countercase
+  output pass; cross-claim, wrong-role, invented, duplicate and inconsistent selections fail.
+- **CR-I07-004 current behaviour:** batches and source rows carry a rights-policy version, but no
+  accepted active-policy authority exists; trusting either row would make the publication under
+  review self-authorising. **Requested shape and decision:** the P0 active source-rights version
+  remains the integration-frozen `rni-source-policy-v1`, exposed only by server-owned
+  configuration and injected into the persistence reader under the publication lock. The reader
+  compares that authority with batch, claim, role and source lineage. **Compatibility:** there is
+  no client field, schema vocabulary or activation UI change; a future policy successor requires
+  a separate owner-approved versioned decision. **Acceptance:** exact active rights publishes;
+  stale, mixed, caller-declared or missing authority fails before inference/publication.
+- **Affected boundaries:** migration `0024`, I07 cited-synthesis persistence, I10 governed
+  verifier/challenger recording and I08 reads of accepted publication artifacts. D-RNI-26 records
+  these linked cross-lane corrections; D-RNI-19's public contract and P0 source scope remain
+  unchanged.
 
 ### CR-SURFACE-06 decision
 

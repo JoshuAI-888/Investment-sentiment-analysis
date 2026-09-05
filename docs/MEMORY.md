@@ -1101,6 +1101,35 @@ model capability evidence and compatible current first-tier price evidence. The 
 global USD 2 manual-run, USD 25 full-universe, USD 50 rolling-day, USD 300 monthly warning and USD
 500 monthly stop remain fixed and are not editable in this portal.
 
+### D-RNI-26 — Cited publication records planned no-calls and selected evidence explicitly
+
+**Accepts CR-I07-001 through CR-I07-004, 2026-09-05.** The accepted E08 contract is the authority
+for migration `0024` cited-publication semantics. The verifier stage is `verification`, matching
+the frozen invocation descriptor and governed `rni_verification` task; the stray `verifier`
+comparison is corrected without adding another stage name.
+
+Verifier and challenger descriptors are durable invocation plans created before E08 evaluates its
+deterministic dispatch guards. A plan transitions exactly once from `prepared` to `succeeded`,
+`failed` or `skipped`. `skipped` is permitted only with no output hash, no provider response or
+usage, and one allowlisted reason: `no_eligible_claims` for the verifier and its dependent
+challenger, or `no_verified_assessments` for the challenger after a successful verifier call. A
+skipped plan never creates or settles an I10 AI-ledger invocation because no provider dispatch or
+spend reservation occurred. Publication must prove that the stored assessments, challenger
+selection and snapshots match the skip reason; it must never manufacture successful calls.
+
+Claim-specific corroborating and counterevidence role rows are the immutable, bounded candidate
+set supplied to verification. The verifier's assessment arrays are the selected same-claim,
+same-role subsets. They need not equal every candidate, but may not invent, cross claims, swap
+roles or overlap. `unverified` selects neither set. Challenger validation uses the verifier-
+selected contradicting set, not all candidate counterevidence. Existing cutoff, canonical URL,
+rights, source-separation, run/security, exact-manifest and sentence-edge protections remain.
+
+The P0 active source-rights authority is server-owned configuration pinned to the already frozen
+`rni-source-policy-v1`. The persistence reader receives that authority through dependency
+injection under the publication lock and compares it with the batch, claim, role and source rows;
+none of those rows can declare itself active. A future rights-policy successor or activation
+surface requires a separate owner-approved, versioned decision.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to
