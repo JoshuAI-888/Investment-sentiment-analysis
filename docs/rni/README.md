@@ -31,7 +31,7 @@ the conflict analysis and closure path.
 - [`DEPLOY.md`](DEPLOY.md) — human intervention and live gates.
 - [`INTEGRATION_PLAN.md`](INTEGRATION_PLAN.md) — repository convergence and risk closure matrix.
 - [`ARCHITECTURAL_REVIEW.md`](ARCHITECTURAL_REVIEW.md) — final adversarial review.
+- [`closeout/README.md`](closeout/README.md) — gated RNI 1.0 multi-session prompt packs and launch order.
 
 The documents are specifications, not evidence that the runtime has been implemented. Only
 merged code, passing tests and the progress gates establish completion.
-
