@@ -4,10 +4,11 @@ import { canonicalHash } from '../../../../src/calc/canonical';
 import { calculatePlatformAnalytics } from '../../../../src/rni/analytics';
 import { convergePlatformFacts } from '../../../../src/rni/convergence';
 import {
-  rniDimensionKey,
-  type RniCombinedSummary,
-  type RniPlatform,
-} from '../../../../src/rni/contracts';
+  synthesizeCitedNarrative,
+  type RniCitedSynthesisRequest,
+} from '../../../../src/rni/agents';
+import { PostgresRniSynthesisEvidenceReader } from '../../../../src/rni/repositories/cited-synthesis-reader';
+import { rniDimensionKey, type RniPlatform } from '../../../../src/rni/contracts';
 import { insertUniverseProviderCall } from '../../../../src/repositories/versions';
 import { methodology, platformInput } from '../../../unit/rni/analytics/fixtures';
 import {
@@ -20,7 +21,10 @@ const hash = (text: string) => createHash('sha256').update(text).digest('hex');
 const J = JSON.stringify;
 
 /** Real relational lineage and replayable analytics; no provider calls or disabled constraints. */
-export async function seedReadModel(pool: pg.Pool) {
+export async function seedReadModel(
+  pool: pg.Pool,
+  scope: 'full_universe' | 'manual_ticker' | 'missing' = 'full_universe',
+) {
   const { rows: configs } = await pool.query<{ id: string }>(`insert into config_version
     (environment,status,created_by,change_reason,checksum,activated_at)
     values ('test','active','test','read model fixture','read-fixture',now()) returning id`);
@@ -94,6 +98,11 @@ export async function seedReadModel(pool: pg.Pool) {
     );
   await runTx.query('commit');
   runTx.release();
+  if (scope !== 'missing')
+    await pool.query(
+      `insert into rni_run_execution_scope (run_id,scope_kind,security_id) values ($1,$2,$3)`,
+      [runId, scope, scope === 'manual_ticker' ? securityId : null],
+    );
   const citations: Record<
     RniPlatform,
     { id: string; claim: string; observation: string; source: string; role: string }[]
@@ -169,6 +178,13 @@ export async function seedReadModel(pool: pg.Pool) {
         values ($1,$2,$3,$4,$5)`,
         [runId, observation, o.sourceItemId, securityId, hash(observation)],
       );
+      await pool.query(
+        `insert into rni_observation_semantic_quality
+        (observation_id,source_item_id,security_id,support_start,support_end,evidence_text,is_sarcastic,sarcasm_probability,is_meme,meme_probability,
+         is_spam,spam_probability,information_value,assertion_strength,evidence_quality,uncertainty)
+        values ($1,$2,$3,0,$4,$5,false,0,false,0,false,0,1,1,1,0)`,
+        [observation, o.sourceItemId, securityId, text.length, text],
+      );
       for (const dimension of rniDimensionKey.options) {
         const claim = randomUUID();
         const id = randomUUID();
@@ -239,7 +255,7 @@ export async function seedReadModel(pool: pg.Pool) {
       methodologyVersion: reddit.artifact.methodologyVersion,
       stance: p === 'reddit' ? 'bullish' : 'bearish',
       stanceScore: p === 'reddit' ? '0.5' : '-0.5',
-      effectiveAttention: '1',
+      effectiveAttention: (p === 'reddit' ? reddit.artifact : x.artifact).result.effectiveAttention,
       dataThroughAt: '2026-09-05T11:00:00Z',
       analyticsArtifactHash: canonicalHash(p === 'reddit' ? reddit.artifact : x.artifact),
       dimensions: rniDimensionKey.options.map((dimension) => ({
@@ -275,7 +291,7 @@ export async function seedReadModel(pool: pg.Pool) {
     ],
   );
 
-  const publish = async () => {
+  const publish = async (withUnverifiedClaim = false, createdAt = now) => {
     const batch = randomUUID();
     const summaryId = randomUUID();
     const verifier = randomUUID();
@@ -314,59 +330,212 @@ export async function seedReadModel(pool: pg.Pool) {
               canonicalHash(p === 'reddit' ? reddit.artifact : x.artifact),
             ],
           );
+      const claims: RniCitedSynthesisRequest['claims'][number][] = [];
+      if (withUnverifiedClaim) {
+        const claim = citations.reddit[2]!;
+        const candidate = citations.reddit[6]!;
+        const { rows } = await tx.query<{ claim_text: string }>(
+          'select claim_text from rni_evidence_claim where id=$1',
+          [claim.claim],
+        );
+        claims.push({
+          id: claim.claim,
+          runId,
+          securityId,
+          platform: 'reddit',
+          kind: 'catalyst',
+          claimText: rows[0]!.claim_text,
+          sourceCitationIds: [claim.id],
+          verificationCutoffAt: convergence.inputSnapshot.asOf,
+        });
+        await tx.query(
+          `insert into rni_synthesis_claim_input
+          (batch_id,run_id,security_id,assessment_cutoff_at,policy_version,rights_policy_version,ordinal,claim_id,source_item_id,observation_id,platform,source_citation_ids)
+          values ($1,$2,$3,$4,'read-policy','rights-v1',0,$5,$6,$7,'reddit',$8)`,
+          [
+            batch,
+            runId,
+            securityId,
+            now,
+            claim.claim,
+            claim.source,
+            claim.observation,
+            J([claim.id]),
+          ],
+        );
+        for (const [citation, role] of [
+          [claim, 'social_claim'],
+          [candidate, 'corroborating'],
+        ] as const)
+          await tx.query(
+            `insert into rni_synthesis_citation_role
+            (batch_id,run_id,security_id,assessment_cutoff_at,policy_version,rights_policy_version,citation_id,target_claim_id,
+             evidence_claim_id,source_item_id,observation_id,platform,evidence_role)
+            values ($1,$2,$3,$4,'read-policy','rights-v1',$5,$6,$7,$8,$9,'reddit',$10)`,
+            [
+              batch,
+              runId,
+              securityId,
+              now,
+              citation.id,
+              claim.claim,
+              citation.claim,
+              citation.source,
+              citation.observation,
+              role,
+            ],
+          );
+      }
+      const descriptor = {
+        runId,
+        securityId,
+        modelId: 'test-model',
+        promptVersion: 'test-prompt',
+        policyVersion: 'read-policy',
+        rightsPolicyVersion: 'rights-v1',
+        claimIds: claims.map((c) => c.id),
+        assessmentCutoffAt: convergence.inputSnapshot.asOf,
+      };
+      const request: RniCitedSynthesisRequest = {
+        codeVersion: 'rni-cited-synthesis-v1',
+        policyVersion: 'read-policy',
+        rightsPolicyVersion: 'rights-v1',
+        summaryId,
+        createdAt,
+        convergenceArtifact: convergence,
+        claims,
+        citationIds: all,
+        platformCitationIds: { reddit: cids('reddit'), x: cids('x') },
+        verificationInvocation: { ...descriptor, stage: 'verification', modelRunId: verifier },
+        challengerInvocation: { ...descriptor, stage: 'challenger', modelRunId: challenger },
+      };
+      const reader = new PostgresRniSynthesisEvidenceReader(
+        { batchId: batch, runId, securityId },
+        async () => 'rights-v1',
+        tx,
+      );
+      const artifact = await synthesizeCitedNarrative(
+        request,
+        {
+          getEvidence: (id) => reader.getEvidence(id),
+          getCitation: (id) => reader.getCitation(id),
+          getCitationLineage: (claim, id) => reader.getCitationLineage(claim, id),
+          getSynthesisClaim: (id) => reader.getSynthesisClaim(id),
+          getActiveRightsPolicyVersion: (id) => reader.getActiveRightsPolicyVersion(id),
+          getModelInvocation: async (id) =>
+            id === verifier ? request.verificationInvocation : request.challengerInvocation,
+        },
+        {
+          verify: async () => {
+            if (!withUnverifiedClaim) throw new Error('No eligible claims');
+            return {
+              assessments: claims.map((c) => ({
+                claimId: c.id,
+                verdict: 'unverified',
+                supportingCitationIds: [],
+                contradictingCitationIds: [],
+              })),
+            };
+          },
+        },
+        {
+          challenge: async () => {
+            throw new Error('No eligible claims');
+          },
+        },
+      );
       for (const [id, stage] of [
         [verifier, 'verification'],
         [challenger, 'challenger'],
-      ]) {
+      ] as const) {
+        const input =
+          stage === 'verification'
+            ? artifact.modelInputSnapshot
+            : {
+                ...artifact.modelInputSnapshot,
+                invocation: request.challengerInvocation,
+                verification: artifact.verificationOutputSnapshot,
+              };
         await tx.query(
           `insert into rni_synthesis_model_invocation
           (id,batch_id,stage,model_id,model_revision,prompt_version,ordered_claim_ids,input_hash,prepared_snapshot,prepared_at)
-          values ($1,$2,$3,'test-model','test-revision','test-prompt','[]',$4,'{}',$5)`,
-          [id, batch, stage, hash(id!), now],
+          values ($1,$2,$3,'test-model','test-revision','test-prompt',$7,$4,$5,$6)`,
+          [
+            id,
+            batch,
+            stage,
+            canonicalHash(input),
+            J({
+              descriptor: input.invocation,
+              idempotencyIdentityHash: hash(batch),
+              createdAt,
+              convergenceArtifactId: convergenceId,
+              convergenceArtifactHash: canonicalHash(convergence),
+              summaryId,
+              modelInput: input,
+            }),
+            now,
+            J(descriptor.claimIds),
+          ],
         );
         await tx.query(
-          `update rni_synthesis_model_invocation set status='succeeded',output_hash=$2,
-          terminal_metadata='{"outcome":"succeeded"}',completed_at=$3 where id=$1`,
-          [id, hash('output'), now],
+          `update rni_synthesis_model_invocation set status=$3,output_hash=$4,
+          terminal_metadata=$5,completed_at=$2 where id=$1`,
+          [
+            id,
+            now,
+            withUnverifiedClaim && stage === 'verification' ? 'succeeded' : 'skipped',
+            withUnverifiedClaim && stage === 'verification'
+              ? canonicalHash(artifact.verificationOutputSnapshot)
+              : null,
+            J(
+              withUnverifiedClaim && stage === 'verification'
+                ? { outcome: 'succeeded', responseId: 'fixture-verification', latencyMs: 1 }
+                : {
+                    outcome: 'skipped',
+                    reason: withUnverifiedClaim ? 'no_verified_assessments' : 'no_eligible_claims',
+                  },
+            ),
+          ],
         );
       }
+      for (const assessment of artifact.verificationOutputSnapshot)
+        await tx.query(
+          `insert into rni_catalyst_assessment
+        (batch_id,run_id,security_id,assessment_cutoff_at,policy_version,rights_policy_version,claim_id,verifier_invocation_id,
+         verdict,supporting_citation_ids,contradicting_citation_ids,assessment_hash)
+        values ($1,$2,$3,$4,'read-policy','rights-v1',$5,$6,$7,$8,$9,$10)`,
+          [
+            batch,
+            runId,
+            securityId,
+            now,
+            assessment.claimId,
+            verifier,
+            assessment.verdict,
+            J(assessment.supportingCitationIds),
+            J(assessment.contradictingCitationIds),
+            canonicalHash(assessment),
+          ],
+        );
       await tx.query(
         `insert into rni_challenger_selection
         (batch_id,challenger_invocation_id,verdict,citation_ids,selection_hash) values ($1,$2,'insufficient','[]',$3)`,
-        [batch, challenger, hash('selection')],
+        [batch, challenger, canonicalHash(artifact.challengerOutputSnapshot)],
       );
-      const sections: RniCombinedSummary['sections'] = [
-        {
-          heading: 'Reddit sentiment',
-          status: 'complete',
-          text: 'Reddit evidence is bullish. Both sampled sources support the conclusion.',
-          citationIds: cids('reddit'),
-        },
-        {
-          heading: 'X sentiment',
-          status: 'complete',
-          text: 'X evidence is bearish.',
-          citationIds: cids('x'),
-        },
-        {
-          heading: 'Combined summary',
-          status: 'complete',
-          text: 'The source conclusions diverge.',
-          citationIds: all,
-        },
-      ];
+      const sections = artifact.result.summary.sections;
       await tx.query(
         `insert into rni_combined_summary
         (id,run_id,security_id,reddit_platform_slice_id,x_platform_slice_id,status,sections,created_at)
         values ($1,$2,$3,$4,$5,'complete',$6,$7)`,
-        [summaryId, runId, securityId, slices.reddit, slices.x, J(sections), now],
+        [summaryId, runId, securityId, slices.reddit, slices.x, J(sections), createdAt],
       );
       await tx.query(
         `insert into rni_cited_synthesis_artifact
         (id,run_id,security_id,batch_id,convergence_artifact_id,verifier_invocation_id,verification_input_hash,
          challenger_invocation_id,challenger_input_hash,calculation_code_version,policy_version,input_hash,result_hash,
          request_snapshot,model_input_snapshot,verification_output_snapshot,challenger_output_snapshot,result_snapshot,statement_count,created_at)
-        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,'rni-cited-synthesis-v1','read-policy',$10,$10,'{}','{}','[]','{}','{}',4,$11)`,
+        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,'rni-cited-synthesis-v1','read-policy',$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
         [
           summaryId,
           runId,
@@ -374,21 +543,21 @@ export async function seedReadModel(pool: pg.Pool) {
           batch,
           convergenceId,
           verifier,
-          hash(verifier),
+          artifact.verificationInputHash,
           challenger,
-          hash(challenger),
-          hash('publication'),
-          now,
+          artifact.challengerInputHash,
+          artifact.inputHash,
+          artifact.resultHash,
+          J(artifact.requestSnapshot),
+          J(artifact.modelInputSnapshot),
+          J(artifact.verificationOutputSnapshot),
+          J(artifact.challengerOutputSnapshot),
+          J(artifact.result),
+          artifact.result.statements.length,
+          createdAt,
         ],
       );
-      const statements = sections.flatMap((section) =>
-        section.heading === 'Reddit sentiment'
-          ? [
-              { ...section, text: 'Reddit evidence is bullish.' },
-              { ...section, text: 'Both sampled sources support the conclusion.' },
-            ]
-          : [section],
-      );
+      const statements = artifact.result.statements;
       for (const [i, s] of statements.entries()) {
         const statement = randomUUID();
         await tx.query(
@@ -401,8 +570,8 @@ export async function seedReadModel(pool: pg.Pool) {
             batch,
             i,
             s.heading,
-            s.status,
-            s.heading === 'Combined summary' ? 'cross_source_fact' : 'platform_conclusion',
+            sections.find((section) => section.heading === s.heading)!.status,
+            s.origin,
             s.text,
             J(s.citationIds),
           ],
@@ -418,14 +587,7 @@ export async function seedReadModel(pool: pg.Pool) {
         }
       }
       await tx.query('commit');
-      return {
-        id: summaryId,
-        runId,
-        securityId,
-        status: 'complete' as const,
-        sections,
-        createdAt: now,
-      };
+      return artifact.result.summary;
     } catch (error) {
       await tx.query('rollback');
       throw error;

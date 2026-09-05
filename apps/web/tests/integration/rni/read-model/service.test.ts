@@ -1,5 +1,13 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type pg from 'pg';
+import { randomUUID } from 'node:crypto';
+import type { Queryable } from '../../../../src/repositories/client';
+import { ReadSnapshot } from '../../../../src/rni/read-model/repositories/snapshot';
+import { canonicalHash } from '../../../../src/calc/canonical';
+import {
+  convergePlatformFacts,
+  type RniConvergenceArtifact,
+} from '../../../../src/rni/convergence';
 import {
   PostgresRniReadService,
   PostgresRniUniverseReadService,
@@ -26,6 +34,249 @@ describe.skipIf(!databaseUrl())('PostgreSQL RNI read model', () => {
   }, 30_000);
   afterAll(async () => {
     await pool?.end();
+  });
+  // Corrupt the storage response at the read boundary without disabling database guards.
+  const intercepted = (mutate: (sql: string, rows: Record<string, unknown>[]) => void) =>
+    new ReadSnapshot(
+      {
+        query: async (sql: string, values: unknown[]) => {
+          const result = await pool.query(sql, values);
+          mutate(sql, result.rows);
+          return result;
+        },
+      } as Queryable,
+      'test',
+      'rights-v1',
+    );
+
+  it.each([
+    'input_hash',
+    'result_hash',
+    'verification_input_hash',
+    'challenger_input_hash',
+    'request_snapshot',
+    'model_input_snapshot',
+    'verification_output_snapshot',
+    'challenger_output_snapshot',
+    'result_snapshot',
+  ])('rejects a crossed accepted E08 %s', async (field) => {
+    await seed.publish();
+    const store = intercepted((sql, rows) => {
+      if (sql.includes('from rni_cited_synthesis_artifact\n') && rows[0])
+        rows[0][field] = field.endsWith('_hash')
+          ? '0'.repeat(64)
+          : field === 'verification_output_snapshot'
+            ? []
+            : {};
+      if (
+        field === 'verification_output_snapshot' &&
+        sql.includes('from rni_cited_synthesis_artifact\n') &&
+        rows[0]
+      )
+        rows[0][field] = [
+          {
+            claimId: randomUUID(),
+            verdict: 'unverified',
+            supportingCitationIds: [],
+            contradictingCitationIds: [],
+          },
+        ];
+    });
+    await expect(store.publication(seed.runId, seed.securityId)).rejects.toMatchObject({
+      code: 'CITATION_INVALID',
+    });
+  });
+
+  it.each(['prepared_snapshot', 'output_hash', 'status', 'terminal_metadata'])(
+    'rejects crossed durable invocation %s',
+    async (field) => {
+      await seed.publish();
+      const store = intercepted((sql, rows) => {
+        if (sql.startsWith('select * from rni_synthesis_model_invocation') && rows[0])
+          rows[0][field] =
+            field === 'status' ? 'succeeded' : field === 'output_hash' ? '0'.repeat(64) : {};
+      });
+      await expect(store.publication(seed.runId, seed.securityId)).rejects.toMatchObject({
+        code: 'CITATION_INVALID',
+      });
+    },
+  );
+
+  it.each([
+    'descriptor',
+    'summaryId',
+    'convergenceArtifactId',
+    'convergenceArtifactHash',
+    'idempotencyIdentityHash',
+    'createdAt',
+    'missing_modelInput',
+    'bare_input',
+  ])('rejects a crossed D-RNI-28 preparation envelope %s', async (field) => {
+    await seed.publish();
+    const store = intercepted((sql, rows) => {
+      if (!sql.startsWith('select * from rni_synthesis_model_invocation') || !rows[0]) return;
+      const envelope = rows[0].prepared_snapshot as Record<string, unknown>;
+      if (field === 'missing_modelInput') delete envelope.modelInput;
+      else if (field === 'bare_input') rows[0].prepared_snapshot = envelope.modelInput;
+      else
+        envelope[field] =
+          field === 'descriptor'
+            ? {}
+            : field.endsWith('Id')
+              ? randomUUID()
+              : field === 'createdAt'
+                ? '2026-09-06T12:00:00Z'
+                : '0'.repeat(64);
+    });
+    await expect(store.publication(seed.runId, seed.securityId)).rejects.toMatchObject({
+      code: 'CITATION_INVALID',
+    });
+  });
+
+  it.each([
+    'stanceScore',
+    'dimensions',
+    'effectiveAttention',
+    'windowStart',
+    'runSourceSliceId',
+    'methodologyVersion',
+  ])('rejects internally replayable E07 with crossed E06 %s', async (field) => {
+    const store = intercepted((sql, rows) => {
+      if (!sql.includes('select c.* from rni_convergence_artifact') || !rows[0]) return;
+      const input = rows[0].input_snapshot as RniConvergenceArtifact['inputSnapshot'];
+      const change =
+        field === 'stanceScore'
+          ? { stanceScore: '0.75' }
+          : field === 'dimensions'
+            ? { dimensions: input.reddit.dimensions.map((d) => ({ ...d, score: '0.75' })) }
+            : field === 'effectiveAttention'
+              ? { effectiveAttention: '77' }
+              : field === 'windowStart'
+                ? { windowStart: '2026-09-03T12:00:00Z' }
+                : field === 'runSourceSliceId'
+                  ? { runSourceSliceId: randomUUID() }
+                  : { methodologyVersion: 'crossed-methodology' };
+      const revised = convergePlatformFacts({
+        ...input,
+        reddit: { ...input.reddit, ...change },
+        x:
+          field === 'windowStart' || field === 'methodologyVersion'
+            ? { ...input.x, ...change }
+            : input.x,
+      });
+      rows[0].input_snapshot = revised.inputSnapshot;
+      rows[0].result_snapshot = revised.result;
+      rows[0].input_hash = revised.inputHash;
+      rows[0].result_hash = revised.resultHash;
+    });
+    await expect(store.artifacts(seed.runId, seed.securityId)).rejects.toMatchObject({
+      code: 'CITATION_INVALID',
+    });
+  });
+
+  it('requires an explicit scope and rejects a crossed manual security', async () => {
+    const absent = intercepted((sql, rows) => {
+      if (sql.includes('select scope_kind')) rows.splice(0);
+    });
+    await expect(absent.securities(seed.runId)).rejects.toMatchObject({ code: 'CONFLICT' });
+    const crossed = intercepted((sql, rows) => {
+      if (sql.includes('select scope_kind'))
+        rows[0] = { scope_kind: 'manual_ticker', security_id: seed.securities[101]!.id };
+    });
+    await expect(crossed.securities(seed.runId)).rejects.toMatchObject({ code: 'CONFLICT' });
+    await truncateAll(pool);
+    seed = await seedReadModel(pool, 'manual_ticker');
+    const service = new PostgresRniReadService(options());
+    expect(
+      (await service.getRadarPage({ runId: seed.runId, limit: 100 })).rows.map(
+        (r) => r.security.id,
+      ),
+    ).toEqual([seed.securityId]);
+    await expect(
+      service.getSecurityDetail(seed.runId, seed.securities[1]!.id),
+    ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
+  });
+
+  it('excludes tombstoned and retired-policy sources from fallback eligible counts', async () => {
+    const store = new ReadSnapshot(pool, 'test', 'rights-v1');
+    expect(await store.sourceCount(seed.runId, seed.securityId, 'reddit')).toBe(2);
+    await pool.query(
+      `update rni_source_item set source_status='tombstoned', tombstoned_at=now(), tombstone_reason='withdrawn' where id=$1`,
+      [seed.citations.reddit[0]!.source],
+    );
+    expect(await store.sourceCount(seed.runId, seed.securityId, 'reddit')).toBe(1);
+    expect(
+      await new ReadSnapshot(pool, 'test', 'rights-v2').sourceCount(
+        seed.runId,
+        seed.securityId,
+        'reddit',
+      ),
+    ).toBe(0);
+  });
+
+  it('rejects a crossed challenger selection and statement origin even with valid citation edges', async () => {
+    await seed.publish();
+    for (const table of ['rni_challenger_selection', 'rni_publication_statement']) {
+      const store = intercepted((sql, rows) => {
+        if (sql.includes(`from ${table}`) && rows[0]) {
+          if (table === 'rni_challenger_selection')
+            rows[0].selection_hash = canonicalHash({ incorrect: true });
+          else rows[0].origin = 'coverage_disclosure';
+        }
+      });
+      await expect(store.publication(seed.runId, seed.securityId)).rejects.toMatchObject({
+        code: 'CITATION_INVALID',
+      });
+    }
+  });
+
+  it('replays a succeeded verifier selecting no corroboration from candidates and a skipped challenger', async () => {
+    const summary = await seed.publish(true);
+    expect(
+      await new PostgresRniReadService(options()).getSecuritySummary(seed.runId, seed.securityId),
+    ).toEqual(summary);
+    const plans = await pool.query(
+      'select stage,status,terminal_metadata from rni_synthesis_model_invocation order by stage',
+    );
+    expect(plans.rows).toEqual([
+      {
+        stage: 'challenger',
+        status: 'skipped',
+        terminal_metadata: { outcome: 'skipped', reason: 'no_verified_assessments' },
+      },
+      {
+        stage: 'verification',
+        status: 'succeeded',
+        terminal_metadata: {
+          outcome: 'succeeded',
+          responseId: 'fixture-verification',
+          latencyMs: 1,
+        },
+      },
+    ]);
+    const store = intercepted((sql, rows) => {
+      if (sql.includes('from rni_catalyst_assessment') && rows[0])
+        rows[0].assessment_hash = '0'.repeat(64);
+    });
+    await expect(store.publication(seed.runId, seed.securityId)).rejects.toMatchObject({
+      code: 'CITATION_INVALID',
+    });
+  });
+
+  it('preserves microsecond publication identity and rejects a changed summary projection', async () => {
+    const summary = await seed.publish(false, '2026-09-05T12:00:00.123456Z');
+    expect(
+      await new PostgresRniReadService(options()).getSecuritySummary(seed.runId, seed.securityId),
+    ).toEqual(summary);
+    const store = intercepted((sql, rows) => {
+      if (sql.includes('from rni_combined_summary') && rows[0]) {
+        const sections = rows[0].sections as { text: string }[];
+        sections[0]!.text = 'An unsupported revised conclusion.';
+      }
+    });
+    await expect(store.publication(seed.runId, seed.securityId)).rejects.toMatchObject({
+      code: 'CITATION_INVALID',
+    });
   });
 
   it('reads all seven methods with complete source-separated cited projections', async () => {
@@ -132,7 +383,7 @@ describe.skipIf(!databaseUrl())('PostgreSQL RNI read model', () => {
       code: 'FORBIDDEN',
     });
     await expect(service.getSecuritySummary(seed.runId, seed.securityId)).rejects.toMatchObject({
-      code: 'FORBIDDEN',
+      code: 'CITATION_INVALID',
     });
   });
 

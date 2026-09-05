@@ -5,15 +5,18 @@ import { getPool, type Queryable } from '../../../repositories/client';
 import { getRniRunById, getRniPlatformSlices } from '../../repositories/runs';
 import { getRniSourceById } from '../../repositories/source-items';
 import { getRniCitationById } from '../../repositories/claims-narratives';
-import { getRniCombinedSummary } from '../../repositories/summaries';
 import { canonicalizeRedditUrl } from '../../discovery/reddit-url';
-import { canonicalHash } from '../../../calc/canonical';
+import { canonicalHash, canonicalInstant } from '../../../calc/canonical';
+import { D, exact } from '../../../calc/decimal';
+import { replayCitedSynthesis, type RniCitedSynthesisArtifact } from '../../agents';
+import { PostgresRniSynthesisEvidenceReader } from '../../repositories/cited-synthesis-reader';
 import { replayPlatformAnalytics, type RniPlatformAnalyticsArtifact } from '../../analytics';
 import { replayPlatformFacts, type RniConvergenceArtifact } from '../../convergence';
 import {
   rniRadarSecurity,
   rniDimensionKey,
   rniErrorCode,
+  rniCombinedSummary,
   type RniCombinedSummary,
 } from '../../contracts';
 import { RniReadError } from '../errors';
@@ -77,6 +80,7 @@ export type UniverseRow = {
 };
 
 export class ReadSnapshot {
+  private readonly artifactCache = new Map<string, ReturnType<ReadSnapshot['loadArtifacts']>>();
   constructor(
     readonly db: Queryable,
     readonly environment: string,
@@ -115,16 +119,33 @@ export class ReadSnapshot {
 
   async securities(runId: string) {
     const run = await this.run(runId);
+    const { rows: scopes } = await this.db.query<{
+      scope_kind: string;
+      security_id: string | null;
+    }>('select scope_kind, security_id from rni_run_execution_scope where run_id = $1', [runId]);
+    const scope = scopes[0];
+    if (
+      scopes.length !== 1 ||
+      !scope ||
+      (scope.scope_kind === 'manual_ticker'
+        ? run.trigger !== 'manual' || !uuid.safeParse(scope.security_id).success
+        : scope.scope_kind !== 'full_universe' || scope.security_id !== null)
+    )
+      throw new RniReadError('CONFLICT');
     const { rows } = await this.db.query(
       `select s.id, s.symbol as ticker, s.name as "companyName", s.exchange
        from universe_member m join security s on s.id = m.security_id
-       left join rni_run_execution_scope scope on scope.run_id = $2
        where m.universe_version = $1 and m.enabled
-         and (scope.scope_kind is distinct from 'manual_ticker' or scope.security_id = s.id)
+         and ($2::uuid is null or $2 = s.id)
        order by s.id limit 601`,
-      [run.universeVersion, runId],
+      [run.universeVersion, scope.security_id],
     );
-    if (rows.length > 600) throw new RniReadError('CONFLICT');
+    if (
+      rows.length > 600 ||
+      rows.length === 0 ||
+      (scope.scope_kind === 'manual_ticker' && rows.length !== 1)
+    )
+      throw new RniReadError('CONFLICT');
     return rows.map((row) => rniRadarSecurity.parse(row));
   }
 
@@ -198,14 +219,77 @@ export class ReadSnapshot {
   }
 
   async publication(runId: string, securityId: string): Promise<RniCombinedSummary | null> {
-    const summary = await getRniCombinedSummary(runId, securityId, this.db);
-    if (!summary) return null;
-    const { rows: artifacts } = await this.db.query<{ statement_count: number }>(
-      `select statement_count from rni_cited_synthesis_artifact
+    const summaries = await this.db.query(
+      `select id, run_id as "runId", security_id as "securityId", status, sections,
+        to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as "createdAt"
+        from rni_combined_summary where run_id = $1 and security_id = $2`,
+      [runId, securityId],
+    );
+    if (!summaries.rows.length) return null;
+    if (summaries.rows.length !== 1) throw new RniReadError('CITATION_INVALID');
+    const summary = rniCombinedSummary.parse(summaries.rows[0]);
+    const { rows: artifacts } = await this.db.query<{
+      statement_count: number;
+      batch_id: string;
+      convergence_artifact_id: string;
+      verifier_invocation_id: string;
+      challenger_invocation_id: string;
+      calculation_code_version: RniCitedSynthesisArtifact['calculationCodeVersion'];
+      policy_version: string;
+      input_hash: string;
+      result_hash: string;
+      verification_input_hash: string;
+      challenger_input_hash: string;
+      request_snapshot: RniCitedSynthesisArtifact['requestSnapshot'];
+      model_input_snapshot: RniCitedSynthesisArtifact['modelInputSnapshot'];
+      verification_output_snapshot: RniCitedSynthesisArtifact['verificationOutputSnapshot'];
+      challenger_output_snapshot: RniCitedSynthesisArtifact['challengerOutputSnapshot'];
+      result_snapshot: RniCitedSynthesisArtifact['result'];
+      created_at: string;
+    }>(
+      `select *, to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_at from rni_cited_synthesis_artifact
        where id = $1 and run_id = $2 and security_id = $3`,
       [summary.id, runId, securityId],
     );
-    if (!artifacts[0]) throw new RniReadError('CITATION_INVALID');
+    const a = artifacts[0];
+    if (!a) throw new RniReadError('CITATION_INVALID');
+    const artifact: RniCitedSynthesisArtifact = {
+      calculationCodeVersion: a.calculation_code_version,
+      policyVersion: a.policy_version,
+      inputHash: a.input_hash,
+      resultHash: a.result_hash,
+      verificationInputHash: a.verification_input_hash,
+      challengerInputHash: a.challenger_input_hash,
+      requestSnapshot: a.request_snapshot,
+      modelInputSnapshot: a.model_input_snapshot,
+      verificationOutputSnapshot: a.verification_output_snapshot,
+      challengerOutputSnapshot: a.challenger_output_snapshot,
+      result: a.result_snapshot,
+    };
+    const reader = new PostgresRniSynthesisEvidenceReader(
+      { batchId: a.batch_id, runId, securityId },
+      async () => this.policy,
+      this.db,
+    );
+    let accepted: RniCitedSynthesisArtifact;
+    try {
+      accepted = await replayCitedSynthesis(artifact, reader);
+      const components = await this.artifacts(runId, securityId, summary.id);
+      if (
+        !components ||
+        canonicalHash(components.convergence) !==
+          canonicalHash(accepted.requestSnapshot.convergenceArtifact) ||
+        canonicalHash(accepted) !== canonicalHash(artifact) ||
+        canonicalHash(accepted.result.summary) !== canonicalHash(summary) ||
+        canonicalInstant(a.created_at) !== canonicalInstant(accepted.requestSnapshot.createdAt) ||
+        accepted.requestSnapshot.verificationInvocation.modelRunId !== a.verifier_invocation_id ||
+        accepted.requestSnapshot.challengerInvocation.modelRunId !== a.challenger_invocation_id
+      )
+        throw new Error('Crossed publication');
+      await this.publicationOutputs(a.batch_id, a.convergence_artifact_id, accepted);
+    } catch {
+      throw new RniReadError('CITATION_INVALID');
+    }
     const { rows } = await this.db.query<{
       ordinal: number;
       heading: (typeof headings)[number];
@@ -225,10 +309,17 @@ export class ReadSnapshot {
       [summary.id, runId, securityId, this.policy],
     );
     if (
-      rows.length !== artifacts[0].statement_count ||
+      rows.length !== a.statement_count ||
+      rows.length !== accepted.result.statements.length ||
       rows.some(
         (row, i) =>
           row.ordinal !== i ||
+          canonicalHash({
+            heading: row.heading,
+            origin: row.origin,
+            text: row.statement_text,
+            citationIds: row.citation_ids,
+          }) !== canonicalHash(accepted.result.statements[i]) ||
           JSON.stringify(row.edges) !== JSON.stringify(row.citation_ids) ||
           (row.origin !== 'coverage_disclosure' && !row.edges.length),
       )
@@ -254,10 +345,164 @@ export class ReadSnapshot {
           throw new RniReadError('CITATION_INVALID');
       }
     }
-    return summary;
+    return accepted.result.summary;
   }
 
-  async artifacts(runId: string, securityId: string, summaryId?: string) {
+  private async publicationOutputs(
+    batchId: string,
+    convergenceId: string,
+    artifact: RniCitedSynthesisArtifact,
+  ) {
+    const batches = await this.db.query<{
+      ordered_citation_ids: unknown;
+      reddit_platform_citation_ids: unknown;
+      x_platform_citation_ids: unknown;
+    }>('select * from rni_synthesis_batch where id = $1', [batchId]);
+    const batch = batches.rows[0];
+    const request = artifact.requestSnapshot;
+    if (
+      !batch ||
+      canonicalHash(batch.ordered_citation_ids) !== canonicalHash(request.citationIds) ||
+      canonicalHash(batch.reddit_platform_citation_ids) !==
+        canonicalHash(request.platformCitationIds.reddit) ||
+      canonicalHash(batch.x_platform_citation_ids) !== canonicalHash(request.platformCitationIds.x)
+    )
+      throw new Error('Crossed batch manifest');
+    const { rows } = await this.db.query<{
+      id: string;
+      stage: string;
+      status: string;
+      input_hash: string;
+      output_hash: string | null;
+      prepared_snapshot: unknown;
+      terminal_metadata: unknown;
+    }>('select * from rni_synthesis_model_invocation where batch_id = $1 order by stage', [
+      batchId,
+    ]);
+    const eligible = artifact.modelInputSnapshot.claimInputs.some(({ claim }) => {
+      const facts = artifact.modelInputSnapshot.convergenceFacts;
+      const platform = facts.platforms[claim.platform];
+      return (
+        ['complete', 'partial'].includes(platform.status) &&
+        platform.stance !== 'insufficient' &&
+        facts.facts.freshness[claim.platform] === 'fresh'
+      );
+    });
+    const verified = artifact.verificationOutputSnapshot.some((v) => v.verdict !== 'unverified');
+    if (rows.length !== 2) throw new Error('Missing invocation');
+    let preparationIdentity: string | undefined;
+    for (const row of rows) {
+      const verifier = row.stage === 'verification';
+      const input = verifier
+        ? artifact.modelInputSnapshot
+        : {
+            ...artifact.modelInputSnapshot,
+            invocation: artifact.requestSnapshot.challengerInvocation,
+            verification: artifact.verificationOutputSnapshot,
+          };
+      const output = verifier
+        ? artifact.verificationOutputSnapshot
+        : artifact.challengerOutputSnapshot;
+      const skipped = !eligible || (!verifier && !verified);
+      // D-RNI-28: accepted plans must contain the final hydrated model input.
+      // The envelope is preparation identity; only its modelInput is the input hash.
+      const prepared = z
+        .object({
+          descriptor: z.unknown(),
+          idempotencyIdentityHash: z.string().regex(/^[a-f0-9]{64}$/u),
+          createdAt: z.string(),
+          convergenceArtifactId: uuid,
+          convergenceArtifactHash: z.string(),
+          summaryId: uuid,
+          modelInput: z.unknown(),
+        })
+        .strict()
+        .parse(row.prepared_snapshot);
+      if (
+        !Object.hasOwn(prepared, 'modelInput') ||
+        canonicalHash(prepared.descriptor) !== canonicalHash(input.invocation) ||
+        prepared.summaryId !== request.summaryId ||
+        prepared.convergenceArtifactId !== convergenceId ||
+        prepared.convergenceArtifactHash !== canonicalHash(request.convergenceArtifact) ||
+        canonicalInstant(prepared.createdAt) !== canonicalInstant(request.createdAt) ||
+        (preparationIdentity !== undefined &&
+          preparationIdentity !== prepared.idempotencyIdentityHash)
+      )
+        throw new Error('Crossed preparation identity');
+      preparationIdentity = prepared.idempotencyIdentityHash;
+      const metadata = z
+        .object({
+          outcome: z.literal('succeeded'),
+          responseId: z.unknown().optional(),
+          usage: z.unknown().optional(),
+          latencyMs: z.unknown().optional(),
+          costUsd: z.unknown().optional(),
+        })
+        .strict();
+      if (
+        row.id !== input.invocation.modelRunId ||
+        row.input_hash !== canonicalHash(input) ||
+        canonicalHash(prepared.modelInput) !== canonicalHash(input) ||
+        row.status !== (skipped ? 'skipped' : 'succeeded') ||
+        row.output_hash !== (skipped ? null : canonicalHash(output)) ||
+        (skipped
+          ? canonicalHash(row.terminal_metadata) !==
+            canonicalHash({
+              outcome: 'skipped',
+              reason: !eligible ? 'no_eligible_claims' : 'no_verified_assessments',
+            })
+          : !metadata.safeParse(row.terminal_metadata).success)
+      )
+        throw new Error('Crossed invocation output');
+    }
+    const assessments = await this.db.query(
+      `select claim_id as "claimId", verdict, supporting_citation_ids as "supportingCitationIds",
+        contradicting_citation_ids as "contradictingCitationIds", assessment_hash from rni_catalyst_assessment
+        where batch_id = $1 order by claim_id`,
+      [batchId],
+    );
+    const values = assessments.rows.map(({ assessment_hash, ...value }) => {
+      if (assessment_hash !== canonicalHash(value)) throw new Error('Crossed assessment hash');
+      return value;
+    });
+    if (
+      canonicalHash(values) !==
+      canonicalHash(
+        [...artifact.verificationOutputSnapshot].sort((a, b) => a.claimId.localeCompare(b.claimId)),
+      )
+    )
+      throw new Error('Crossed assessment');
+    const selections = await this.db.query<{
+      verdict: string;
+      challengedClaimId: string | null;
+      citationIds: string[];
+      selection_hash: string;
+    }>(
+      `select verdict, challenged_claim_id as "challengedClaimId", citation_ids as "citationIds", selection_hash
+      from rni_challenger_selection where batch_id = $1`,
+      [batchId],
+    );
+    const selection = selections.rows[0];
+    if (selections.rows.length !== 1 || !selection) throw new Error('Missing challenger');
+    const { selection_hash, ...value } = selection;
+    if (
+      canonicalHash(value) !== canonicalHash(artifact.challengerOutputSnapshot) ||
+      selection_hash !== canonicalHash(value)
+    )
+      throw new Error('Crossed challenger');
+  }
+
+  artifacts(runId: string, securityId: string, summaryId?: string) {
+    const key = `${runId}:${securityId}:${summaryId ?? ''}`;
+    let result = this.artifactCache.get(key);
+    if (!result) {
+      result = this.loadArtifacts(runId, securityId, summaryId);
+      this.artifactCache.set(key, result);
+    }
+    return result;
+  }
+
+  private async loadArtifacts(runId: string, securityId: string, summaryId?: string) {
     const { rows } = await this.db.query<{
       id: string;
       input_snapshot: RniConvergenceArtifact['inputSnapshot'];
@@ -332,10 +577,103 @@ export class ReadSnapshot {
         convergence.result.platforms[p.platform].analyticsArtifactHash !== p.artifact_hash
       )
         throw new RniReadError('CITATION_INVALID');
+      await this.requireProjection(convergence.inputSnapshot[p.platform], artifact);
       result.set(p.platform, artifact);
     }
     if (result.size !== 2) throw new RniReadError('CITATION_INVALID');
+    if (
+      canonicalHash(result.get('reddit')!.methodologySnapshot) !==
+      canonicalHash(result.get('x')!.methodologySnapshot)
+    )
+      throw new RniReadError('CITATION_INVALID');
     return { convergence, reddit: result.get('reddit')!, x: result.get('x')! };
+  }
+
+  private async requireProjection(
+    fact: RniConvergenceArtifact['inputSnapshot']['reddit'],
+    artifact: RniPlatformAnalyticsArtifact,
+  ) {
+    const bad = () => {
+      throw new RniReadError('CITATION_INVALID');
+    };
+    const { rows: slices } = await this.db.query<{
+      id: string;
+      run_id: string;
+      platform: string;
+      data_through_at: string | null;
+    }>(
+      `select id, run_id, platform, to_char(data_through_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as data_through_at
+        from rni_platform_slice where id = $1`,
+      [artifact.runSourceSliceId],
+    );
+    const slice = slices[0];
+    if (
+      !slice ||
+      slice.run_id !== fact.runId ||
+      slice.platform !== fact.platform ||
+      fact.runSourceSliceId !== artifact.runSourceSliceId ||
+      fact.methodologyVersion !== artifact.methodologyVersion ||
+      canonicalInstant(fact.windowStart) !==
+        canonicalInstant(artifact.inputSnapshot.current.windowStart) ||
+      canonicalInstant(fact.windowEnd) !==
+        canonicalInstant(artifact.inputSnapshot.current.windowEnd) ||
+      fact.status !== artifact.inputSnapshot.sliceStatus ||
+      fact.effectiveAttention !== artifact.result.effectiveAttention ||
+      (fact.dataThroughAt === null
+        ? slice.data_through_at !== null
+        : canonicalInstant(fact.dataThroughAt) !== slice.data_through_at) ||
+      fact.dimensions.length !== artifact.result.sentimentByDimension.length ||
+      fact.dimensions.some((d, i) => {
+        const metric = artifact.result.sentimentByDimension[i];
+        if (!metric || d.dimension !== metric.dimension || d.score !== metric.meanDirection)
+          return true;
+        return d.score === null
+          ? d.stance !== 'insufficient'
+          : D(d.score).isZero()
+            ? d.stance !== 'neutral'
+            : D(d.score).isNegative()
+              ? !['bearish', 'strong_bearish'].includes(d.stance)
+              : !['bullish', 'strong_bullish'].includes(d.stance);
+      })
+    )
+      bad();
+    const traces = artifact.result.weightTrace.filter((t) => D(t.weight).greaterThan(0));
+    const sources = traces.map((t) => t.sourceItemId).sort();
+    const { rows } = await this.db.query<{ source_item_id: string; stance_score: string | null }>(
+      `select m.source_item_id, o.stance_score::text from rni_run_observation m
+       join rni_security_observation o on o.id=m.observation_id and o.source_item_id=m.source_item_id and o.security_id=m.security_id
+       join rni_source_item s on s.id=m.source_item_id
+       where m.run_id=$1 and m.security_id=$2 and s.platform=$3 and m.source_item_id=any($4::uuid[]) order by m.source_item_id`,
+      [fact.runId, fact.securityId, fact.platform, sources],
+    );
+    if (canonicalHash(rows.map((r) => r.source_item_id)) !== canonicalHash(sources)) bad();
+    const scores = new Map(rows.map((r) => [r.source_item_id, r.stance_score]));
+    const eligible = traces.filter((t) => scores.get(t.sourceItemId) != null);
+    const weight = eligible.reduce((sum, t) => sum.plus(t.weight), D(0));
+    const groups = new Map(
+      artifact.inputSnapshot.current.observations.map((o) => [o.sourceItemId, o.duplicateGroupKey]),
+    );
+    const count = new Set(eligible.map((t) => groups.get(t.sourceItemId))).size;
+    const sufficient =
+      weight.greaterThan(0) &&
+      weight.greaterThanOrEqualTo(artifact.methodologySnapshot.minimumEffectiveAttention) &&
+      D(count).greaterThanOrEqualTo(artifact.methodologySnapshot.minimumIndependentSources);
+    const score = sufficient
+      ? exact(
+          eligible
+            .reduce((sum, t) => sum.plus(D(t.weight).times(scores.get(t.sourceItemId)!)), D(0))
+            .div(weight),
+        )
+      : null;
+    const stance =
+      score === null
+        ? 'insufficient'
+        : D(score).isZero()
+          ? 'neutral'
+          : D(score).isNegative()
+            ? 'bearish'
+            : 'bullish';
+    if (fact.stanceScore !== score || fact.stance !== stance) bad();
   }
 
   async dimensionCitations(summaryId: string, platform: 'reddit' | 'x') {
@@ -363,9 +701,10 @@ export class ReadSnapshot {
        join rni_observation_semantic_quality q on q.observation_id = o.observation_id
        where o.run_id = $1 and o.security_id = $2 and s.platform = $3
          and q.exclusion_reason is null
+         and s.source_status = 'active' and s.rights_policy_version = $4
          and coalesce(s.published_at, s.observed_at) >= r.window_start
          and coalesce(s.published_at, s.observed_at) < r.window_end`,
-      [runId, securityId, platform],
+      [runId, securityId, platform, this.policy],
     );
     return z.coerce.number().int().nonnegative().safe().parse(rows[0]!.count);
   }
