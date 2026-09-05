@@ -31,8 +31,8 @@
 | I07 | Compose DATA repositories and ENGINE services | `IN_PROGRESS` | D10 semantic and D12 analytics/convergence adapters merged; final cited-synthesis adapter/composition remains |
 | I07D | Close DATA D10 exact semantic-identity review findings | `PASSED` | Migration 0024 requires one exact SHA-256 E05 output identity per run/security observation; PostgreSQL schema/universe 23/23 |
 | I07E | Compose trusted cited-synthesis persistence boundary | `PASSED` | SQL-free trusted prepare, zero-model accepted replay and opaque-preparation atomic commit; composition 13/13, independent re-review PASS |
-| I08 | Compose SURFACE routes/nav/API with auth | `NOT_STARTED` | Authenticated preview e2e |
-| I09 | Wire QStash jobs/manual idempotent refresh | `NOT_STARTED` | Signed redelivery/double-click tests |
+| I08 | Compose SURFACE routes/nav/API with auth | `IN_PROGRESS` | Isolated live-surface builder starts from the coordinator checkpoint; authenticated preview e2e remains the gate |
+| I09 | Wire QStash jobs/manual idempotent refresh | `IN_PROGRESS` | Isolated orchestration builder starts from the coordinator checkpoint; signed redelivery/double-click tests remain the gate |
 | I10 | Seed RNI Direct routes and optional Gateway selection | `PASSED` | Direct-default/Gateway-parity routing, append-only capability/price evidence, budgets and admin-staged task envelopes pass; live parity remains I11 |
 | I10A | Enforce balanced runtime model policy and exact route lineage | `PASSED` | Direct default, five-task Terra/Sol low mapping, fresh capabilities, Gateway provider/canonical identity and stable cache semantics; unit/contract/eval regression and independent review pass |
 | I10B | Persist immutable route capabilities and atomic RNI AI budgets | `PASSED` | Additive migration 0024 schema; PostgreSQL 11/11 focused and 129/129 RNI regression; transports remain I10C |
@@ -407,6 +407,7 @@
 | `CURRENT` | Start I10C2 capability and successor-staging composition | Discover exact Direct/Gateway model identities and current price evidence into append-only records, then create an immutable staged successor for review without activating it or claiming live parity |
 | `CURRENT` | Complete I10C2A catalogue and price evidence | D-RNI-24; Direct lookup plus Gateway catalogue yield four append-only capability snapshots and five exact hashed price components; discovery reserves all three governed Web Search calls; focused 42/42 and PostgreSQL 14/14 |
 | `CURRENT` | Start I10C2B versioned task-envelope settings | Owner approved the recommended five per-task envelopes and required admin portal configurability; freeze a bounded intent contract, enforce serialized-input and cost limits before dispatch, and stage a successor without rewriting active/historical runs |
+| `CURRENT` | Start I07–I09 parallel integration lanes | Refreshed from current `origin/main`; no open PRs or pushed RNI branches; I07 cited persistence, I08 live surface and I09 durable orchestration begin from one coordinator checkpoint and integrate strictly I07 → I08 → I09 |
 
 ## I10A handoff
 

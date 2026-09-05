@@ -28,7 +28,7 @@
 | G3 DATA accepted | `PASSED` | DATA + reviewer | merged sequentially at `254fe45`; coordinator type/contract plus fresh PostgreSQL DATA 41/41 pass |
 | G4 ENGINE accepted | `PASSED` | ENGINE + reviewer | merged sequentially at `62eab1d`; ER-20–23 closed; coordinator and independent E10 gates pass |
 | G5 SURFACE accepted | `PASSED` | SURFACE + reviewer | merged sequentially at `b60ec14`; final code `c224c78`; type/lint/contracts/build/Chromium pass |
-| G6 integrated preview | `IN_PROGRESS` | coordinator | I10 route/budget/settings composition passed; I07 final adapter plus I08–I09 composition remain |
+| G6 integrated preview | `IN_PROGRESS` | coordinator | I10 route/budget/settings composition passed; I07, I08 and I09 are active in parallel from one coordinator checkpoint |
 | G7 live Reddit/X/FMP gates | `NOT_STARTED` | coordinator + joshuai | Depends G6 and configured credentials |
 | G8 production approval | `NOT_STARTED` | joshuai | Depends all prior gates |
 
@@ -162,3 +162,4 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — re-reviewed corrected DATA D10/D11 `825e68c`: coordinator focused 13/13 and full DATA 50/50, typecheck and lint pass; D11 and the original two D10 P1s close. Acceptance remains held because a second run can attach a different exact semantic hash to the same durable observation under run-scoped locking. DATA must serialize/revalidate by observation identity and prove cross-run mismatch rejection before rebase and merge.
 - 2026-09-05 — accepted and fast-forward merged final DATA D10/D11 at `7dd9454` after the cross-run observation-identity correction: deterministic locks plus prior-membership exact-hash validation reject sequential and concurrent crossed reuse while allowing exact attachment. Standalone summaries fail closed and reads remain. Coordinator post-merge PostgreSQL/composition gate passes 87/87 with typecheck, focused lint and clean diff; independent final review passes.
 - 2026-09-05 — accepted and merged DATA D12 at `59ab04a` from corrected tip `cf2b635`: E06 artifacts require exact durable observation membership; E07 locks and replays both live platform slices/components and validates D-RNI-23's evidence-weighted overall stance projection. Coordinator D12 15/15 and post-merge D12/I10B 26/26, typecheck/lint/diff pass; independent adversarial re-review passes. I07 now retains only the concrete cited-synthesis adapter/composition gap.
+- 2026-09-05 — refreshed the integration branch from current `origin/main`, confirmed no open PR or pushed RNI lane branch, and marked I07–I09 `IN_PROGRESS` for isolated parallel work from the next coordinator checkpoint. Existing accepted DATA, ENGINE, SURFACE, universe and model-budget work remains preserved.
