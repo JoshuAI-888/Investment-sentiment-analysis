@@ -28,7 +28,7 @@
 | I06R2 | Add durable pre-fetch sync command and clean security bootstrap | `PASSED` | Pre-fetch claim, concurrent/replay one-fetch, terminal audits/lineage and clean 501-security import pass |
 | I06R3 | Make command abandonment and stage completion fail-closed | `PASSED` | D-RNI-16; active conflict, stale terminalization, atomic rollback, invalid replay and bootstrap integrity tests pass |
 | I06R4 | Retain abandoned-command provider lineage and prove bootstrap rollback | `PASSED` | typecheck/lint; PostgreSQL command/bootstrap 9/9; IR-10/11 resolved |
-| I07 | Compose DATA repositories and ENGINE services | `IN_PROGRESS` | D10 semantic and D12 analytics/convergence adapters merged; final cited-synthesis adapter/composition remains |
+| I07 | Compose DATA repositories and ENGINE services | `PASSED` | Atomic intent-scoped cited persistence, exact E05/E06/E07 replay, fill-once challenger input, selected evidence and D-RNI-26 skips; independent final review accepted; coordinator PostgreSQL 123/123 plus E08 54/54 |
 | I07D | Close DATA D10 exact semantic-identity review findings | `PASSED` | Migration 0024 requires one exact SHA-256 E05 output identity per run/security observation; PostgreSQL schema/universe 23/23 |
 | I07E | Compose trusted cited-synthesis persistence boundary | `PASSED` | SQL-free trusted prepare, zero-model accepted replay and opaque-preparation atomic commit; composition 13/13, independent re-review PASS |
 | I08 | Compose SURFACE routes/nav/API with auth | `IN_PROGRESS` | Isolated live-surface builder starts from the coordinator checkpoint; authenticated preview e2e remains the gate |
@@ -307,6 +307,27 @@
   source outcomes; current/next-key signature verification; concurrent, expired and stale worker
   rejection; bounded retries; no completion after deadline; atomic busy-schedule skip/advance;
   PostgreSQL rollback/redelivery tests; and no provider call within a database transaction.
+
+## I07 final integration handoff
+
+- **Integrated commits:** writer `635dddf`, projection correction `fdceb27`, crossed-scope
+  regression `b6f0aa9`; coordinator contract/validator commits `02c286b` and `6f84ea1`.
+- **Behaviour:** one trusted intent owns each adapter and batch. Original persisted evidence and
+  exact E05/E06/E07 lineage are validated before inference; verifier candidate roles remain
+  distinct from selected assessment subsets; challenger input is hydrated once before I10 and
+  exact retries only observe it. Both policy no-call paths persist reason-bound skips. Accepted
+  claims, citations, statement edges, invocation results and synthesis bytes commit atomically,
+  while transaction-bound commit/load seams let I09 fence run/job completion in the same outer
+  transaction. The writer never terminalizes `rni_run` itself.
+- **Review:** independent xhigh review reproduced and closed two P1 crossings: hash-consistent E07
+  facts could diverge from E06/E05 projection, and E06 snapshot security/platform could diverge
+  from relational/E07 scope. Shared D12 validation now covers prepare, hydration, commit and load;
+  fully guarded historical graphs prove rejection.
+- **Coordinator verification:** disposable PostgreSQL writer, reader, schema and D12 suites
+  **123/123**; E08 unit/composition/contract/eval **54/54**; typecheck, scoped lint and diff check
+  pass. No skips in these focused gates.
+- **Remaining composition:** I09 must call the transaction-bound writer seam under its combined
+  lease and I10 remains the only provider/spend recorder. Live credential proof remains I11.
 
 ### CR-SURFACE-06 decision
 
