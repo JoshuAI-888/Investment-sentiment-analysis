@@ -31,6 +31,7 @@ on:
         default: migrate-then-seed-all
         options:
           - migrate
+          - seed-securities
           - seed-universe
           - seed-jobs
           - migrate-then-seed-all
@@ -100,14 +101,22 @@ jobs:
         # Idempotent: already-applied migrations are reported as skipped, not reapplied.
         run: pnpm migrate
 
-      - name: Seed universe
-        if: inputs.operation == 'seed-universe' || inputs.operation == 'migrate-then-seed-all'
+      - name: Seed securities
+        if: inputs.operation == 'seed-securities' || inputs.operation == 'migrate-then-seed-all'
         working-directory: apps/web
-        # Also idempotent, and deliberately more than that: it refuses to reinsert a symbol an
-        # administrator removed, so re-running it can never resurrect a deleted member.
+        # Must precede the universe seed, which resolves every seeded symbol against `security`
+        # and refuses the whole seed if one is missing. Nothing else in the product writes to
+        # that table, so on a fresh database this step is the difference between the universe
+        # seeding and failing with all 100 symbols reported missing.
+        #
+        # This is the only step here that calls a provider, hence the extra secret. It exits 3
+        # if FMP cannot resolve some symbol, which fails the run deliberately: those are universe
+        # members with no company behind them, and dropping them quietly would change a frozen
+        # methodological commitment (D-27, D-30) without anyone deciding to.
         env:
-          APP_ENVIRONMENT: ${{ inputs.environment }}
-        run: pnpm seed:universe
+          PROVIDER_MODE: live
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: pnpm seed:securities
 
       - name: Seed job definitions
         if: inputs.operation == 'seed-jobs' || inputs.operation == 'migrate-then-seed-all'
@@ -118,9 +127,29 @@ jobs:
         # operation — the gap that left the QStash schedule firing into a dispatcher with nothing
         # to claim.
         #
+        # ORDER: this must run BEFORE the universe seed, not after. `seedUniverse` requires an
+        # active `config_version` row — "a universe version references the configuration it was
+        # selected under; seeding without one leaves every artifact unable to say what it was
+        # computed against" — and this script is what bootstraps that row. Running the universe
+        # seed first fails with exactly that message on a fresh database, which is how this
+        # dependency was found. It is a side effect rather than a declared prerequisite, so it is
+        # written down here: do not reorder these two steps.
+        #
         # Idempotent per job_key (`on conflict do nothing`), deliberately *not* all-or-nothing
         # like the universe seed: substack.collect is seeded disabled until a handler exists, and
         # re-running this after that handler lands must not overwrite rows whose next_due_at the
         # dispatcher has already advanced.
         run: pnpm seed:jobs
+      - name: Seed universe
+        if: inputs.operation == 'seed-universe' || inputs.operation == 'migrate-then-seed-all'
+        working-directory: apps/web
+        # Runs AFTER the job-definition seed, which bootstraps the active `config_version` this
+        # step requires — see that step's own note.
+        #
+        # Also idempotent, and deliberately more than that: it refuses to reinsert a symbol an
+        # administrator removed, so re-running it can never resurrect a deleted member.
+        env:
+          APP_ENVIRONMENT: ${{ inputs.environment }}
+        run: pnpm seed:universe
+
 

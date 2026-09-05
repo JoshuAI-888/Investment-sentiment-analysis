@@ -15,7 +15,22 @@ const COLUMNS =
 export type NewSecurity = Omit<Security, 'id' | 'createdAt' | 'updatedAt'> & { id?: string };
 
 export async function insertSecurity(input: NewSecurity, db: Queryable = getPool()): Promise<Security> {
-  const { columns, placeholders, values } = insertClause({ ...input });
+  // `aliases` is a `jsonb` column, and `insertClause` (`rows.ts`) passes values straight through
+  // as query parameters with no JSON serialization. node-postgres then renders a JS array as a
+  // Postgres *array literal* — `{}` for an empty array, `{a,b}` for a non-empty one. Cast to
+  // `jsonb`, `{}` parses as an empty *object* (so `security.parse` fails with "expected array,
+  // received object") and `{a,b}` is not valid JSON at all (so Postgres rejects the insert).
+  // Two different failures, one cause.
+  //
+  // Every other repository in this codebase already `JSON.stringify`s its jsonb columns before
+  // calling `insertClause`; this function was the one that did not. It was found and documented
+  // by F07 (`services/dashboard/ensure-securities.ts`) and worked around at six call sites with
+  // `aliases: '[]' as unknown as string[]` casts, because `repositories/` was not those lanes' to
+  // edit. Fixed here instead, and those casts removed.
+  const { columns, placeholders, values } = insertClause({
+    ...input,
+    aliases: JSON.stringify(input.aliases ?? []),
+  });
   const { rows } = await db.query(
     `insert into security (${columns}) values (${placeholders}) returning ${COLUMNS}`,
     values,

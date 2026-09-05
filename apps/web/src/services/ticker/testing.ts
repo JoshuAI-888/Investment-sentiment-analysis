@@ -63,7 +63,7 @@ export async function seedFullTicker(): Promise<SeedFullResult> {
     // outright for a non-empty array). Passing the JSON text directly is the narrowest fix
     // reachable from this lane (`repositories/` is not this lane's to edit); every seed here
     // only ever needs an empty list.
-    aliases: '[]' as unknown as string[],
+    aliases: [],
   });
   await ensureActiveConfigVersion();
 
@@ -215,7 +215,7 @@ export async function seedAmbiguousTicker(): Promise<SeedAmbiguousResult> {
       cik: null,
       currency: 'USD',
       active: true,
-      aliases: '[]' as unknown as string[],
+      aliases: [],
     });
   }
   return { symbol };
@@ -236,7 +236,7 @@ export async function seedEmptyTicker(): Promise<SeedEmptyResult> {
     cik: null,
     currency: 'USD',
     active: true,
-    aliases: '[]' as unknown as string[],
+    aliases: [],
   });
   return { symbol };
 }
@@ -256,7 +256,7 @@ export async function seedIneligibleTicker(): Promise<SeedIneligibleResult> {
     cik: null,
     currency: 'USD',
     active: true,
-    aliases: '[]' as unknown as string[],
+    aliases: [],
   });
   await insertSecurityProfileSnapshot({
     securityId: security.id,
