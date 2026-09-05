@@ -742,10 +742,15 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
   });
 
   it.each([
-    ['succeeded', H('d'), {}],
-    ['failed', null, { outcome: 'failed' }],
-    ['skipped', null, { outcome: 'skipped' }],
-  ] as const)('rejects %s terminal metadata with required keys missing', async (status, outputHash, metadata) => {
+    ['succeeded with missing outcome', 'succeeded', H('d'), {}],
+    ['failed with missing error code', 'failed', null, { outcome: 'failed' }],
+    ['skipped with missing reason', 'skipped', null, { outcome: 'skipped' }],
+    ['succeeded with SQL-null metadata', 'succeeded', H('d'), null],
+    ['succeeded with SQL-null output hash', 'succeeded', null, { outcome: 'succeeded' }],
+    ['succeeded with JSON-null outcome', 'succeeded', H('d'), { outcome: null }],
+    ['failed with JSON-null error code', 'failed', null, { outcome: 'failed', errorCode: null }],
+    ['skipped with JSON-null reason', 'skipped', null, { outcome: 'skipped', reason: null }],
+  ] as const)('rejects %s', async (_label, status, outputHash, metadata) => {
     await seedBase();
     await pool.query(
       `insert into rni_synthesis_batch

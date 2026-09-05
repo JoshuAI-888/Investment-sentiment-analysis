@@ -559,14 +559,16 @@ create table rni_synthesis_model_invocation (
     check (input_hash ~ '^[a-f0-9]{64}$'),
   constraint rni_synthesis_model_invocation_prepared_snapshot_check
     check (jsonb_typeof(prepared_snapshot) = 'object'),
-  constraint rni_synthesis_model_invocation_terminal_check check (
+  constraint rni_synthesis_model_invocation_terminal_check check (coalesce((
     (status = 'prepared' and output_hash is null and terminal_metadata is null
       and completed_at is null)
     or (
       status = 'succeeded'
+      and output_hash is not null
       and output_hash ~ '^[a-f0-9]{64}$'
       and completed_at is not null
       and completed_at >= prepared_at
+      and terminal_metadata is not null
       and jsonb_typeof(terminal_metadata) = 'object'
       and terminal_metadata ? 'outcome'
       and terminal_metadata ->> 'outcome' = 'succeeded'
@@ -584,6 +586,7 @@ create table rni_synthesis_model_invocation (
       and output_hash is null
       and completed_at is not null
       and completed_at >= prepared_at
+      and terminal_metadata is not null
       and jsonb_typeof(terminal_metadata) = 'object'
       and terminal_metadata ? 'outcome'
       and terminal_metadata ? 'errorCode'
@@ -605,6 +608,7 @@ create table rni_synthesis_model_invocation (
       and output_hash is null
       and completed_at is not null
       and completed_at >= prepared_at
+      and terminal_metadata is not null
       and jsonb_typeof(terminal_metadata) = 'object'
       and terminal_metadata ? 'outcome'
       and terminal_metadata ? 'reason'
@@ -618,7 +622,7 @@ create table rni_synthesis_model_invocation (
       )
       and terminal_metadata - array['outcome', 'reason'] = '{}'::jsonb
     )
-  ),
+  ), false)),
   constraint rni_synthesis_model_invocation_stage_unique unique (batch_id, stage),
   constraint rni_synthesis_model_invocation_full_identity_unique
     unique (id, batch_id, stage),
