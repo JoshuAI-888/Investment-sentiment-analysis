@@ -35,6 +35,7 @@
 | I09 | Wire QStash jobs/manual idempotent refresh | `NOT_STARTED` | Signed redelivery/double-click tests |
 | I10 | Seed RNI Direct routes and optional Gateway selection | `IN_PROGRESS` | I10A starts versioned Direct/Gateway resolution and pre-dispatch budget enforcement under D-RNI-21; live parity remains I11 |
 | I10A | Enforce balanced runtime model policy and exact route lineage | `PASSED` | Direct default, five-task Terra/Sol low mapping, fresh capabilities, Gateway provider/canonical identity and stable cache semantics; unit/contract/eval regression and independent review pass |
+| I10B | Persist immutable route capabilities and atomic RNI AI budgets | `IN_PROGRESS` | Additive migration 0024 schema and PostgreSQL acceptance gates for D-RNI-21; transports remain a later I10 slice |
 | I11 | Run live Reddit, X and FMP gates | `NOT_STARTED` | Provider audit IDs and screenshots/log links |
 | I12 | Full regression, preview, production approval and smoke | `NOT_STARTED` | `joshuai` approval + production evidence |
 
@@ -391,6 +392,7 @@
 | `CURRENT` | Accept and merge final DATA D10/D11 | final `7dd9454` rebased on `2099936`; cross-run identity finding closed; coordinator post-merge DATA/composition/PostgreSQL 87/87, typecheck/focused lint/diff pass; independent re-review PASS |
 | `CURRENT` | Start I10A versioned route and budget enforcement | D-RNI-21 is owner-approved; implement Direct-default task resolution, capability-gated same-family Gateway parity and atomic pre-dispatch USD 2/25/50/500 enforcement with USD 300 warning; no credential values enter code or trackers |
 | `CURRENT` | Complete I10A runtime route policy | Direct defaults to exact Terra/Sol task mapping with low reasoning; all invocations retain dispatch, canonical model, capability and policy lineage; Gateway discovery requires actual OpenAI provider metadata; unit 1,360, contract 107/22 skipped, RNI eval 18/1 live skip, typecheck/lint/diff and independent re-review PASS |
+| `CURRENT` | Start I10B persisted routing and AI budget substrate | Extend coordinator-owned migration 0024 only: immutable capability/config/run lineage plus atomic worst-case reservation, settlement, rolling-day/month enforcement and once-only warning evidence under D-RNI-21 |
 
 ## I10A handoff
 
