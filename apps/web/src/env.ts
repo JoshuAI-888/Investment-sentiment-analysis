@@ -97,6 +97,16 @@ const shape = {
   AI_MODEL_SYNTHESIS: z.string().min(1).optional(),
   AI_MODEL_VERIFY: z.string().min(1).optional(),
 
+  // Scorer (F20 / D-13)
+  /**
+   * The pinned scorer service's origin — its own deploy target, not a Vercel route (`services/
+   * scorer/README.md`). Required in live mode: without it nothing can score, and D-16's
+   * forward-only collection means an unscorable backlog is not a degraded feature but a growing
+   * one. `services/jobs/scorer-client.ts` took this as a parameter precisely because this key
+   * did not exist; it now defaults to this and keeps the parameter for tests.
+   */
+  SCORER_BASE_URL: z.string().url().optional(),
+
   // Scheduling (F16a)
   QSTASH_TOKEN: z.string().min(1).optional(),
   QSTASH_CURRENT_SIGNING_KEY: z.string().min(1).optional(),
@@ -127,6 +137,7 @@ const REQUIRED_IN_LIVE_MODE = [
   'FRED_API_KEY',
   'SEC_USER_AGENT',
   'X_BEARER_TOKEN',
+  'SCORER_BASE_URL',
   'QSTASH_TOKEN',
   'QSTASH_CURRENT_SIGNING_KEY',
   'QSTASH_NEXT_SIGNING_KEY',

@@ -12,6 +12,7 @@ const COMPLETE_LIVE_ENV: Record<string, string> = {
   FRED_API_KEY: 'k',
   SEC_USER_AGENT: 'someone@example.com',
   X_BEARER_TOKEN: 'k',
+  SCORER_BASE_URL: 'https://scorer.example.com',
   QSTASH_TOKEN: 'k',
   QSTASH_CURRENT_SIGNING_KEY: 'k',
   QSTASH_NEXT_SIGNING_KEY: 'k',
