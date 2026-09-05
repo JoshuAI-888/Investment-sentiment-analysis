@@ -38,6 +38,7 @@
 | I10B | Persist immutable route capabilities and atomic RNI AI budgets | `PASSED` | Additive migration 0024 schema; PostgreSQL 11/11 focused and 129/129 RNI regression; transports remain I10C |
 | I10C | Compose live Direct/Gateway transports and governed recorder | `IN_PROGRESS` | I10C1 transport/recorder passed; live capability discovery and successor staging remain I10C2; no live claim until I11 |
 | I10C1 | Compose provider-pinned transports and governed recorder | `PASSED` | Direct and OpenAI-only Gateway Responses adapters, immutable run-config loading, pre-dispatch reservation and usage-based settlement; PostgreSQL 153/153 serial RNI sweep |
+| I10C2 | Discover capability/price evidence and stage successor config | `IN_PROGRESS` | Append-only Direct/Gateway evidence and reviewable staging only; activation remains human-owned and live proof remains I11 |
 | I11 | Run live Reddit, X and FMP gates | `NOT_STARTED` | Provider audit IDs and screenshots/log links |
 | I12 | Full regression, preview, production approval and smoke | `NOT_STARTED` | `joshuai` approval + production evidence |
 
@@ -401,6 +402,7 @@
 | `CURRENT` | Accept and merge DATA D12 analytics/convergence persistence | corrected tip `cf2b635` closes exact observation/component/slice lineage and D-RNI-23 overall projection findings; coordinator D12 15/15 and post-merge D12/I10B 26/26 with typecheck/lint/diff pass; merge `59ab04a` |
 | `CURRENT` | Start I10C live transport/configuration composition | Add server-only Direct and provider-pinned Gateway adapters, capability discovery/config loading and an I10B-backed invocation recorder; credentials are environment-only and live evidence remains I11 |
 | `CURRENT` | Complete I10C1 governed transport and recorder composition | Direct and OpenAI-only Gateway adapters validate exact provider/model routing; immutable run routes survive successor activation; reservation precedes dispatch and settlement uses provider token/tool telemetry rather than provider-reported cost |
+| `CURRENT` | Start I10C2 capability and successor-staging composition | Discover exact Direct/Gateway model identities and current price evidence into append-only records, then create an immutable staged successor for review without activating it or claiming live parity |
 
 ## I10A handoff
 
