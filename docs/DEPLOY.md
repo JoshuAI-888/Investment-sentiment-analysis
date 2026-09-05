@@ -22,7 +22,7 @@ top**: it is the only remaining item whose lead time is outside the owner's cont
 |---|---|---|
 | 1 | **MT-13 — file the Reddit Data API application** | **Confirmed not filed.** $0, and the only item here with an **external queue**: slow, opaque, and able to reject without explanation. Nothing downstream shortens it, and it gates the largest channel in the product. Every other task on this list completes when you decide to do it; this one completes when someone else decides |
 | 2 | ~~MT-15 — name the Substack publications~~ | **Confirmed and wired 2026-09-04 (D-40).** 13 publications, 10/11 sectors, committed and validated in `src/adapters/substack-publications.ts`. **This is the only channel that can collect today** — no key, no approval — but starting the forward-only clock still needs F16a's dispatcher, which does not exist yet |
-| 3 | **MT-04 — create the QStash schedule** | Re-scoped to **Wave 1**: MT-08 runs on it. Needs a stable deploy URL first, which is the only reason it is not higher |
+| 3 | ~~MT-04 — create the QStash schedule~~ | **Done 2026-09-05, owner-confirmed.** The schedule exists and points at production. F16a is no longer blocked by any manual task |
 | ✅ | ~~MT-07's symbol list~~ | **Done 2026-09-03.** Ranking pulled, ETFs excluded, committed as `migrations/seed/universe-v1.json` (B-21) |
 | 5 | **MT-08 — start the collector** | Still the highest-value outcome in the plan, but **not executable until F04 and F16a exist** (`PROGRESS.md`). It is a milestone, not a task you can do this afternoon |
 | ✅ | ~~MT-06 — set the LLM keys~~ | **Resolved 2026-09-04 (D-39).** Owner-confirmed provisioned in Vercel; not independently verified (Vercel's API doesn't expose secret values). Unblocks Wave 3 |
@@ -230,9 +230,24 @@ URL — which MT-04 needs next.
 
 ---
 
-## MT-04 🔴 — Create the QStash schedule
+## MT-04 ✅ — RESOLVED 2026-09-05 (owner-confirmed)
 
-**Blocks:** **F16a — and therefore MT-08.** Re-scoped 2026-09-03: F16's dispatch core moved to
+> **Closed 2026-09-05.** The owner confirms the QStash schedule is created and in place. This
+> task no longer blocks F16a. **Two things are still worth verifying before the collector's
+> first real run**, because neither is visible from the schedule itself:
+>
+> 1. `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY` and a generated
+>    `INTERNAL_DISPATCH_SECRET` are all set in Vercel for **Production** (and Preview). All four
+>    are in `REQUIRED_IN_LIVE_MODE` in `apps/web/src/env.ts` — a missing one fails boot the
+>    moment `PROVIDER_MODE=live` is set, not at first dispatch.
+> 2. The schedule's destination is the **production** URL
+>    (`https://investment-sentiment-analysis.vercel.app/api/cron/dispatch`), not a preview alias.
+>
+> Until F16a lands, that route is still F01's fixture stub, so the schedule is firing into a
+> 200-with-no-effect. That is harmless and expected — it means the schedule is warm and
+> verifiable the moment the real handler ships.
+
+**Blocked (historical):** **F16a — and therefore MT-08.** Re-scoped 2026-09-03: F16's dispatch core moved to
 **Wave 1** (D-15, D-16), so this is no longer a Wave 4 task. The collector cannot run on a
 schedule that does not exist, and under forward-only collection a late start is permanent loss.
 **Do this in the first week, not before the first deploy** — see the ordering note below.
@@ -863,7 +878,7 @@ as-is, exactly as listed in the table above.
 | MT-01 | ~~Migrate to its own repository~~ — resolved by the flatten, not a migration | ✅ | ☑ **D-25** |
 | MT-02 | Verify Resend domain and deliverability | 🟡 | ☐ |
 | MT-03 | Confirm Neon (**Launch tier**, D-33) / Upstash / Vercel | 🟡 | ☐ |
-| MT-04 | Create the QStash schedule — **re-scoped to Wave 1** (was Wave 4); MT-08 runs on it | 🔴 | ☐ |
+| MT-04 | ~~Create the QStash schedule~~ — **done 2026-09-05, owner-confirmed.** Verify the four env vars and the production destination URL | ✅ | ☑ **owner-confirmed** |
 | MT-05 | Confirm provider keys and quotas | 🟡 | ☐ |
 | MT-06 | ~~Provision LLM access~~ — transport (Vercel AI Gateway, D-34) and keys both set, owner-confirmed | ✅ | ☑ **D-39** |
 | MT-07 | Initial universe = **100** (D-27); symbol list pulled and committed, ETFs excluded (B-21) | ✅ | ☑ **fully resolved** |
