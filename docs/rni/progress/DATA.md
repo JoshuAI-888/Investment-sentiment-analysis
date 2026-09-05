@@ -366,22 +366,23 @@ See `../RNI_BUILD_LOOP.md` §3.2. Any path outside that list requires a contract
 | 79f4093     | First coordinator review fixes and renewed handoff    | DATA 40/40; unit 1171/1171; contract 100/100; integration 396/397 |
 | 413c9e7     | Null-safe narrative membership integrity correction   | D03 PostgreSQL 6/6; TypeScript pass                               |
 | 484304b     | Rebased migration rehearsal compatibility             | DATA 41/41; lint/type; contract 101/101                           |
-| c553e76     | D10 atomic E05 semantic persistence                    | D10 9/9; DATA 50/50; TypeScript; scoped lint                      |
-| 825e68c     | D10 exact replay correction and D11 writer retirement | D10 10/10; D11 3/3; DATA 50/50; TypeScript; scoped lint           |
-| this commit | D10 cross-run observation identity correction         | D10 11/11; D11 3/3; DATA 51/51; TypeScript; scoped lint           |
+| f8b7af9     | D10 atomic E05 semantic persistence                    | D10 9/9; DATA 50/50; TypeScript; scoped lint                      |
+| b799b6d     | D10 exact replay correction and D11 writer retirement | D10 10/10; D11 3/3; DATA 50/50; TypeScript; scoped lint           |
+| 746c9bc     | D10 cross-run observation identity correction         | D10 11/11; D11 3/3; DATA 51/51; TypeScript; scoped lint           |
+| this commit | Final integration-tip rebase evidence                 | D10/D11 14/14; DATA 51/51; TypeScript; scoped lint                |
 
 ## Handoff
 
 ```text
 RNI LANE     DATA
 BRANCH       feat/rni-data-source-first
-BASE SHA     a161b6b (current integration base)
+BASE SHA     2099936 (current integration base)
 STATUS       READY_FOR_REVIEW
 TASKS        11/11 ready for coordinator review
 TESTS        typecheck and scoped lint pass; D10 11/11; D11 3/3; serial DATA 51/51; diff/ownership/contracts clean
 CONTRACT     CR-DATA-001 and 002 accepted; CR-DATA-003 and 004 resolved
 RISKS        no DATA blocker; one previously known non-RNI integration clock race
 FILES        migrations 0020-0023; DATA repositories; RNI persistence tests/fixtures; DATA.md; D10/D11 consume but do not edit migration 0024
-COMMITS      prior D01-D09 history; c553e76 (D10); 825e68c (D10 review/D11); this commit (cross-run correction)
+COMMITS      prior D01-D09 history; f8b7af9 (D10); b799b6d (D10 review/D11); 746c9bc (cross-run correction); this commit (final integration-tip evidence)
 DEMO PROOF   one comparative source persists distinct bullish NVDA and bearish AMD observations
 ```
