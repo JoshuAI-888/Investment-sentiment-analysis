@@ -74,6 +74,7 @@
 | CR-I07-003 | I07 | `ACCEPTED` | Persist role edges as the eligible evidence candidates supplied to E08, while assessment arrays record and validate a same-role subset selected by the verifier | DATA, ENGINE, INTEGRATION | D-RNI-26 |
 | CR-I07-004 | I07 | `ACCEPTED` | Resolve the frozen P0 source-rights version from server-owned active configuration and inject it into the trusted reader; a batch row cannot declare itself active | DATA, ENGINE, INTEGRATION | D-RNI-26 |
 | CR-I07-005 | I07 | `ACCEPTED` | Persist both invocation descriptors before E08 guards, but hydrate the verifier-dependent challenger input snapshot/hash exactly once after verification and before dispatch or policy skip | I07, I10, ENGINE, INTEGRATION | D-RNI-28 |
+| CR-I07-006 | I07 | `ACCEPTED` | D-RNI-29 permits only canonical terminal zero-evidence E06 artifacts for failed/unavailable slices, preserving E07/D12's mandatory exact component hash and status equality | DATA, ENGINE E06/E07, I07, I08, INTEGRATION | D-RNI-29 |
 | CR-I09-001 | I09 | `ACCEPTED` | Extend the existing job ledger with one transactional command/execution/outbox representation and separately fenced Reddit, X and combined-publication stage leases; I10 remains the spend authority | I07, I09, I10, SURFACE, INTEGRATION | D-RNI-27 |
 | CR-SURFACE-01 | SURFACE | `ACCEPTED` | Add `RniReadService.getCitation(citationId)` returning frozen `RniCitation`; evidence remains a second source-ID read | DATA, SURFACE, INTEGRATION | `264ea9c` |
 | CR-SURFACE-02 | SURFACE | `ACCEPTED` | Add a cursor-paginated Radar page with run lineage, security identity, two non-poolable platform-labelled cells, and explicit pending/aligned/divergent/partial/insufficient cross-source state | DATA, ENGINE, SURFACE, INTEGRATION | `84dca87` / D-RNI-13 |
@@ -255,6 +256,36 @@
   verifier/challenger recording and I08 reads of accepted publication artifacts. D-RNI-26 records
   these linked cross-lane corrections; D-RNI-19's public contract and P0 source scope remain
   unchanged.
+
+### CR-I07-006 unavailable analytics component
+
+- **Current behaviour:** E07 permits combined synthesis after both source slices are terminal,
+  including `failed` and `unavailable`, and its platform input always requires an exact
+  `analyticsArtifactHash`. D12 therefore loads, replays and hash-binds one E06 analytics component
+  per platform, then requires the E07 fact status to equal both the E06 input snapshot and live
+  slice. E06 accepts only `complete` or `partial` as `sliceStatus`, so the public D12 adapter cannot
+  commit a truthful failed/unavailable E07 component. I07 can exercise E08 no-call behavior only by
+  seeding lower-level rows, which is not a live composition path.
+- **Requested change and decision:** D-RNI-29 defines one canonical, truthfully status-labelled
+  absence artifact for a terminal failed/unavailable platform while preserving an exact
+  independently replayable E06 hash. Its current window has zero observations, comparison and
+  baseline are absent, confidence inputs are zero, and skipped downstream confidence stages are
+  terminal. Any evidence, nonzero confidence input or nonterminal downstream state fails closed.
+- **Justification:** without one accepted representation, a required one-source-failure run cannot
+  reach durable convergence or cited partial publication through the public adapters.
+- **Affected lanes:** ENGINE E06/E07 schemas and replay, DATA D12 persistence, I07 cited
+  preparation, I08 publication reads and coordinator live orchestration.
+- **Compatibility impact:** the frozen portal/API shapes need not change, but internal artifact
+  snapshots, migration checks and replay tests may.
+- **Recommended acceptance test:** create a run with one `complete` slice and one `unavailable`
+  slice exclusively through public E06/E07/D12 composition, persist and replay both exact
+  component identities, then prove E08 makes no call for the unavailable platform and publishes
+  only the cited surviving-source partial result. Crossed status/hash/slice identity and any
+  publishable failed/unavailable metric must fail closed.
+- **Resolution evidence:** E06 unit/contract/E07 regression 35/35 and the public PostgreSQL
+  E06→E07→D12 suite 16/16 pass. The unavailable component replays from its exact hash, remains
+  insufficient/null and produces a partial cross-source result only from the separately fresh,
+  publishable source. Frozen portal/API shapes and migration storage are unchanged.
 
 ### CR-I09-001 durable orchestration decision
 

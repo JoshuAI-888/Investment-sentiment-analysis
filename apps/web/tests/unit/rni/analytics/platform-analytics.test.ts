@@ -4,6 +4,57 @@ import { calculatePlatformAnalytics, replayPlatformAnalytics } from '../../../..
 import { SECURITY_ID, methodology, platformInput } from './fixtures';
 
 describe('RNI platform analytics', () => {
+  it.each(['failed', 'unavailable'] as const)(
+    'creates one truthful, replayable zero-evidence component for a %s slice',
+    (sliceStatus) => {
+      const input = platformInput();
+      const absent = {
+        ...input,
+        sliceStatus,
+        current: { ...input.current, observations: [] },
+        comparison: null,
+        baseline: [],
+        confidenceComponents: Object.fromEntries(
+          Object.keys(input.confidenceComponents).map((key) => [key, '0']),
+        ) as typeof input.confidenceComponents,
+        confidencePenalties: Object.fromEntries(
+          Object.keys(input.confidencePenalties).map((key) => [key, '0']),
+        ) as typeof input.confidencePenalties,
+        confidenceReadiness: { narrativeStageTerminal: true, catalystStageTerminal: true },
+      };
+      const artifact = calculatePlatformAnalytics(absent, methodology());
+
+      expect(artifact.inputSnapshot.sliceStatus).toBe(sliceStatus);
+      expect(artifact.result).toMatchObject({
+        attention: '0',
+        effectiveAttention: '0',
+        comparisonAttention: null,
+        confidence: null,
+        confidenceStatus: 'insufficient_evidence',
+      });
+      expect(
+        artifact.result.sentimentByDimension.every(
+          ({ status, meanDirection }) =>
+            status === 'insufficient_evidence' && meanDirection === null,
+        ),
+      ).toBe(true);
+      expect(replayPlatformAnalytics(artifact)).toEqual(artifact);
+
+      expect(() =>
+        calculatePlatformAnalytics(
+          {
+            ...absent,
+            current: { ...absent.current, observations: input.current.observations },
+          },
+          methodology(),
+        ),
+      ).toThrow(/canonical terminal zero-evidence/u);
+      expect(() =>
+        calculatePlatformAnalytics({ ...absent, comparison: input.comparison }, methodology()),
+      ).toThrow(/canonical terminal zero-evidence/u);
+    },
+  );
+
   it('matches the hand-calculated platform metric golden', () => {
     const artifact = calculatePlatformAnalytics(platformInput(), methodology());
 
@@ -108,14 +159,11 @@ describe('RNI platform analytics', () => {
   });
 
   it('keeps frozen velocity available for positive low bases without epsilon distortion', () => {
-    const result = calculatePlatformAnalytics(
-      platformInput(),
-      {
-        ...methodology(),
-        lowBaseThreshold: '2',
-        epsilon: '1.5',
-      },
-    ).result;
+    const result = calculatePlatformAnalytics(platformInput(), {
+      ...methodology(),
+      lowBaseThreshold: '2',
+      epsilon: '1.5',
+    }).result;
 
     expect(result.changeStatus).toBe('emerging_from_low_base');
     expect(result.percentAttentionChange).toBeNull();
@@ -137,8 +185,9 @@ describe('RNI platform analytics', () => {
     ).toMatchObject({ value: null, status: 'insufficient_baseline' });
 
     const constant = input.baseline.map((window) => ({ ...window, effectiveAttention: '1' }));
-    expect(calculatePlatformAnalytics({ ...input, baseline: constant }, methodology()).result.zScore)
-      .toMatchObject({ value: null, status: 'zero_variance' });
+    expect(
+      calculatePlatformAnalytics({ ...input, baseline: constant }, methodology()).result.zScore,
+    ).toMatchObject({ value: null, status: 'zero_variance' });
 
     expect(() =>
       calculatePlatformAnalytics(
@@ -351,8 +400,9 @@ describe('RNI platform analytics', () => {
         methodologyVersion: 'methodology-v2',
       })),
     };
-    expect(calculatePlatformAnalytics(revisedInput, methodology('methodology-v2')).inputSetHash)
-      .not.toBe(original.inputSetHash);
+    expect(
+      calculatePlatformAnalytics(revisedInput, methodology('methodology-v2')).inputSetHash,
+    ).not.toBe(original.inputSetHash);
 
     expect(() => replayPlatformAnalytics({ ...original, resultHash: 'f'.repeat(64) })).toThrow(
       /result mismatch/u,
@@ -532,8 +582,9 @@ describe('RNI platform analytics', () => {
     ).result;
     expect(zeroWeight.attention).toBe('2');
     expect(zeroWeight.effectiveAttention).toBe('0');
-    expect(zeroWeight.sentimentByDimension.every((metric) => metric.status === 'insufficient_evidence'))
-      .toBe(true);
+    expect(
+      zeroWeight.sentimentByDimension.every((metric) => metric.status === 'insufficient_evidence'),
+    ).toBe(true);
     expect(zeroWeight.confidenceStatus).toBe('insufficient_evidence');
     expect(() =>
       calculatePlatformAnalytics(input, {

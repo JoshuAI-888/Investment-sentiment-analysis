@@ -108,7 +108,7 @@ export type RniPlatformAnalyticsInput = {
   readonly runSourceSliceId: string;
   readonly platform: RniPlatform;
   readonly securityId: string;
-  readonly sliceStatus: Extract<RniSliceStatus, 'complete' | 'partial'>;
+  readonly sliceStatus: Extract<RniSliceStatus, 'complete' | 'partial' | 'failed' | 'unavailable'>;
   readonly current: RniAnalyticsWindowInput;
   readonly comparison: RniAnalyticsWindowInput | null;
   readonly baseline: readonly RniAnalyticsBaselineWindowInput[];

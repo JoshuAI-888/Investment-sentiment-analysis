@@ -2,7 +2,14 @@ import { z } from 'zod';
 
 import { canonicalHash } from '../../calc/canonical';
 import { D, exact, isDecimalString, type Dec } from '../../calc/decimal';
-import { rniDimensionKey, rniIsoTimestamp, rniPlatform, rniSha256, rniSignedDecimal, rniUnitDecimal } from '../contracts';
+import {
+  rniDimensionKey,
+  rniIsoTimestamp,
+  rniPlatform,
+  rniSha256,
+  rniSignedDecimal,
+  rniUnitDecimal,
+} from '../contracts';
 import {
   RNI_ANALYTICS_CODE_VERSION,
   RNI_CONFIDENCE_COMPONENT_KEYS,
@@ -32,12 +39,20 @@ const Z_SCORE_DECIMAL_PLACES = 6;
 
 const nonnegativeDecimal = z
   .string()
-  .refine((value) => isDecimalString(value) && new D(value).isFinite() && new D(value).greaterThanOrEqualTo(ZERO));
+  .refine(
+    (value) =>
+      isDecimalString(value) && new D(value).isFinite() && new D(value).greaterThanOrEqualTo(ZERO),
+  );
 const positiveDecimal = nonnegativeDecimal.refine((value) => new D(value).greaterThan(ZERO));
 const positiveIntegerDecimal = z.string().regex(/^[1-9]\d*$/u);
 const scoreDecimal = z
   .string()
-  .refine((value) => isDecimalString(value) && new D(value).greaterThanOrEqualTo(ZERO) && new D(value).lessThanOrEqualTo('100'));
+  .refine(
+    (value) =>
+      isDecimalString(value) &&
+      new D(value).greaterThanOrEqualTo(ZERO) &&
+      new D(value).lessThanOrEqualTo('100'),
+  );
 
 const dimensionInputSchema = z
   .object({
@@ -150,19 +165,23 @@ const baselineSchema = z
   })
   .strict();
 
-const confidenceComponentsSchema = z.object(
-  Object.fromEntries(RNI_CONFIDENCE_COMPONENT_KEYS.map((key) => [key, rniUnitDecimal])) as Record<
-    RniConfidenceComponentKey,
-    typeof rniUnitDecimal
-  >,
-).strict();
+const confidenceComponentsSchema = z
+  .object(
+    Object.fromEntries(RNI_CONFIDENCE_COMPONENT_KEYS.map((key) => [key, rniUnitDecimal])) as Record<
+      RniConfidenceComponentKey,
+      typeof rniUnitDecimal
+    >,
+  )
+  .strict();
 
-const confidencePenaltiesSchema = z.object(
-  Object.fromEntries(RNI_CONFIDENCE_PENALTY_KEYS.map((key) => [key, rniUnitDecimal])) as Record<
-    RniConfidencePenaltyKey,
-    typeof rniUnitDecimal
-  >,
-).strict();
+const confidencePenaltiesSchema = z
+  .object(
+    Object.fromEntries(RNI_CONFIDENCE_PENALTY_KEYS.map((key) => [key, rniUnitDecimal])) as Record<
+      RniConfidencePenaltyKey,
+      typeof rniUnitDecimal
+    >,
+  )
+  .strict();
 
 const methodologySchema = z
   .object({
@@ -232,7 +251,12 @@ const methodologySchema = z
     const medium = new D(methodology.confidenceBands.mediumMinimum);
     const high = new D(methodology.confidenceBands.highMinimum);
     const veryHigh = new D(methodology.confidenceBands.veryHighMinimum);
-    if (medium.isNegative() || !medium.lessThan(high) || !high.lessThan(veryHigh) || veryHigh.greaterThan(HUNDRED)) {
+    if (
+      medium.isNegative() ||
+      !medium.lessThan(high) ||
+      !high.lessThan(veryHigh) ||
+      veryHigh.greaterThan(HUNDRED)
+    ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['confidenceBands'],
@@ -254,7 +278,7 @@ const inputSchema = z
     runSourceSliceId: z.string().uuid(),
     platform: rniPlatform,
     securityId: z.string().uuid(),
-    sliceStatus: z.enum(['complete', 'partial']),
+    sliceStatus: z.enum(['complete', 'partial', 'failed', 'unavailable']),
     current: windowSchema,
     comparison: windowSchema.nullable(),
     baseline: z.array(baselineSchema),
@@ -283,12 +307,16 @@ function distinctCount(values: readonly string[]): string {
   return String(new Set(values).size);
 }
 
-function normalizeObservation(observation: RniAnalyticsObservationInput): RniAnalyticsObservationInput {
+function normalizeObservation(
+  observation: RniAnalyticsObservationInput,
+): RniAnalyticsObservationInput {
   return {
     ...observation,
     mentionIds: [...observation.mentionIds].sort(),
     dimensions: rniDimensionKey.options.map((dimension) => {
-      const assignment = observation.dimensions.find((candidate) => candidate.dimension === dimension);
+      const assignment = observation.dimensions.find(
+        (candidate) => candidate.dimension === dimension,
+      );
       if (assignment === undefined) throw new Error(`Missing analytics dimension ${dimension}`);
       return assignment;
     }),
@@ -317,7 +345,28 @@ function normalizeInput(input: RniPlatformAnalyticsInput): RniPlatformAnalyticsI
   };
 }
 
-function validateScope(input: RniPlatformAnalyticsInput, methodology: RniAnalyticsMethodology): void {
+function validateScope(
+  input: RniPlatformAnalyticsInput,
+  methodology: RniAnalyticsMethodology,
+): void {
+  if (input.sliceStatus === 'failed' || input.sliceStatus === 'unavailable') {
+    const hasNonzeroConfidenceInput = [
+      ...Object.values(input.confidenceComponents),
+      ...Object.values(input.confidencePenalties),
+    ].some((value) => !new D(value).equals(ZERO));
+    if (
+      input.current.observations.length !== 0 ||
+      input.comparison !== null ||
+      input.baseline.length !== 0 ||
+      hasNonzeroConfidenceInput ||
+      !input.confidenceReadiness.narrativeStageTerminal ||
+      !input.confidenceReadiness.catalystStageTerminal
+    ) {
+      throw new Error(
+        'RNI failed or unavailable analytics requires canonical terminal zero-evidence input',
+      );
+    }
+  }
   const windows = input.comparison === null ? [input.current] : [input.current, input.comparison];
   if (
     input.comparison !== null &&
@@ -406,10 +455,7 @@ function validateScope(input: RniPlatformAnalyticsInput, methodology: RniAnalyti
   }
 }
 
-function ageHours(
-  observation: RniAnalyticsObservationInput,
-  window: RniAnalyticsWindowInput,
-): Dec {
+function ageHours(observation: RniAnalyticsObservationInput, window: RniAnalyticsWindowInput): Dec {
   const eligibleAt = observation.publishedAt ?? observation.observedAt;
   return new D(String(Date.parse(window.windowEnd)))
     .minus(String(Date.parse(eligibleAt)))
@@ -470,7 +516,9 @@ function sentimentByDimension(
   const traceBySource = new Map(traces.map((trace) => [trace.sourceItemId, trace]));
   return rniDimensionKey.options.map((dimension) => {
     const eligible = observations.flatMap((observation) => {
-      const assignment = observation.dimensions.find((candidate) => candidate.dimension === dimension);
+      const assignment = observation.dimensions.find(
+        (candidate) => candidate.dimension === dimension,
+      );
       const trace = traceBySource.get(observation.sourceItemId);
       if (
         assignment?.score === null ||
@@ -486,8 +534,12 @@ function sentimentByDimension(
     const independentSourceCount = new Set(
       eligible.map((item) => item.observation.duplicateGroupKey),
     ).size;
-    const sourceItemIds = [...new Set(eligible.map((item) => item.observation.sourceItemId))].sort();
-    const enoughAttention = effectiveAttention.greaterThanOrEqualTo(methodology.minimumEffectiveAttention);
+    const sourceItemIds = [
+      ...new Set(eligible.map((item) => item.observation.sourceItemId)),
+    ].sort();
+    const enoughAttention = effectiveAttention.greaterThanOrEqualTo(
+      methodology.minimumEffectiveAttention,
+    );
     const enoughSources = new D(String(independentSourceCount)).greaterThanOrEqualTo(
       methodology.minimumIndependentSources,
     );
@@ -535,7 +587,9 @@ function sampleStandardDeviation(values: readonly Dec[]): Dec {
   if (values.every((value) => value.equals(first))) return new D('0');
   const mean = sum(values).div(String(values.length));
   const squaredDeviations = values.map((value) => value.minus(mean).pow('2'));
-  return sum(squaredDeviations).div(new D(String(values.length)).minus(ONE)).sqrt();
+  return sum(squaredDeviations)
+    .div(new D(String(values.length)).minus(ONE))
+    .sqrt();
 }
 
 function zScore(
@@ -558,7 +612,9 @@ function zScore(
     .sort((left, right) => left.comparedTo(right));
   const lower = nearestRank(logged, new D(methodology.winsorLowerPercentile));
   const upper = nearestRank(logged, new D(methodology.winsorUpperPercentile));
-  const winsorized = logged.map((value) => (value.lessThan(lower) ? lower : value.greaterThan(upper) ? upper : value));
+  const winsorized = logged.map((value) =>
+    value.lessThan(lower) ? lower : value.greaterThan(upper) ? upper : value,
+  );
   const standardDeviation = sampleStandardDeviation(winsorized);
   if (standardDeviation.equals(ZERO)) {
     return {
@@ -654,14 +710,21 @@ function buildConfidence(input: {
       cap: input.methodology.confidenceCaps.singleSourceOrCommunity,
     });
   }
-  if (new D(input.narrativeHhi).greaterThanOrEqualTo(input.methodology.highNarrativeConcentrationThreshold)) {
+  if (
+    new D(input.narrativeHhi).greaterThanOrEqualTo(
+      input.methodology.highNarrativeConcentrationThreshold,
+    )
+  ) {
     caps.push({
       reason: 'high_narrative_concentration',
       cap: input.methodology.confidenceCaps.highNarrativeConcentration,
     });
   }
   if (input.snapshot.sliceStatus === 'partial') {
-    caps.push({ reason: 'partial_coverage', cap: input.methodology.confidenceCaps.partialCoverage });
+    caps.push({
+      reason: 'partial_coverage',
+      cap: input.methodology.confidenceCaps.partialCoverage,
+    });
   }
   if (input.maxAgeHours.greaterThanOrEqualTo(input.methodology.staleAfterHours)) {
     caps.push({ reason: 'stale_evidence', cap: input.methodology.confidenceCaps.staleEvidence });
@@ -670,10 +733,7 @@ function buildConfidence(input: {
     (score, candidate) => (new D(candidate.cap).lessThan(score) ? new D(candidate.cap) : score),
     uncappedScore,
   );
-  const roundedScore = cappedScore.toDecimalPlaces(
-    CONFIDENCE_DECIMAL_PLACES,
-    D.ROUND_HALF_EVEN,
-  );
+  const roundedScore = cappedScore.toDecimalPlaces(CONFIDENCE_DECIMAL_PLACES, D.ROUND_HALF_EVEN);
   const score100 = roundedScore.toFixed(CONFIDENCE_DECIMAL_PLACES);
   return {
     unitScore: exact(roundedScore.div(HUNDRED)),
@@ -731,9 +791,7 @@ function computeResult(
   }
 
   const mentionIds = input.current.observations.flatMap((observation) => observation.mentionIds);
-  const currentTraceBySource = new Map(
-    current.traces.map((trace) => [trace.sourceItemId, trace]),
-  );
+  const currentTraceBySource = new Map(current.traces.map((trace) => [trace.sourceItemId, trace]));
   const contributingObservations = input.current.observations.filter((observation) =>
     new D(currentTraceBySource.get(observation.sourceItemId)?.weight ?? '0').greaterThan(ZERO),
   );
@@ -852,7 +910,10 @@ export function replayPlatformAnalytics(
   if (artifact.inputSetHash !== replayed.inputSetHash) {
     throw new Error('RNI analytics replay input hash mismatch');
   }
-  if (artifact.resultHash !== replayed.resultHash || canonicalHash(artifact.result) !== replayed.resultHash) {
+  if (
+    artifact.resultHash !== replayed.resultHash ||
+    canonicalHash(artifact.result) !== replayed.resultHash
+  ) {
     throw new Error('RNI analytics replay result mismatch');
   }
   return replayed;

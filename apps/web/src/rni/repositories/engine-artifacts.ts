@@ -11,10 +11,7 @@ import {
   type RniPlatformAnalyticsInput,
   type RniPlatformAnalyticsResult,
 } from '../analytics';
-import type {
-  RniAnalyticsArtifactPersistencePort,
-  RniArtifactCommitResult,
-} from '../composition';
+import type { RniAnalyticsArtifactPersistencePort, RniArtifactCommitResult } from '../composition';
 import {
   replayPlatformFacts,
   type RniConvergenceArtifact,
@@ -243,10 +240,7 @@ async function requireOverallProjection(
       ? []
       : [{ sourceItemId: trace.sourceItemId, score: new D(score), weight: new D(trace.weight) }];
   });
-  const effectiveAttention = eligible.reduce(
-    (total, item) => total.plus(item.weight),
-    new D('0'),
-  );
+  const effectiveAttention = eligible.reduce((total, item) => total.plus(item.weight), new D('0'));
   const duplicateGroupBySource = new Map(
     artifact.inputSnapshot.current.observations.map((observation) => [
       observation.sourceItemId,
@@ -257,7 +251,9 @@ async function requireOverallProjection(
     eligible.map((item) => duplicateGroupBySource.get(item.sourceItemId)),
   ).size;
   const sufficient =
-    effectiveAttention.greaterThanOrEqualTo(artifact.methodologySnapshot.minimumEffectiveAttention) &&
+    effectiveAttention.greaterThanOrEqualTo(
+      artifact.methodologySnapshot.minimumEffectiveAttention,
+    ) &&
     new D(String(independentSources)).greaterThanOrEqualTo(
       artifact.methodologySnapshot.minimumIndependentSources,
     );
@@ -343,8 +339,10 @@ async function component(
   });
   if (
     fact.methodologyVersion !== storedArtifact.methodologyVersion ||
-    canonicalInstant(fact.windowStart) !== canonicalInstant(storedArtifact.inputSnapshot.current.windowStart) ||
-    canonicalInstant(fact.windowEnd) !== canonicalInstant(storedArtifact.inputSnapshot.current.windowEnd) ||
+    canonicalInstant(fact.windowStart) !==
+      canonicalInstant(storedArtifact.inputSnapshot.current.windowStart) ||
+    canonicalInstant(fact.windowEnd) !==
+      canonicalInstant(storedArtifact.inputSnapshot.current.windowEnd) ||
     fact.status !== storedArtifact.inputSnapshot.sliceStatus ||
     fact.status !== row.slice_status ||
     fact.effectiveAttention !== storedArtifact.result.effectiveAttention ||
@@ -360,24 +358,42 @@ async function component(
   return { id: row.id, artifact: storedArtifact };
 }
 
+/**
+ * Revalidate an E07 artifact against both exact durable E06 components and their E05-weighted
+ * overall projections. Cited publication uses this shared read-only seam so DATA and I07 cannot
+ * drift into two different definitions of a valid convergence component.
+ */
+export async function validateRniConvergenceComponents(
+  artifact: RniConvergenceArtifact,
+  db: Queryable = getPool(),
+): Promise<{
+  readonly reddit: { readonly id: string; readonly artifact: RniPlatformAnalyticsArtifact };
+  readonly x: { readonly id: string; readonly artifact: RniPlatformAnalyticsArtifact };
+}> {
+  validateConvergence(artifact);
+  const reddit = await component(artifact.inputSnapshot.reddit, db);
+  const x = await component(artifact.inputSnapshot.x, db);
+  if (
+    canonical(reddit.artifact.methodologySnapshot) !== canonical(x.artifact.methodologySnapshot)
+  ) {
+    reject('crossed Reddit/X analytics methodology snapshots');
+  }
+  return { reddit, x };
+}
+
 async function commitConvergence(
   artifact: RniConvergenceArtifact,
   db: Queryable,
 ): Promise<RniArtifactCommitResult> {
-  validateConvergence(artifact);
   const { reddit, x } = artifact.inputSnapshot;
   const runId = reddit.runId;
   const securityId = reddit.securityId;
   const artifactHash = canonicalHash(artifact);
   await lock(`rni-convergence:${runId}:${securityId}`, db);
-  const redditComponent = await component(reddit, db);
-  const xComponent = await component(x, db);
-  if (
-    canonical(redditComponent.artifact.methodologySnapshot) !==
-    canonical(xComponent.artifact.methodologySnapshot)
-  ) {
-    reject('crossed Reddit/X analytics methodology snapshots');
-  }
+  const { reddit: redditComponent, x: xComponent } = await validateRniConvergenceComponents(
+    artifact,
+    db,
+  );
   const redditId = redditComponent.id;
   const xId = xComponent.id;
   const prior = await db.query<{

@@ -1185,6 +1185,23 @@ the immutable artifact foreign keys. I10 still reserves the actual hydrated prov
 never a placeholder. No new public field or engine output exists; this is narrow persistence and
 composition semantics inside migration `0024`.
 
+### D-RNI-29 — Failed and unavailable sources retain a canonical zero-evidence analytics component
+
+**Accepts CR-I07-006, 2026-09-05.** E07 and D12 require one independently replayable E06
+component identity for each Reddit/X input, including when both source slices are terminal but one
+is `failed` or `unavailable`. E06 therefore accepts those two terminal statuses only as a
+canonical absence artifact: the current window contains no observations, comparison and baseline
+inputs are absent, every confidence component and penalty is zero, and the skipped narrative and
+catalyst prerequisites are terminal. The calculated result has zero attention, null confidence
+and four insufficient dimensions. Any evidence or publishable metric under either status fails
+closed.
+
+The exact artifact hash, truthful status and source-slice identity remain mandatory through E07
+and D12; there is no sentinel hash, fabricated partial slice or nullable component shortcut. This
+lets one-source failure reach deterministic partial cross-source synthesis while preserving the
+surviving platform's separate cited conclusion. Frozen portal and HTTP shapes, successful E06
+semantics and migration storage do not change.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

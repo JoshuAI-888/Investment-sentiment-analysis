@@ -275,6 +275,34 @@ describe.skipIf(url === undefined)('RNI D12 ENGINE artifact persistence', () => 
     );
   }
 
+  function terminalAbsentAnalytics(
+    platform: 'reddit' | 'x',
+    sliceId: string,
+    sliceStatus: 'failed' | 'unavailable',
+  ) {
+    const input = analyticsInput(platform);
+    return calculatePlatformAnalytics(
+      {
+        ...input,
+        runId,
+        runSourceSliceId: sliceId,
+        securityId,
+        sliceStatus,
+        current: { ...input.current, observations: [] },
+        comparison: null,
+        baseline: [],
+        confidenceComponents: Object.fromEntries(
+          Object.keys(input.confidenceComponents).map((key) => [key, '0']),
+        ) as typeof input.confidenceComponents,
+        confidencePenalties: Object.fromEntries(
+          Object.keys(input.confidencePenalties).map((key) => [key, '0']),
+        ) as typeof input.confidencePenalties,
+        confidenceReadiness: { narrativeStageTerminal: true, catalystStageTerminal: true },
+      },
+      methodology(),
+    );
+  }
+
   function stance(score: string | null) {
     if (score === null) return 'insufficient' as const;
     if (/^-?0(?:\.0+)?$/u.test(score)) return 'neutral' as const;
@@ -328,7 +356,9 @@ describe.skipIf(url === undefined)('RNI D12 ENGINE artifact persistence', () => 
     const primaryMetric = artifact.result.sentimentByDimension[0];
     if (primaryMetric === undefined) throw new Error('D12 fixture requires analytics dimensions');
     const projectedOverallScore =
-      overrides.overallScore === undefined ? expectedOverallScore(artifact) : overrides.overallScore;
+      overrides.overallScore === undefined
+        ? expectedOverallScore(artifact)
+        : overrides.overallScore;
     return convergencePlatformInput(artifact.result.platform, {
       runId,
       runSourceSliceId: artifact.runSourceSliceId,
@@ -437,18 +467,73 @@ describe.skipIf(url === undefined)('RNI D12 ENGINE artifact persistence', () => 
       }),
     ]);
     await expect(
-      adapter.commitConvergence(
-        convergence(reddit, x, 'rni-convergence-policy-v2'),
-      ),
+      adapter.commitConvergence(convergence(reddit, x, 'rni-convergence-policy-v2')),
     ).rejects.toThrow('convergence identity reused');
+  });
+
+  it('persists a truthful unavailable component through the public E06/E07/D12 path', async () => {
+    const reddit = analytics('reddit', redditSliceId);
+    const x = terminalAbsentAnalytics('x', xSliceId, 'unavailable');
+    await pool.query(
+      `update rni_platform_slice
+          set status = 'unavailable', eligible_source_count = 0,
+              error_code = 'PROVIDER_UNAVAILABLE'
+        where id = $1`,
+      [xSliceId],
+    );
+    await pool.query(
+      `update rni_platform_slice set data_through_at = '2026-09-05T11:30:00Z' where id = $1`,
+      [redditSliceId],
+    );
+
+    await adapter.commitPlatformAnalytics(reddit);
+    await adapter.commitPlatformAnalytics(x);
+    const request = convergenceRequest({
+      reddit: convergencePlatform(reddit, { dataThroughAt: '2026-09-05T11:30:00Z' }),
+      x: convergencePlatform(x),
+    });
+    const artifact = convergePlatformFacts(request);
+    expect(artifact.result.status).toBe('PARTIAL_CROSS_SOURCE');
+    expect(artifact.result.platforms.x).toMatchObject({
+      status: 'unavailable',
+      stance: 'insufficient',
+      stanceScore: null,
+      effectiveAttention: '0',
+      analyticsArtifactHash: canonicalHash(x),
+    });
+    expect(await adapter.commitConvergence(artifact)).toEqual({
+      disposition: 'inserted',
+      artifactHash: canonicalHash(artifact),
+    });
+
+    const stored = await pool.query<{
+      x_artifact_hash: string;
+      x_input: { input: { sliceStatus: string } };
+    }>(
+      `select convergence.x_artifact_hash,
+              analytics.input_snapshot as x_input
+         from rni_convergence_artifact convergence
+         join rni_platform_analytics_artifact analytics
+           on analytics.id = convergence.x_analytics_id`,
+    );
+    expect(stored.rows).toEqual([
+      {
+        x_artifact_hash: canonicalHash(x),
+        x_input: expect.objectContaining({
+          input: expect.objectContaining({ sliceStatus: 'unavailable' }),
+        }),
+      },
+    ]);
   });
 
   it('rejects crossed platform bytes and slice ownership', async () => {
     await adapter.commitPlatformAnalytics(analytics('reddit', redditSliceId));
-    await expect(adapter.commitPlatformAnalytics(analytics('reddit', redditSliceId, 'methodology-v2'))).rejects.toThrow(
-      'platform identity reused',
-    );
-    await expect(adapter.commitPlatformAnalytics(analytics('x', redditSliceId))).rejects.toMatchObject({
+    await expect(
+      adapter.commitPlatformAnalytics(analytics('reddit', redditSliceId, 'methodology-v2')),
+    ).rejects.toThrow('platform identity reused');
+    await expect(
+      adapter.commitPlatformAnalytics(analytics('x', redditSliceId)),
+    ).rejects.toMatchObject({
       constraint: 'rni_platform_analytics_slice_fk',
     });
     await expect(
@@ -737,8 +822,12 @@ describe.skipIf(url === undefined)('RNI D12 ENGINE artifact persistence', () => 
       expect((await convergenceCommit).disposition).toBe('inserted');
       await sliceUpdate;
       expect(
-        (await pool.query<{ status: string }>('select status from rni_platform_slice where id = $1', [redditSliceId]))
-          .rows[0]?.status,
+        (
+          await pool.query<{ status: string }>(
+            'select status from rni_platform_slice where id = $1',
+            [redditSliceId],
+          )
+        ).rows[0]?.status,
       ).toBe('partial');
     } finally {
       await blocker.query('select pg_advisory_unlock($1)', [lockKey]);
@@ -768,7 +857,10 @@ describe.skipIf(url === undefined)('RNI D12 ENGINE artifact persistence', () => 
         artifact.inputSetHash,
         artifact.resultHash,
         artifactHash,
-        JSON.stringify({ input: artifact.inputSnapshot, methodology: artifact.methodologySnapshot }),
+        JSON.stringify({
+          input: artifact.inputSnapshot,
+          methodology: artifact.methodologySnapshot,
+        }),
         JSON.stringify(artifact.result),
       ],
     );
@@ -783,9 +875,9 @@ describe.skipIf(url === undefined)('RNI D12 ENGINE artifact persistence', () => 
     await pool.query(`create trigger fail_d12_artifact before insert on rni_platform_analytics_artifact
       for each row execute function fail_d12_artifact()`);
     try {
-      await expect(adapter.commitPlatformAnalytics(analytics('reddit', redditSliceId))).rejects.toThrow(
-        'forced D12 failure',
-      );
+      await expect(
+        adapter.commitPlatformAnalytics(analytics('reddit', redditSliceId)),
+      ).rejects.toThrow('forced D12 failure');
       expect((await pool.query('select id from rni_platform_analytics_artifact')).rowCount).toBe(0);
     } finally {
       await pool.query('drop trigger fail_d12_artifact on rni_platform_analytics_artifact');
