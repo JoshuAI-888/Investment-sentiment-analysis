@@ -338,6 +338,10 @@ async function component(
     );
   });
   if (
+    storedArtifact.inputSnapshot.platform !== fact.platform ||
+    storedArtifact.result.platform !== fact.platform ||
+    storedArtifact.inputSnapshot.securityId !== fact.securityId ||
+    storedArtifact.result.securityId !== fact.securityId ||
     fact.methodologyVersion !== storedArtifact.methodologyVersion ||
     canonicalInstant(fact.windowStart) !==
       canonicalInstant(storedArtifact.inputSnapshot.current.windowStart) ||
