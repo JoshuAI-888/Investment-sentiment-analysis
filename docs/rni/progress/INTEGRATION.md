@@ -30,6 +30,7 @@
 | I06R4 | Retain abandoned-command provider lineage and prove bootstrap rollback | `PASSED` | typecheck/lint; PostgreSQL command/bootstrap 9/9; IR-10/11 resolved |
 | I07 | Compose DATA repositories and ENGINE services | `IN_PROGRESS` | Semantic/artifact ports plus migration-backed D-RNI-19 trace; DATA D10 adapter and final cited-synthesis adapters/composition remain |
 | I07D | Close DATA D10 exact semantic-identity review findings | `PASSED` | Migration 0024 requires one exact SHA-256 E05 output identity per run/security observation; PostgreSQL schema/universe 23/23 |
+| I07E | Compose trusted cited-synthesis persistence boundary | `IN_PROGRESS` | SQL-free prepare/accepted-replay/atomic-commit wrapper over E08; no repository or frozen-contract widening |
 | I08 | Compose SURFACE routes/nav/API with auth | `NOT_STARTED` | Authenticated preview e2e |
 | I09 | Wire QStash jobs/manual idempotent refresh | `NOT_STARTED` | Signed redelivery/double-click tests |
 | I10 | Seed RNI Direct routes and optional Gateway selection | `NOT_STARTED` | D-RNI-21 policy locked; legacy route unchanged, budget enforcement and parity tests pending |
@@ -383,6 +384,7 @@
 | `CURRENT` | Persist D-RNI-19 cited-synthesis lineage in migration 0024 | PostgreSQL schema/universe 23/23; typecheck/scoped lint/diff pass; four adversarial P1 findings closed; independent re-review PASS; broader persistence 38/41 because three superseded D05 standalone-write expectations now reach the intended trace guard and are assigned to DATA D11 |
 | `CURRENT` | Start I07D after DATA D10 adversarial review | D10 focused 9/9 and DATA 50/50 pass, but review found storage-rounding identity collision plus incomplete four-dimension/input-hash-set validation; shared hash column assigned to coordinator and adapter corrections returned to DATA |
 | `CURRENT` | Complete I07D shared exact semantic identity | required SHA-256 `semantic_output_hash` on immutable run-observation membership; synthesis/universe PostgreSQL 23/23, typecheck/scoped lint/diff pass; DATA owns canonical producer and remaining shape/replay tests |
+| `CURRENT` | Start I07E cited-synthesis composition | define the smallest trusted preparation, accepted replay and exact atomic-commit identity boundary around E08 while DATA adapters proceed independently |
 
 ## I07A handoff
 
