@@ -318,6 +318,9 @@ describe('RNI frozen contracts', () => {
         results.set(request.idempotencyKey, result);
         return result;
       },
+      updateFutureAiBudgets: async () => {
+        throw new Error('not exercised by this route-only contract case');
+      },
     };
 
     const historicalRun = structuredClone(referenceRun);

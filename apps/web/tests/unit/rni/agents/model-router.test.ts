@@ -202,6 +202,7 @@ const recording = () => {
     start: vi.fn(async (attempt) => {
       starts.push(attempt);
     }),
+    effectFence: vi.fn(async () => ({ expiresAt: '2099-01-01T00:00:00.000Z' })),
     finish: vi.fn(async (result) => {
       finishes.push(result);
     }),
@@ -294,6 +295,9 @@ describe('RNI model router', () => {
     expect(direct.create).not.toHaveBeenCalled();
     expect(gateway.create).toHaveBeenCalledOnce();
     expect(gateway.create.mock.calls[0]?.[0]).toMatchObject({ reasoning: { effort: 'low' } });
+    expect(gateway.create.mock.calls[0]?.[2]).toBe(
+      RNI_APPROVED_TASK_ENVELOPES.rni_discovery.timeoutMs,
+    );
     expect(records.starts).toHaveLength(1);
     expect(records.finishes).toHaveLength(1);
     expect(records.starts[0]).toMatchObject({
@@ -367,6 +371,39 @@ describe('RNI model router', () => {
       }),
     );
   });
+
+  it.each([5_000, 120_000])(
+    'carries a successor discovery timeout of %i ms to the exact HTTP effect',
+    async (timeoutMs) => {
+      const runConfig = config();
+      const configured: RniImmutableModelRunConfig = {
+        ...runConfig,
+        resolvedModels: runConfig.resolvedModels.map((route) =>
+          route.task === 'rni_discovery'
+            ? { ...route, envelope: { ...route.envelope, timeoutMs } }
+            : route,
+        ),
+      };
+      const direct = discoveryTransport();
+      await createRniRoutedRedditDiscovery({
+        runConfig: configured,
+        tenantCachePartition: 'tenant-timeout',
+        openaiDirect: direct,
+        recorder: recording().recorder,
+        modelRunIdForQuery: () => 'c0000000-0000-4000-8000-000000000034',
+      }).discover({
+        queryId: 'c0000000-0000-4000-8000-000000000035',
+        mode: 'scheduled_community',
+        windowStart: '2026-09-04T00:00:00.000Z',
+        windowEnd: '2026-09-05T00:00:00.000Z',
+        communities: ['r/stocks'],
+        securities: [],
+        maxCandidates: 20,
+      });
+
+      expect(direct.create.mock.calls[0]?.[2]).toBe(timeoutMs);
+    },
+  );
 
   it('rejects Gateway discovery when actual-provider metadata is missing or not OpenAI', async () => {
     const input = {
@@ -1039,7 +1076,11 @@ describe('RNI model router', () => {
       invoke(
         createRniModelRouter({
           openaiDirect: transport(),
-          recorder: { start: vi.fn(async () => undefined), finish: successFinish },
+          recorder: {
+            start: vi.fn(async () => undefined),
+            effectFence: vi.fn(async () => ({ expiresAt: '2099-01-01T00:00:00.000Z' })),
+            finish: successFinish,
+          },
         }),
         config(),
       ),
@@ -1058,7 +1099,11 @@ describe('RNI model router', () => {
               throw providerError;
             }),
           },
-          recorder: { start: vi.fn(async () => undefined), finish: failureFinish },
+          recorder: {
+            start: vi.fn(async () => undefined),
+            effectFence: vi.fn(async () => ({ expiresAt: '2099-01-01T00:00:00.000Z' })),
+            finish: failureFinish,
+          },
         }),
         config(),
       ),

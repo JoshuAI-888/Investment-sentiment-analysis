@@ -115,6 +115,20 @@ describe('RNI durable refresh command primitives', () => {
     },
   );
 
+  it('rechecks schedule trigger eligibility inside the locked submission transaction', async () => {
+    const h = harness();
+    h.store.data.definition.triggerEligible = false;
+
+    await expect(h.service.schedule({ jobId: uuid(800), dueAt: START })).rejects.toThrow(
+      'INVALID_PLAN',
+    );
+    expect(h.store.data.commands.size).toBe(0);
+    expect(h.store.data.executions.size).toBe(0);
+    expect(h.store.data.jobs).toHaveLength(0);
+    expect(h.store.data.outbox.size).toBe(0);
+    expect(h.store.data.definition.nextDueAt.toISOString()).toBe(START);
+  });
+
   it('validates role before reading a replay or any storage', async () => {
     const h = harness();
     h.deps.authorize = async () => {

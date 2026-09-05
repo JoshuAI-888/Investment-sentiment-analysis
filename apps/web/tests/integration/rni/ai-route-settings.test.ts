@@ -4,7 +4,11 @@ import type pg from 'pg';
 import { databaseUrl, makePool, resetSchema, truncateAll } from '../helpers/db';
 import { PostgresRniAiRouteSettingsService } from '../../../src/rni/settings/ai-route/repositories/store';
 import { rniModelTask, type RniAiRoute } from '../../../src/rni/contracts';
-import { findActiveConfigVersion, findRniModelRunRoutes } from '../../../src/repositories/versions';
+import {
+  activateConfigVersion,
+  findActiveConfigVersion,
+  findRniModelRunRoutes,
+} from '../../../src/repositories/versions';
 
 describe.skipIf(!databaseUrl())('live AI-route settings', () => {
   let pool: pg.Pool;
@@ -191,6 +195,199 @@ describe.skipIf(!databaseUrl())('live AI-route settings', () => {
     expect((await pool.query('select actor_id,actor_role,result from audit_event')).rows).toEqual([
       { actor_id: 'admin', actor_role: 'admin', result: 'success' },
     ]);
+  });
+
+  it('activates bounded aggregate budgets for future runs and route changes preserve them', async () => {
+    const input = {
+      idempotencyKey: randomUUID(),
+      reason: 'Lower the future-run demo spend boundary',
+      budgets: {
+        manualRunHardUsd: '1',
+        fullUniverseHardUsd: '10',
+        rolling24hHardUsd: '20',
+        monthlyWarningUsd: '30',
+        monthlyHardUsd: '40',
+        currency: 'USD' as const,
+      },
+    };
+    const first = await service().updateFutureAiBudgets(input);
+    expect(first.setting.budgets).toEqual(input.budgets);
+    expect(first.setting.aiRoute).toBe('openai_direct');
+    expect(await service().updateFutureAiBudgets(input)).toEqual({
+      ...first,
+      disposition: 'duplicate',
+    });
+    await expect(
+      service().updateFutureAiBudgets({
+        ...input,
+        budgets: { ...input.budgets, manualRunHardUsd: '0.5' },
+      }),
+    ).rejects.toMatchObject({ kind: 'conflict' });
+    await expect(
+      service().updateFutureAiBudgets({
+        ...input,
+        idempotencyKey: randomUUID(),
+        budgets: { ...input.budgets, manualRunHardUsd: '1.5' },
+      }),
+    ).rejects.toMatchObject({ kind: 'invalid' });
+    expect(
+      (
+        await pool.query(
+          `select config_version::text,manual_run_hard_usd::text,full_universe_hard_usd::text,
+                  rolling_24h_hard_usd::text,monthly_warning_usd::text,monthly_hard_usd::text
+             from rni_ai_config order by config_version`,
+        )
+      ).rows,
+    ).toEqual([
+      {
+        config_version: original,
+        manual_run_hard_usd: '2',
+        full_universe_hard_usd: '25',
+        rolling_24h_hard_usd: '50',
+        monthly_warning_usd: '300',
+        monthly_hard_usd: '500',
+      },
+      {
+        config_version: first.setting.configVersion,
+        manual_run_hard_usd: '1',
+        full_universe_hard_usd: '10',
+        rolling_24h_hard_usd: '20',
+        monthly_warning_usd: '30',
+        monthly_hard_usd: '40',
+      },
+    ]);
+    const routeChanged = await service().updateFutureAiRoute(request());
+    expect(routeChanged.setting.budgets).toEqual(input.budgets);
+  });
+
+  it('rejects an older RNI successor after the active budget chain advances', async () => {
+    const stale = (
+      await pool.query<{ id: string }>(
+        `insert into config_version
+           (environment,status,parent_version,created_by,change_reason,checksum)
+         values ('test','draft',$1,'admin','Stale successor fixture',$2) returning id::text`,
+        [original, randomUUID()],
+      )
+    ).rows[0]!.id;
+    await pool.query(
+      `insert into rni_ai_config
+         (config_version,ai_route,model_policy_version,budget_policy_version,
+          manual_run_hard_usd,full_universe_hard_usd,rolling_24h_hard_usd,
+          monthly_warning_usd,monthly_hard_usd,currency)
+       select $1,ai_route,model_policy_version,budget_policy_version,
+          manual_run_hard_usd,full_universe_hard_usd,rolling_24h_hard_usd,
+          monthly_warning_usd,monthly_hard_usd,currency
+         from rni_ai_config where config_version=$2`,
+      [stale, original],
+    );
+    const lowered = await service().updateFutureAiBudgets({
+      idempotencyKey: randomUUID(),
+      reason: 'Advance the active downward-only chain',
+      budgets: {
+        manualRunHardUsd: '1',
+        fullUniverseHardUsd: '10',
+        rolling24hHardUsd: '20',
+        monthlyWarningUsd: '30',
+        monthlyHardUsd: '40',
+        currency: 'USD',
+      },
+    });
+
+    await expect(
+      activateConfigVersion(
+        'test',
+        stale,
+        {
+          actorId: 'admin',
+          actorRole: 'admin',
+          reason: 'Attempt stale activation',
+          requestId: randomUUID(),
+          correlationId: randomUUID(),
+        },
+        pool,
+      ),
+    ).rejects.toThrow(/direct active parent/u);
+    expect((await findActiveConfigVersion('test', pool))!.id).toBe(lowered.setting.configVersion);
+  });
+
+  it('cannot escape the RNI budget chain through a non-RNI configuration gap', async () => {
+    const lowered = await service().updateFutureAiBudgets({
+      idempotencyKey: randomUUID(),
+      reason: 'Lower before attempting a non-RNI gap',
+      budgets: {
+        manualRunHardUsd: '1',
+        fullUniverseHardUsd: '10',
+        rolling24hHardUsd: '20',
+        monthlyWarningUsd: '30',
+        monthlyHardUsd: '40',
+        currency: 'USD',
+      },
+    });
+    const nonRni = (
+      await pool.query<{ id: string }>(
+        `insert into config_version
+           (environment,status,parent_version,created_by,change_reason,checksum)
+         values ('test','draft',$1,'admin','Non-RNI gap fixture',$2) returning id::text`,
+        [lowered.setting.configVersion, randomUUID()],
+      )
+    ).rows[0]!.id;
+    const staleRaised = (
+      await pool.query<{ id: string }>(
+        `insert into config_version
+           (environment,status,parent_version,created_by,change_reason,checksum)
+         values ('test','draft',$1,'admin','Raised RNI after gap fixture',$2) returning id::text`,
+        [nonRni, randomUUID()],
+      )
+    ).rows[0]!.id;
+    await pool.query(
+      `insert into rni_ai_config
+         (config_version,ai_route,model_policy_version,budget_policy_version,
+          manual_run_hard_usd,full_universe_hard_usd,rolling_24h_hard_usd,
+          monthly_warning_usd,monthly_hard_usd,currency)
+       values ($1,'openai_direct','rni-balanced-model-policy-v1','rni-ai-budget-policy-v1',
+               2,25,50,300,500,'USD')`,
+      [staleRaised],
+    );
+
+    for (const target of [nonRni, staleRaised]) {
+      await expect(
+        activateConfigVersion(
+          'test',
+          target,
+          {
+            actorId: 'admin',
+            actorRole: 'admin',
+            reason: 'Attempt RNI chain escape',
+            requestId: randomUUID(),
+            correlationId: randomUUID(),
+          },
+          pool,
+        ),
+      ).rejects.toThrow(/direct active parent|cannot raise aggregate budgets/u);
+      expect((await findActiveConfigVersion('test', pool))!.id).toBe(
+        lowered.setting.configVersion,
+      );
+    }
+  });
+
+  it('rejects unsafe budget limits before writing a successor', async () => {
+    await expect(
+      service().updateFutureAiBudgets({
+        idempotencyKey: randomUUID(),
+        reason: 'Attempt an unsafe increase',
+        budgets: {
+          manualRunHardUsd: '3',
+          fullUniverseHardUsd: '25',
+          rolling24hHardUsd: '50',
+          monthlyWarningUsd: '300',
+          monthlyHardUsd: '500',
+          currency: 'USD',
+        },
+      }),
+    ).rejects.toMatchObject({ kind: 'invalid' });
+    expect((await pool.query('select count(*)::text from config_version')).rows[0]!.count).toBe(
+      '1',
+    );
   });
 
   it('returns exact replay even after another activation or later credential loss', async () => {

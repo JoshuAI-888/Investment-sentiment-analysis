@@ -136,5 +136,9 @@ export type OpenAiWebSearchRequest = {
 };
 
 export interface OpenAiResponsesTransport {
-  create(request: OpenAiWebSearchRequest): Promise<unknown>;
+  create(
+    request: OpenAiWebSearchRequest,
+    effectAuthority?: { readonly expiresAt: string },
+    timeoutMs?: number,
+  ): Promise<unknown>;
 }

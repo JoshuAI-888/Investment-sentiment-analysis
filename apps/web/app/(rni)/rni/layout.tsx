@@ -8,6 +8,7 @@ const links = [
   ['/rni/refresh', 'Refresh'],
   ['/rni/settings/universe', 'Universe'],
   ['/rni/settings/ai-route', 'AI route'],
+  ['/rni/settings/schedules', 'Schedule'],
   ['/admin/settings/rni-ai', 'Model limits'],
 ] as const;
 

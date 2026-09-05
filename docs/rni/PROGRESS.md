@@ -28,7 +28,7 @@
 | G3 DATA accepted | `PASSED` | DATA + reviewer | merged sequentially at `254fe45`; coordinator type/contract plus fresh PostgreSQL DATA 41/41 pass |
 | G4 ENGINE accepted | `PASSED` | ENGINE + reviewer | merged sequentially at `62eab1d`; ER-20–23 closed; coordinator and independent E10 gates pass |
 | G5 SURFACE accepted | `PASSED` | SURFACE + reviewer | merged sequentially at `b60ec14`; final code `c224c78`; type/lint/contracts/build/Chromium pass |
-| G6 integrated preview | `IN_PROGRESS` | coordinator | I10 route/budget/settings composition passed; I07, I08 and I09 are active in parallel from one coordinator checkpoint |
+| G6 integrated preview | `IN_PROGRESS` | coordinator | I07/I08 accepted; I09 control plane and hardened D-RNI-32/33/34 pure contracts pass locally. Transactional manifest/checkpoint/release persistence, the production executor and live preview remain |
 | G7 live Reddit/X/FMP gates | `NOT_STARTED` | coordinator + joshuai | Depends G6 and configured credentials |
 | G8 production approval | `NOT_STARTED` | joshuai | Depends all prior gates |
 
@@ -39,7 +39,7 @@
 | DATA | `feat/rni-data-source-first` | `MERGED_TO_INTEGRATION` | `DATA.md` | D12 merge `59ab04a`; source tip `cf2b635` |
 | ENGINE | `feat/rni-engine-live-slice` | `MERGED_TO_INTEGRATION` | `ENGINE.md` | lane/merge `62eab1d` |
 | SURFACE | `feat/rni-surface-demo` | `MERGED_TO_INTEGRATION` | `SURFACE.md` | code `c224c78`; tracker/merge `b60ec14` |
-| INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I10C2B admin-configurable task envelopes complete in this task commit |
+| INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I09 checkpoint: durable jobs/outbox/signing, budget/schedule controls and reviewed worker-manifest/checkpoint/release contracts; database wiring and production executor remain |
 
 ## Confirmed product decisions
 
@@ -50,8 +50,9 @@
 - RNI AI route: OpenAI Direct default; Gateway optional.
 - Balanced model policy: Terra/low for discovery, relationship and classification; Sol/low for
   verification and challenger; Gateway is explicit same-family parity with no silent fallback.
-- Initial RNI AI limits: USD 2/manual ticker run, USD 25/full-universe run, USD 50/rolling day,
-  USD 300/month warning and USD 500/month hard stop (D-RNI-21).
+- Initial RNI AI limits and maximum safety ceilings: USD 2/manual ticker run, USD 25/full-universe
+  run, USD 50/rolling day, USD 300/month warning and USD 500/month hard stop. Administrators may
+  lower them for future runs through an audited successor (D-RNI-21/D-RNI-30).
 - Initial task envelopes: 16 KB input for discovery/relationship/classifier, 64 KB for
   verifier/challenger, 2k output except 1k challenger, three discovery searches, 30-second
   timeout and USD 0.10–0.20 per-call caps. Admin edits stage successors only (D-RNI-25).
@@ -83,7 +84,7 @@ The canonical matrix is [`INTEGRATION_PLAN.md`](INTEGRATION_PLAN.md) §10. Coord
 | Model route and CI | `PASSED` | PR #2 route validation; PR #5 RNI path filter and green eval |
 | Toolchain reproducibility | `PASSED` | pinned pnpm 10.33 clean install plus PR #5 independent CI |
 | Retention and citation safety | `IN_PROGRESS` | DATA claim/source FK and ENGINE source/content binding findings resolved; full publication gate remains later work |
-| Cost and 500+ symbol workload | `POLICY_LOCKED` | D-RNI-21/D-RNI-25 limits and I10 enforcement pass; measured full-universe calibration remains I11 |
+| Cost and 500+ symbol workload | `POLICY_LOCKED` | D-RNI-21/D-RNI-25/D-RNI-30 ceilings, envelopes and I10 enforcement pass; measured full-universe calibration remains I11 |
 | Authentication/deployment | `READY` | — |
 
 ## Merge log
@@ -168,3 +169,5 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — accepted CR-I07-006 as D-RNI-29 after I07 exposed that E06 could not truthfully supply E07/D12's mandatory component for a failed/unavailable source. E06 now permits those terminal statuses only as canonical zero-evidence, zero-confidence-input artifacts with insufficient/null output; exact status, slice and component hashes remain mandatory. E06/E07 unit and contract regression 35/35 plus the public PostgreSQL E06→E07→D12 path 16/16 pass. A shared D12 validator now lets cited publication reuse the same exact E05/E06/E07 projection checks.
 - 2026-09-05 — accepted and integrated final I07 writer at `b6f0aa9` after independent review closed hash-consistent E07-projection and E06-snapshot-scope crossings. The intent-scoped PostgreSQL adapter persists source-first verifier input, fill-once challenger input, selected citation subsets, reason-bound skips and the complete sentence graph atomically; exact retries and transaction-bound I09 seams are preserved. Coordinator PostgreSQL writer/reader/schema/D12 123/123 and E08 unit/composition/contract/eval 54/54 pass with typecheck, scoped lint and diff checks. I07 is complete; I08 may now integrate.
 - 2026-09-05 — accepted and integrated I08 live consumption through `fbd0697` plus coordinator composition: authenticated production pages and read APIs use the accepted environment-bound PostgreSQL snapshot service, deterministic browser demos are guarded under fixture-only routes, manual refresh has no implicit fixture fallback, shared RNI navigation and honest loading/empty/forbidden/retry states are present, and admin AI-route changes atomically activate an audited capability-checked successor for future runs. PostgreSQL read/settings 48/48, focused unit 28/28, build/bundle/type/lint/diff, expanded Chromium 17/18 and corrected full accessibility audit 2/2 pass. I08 is complete; I09 may now integrate.
+- 2026-09-05 — accepted the I09 control-plane checkpoint and CR-I09-002/D-RNI-31: durable manual/rerun/schedule commands, separate Reddit/X/combined leases, transactional outboxes, bounded QStash publication, current/next-key worker authentication, downward future-run budgets and forward-only schedule controls pass locally. RNI unit 562/562, contract 38/38, eval 18 with one credential-gated skip, serialized PostgreSQL 334/334, focused worker 86/86, schedule 79/79, cross-lane PostgreSQL 63/63, production build, full lint and integrated Chromium 37/37 pass. I09 remains in progress because the non-fixture production acquisition/analysis/publication executor is intentionally unavailable and all live command paths fail closed before effects.
+- 2026-09-05 — delegated and independently hardened I09's remaining production contracts: D-RNI-32 now has an exact v2 immutable worker manifest, D-RNI-33 a self-verifying full-universe release index, and D-RNI-34 a parent-authority-bound source checkpoint state machine. The control plane also closes dispatch replay, lease, capability, schedule-relay, settlement, budget-chain and manual-intent races. Final local gates pass: RNI unit 623/623, contract 38/38, serialized PostgreSQL 351/351, eval 18/1 credential skip, Chromium 37/37, typecheck, full lint, production build, bundle/copy scans and independent focused review 175/175. These pure contracts are deliberately unwired until their Migration 0024 persistence/read gates and production executor are implemented; the provisional v1 workflow adapter is not accepted for production.

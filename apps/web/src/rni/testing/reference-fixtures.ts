@@ -269,6 +269,14 @@ export const referenceDirectAiRouteSetting: RniAiRouteSetting = {
     { aiRoute: 'openai_direct', available: true, unavailableReason: null },
     { aiRoute: 'vercel_ai_gateway', available: true, unavailableReason: null },
   ],
+  budgets: {
+    manualRunHardUsd: '2',
+    fullUniverseHardUsd: '25',
+    rolling24hHardUsd: '50',
+    monthlyWarningUsd: '300',
+    monthlyHardUsd: '500',
+    currency: 'USD',
+  },
   effectiveAt: '2026-09-05T00:00:00.000Z',
 };
 

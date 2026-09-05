@@ -14,6 +14,7 @@ export type {
   RniModelInvocationAttempt,
   RniModelInvocationRecorder,
   RniModelFailureCode,
+  RniModelEffectAuthority,
   RniModelLimits,
   RniModelRouter,
   RniModelStage,

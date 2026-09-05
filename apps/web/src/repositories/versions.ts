@@ -156,9 +156,7 @@ export async function findRniModelRunRoutes(
 }
 
 /** Pick the newest complete, currently effective OpenAI RNI price-book version. */
-export async function findCurrentRniPriceBookVersion(
-  db: Queryable = getPool(),
-): Promise<string> {
+export async function findCurrentRniPriceBookVersion(db: Queryable = getPool()): Promise<string> {
   const { rows } = await db.query<{ price_book_version: string }>(
     `select p.price_book_version
        from unit_price_book p
@@ -218,7 +216,8 @@ export async function recordRniModelCatalogueEvidence(
   ];
   if (
     input.capabilities.length !== 4 ||
-    new Set(input.capabilities.map(({ capabilitySnapshotId }) => capabilitySnapshotId)).size !== 4 ||
+    new Set(input.capabilities.map(({ capabilitySnapshotId }) => capabilitySnapshotId)).size !==
+      4 ||
     expectedKeys.some((key) => !capabilityKeys.has(key))
   ) {
     throw new Error('RNI catalogue evidence requires four distinct Direct/Gateway model snapshots');
@@ -288,7 +287,9 @@ export async function recordRniModelCatalogueEvidence(
         row.supports_web_search !== capability.supportsWebSearch ||
         JSON.stringify(row.reasoning_efforts) !== JSON.stringify(capability.reasoningEfforts)
       ) {
-        throw new Error(`RNI capability replay crossed immutable snapshot ${capability.capabilitySnapshotId}`);
+        throw new Error(
+          `RNI capability replay crossed immutable snapshot ${capability.capabilitySnapshotId}`,
+        );
       }
     }
 
@@ -320,10 +321,13 @@ export async function recordRniModelCatalogueEvidence(
       evidenceRow === undefined ||
       evidenceRow.source_url !== input.priceBook.sourceUrl ||
       evidenceRow.response_hash !== input.priceBook.responseHash ||
-      evidenceRow.observed_at.toISOString() !== new Date(input.priceBook.effectiveFrom).toISOString() ||
+      evidenceRow.observed_at.toISOString() !==
+        new Date(input.priceBook.effectiveFrom).toISOString() ||
       evidenceRow.first_tier_input_ceiling !== input.priceBook.firstTierInputCeiling
     ) {
-      throw new Error(`RNI price-book replay crossed immutable ${input.priceBook.priceBookVersion}`);
+      throw new Error(
+        `RNI price-book replay crossed immutable ${input.priceBook.priceBookVersion}`,
+      );
     }
 
     const prices = [
@@ -365,7 +369,8 @@ export async function recordRniModelCatalogueEvidence(
       if (
         row === undefined ||
         row.unit_price !== unitPrice ||
-        row.effective_from.toISOString() !== new Date(input.priceBook.effectiveFrom).toISOString() ||
+        row.effective_from.toISOString() !==
+          new Date(input.priceBook.effectiveFrom).toISOString() ||
         row.source_reference !== input.priceBook.sourceReference
       ) {
         throw new Error(`RNI price-book replay crossed immutable ${operationOrModel}/${unitType}`);
@@ -488,10 +493,12 @@ export async function stageRniTaskEnvelopeSuccessor(
         disposition: 'duplicate',
         idempotencyKey: input.idempotencyKey,
         previousConfigVersion: String(
-          (await tx.query<{ parent_version: string }>(
-            `select parent_version::text as parent_version from config_version where id = $1`,
-            [replayRow.object_id],
-          )).rows[0]!.parent_version,
+          (
+            await tx.query<{ parent_version: string }>(
+              `select parent_version::text as parent_version from config_version where id = $1`,
+              [replayRow.object_id],
+            )
+          ).rows[0]!.parent_version,
         ),
         setting: { ...replaySetting, status: 'staged' },
       };
@@ -500,8 +507,18 @@ export async function stageRniTaskEnvelopeSuccessor(
       throw new Error('RNI successor requires exactly five distinct task envelopes');
     }
 
-    const active = await tx.query<{ id: string; ai_route: RniAiRoute | null }>(
-      `select cv.id::text as id, rc.ai_route
+    const active = await tx.query<{
+      id: string;
+      ai_route: RniAiRoute | null;
+      manual_run_hard_usd: string | null;
+      full_universe_hard_usd: string | null;
+      rolling_24h_hard_usd: string | null;
+      monthly_warning_usd: string | null;
+      monthly_hard_usd: string | null;
+    }>(
+      `select cv.id::text as id, rc.ai_route, rc.manual_run_hard_usd,
+              rc.full_universe_hard_usd, rc.rolling_24h_hard_usd,
+              rc.monthly_warning_usd, rc.monthly_hard_usd
          from config_version cv
          left join rni_ai_config rc on rc.config_version = cv.id
         where cv.environment = $1 and cv.status = 'active'
@@ -509,8 +526,18 @@ export async function stageRniTaskEnvelopeSuccessor(
       [input.environment],
     );
     const activeRow = active.rows[0];
-    if (activeRow === undefined) throw new Error(`No active config_version in ${input.environment}`);
+    if (activeRow === undefined)
+      throw new Error(`No active config_version in ${input.environment}`);
     const aiRoute = activeRow.ai_route ?? 'openai_direct';
+    if (
+      activeRow.manual_run_hard_usd === null ||
+      activeRow.full_universe_hard_usd === null ||
+      activeRow.rolling_24h_hard_usd === null ||
+      activeRow.monthly_warning_usd === null ||
+      activeRow.monthly_hard_usd === null
+    ) {
+      throw new Error('Active RNI configuration is missing aggregate AI budget limits');
+    }
 
     const price = await tx.query<{ first_tier_input_ceiling: number }>(
       `select e.first_tier_input_ceiling
@@ -554,14 +581,16 @@ export async function stageRniTaskEnvelopeSuccessor(
     );
     if (
       capabilities.rows.length !== 2 ||
-      !capabilities.rows.some(({ canonical_provider_model_id }) => canonical_provider_model_id === 'gpt-5.6-terra') ||
-      !capabilities.rows.some(({ canonical_provider_model_id }) => canonical_provider_model_id === 'gpt-5.6-sol')
+      !capabilities.rows.some(
+        ({ canonical_provider_model_id }) => canonical_provider_model_id === 'gpt-5.6-terra',
+      ) ||
+      !capabilities.rows.some(
+        ({ canonical_provider_model_id }) => canonical_provider_model_id === 'gpt-5.6-sol',
+      )
     ) {
       throw new Error(`RNI ${aiRoute} lacks fresh approved Terra/Sol capability evidence`);
     }
-    const byModel = new Map(
-      capabilities.rows.map((row) => [row.canonical_provider_model_id, row]),
-    );
+    const byModel = new Map(capabilities.rows.map((row) => [row.canonical_provider_model_id, row]));
     const created = await tx.query<{ id: string }>(
       `insert into config_version (
          environment, status, parent_version, created_by, change_reason, checksum
@@ -622,11 +651,21 @@ export async function stageRniTaskEnvelopeSuccessor(
          manual_run_hard_usd, full_universe_hard_usd, rolling_24h_hard_usd,
          monthly_warning_usd, monthly_hard_usd
        ) values ($1, $2, 'rni-balanced-model-policy-v1', 'rni-ai-budget-policy-v1',
-                 2, 25, 50, 300, 500)`,
-      [successorId, aiRoute],
+                 $3, $4, $5, $6, $7)`,
+      [
+        successorId,
+        aiRoute,
+        activeRow.manual_run_hard_usd,
+        activeRow.full_universe_hard_usd,
+        activeRow.rolling_24h_hard_usd,
+        activeRow.monthly_warning_usd,
+        activeRow.monthly_hard_usd,
+      ],
     );
     for (const route of input.routes) {
-      const canonicalModel = ['rni_discovery', 'rni_relationship', 'rni_classifier'].includes(route.task)
+      const canonicalModel = ['rni_discovery', 'rni_relationship', 'rni_classifier'].includes(
+        route.task,
+      )
         ? 'gpt-5.6-terra'
         : 'gpt-5.6-sol';
       const model = byModel.get(canonicalModel)!;
@@ -641,10 +680,21 @@ export async function stageRniTaskEnvelopeSuccessor(
                    $7, $8, $9, $10, '["public_forum_content"]', 0, $11, $12, 'low', $13,
                    'rni-balanced-model-policy-v1', $14, $15)`,
         [
-          successorId, route.task, model.configured_model_id, model.model_revision,
-          route.promptVersion, route.schemaVersion, route.maxInputTokensReserved,
-          route.maxOutputTokens, route.timeoutMs, route.maxCostUsd, aiRoute,
-          model.canonical_provider_model_id, model.id, route.maxInputBytes, route.maxToolCalls,
+          successorId,
+          route.task,
+          model.configured_model_id,
+          model.model_revision,
+          route.promptVersion,
+          route.schemaVersion,
+          route.maxInputTokensReserved,
+          route.maxOutputTokens,
+          route.timeoutMs,
+          route.maxCostUsd,
+          aiRoute,
+          model.canonical_provider_model_id,
+          model.id,
+          route.maxInputBytes,
+          route.maxToolCalls,
         ],
       );
     }
@@ -657,9 +707,13 @@ export async function stageRniTaskEnvelopeSuccessor(
        ) values ($1, 'admin', 'stage', 'rni_ai_config', $2, $3, $4, $5, $6,
                  'success', $7, $7)`,
       [
-        input.actorId, successorId, input.environment, input.reason,
+        input.actorId,
+        successorId,
+        input.environment,
+        input.reason,
         JSON.stringify({ configVersion: activeRow.id }),
-        JSON.stringify({ requestHash: input.requestHash, setting }), input.idempotencyKey,
+        JSON.stringify({ requestHash: input.requestHash, setting }),
+        input.idempotencyKey,
       ],
     );
     return {
@@ -677,6 +731,14 @@ export type RniAiReservation = {
   readonly estimatedCostUsd: string | null;
   readonly denialCode: string | null;
   readonly warningEmitted: boolean;
+  /** True only for the transaction that created this reservation and may dispatch the provider. */
+  readonly dispatchAuthorized: boolean;
+};
+
+export type RniAiExecutionAuthority = {
+  readonly stage: 'reddit' | 'x' | 'combined';
+  readonly attempt: number;
+  readonly token: string;
 };
 
 export async function reserveRniAiInvocation(
@@ -687,6 +749,8 @@ export async function reserveRniAiInvocation(
     readonly requestHash: string;
     readonly capabilitySnapshotId: string;
     readonly priceBookVersion: string;
+    /** Required for every I09-orchestrated provider dispatch. */
+    readonly executionAuthority?: RniAiExecutionAuthority;
   },
   db: Queryable = getPool(),
 ): Promise<RniAiReservation> {
@@ -696,17 +760,18 @@ export async function reserveRniAiInvocation(
     estimated_cost_usd: string | null;
     denial_code: string | null;
     warning_emitted: boolean;
-  }>(
-    `select * from rni_reserve_ai_invocation($1, $2, $3, $4, $5, $6)`,
-    [
-      input.invocationId,
-      input.runId,
-      input.task,
-      input.requestHash,
-      input.capabilitySnapshotId,
-      input.priceBookVersion,
-    ],
-  );
+    dispatch_authorized: boolean;
+  }>(`select * from rni_reserve_ai_invocation($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [
+    input.invocationId,
+    input.runId,
+    input.task,
+    input.requestHash,
+    input.capabilitySnapshotId,
+    input.priceBookVersion,
+    input.executionAuthority?.stage ?? null,
+    input.executionAuthority?.attempt ?? null,
+    input.executionAuthority?.token ?? null,
+  ]);
   const row = rows[0];
   if (row === undefined) throw new Error('RNI AI reservation returned no decision');
   return {
@@ -715,7 +780,31 @@ export async function reserveRniAiInvocation(
     estimatedCostUsd: row.estimated_cost_usd,
     denialCode: row.denial_code,
     warningEmitted: row.warning_emitted,
+    dispatchAuthorized: row.dispatch_authorized,
   };
+}
+
+export async function assertRniAiInvocationEffect(
+  input: {
+    readonly invocationId: string;
+    readonly runId: string;
+    readonly executionAuthority: RniAiExecutionAuthority;
+  },
+  db: Queryable = getPool(),
+): Promise<string> {
+  const { rows } = await db.query<{ effect_expires_at: Date | string }>(
+    `select rni_assert_ai_invocation_effect($1, $2, $3, $4, $5) as effect_expires_at`,
+    [
+      input.invocationId,
+      input.runId,
+      input.executionAuthority.stage,
+      input.executionAuthority.attempt,
+      input.executionAuthority.token,
+    ],
+  );
+  const expiresAt = rows[0]?.effect_expires_at;
+  if (expiresAt === undefined) throw new Error('RNI provider effect fence returned no expiry');
+  return (expiresAt instanceof Date ? expiresAt : new Date(expiresAt)).toISOString();
 }
 
 export async function settleRniAiInvocation(
@@ -768,6 +857,7 @@ export async function activateConfigVersion(
   environment: string,
   versionId: string,
   audit: ActivationAudit,
+  poolOverride?: Pool,
 ): Promise<ConfigVersion> {
   return withTransaction(async (tx) => {
     // Serialise concurrent activations for this environment. Without the lock, two callers
@@ -779,6 +869,41 @@ export async function activateConfigVersion(
       `select ${CONFIG_COLUMNS} from config_version where environment = $1 and status = 'active'`,
       [environment],
     );
+    const previousId = (previous.rows[0] as { id?: string } | undefined)?.id ?? null;
+    if (previousId !== null) {
+      const rniSuccessor = await tx.query<{
+        parent_version: string | null;
+        current_rni: boolean;
+        target_rni: boolean;
+        raises_budget: boolean;
+      }>(
+        `select target.parent_version,
+                current_ai.config_version is not null as current_rni,
+                next_ai.config_version is not null as target_rni,
+                coalesce(
+                  next_ai.manual_run_hard_usd > current_ai.manual_run_hard_usd
+                  or next_ai.full_universe_hard_usd > current_ai.full_universe_hard_usd
+                  or next_ai.rolling_24h_hard_usd > current_ai.rolling_24h_hard_usd
+                  or next_ai.monthly_warning_usd > current_ai.monthly_warning_usd
+                  or next_ai.monthly_hard_usd > current_ai.monthly_hard_usd,
+                  false
+                ) as raises_budget
+           from config_version target
+           left join rni_ai_config next_ai on next_ai.config_version=target.id
+           left join rni_ai_config current_ai on current_ai.config_version=$3
+          where target.id=$1 and target.environment=$2 and target.status in ('draft','staged')`,
+        [versionId, environment, previousId],
+      );
+      const guarded = rniSuccessor.rows[0];
+      if (
+        guarded?.current_rni === true &&
+        (!guarded.target_rni || guarded.parent_version !== previousId || guarded.raises_budget)
+      ) {
+        throw new Error(
+          'RNI configuration activation requires the direct active parent and cannot raise aggregate budgets',
+        );
+      }
+    }
 
     await tx.query(
       `update config_version set status = 'superseded' where environment = $1 and status = 'active'`,
@@ -819,7 +944,7 @@ export async function activateConfigVersion(
     );
 
     return configVersion.parse(camelizeRow(activated as Record<string, unknown>));
-  });
+  }, poolOverride);
 }
 
 export type NewUniverseVersion = {

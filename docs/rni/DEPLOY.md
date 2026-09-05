@@ -125,6 +125,10 @@ Neon supports branching for isolated development/testing and pgvector for vector
     page's USD-per-1,000-search display to USD per search (D-RNI-24). Keep staged route input limits
     below the recorded first pricing-tier boundary or create a tier-aware successor. Reserve all
     three discovery searches allowed by the governed prompt.
+13. Use the RNI Settings portal to review the active five aggregate limits. An administrator may
+    lower them only within the D-RNI-21 ceilings and required order; saving activates an audited
+    future-run successor. Confirm a subsequently admitted run snapshots the new limits while an
+    already accepted run and its spend ledger remain unchanged.
 
 ## 6. Sources and discovery
 
@@ -199,10 +203,27 @@ selection.
 2. Configure Preview variables with non-production Neon branch and restricted keys.
 3. Deploy Preview; run migration compatibility, health, auth, pipeline fixture, UI, MCP, and accessibility smoke tests.
 4. Configure function regions/timeouts within current plan limits.
-5. Configure the repository's QStash signing keys, heartbeat destination and production job definitions. Do not add Vercel Cron.
-6. Use the existing durable job/queue mechanisms for multi-stage processing. Queue consumers must be idempotent because delivery is at least once; Reddit and X jobs retain independent states.
-7. Add custom domain/TLS and security headers.
-8. Promote exact reviewed deployment to Production.
+5. Configure `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY` and
+   `QSTASH_NEXT_SIGNING_KEY` as server-only values. Set `APP_BASE_URL` to the exact public origin;
+   QStash signs the exact `${APP_BASE_URL}/api/internal/rni/worker` destination. Rotate by placing
+   the incoming key in `NEXT`, deploying, then promoting it to `CURRENT` only after both-key
+   verification passes. Never print either key or return it from an API.
+6. Configure a separate random `INTERNAL_DISPATCH_SECRET` of at least 16 characters. The external
+   heartbeat calls `POST /api/internal/rni/dispatch` with `Authorization: Bearer <secret>`. Keep
+   this secret out of QStash message bodies, portal settings and logs. Do not add Vercel Cron.
+7. Provision the environment's trusted `rni-manual:<environment>` and
+   `rni-scheduled:<environment>` job definitions through the application helper. Confirm the
+   scheduled job remains full-universe, skip-concurrency, zero-jitter and free of caller-supplied
+   dependencies or active windows.
+8. Do not enable the heartbeat until the reviewed production worker executor is present. The
+   current integration checkpoint intentionally returns unavailable before creating manual or
+   scheduled work, claiming deliveries or contacting providers when that executor is absent.
+9. Use the existing durable job/queue mechanisms for multi-stage processing. Queue consumers must
+   be idempotent because delivery is at least once; Reddit and X jobs retain independent states.
+   A 503 from a busy/deferred worker is retryable; terminal duplicate, stale or expired deliveries
+   are acknowledged without rerunning effects.
+10. Add custom domain/TLS and security headers.
+11. Promote exact reviewed deployment to Production.
 
 ## 8. Initial schedules
 
@@ -215,7 +236,11 @@ Recommended demo default:
 - explicit maximum sources, search calls, tokens, runtime, and cost;
 - notifications only for failure, staleness, budget breach, or required human action.
 
-Use the portal schedule preview to verify next five local and UTC times, including daylight-saving boundaries. Trigger `Run now` once and confirm coalescing against the next scheduled run.
+Use the portal schedule preview to verify next five local and UTC times, including daylight-saving
+boundaries. Intervals must be 300–31,536,000 seconds; cron is five-field and must not produce
+adjacent preview fires less than five minutes apart. Saving or resuming advances the next due time
+from the save transaction; missed periods are not backfilled. Trigger `Run now` once and confirm
+coalescing against the next scheduled run.
 
 ## 9. MCP deployment
 

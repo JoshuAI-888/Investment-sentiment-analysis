@@ -58,6 +58,21 @@ describe('RNI schedule preview', () => {
     expect(next[0]!.dueAt).toBe('2026-09-07T09:00:00.000Z');
   });
 
+  it('finds five sparse leap-day fires without rejecting a valid annual cron', () => {
+    const next = previewRniSchedule(
+      { scheduleType: 'cron', scheduleExpression: '0 0 29 2 *', displayTimezone: 'UTC' },
+      new Date('2024-03-01T00:00:00Z'),
+      5,
+    );
+    expect(next.map(({ dueAt }) => dueAt)).toEqual([
+      '2028-02-29T00:00:00.000Z',
+      '2032-02-29T00:00:00.000Z',
+      '2036-02-29T00:00:00.000Z',
+      '2040-02-29T00:00:00.000Z',
+      '2044-02-29T00:00:00.000Z',
+    ]);
+  });
+
   it.each(['0', '1.5', '-5', '1 second'])('rejects invalid interval %s', (expression) => {
     expect(() =>
       previewRniSchedule(

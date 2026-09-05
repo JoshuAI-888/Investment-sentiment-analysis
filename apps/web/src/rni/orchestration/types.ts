@@ -3,6 +3,7 @@ import type { JobDefinition, JobRun } from '@/contracts/operations';
 import type { NewJobRun } from '@/repositories/jobs';
 import {
   rniAiRoute,
+  rniAiBudgetLimits,
   rniManualRefreshScopePreview,
   rniPlatformSlice,
   rniRun,
@@ -61,6 +62,7 @@ export const refreshPlan = z
     baseBackoffMs: z.number().int().min(1).max(60_000),
     maxBackoffMs: z.number().int().min(1).max(120_000),
     coalesceMs: z.number().int().min(0).max(300_000),
+    budgets: rniAiBudgetLimits,
     maxCostUsd: amount,
     coverage: z
       .object({ reddit: z.string().min(1).max(1000), x: z.string().min(1).max(1000) })

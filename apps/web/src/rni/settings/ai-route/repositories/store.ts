@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type pg from 'pg';
+import Decimal from 'decimal.js';
 import { canonicalHash } from '../../../../calc/canonical';
 import { getPool, withTransaction, type Queryable } from '../../../../repositories/client';
 import {
@@ -7,6 +8,8 @@ import {
   rniAiRouteSetting,
   rniAiRouteSettingUpdateRequest,
   rniAiRouteSettingUpdateResult,
+  rniAiBudgetSettingUpdateRequest,
+  rniAiBudgetSettingUpdateResult,
   rniModelTask,
   type RniAiRoute,
   type RniAiRouteSetting,
@@ -21,7 +24,17 @@ const unavailable = (): never => {
 };
 const nonempty = z.string().min(1);
 const version = z.string().regex(/^[1-9][0-9]*$/u);
-const activeSchema = z.object({ id: version, ai_route: rniAiRoute, effective_at: nonempty });
+const activeSchema = z.object({
+  id: version,
+  ai_route: rniAiRoute,
+  effective_at: nonempty,
+  manual_run_hard_usd: nonempty,
+  full_universe_hard_usd: nonempty,
+  rolling_24h_hard_usd: nonempty,
+  monthly_warning_usd: nonempty,
+  monthly_hard_usd: nonempty,
+  currency: z.literal('USD'),
+});
 const routeSchema = z.object({
   task: rniModelTask,
   transport: z.literal('openai_responses'),
@@ -64,7 +77,9 @@ function expectedModel(task: string): string {
 
 async function active(environment: string, db: Queryable, locking = false): Promise<Active> {
   const { rows } = await db.query(
-    `select c.id::text, a.ai_route,
+    `select c.id::text, a.ai_route, a.manual_run_hard_usd::text,
+       a.full_universe_hard_usd::text, a.rolling_24h_hard_usd::text,
+       a.monthly_warning_usd::text, a.monthly_hard_usd::text, a.currency,
        to_char(c.effective_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as effective_at
      from config_version c join rni_ai_config a on a.config_version=c.id
      where c.environment=$1 and c.status='active' ${locking ? 'for update of c' : ''}`,
@@ -162,6 +177,14 @@ async function setting(
       promptVersion: r.prompt_version,
     })),
     options: availableOptions,
+    budgets: {
+      manualRunHardUsd: config.manual_run_hard_usd,
+      fullUniverseHardUsd: config.full_universe_hard_usd,
+      rolling24hHardUsd: config.rolling_24h_hard_usd,
+      monthlyWarningUsd: config.monthly_warning_usd,
+      monthlyHardUsd: config.monthly_hard_usd,
+      currency: config.currency,
+    },
   });
   return parsed.success ? parsed.data : unavailable();
 }
@@ -313,6 +336,134 @@ export class PostgresRniAiRouteSettingsService implements RniAiRouteSettingsServ
           this.options.environment,
           request.reason,
           JSON.stringify({ configVersion: previous.id, aiRoute: previous.ai_route }),
+          JSON.stringify({ requestHash: hash, result }),
+          request.idempotencyKey,
+        ],
+      );
+      return result;
+    }, this.pool);
+  }
+
+  async updateFutureAiBudgets(
+    raw: Parameters<RniAiRouteSettingsService['updateFutureAiBudgets']>[0],
+  ) {
+    const parsed = rniAiBudgetSettingUpdateRequest.safeParse(raw);
+    if (
+      !parsed.success ||
+      !parsed.data.idempotencyKey.trim() ||
+      parsed.data.idempotencyKey.length > 200
+    )
+      throw new RniAiRouteSettingsError('invalid');
+    const request = parsed.data;
+    const hash = canonicalHash({
+      ...request,
+      actorId: this.options.actorId,
+      environment: this.options.environment,
+    });
+    return withTransaction(async (tx) => {
+      await tx.query('select pg_advisory_xact_lock(hashtext($1))', [
+        `config:${this.options.environment}`,
+      ]);
+      const replay = await tx.query<{ after_value: unknown }>(
+        `select after_value from audit_event where environment=$1 and request_id=$2
+           and object_type='rni_ai_budget_setting' and action='activate'`,
+        [this.options.environment, request.idempotencyKey],
+      );
+      if (replay.rows.length) {
+        const receipt = z
+          .object({ requestHash: nonempty, result: rniAiBudgetSettingUpdateResult })
+          .strict()
+          .safeParse(replay.rows[0]!.after_value);
+        if (replay.rows.length !== 1 || !receipt.success) return unavailable();
+        if (receipt.data.requestHash !== hash) throw new RniAiRouteSettingsError('conflict');
+        return { ...receipt.data.result, disposition: 'duplicate' as const };
+      }
+      const previous = await active(this.options.environment, tx, true);
+      const priorRoutes = await routes(previous, tx);
+      // Do not activate a successor around an unusable current route.
+      await setting(previous, priorRoutes, this.options, tx);
+      const budgetChanges = [
+        [request.budgets.manualRunHardUsd, previous.manual_run_hard_usd],
+        [request.budgets.fullUniverseHardUsd, previous.full_universe_hard_usd],
+        [request.budgets.rolling24hHardUsd, previous.rolling_24h_hard_usd],
+        [request.budgets.monthlyWarningUsd, previous.monthly_warning_usd],
+        [request.budgets.monthlyHardUsd, previous.monthly_hard_usd],
+      ] as const;
+      if (
+        budgetChanges.some(([next, current]) => new Decimal(next).gt(current)) ||
+        budgetChanges.every(([next, current]) => new Decimal(next).eq(current))
+      ) {
+        throw new RniAiRouteSettingsError('invalid');
+      }
+      const created = await tx.query<{ id: string }>(
+        `insert into config_version (environment,status,parent_version,created_by,change_reason,checksum,effective_at)
+         values ($1,'draft',$2,$3,$4,$5,clock_timestamp()) returning id::text`,
+        [this.options.environment, previous.id, this.options.actorId, request.reason, hash],
+      );
+      const nextId = created.rows[0]!.id;
+      for (const [table, columns] of Object.entries(CLONES)) {
+        await tx.query(
+          `insert into ${table} (config_version,${columns})
+          select $1,${columns} from ${table} where config_version=$2`,
+          [nextId, previous.id],
+        );
+      }
+      await tx.query(
+        `insert into rni_ai_config (config_version,ai_route,model_policy_version,
+        budget_policy_version,manual_run_hard_usd,full_universe_hard_usd,rolling_24h_hard_usd,
+        monthly_warning_usd,monthly_hard_usd,currency)
+        select $1,ai_route,model_policy_version,budget_policy_version,$3,$4,$5,$6,$7,currency
+          from rni_ai_config where config_version=$2`,
+        [
+          nextId,
+          previous.id,
+          request.budgets.manualRunHardUsd,
+          request.budgets.fullUniverseHardUsd,
+          request.budgets.rolling24hHardUsd,
+          request.budgets.monthlyWarningUsd,
+          request.budgets.monthlyHardUsd,
+        ],
+      );
+      await tx.query(
+        `insert into model_route (config_version,${MODEL_COLUMNS})
+        select $1,${MODEL_COLUMNS} from model_route where config_version=$2`,
+        [nextId, previous.id],
+      );
+      await tx.query(
+        "update config_version set status='superseded' where id=$1 and status='active'",
+        [previous.id],
+      );
+      await tx.query(
+        "update config_version set status='active',activated_at=clock_timestamp() where id=$1",
+        [nextId],
+      );
+      const current = await active(this.options.environment, tx);
+      const result = rniAiBudgetSettingUpdateResult.parse({
+        disposition: 'accepted',
+        idempotencyKey: request.idempotencyKey,
+        previousConfigVersion: previous.id,
+        setting: await setting(current, await routes(current, tx), this.options, tx),
+      });
+      await tx.query(
+        `insert into audit_event (actor_id,actor_role,action,object_type,object_id,
+        environment,reason,before_value,after_value,result,request_id,correlation_id)
+        values ($1,'admin','activate','rni_ai_budget_setting',$2,$3,$4,$5::jsonb,$6::jsonb,'success',$7,$7)`,
+        [
+          this.options.actorId,
+          nextId,
+          this.options.environment,
+          request.reason,
+          JSON.stringify({
+            configVersion: previous.id,
+            budgets: {
+              manualRunHardUsd: previous.manual_run_hard_usd,
+              fullUniverseHardUsd: previous.full_universe_hard_usd,
+              rolling24hHardUsd: previous.rolling_24h_hard_usd,
+              monthlyWarningUsd: previous.monthly_warning_usd,
+              monthlyHardUsd: previous.monthly_hard_usd,
+              currency: previous.currency,
+            },
+          }),
           JSON.stringify({ requestHash: hash, result }),
           request.idempotencyKey,
         ],

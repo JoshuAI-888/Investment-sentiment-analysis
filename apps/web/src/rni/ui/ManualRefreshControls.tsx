@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   rniManualRefreshResult,
   type RniCommandService,
@@ -50,20 +50,50 @@ export function ManualRefreshControls({
   const [pending, setPending] = useState<string | null>(null);
   const [result, setResult] = useState<RniManualRefreshResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const retryIntent = useRef<Partial<Record<'ticker' | 'full_universe', RniManualRefreshRequest>>>(
+    {},
+  );
+  const activeIntent = useRef<RniManualRefreshRequest | null>(null);
 
   function submit(kind: 'ticker' | 'full_universe') {
-    const key = crypto.randomUUID();
+    if (activeIntent.current !== null) return;
+    const request =
+      retryIntent.current[kind] ??
+      ({
+        idempotencyKey: crypto.randomUUID(),
+        scope: kind === 'ticker' ? { kind, ticker: scopeContext.defaultSecurity.ticker } : { kind },
+      } satisfies RniManualRefreshRequest);
+    retryIntent.current[kind] = request;
+    activeIntent.current = request;
     setPending(kind);
     setResult(null);
     setError(null);
     void service
-      .requestManualRefresh({
-        idempotencyKey: key,
-        scope: kind === 'ticker' ? { kind, ticker: 'NVDA' } : { kind },
+      .requestManualRefresh(request)
+      .then((response) => {
+        if (
+          response.idempotencyKey !== request.idempotencyKey ||
+          response.scopePreview.kind !== request.scope.kind ||
+          (request.scope.kind === 'ticker' &&
+            (response.scopePreview.kind !== 'ticker' ||
+              response.scopePreview.ticker !== request.scope.ticker))
+        ) {
+          throw new Error('RNI refresh response does not match its submitted intent');
+        }
+        if (activeIntent.current !== request) return;
+        delete retryIntent.current[kind];
+        setResult(response);
       })
-      .then(setResult)
-      .catch(() => setError('The refresh request could not be submitted.'))
-      .finally(() => setPending(null));
+      .catch(() => {
+        if (activeIntent.current === request)
+          setError('The refresh request could not be submitted.');
+      })
+      .finally(() => {
+        if (activeIntent.current === request) {
+          activeIntent.current = null;
+          setPending(null);
+        }
+      });
   }
   return (
     <main data-rni-refresh-controls className="mx-auto max-w-3xl space-y-4 p-4 sm:p-8">

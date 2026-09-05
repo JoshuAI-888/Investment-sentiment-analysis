@@ -4,6 +4,8 @@ import type {
   RniAiRouteSettingUpdateRequest,
   RniAiRouteSettingUpdateResult,
   RniAiRouteSettingsService,
+  RniAiBudgetLimits,
+  RniAiBudgetSettingUpdateRequest,
   RniCitation,
   RniCommandService,
   RniCombinedStatus,
@@ -42,6 +44,7 @@ import {
   rniAiRouteSetting,
   rniAiRouteSettingUpdateRequest,
   rniAiRouteSettingUpdateResult,
+  rniAiBudgetSettingUpdateRequest,
   rniUniverseSearchQuery,
   rniUniverseSearchResult,
 } from '@/rni/contracts';
@@ -619,7 +622,7 @@ export class FixtureRniAiRouteSettingsService implements RniAiRouteSettingsServi
     }
 
     const previousConfigVersion = this.current.configVersion;
-    this.current = this.createSuccessorSetting(request.aiRoute);
+    this.current = this.createSuccessorSetting(request.aiRoute, this.current.budgets);
     const result = rniAiRouteSettingUpdateResult.parse({
       disposition: 'accepted',
       idempotencyKey: request.idempotencyKey,
@@ -630,7 +633,34 @@ export class FixtureRniAiRouteSettingsService implements RniAiRouteSettingsServi
     return copy(result);
   }
 
-  private createSuccessorSetting(aiRoute: RniAiRoute): RniAiRouteSetting {
+  async updateFutureAiBudgets(
+    input: RniAiBudgetSettingUpdateRequest,
+  ): Promise<RniAiRouteSettingUpdateResult> {
+    const request = rniAiBudgetSettingUpdateRequest.parse(input);
+    const scope = JSON.stringify({ budgets: request.budgets, reason: request.reason });
+    const existing = this.requests.get(request.idempotencyKey);
+    if (existing) {
+      if (existing.scope !== scope) {
+        throw new RniFixtureAiRouteCommandConflictError(request.idempotencyKey);
+      }
+      return copy({ ...existing.result, disposition: 'duplicate' });
+    }
+    const previousConfigVersion = this.current.configVersion;
+    this.current = this.createSuccessorSetting(this.current.aiRoute, request.budgets);
+    const result = rniAiRouteSettingUpdateResult.parse({
+      disposition: 'accepted',
+      idempotencyKey: request.idempotencyKey,
+      previousConfigVersion,
+      setting: this.current,
+    });
+    this.requests.set(request.idempotencyKey, { scope, result });
+    return copy(result);
+  }
+
+  private createSuccessorSetting(
+    aiRoute: RniAiRoute,
+    budgets: RniAiBudgetLimits,
+  ): RniAiRouteSetting {
     const template = aiRoute === 'vercel_ai_gateway'
       ? referenceGatewayAiRouteSetting
       : referenceDirectAiRouteSetting;
@@ -639,6 +669,7 @@ export class FixtureRniAiRouteSettingsService implements RniAiRouteSettingsServi
 
     return rniAiRouteSetting.parse({
       ...copy(template),
+      budgets: copy(budgets),
       configVersion: `fixture-config-v${version}`,
       effectiveAt: `2026-09-05T0${version}:00:00.000Z`,
     });

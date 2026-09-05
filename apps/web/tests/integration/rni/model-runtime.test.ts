@@ -50,11 +50,12 @@ const responseBody = (overrides: Readonly<Record<string, unknown>> = {}) => ({
 });
 
 const okFetch = (body: unknown) =>
-  vi.fn(async (_input: string | URL | Request, _init?: RequestInit) =>
-    new Response(JSON.stringify(body), {
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-    }),
+  vi.fn(
+    async (_input: string | URL | Request, _init?: RequestInit) =>
+      new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
   );
 
 const transportRequest = (
@@ -72,6 +73,11 @@ const transportRequest = (
     sourceItemIds: ['33333333-3333-4333-8333-333333333333'],
     claimIds: [],
     assessmentCutoffAt: null,
+    executionAuthority: {
+      stage: 'reddit',
+      attempt: 1,
+      token: '44444444-4444-4444-8444-444444444444',
+    },
   },
   provider: 'openai',
   modelId: identity.configuredModelId,
@@ -109,6 +115,7 @@ const transportRequest = (
     maxToolCalls: 0,
     maxCostUsd: '0.10',
   },
+  effectAuthority: { expiresAt: '2099-01-01T00:00:00.000Z' },
   ...overrides,
 });
 
@@ -151,6 +158,25 @@ describe('I10C — live model transport and budget composition', () => {
     });
   });
 
+  it('refuses an expired execution authority at the provider HTTP boundary', async () => {
+    const requestFetch = okFetch(responseBody());
+    const transport = new RniResponsesHttpTransport({
+      route: 'openai_direct',
+      apiKey: 'direct-secret',
+      baseUrl: 'https://api.openai.example/v1/',
+      identities: [identity],
+      fetch: requestFetch,
+      nowMs: () => Date.parse('2026-09-05T01:00:00.000Z'),
+    });
+
+    await expect(
+      transport.invoke(
+        transportRequest({ effectAuthority: { expiresAt: '2026-09-05T00:59:59.999Z' } }),
+      ),
+    ).rejects.toThrow(/authority expired before dispatch/u);
+    expect(requestFetch).not.toHaveBeenCalled();
+  });
+
   it('pins Gateway to OpenAI, records actual routing and accepts no model fallback', async () => {
     const gatewayMetadata = {
       gateway: {
@@ -190,7 +216,10 @@ describe('I10C — live model transport and budget composition', () => {
       }),
     );
 
-    const body = JSON.parse(String(requestFetch.mock.calls[0]![1]?.body)) as Record<string, unknown>;
+    const body = JSON.parse(String(requestFetch.mock.calls[0]![1]?.body)) as Record<
+      string,
+      unknown
+    >;
     expect(body.providerOptions).toEqual({ gateway: { only: ['openai'] } });
     expect(JSON.stringify(body)).not.toContain('models');
     expect(result).toMatchObject({ provider: 'openai', costUsd: '0.0123' });
@@ -206,7 +235,10 @@ describe('I10C — live model transport and budget composition', () => {
     });
     await expect(
       absentMetadata.invoke(
-        transportRequest({ route: 'vercel_ai_gateway', modelId: gatewayIdentity.configuredModelId }),
+        transportRequest({
+          route: 'vercel_ai_gateway',
+          modelId: gatewayIdentity.configuredModelId,
+        }),
       ),
     ).rejects.toThrow('omitted auditable routing metadata');
 
@@ -239,7 +271,10 @@ describe('I10C — live model transport and budget composition', () => {
     });
     await expect(
       crossedMetadata.invoke(
-        transportRequest({ route: 'vercel_ai_gateway', modelId: gatewayIdentity.configuredModelId }),
+        transportRequest({
+          route: 'vercel_ai_gateway',
+          modelId: gatewayIdentity.configuredModelId,
+        }),
       ),
     ).rejects.toThrow('did not resolve the configured OpenAI-only model route');
   });
@@ -279,7 +314,9 @@ describe('I10C — live model transport and budget composition', () => {
       store: false,
     };
 
-    const result = (await transport.create(request)) as Record<string, unknown>;
+    const result = (await transport.create(request, {
+      expiresAt: '2099-01-01T00:00:00.000Z',
+    })) as Record<string, unknown>;
 
     expect(result.provider).toBe('openai');
     expect(result.model).toBe(identity.canonicalProviderModelId);
@@ -352,22 +389,34 @@ describe('I10C — live model transport and budget composition', () => {
   it('reserves before dispatch, emits the once-only warning and settles exact telemetry', async () => {
     const store: RniBudgetStore = {
       currentPriceBookVersion: vi.fn(async () => 'rni-prices-v1'),
-      reserve: vi.fn(async (): Promise<Awaited<ReturnType<RniBudgetStore['reserve']>>> => ({
-        invocationId: MODEL_RUN_ID,
-        decision: 'reserved',
-        estimatedCostUsd: '0.8',
-        denialCode: null,
-        warningEmitted: true,
-      })),
+      reserve: vi.fn(
+        async (): Promise<Awaited<ReturnType<RniBudgetStore['reserve']>>> => ({
+          invocationId: MODEL_RUN_ID,
+          decision: 'reserved',
+          estimatedCostUsd: '0.8',
+          denialCode: null,
+          warningEmitted: true,
+          dispatchAuthorized: true,
+        }),
+      ),
+      effectFence: vi.fn(async () => '2099-01-01T00:00:00.000Z'),
       settle: vi.fn(async () => '0.2'),
     };
-    const onMonthlyWarning = vi.fn();
+    const onMonthlyWarning = vi.fn(async () => {
+      throw new Error('warning notification unavailable');
+    });
     const recorder = createRniBudgetInvocationRecorder({ store, onMonthlyWarning });
     const request = transportRequest({
       task: 'rni_discovery',
       scope: { ...transportRequest().scope, stage: 'discovery', sourceItemIds: [] },
     });
-    const { outputSchema: _outputSchema, stablePrefix: _stablePrefix, dynamicSuffix: _dynamicSuffix, ...attempt } = request;
+    const {
+      outputSchema: _outputSchema,
+      stablePrefix: _stablePrefix,
+      dynamicSuffix: _dynamicSuffix,
+      effectAuthority: _effectAuthority,
+      ...attempt
+    } = request;
     const success: RniCanonicalModelInvocation = {
       ...attempt,
       status: 'succeeded',
@@ -381,9 +430,14 @@ describe('I10C — live model transport and budget composition', () => {
     };
 
     await recorder.start(attempt);
-    await recorder.finish(success);
+    expect(onMonthlyWarning).not.toHaveBeenCalled();
+    await expect(recorder.effectFence(attempt)).resolves.toEqual({
+      expiresAt: '2099-01-01T00:00:00.000Z',
+    });
+    await expect(recorder.finish(success)).resolves.toBeUndefined();
 
     expect(store.reserve).toHaveBeenCalledOnce();
+    expect(store.effectFence).toHaveBeenCalledOnce();
     expect(onMonthlyWarning).toHaveBeenCalledWith({ runId: RUN_ID, invocationId: MODEL_RUN_ID });
     expect(store.settle).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -396,37 +450,52 @@ describe('I10C — live model transport and budget composition', () => {
         webSearchCalls: 1,
       }),
     );
-    expect(store.settle).not.toHaveBeenCalledWith(expect.objectContaining({ actualCostUsd: '999' }));
+    expect(store.settle).not.toHaveBeenCalledWith(
+      expect.objectContaining({ actualCostUsd: '999' }),
+    );
   });
 
   it('denies before provider dispatch and retains a reservation on ambiguous failure', async () => {
     const deniedStore: RniBudgetStore = {
       currentPriceBookVersion: vi.fn(async () => 'rni-prices-v1'),
-      reserve: vi.fn(async (): Promise<Awaited<ReturnType<RniBudgetStore['reserve']>>> => ({
-        invocationId: MODEL_RUN_ID,
-        decision: 'denied',
-        estimatedCostUsd: null,
-        denialCode: 'rolling_24h_hard_limit',
-        warningEmitted: false,
-      })),
+      reserve: vi.fn(
+        async (): Promise<Awaited<ReturnType<RniBudgetStore['reserve']>>> => ({
+          invocationId: MODEL_RUN_ID,
+          decision: 'denied',
+          estimatedCostUsd: null,
+          denialCode: 'rolling_24h_hard_limit',
+          warningEmitted: false,
+          dispatchAuthorized: false,
+        }),
+      ),
+      effectFence: vi.fn(async () => '2099-01-01T00:00:00.000Z'),
       settle: vi.fn(async () => '0'),
     };
     const request = transportRequest();
-    const { outputSchema: _outputSchema, stablePrefix: _stablePrefix, dynamicSuffix: _dynamicSuffix, ...attempt } = request;
-    await expect(createRniBudgetInvocationRecorder({ store: deniedStore }).start(attempt)).rejects.toBeInstanceOf(
-      RniAiBudgetDeniedError,
-    );
+    const {
+      outputSchema: _outputSchema,
+      stablePrefix: _stablePrefix,
+      dynamicSuffix: _dynamicSuffix,
+      effectAuthority: _effectAuthority,
+      ...attempt
+    } = request;
+    await expect(
+      createRniBudgetInvocationRecorder({ store: deniedStore }).start(attempt),
+    ).rejects.toBeInstanceOf(RniAiBudgetDeniedError);
     expect(deniedStore.settle).not.toHaveBeenCalled();
 
     const reservedStore: RniBudgetStore = {
       ...deniedStore,
-      reserve: vi.fn(async (): Promise<Awaited<ReturnType<RniBudgetStore['reserve']>>> => ({
-        invocationId: MODEL_RUN_ID,
-        decision: 'reserved',
-        estimatedCostUsd: '0.8',
-        denialCode: null,
-        warningEmitted: false,
-      })),
+      reserve: vi.fn(
+        async (): Promise<Awaited<ReturnType<RniBudgetStore['reserve']>>> => ({
+          invocationId: MODEL_RUN_ID,
+          decision: 'reserved',
+          estimatedCostUsd: '0.8',
+          denialCode: null,
+          warningEmitted: false,
+          dispatchAuthorized: true,
+        }),
+      ),
     };
     const recorder = createRniBudgetInvocationRecorder({ store: reservedStore });
     const failure: RniFailedModelInvocation = {
@@ -442,5 +511,23 @@ describe('I10C — live model transport and budget composition', () => {
     await recorder.start(attempt);
     await recorder.finish(failure);
     expect(reservedStore.settle).not.toHaveBeenCalled();
+
+    const replayStore: RniBudgetStore = {
+      ...reservedStore,
+      reserve: vi.fn(
+        async (): Promise<Awaited<ReturnType<RniBudgetStore['reserve']>>> => ({
+          invocationId: MODEL_RUN_ID,
+          decision: 'reserved',
+          estimatedCostUsd: '0.8',
+          denialCode: null,
+          warningEmitted: false,
+          dispatchAuthorized: false,
+        }),
+      ),
+    };
+    await expect(
+      createRniBudgetInvocationRecorder({ store: replayStore }).start(attempt),
+    ).rejects.toMatchObject({ denialCode: 'reservation_replay' });
+    expect(replayStore.settle).not.toHaveBeenCalled();
   });
 });

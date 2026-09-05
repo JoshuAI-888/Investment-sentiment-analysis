@@ -1202,6 +1202,97 @@ lets one-source failure reach deterministic partial cross-source synthesis while
 surviving platform's separate cited conclusion. Frozen portal and HTTP shapes, successful E06
 semantics and migration storage do not change.
 
+### D-RNI-30 — Aggregate RNI AI budgets are admin-editable downward for future runs
+
+**Accepts CR-I10-001 from the current coordinator brief, 2026-09-05, and supersedes only the
+fixed-global-limit sentence of D-RNI-25.** D-RNI-21's USD 2 manual ticker, USD 25 full-universe,
+USD 50 rolling-day, USD 300 monthly-warning and USD 500 monthly-stop values remain the initial
+defaults and owner-approved maximum safety ceilings. An authenticated administrator may lower
+one or more values in Settings, subject to positive decimal validation and the ordering
+`manual <= full universe <= rolling day <= monthly warning < monthly hard`. Raising any value
+above the D-RNI-21 ceiling still requires a separately
+approved decision backed by measured full-universe evidence.
+
+Saving is a same-origin, reason-bound and idempotent command that atomically activates a successor
+for future runs. It copies the current route, task envelopes and other configuration without
+rewriting accepted, running or historical runs, model invocations, admissions or settlements.
+Exact replay returns the original successor; crossed reuse fails closed. Later manual and
+scheduled admissions snapshot and enforce the successor values, while I10 remains the only spend
+ledger. Route changes and staged task-envelope successors must preserve the selected aggregate
+limits rather than restoring defaults. Credentials and provider secrets never enter this setting
+or its audit record.
+
+### D-RNI-31 — One environment-bound schedule advances forward without backfill
+
+**Accepts CR-I09-002 from the current coordinator brief, 2026-09-05.** Each environment has one
+trusted `rni-scheduled:<environment>` job for a full-universe refresh. The administrator may read
+and update only that existing definition through the RNI portal. The command is same-origin,
+reason-bound, idempotent and version-checked; exact replay returns the original receipt and crossed
+intent or a stale version fails closed. It may pause or resume the job and select either a bounded
+300–31,536,000 second interval or a five-field cron expression whose adjacent preview fires remain
+at least five minutes apart, with a valid IANA display timezone.
+
+The update takes the established budget, orchestration and job locks in that order, then atomically
+increments the job version, recalculates `next_due_at` strictly forward from the transaction time
+and records an audit. Existing runs, slices and their immutable due times are never rewritten.
+The scheduler uses the same stored definition and skip-concurrency policy: one heartbeat creates at
+most one due run, or records one busy skip, and advances the schedule once. Missed periods are not
+backfilled. The five displayed times are projections from the stored due instant and use the same
+timezone/DST rules as execution; pausing does not claim that those projections will execute.
+
+### D-RNI-32 — Every production worker run uses one immutable resolved manifest
+
+**Accepts CR-I09-003, 2026-09-05.** A new production-capable RNI execution must create one
+append-only canonical run manifest in the same transaction as its job, run, scope, slices,
+admission, execution, audit and outbox records. The manifest pins the exact accepted windows and
+cutoff; active config checksum; five ordered model routes with capability, prompt/schema/tool and
+price evidence; source configuration; ambiguity, taxonomy, classification, analytics and
+convergence policies; complete ordered 1–600 member snapshot; build identity; orchestration
+limits; and coverage disclosures. No worker may reconstruct these values from later mutable
+configuration, universe or security reads.
+
+The manifest and member set have canonical SHA-256 identities validated against their relational
+lineage. Retries retain the same run, plan, manifest and deterministic invocation slots. Historical
+`rni-execution-v1` rows remain readable but cannot authorize new production effects; new manual
+and full-universe executions use the v2 manifest. Missing X queries, source configuration, policy
+values, build identity, fresh capability or exact price evidence fail as `INVALID_PLAN` before
+any accepted-run write. This is additive internal Migration `0024` work and does not change the
+frozen public API.
+
+### D-RNI-33 — Full-universe results stage per member and publish through one atomic release
+
+**Accepts CR-I09-004, 2026-09-05.** Each full-universe member's complete I07 cited graph is
+committed with an immutable manifest-bound staging item under the exact combined lease. Those
+items are restart checkpoints, not user-visible publication. The final transaction verifies that
+both source slices are terminal and that the immutable run-manifest member set has exactly one
+matching cited result—no omissions, extras or crossed security—then inserts one canonical
+aggregate release manifest, the existing orchestration receipt, terminal run/job/execution state,
+budget release and audit atomically.
+
+The aggregate is only a completeness and visibility index. It preserves Reddit and X identities,
+convergence and citation hashes and per-member complete/partial/insufficient status; it never pools
+sentiment or invents an aggregate stance. Radar/detail reads for new full-universe runs remain
+gated until the matching release commits. Manual-ticker and historical reads keep their existing
+paths. Exact staged replay makes no new provider call; a missing/crossed member is validation
+failure, never a silently partial publication. This is additive internal Migration `0024` and
+read-composition work with no external response-shape change.
+
+### D-RNI-34 — Source interpretation checkpoints retain exact content and parent lease authority
+
+**Accepts CR-I09-005, 2026-09-05.** Production source interpretation uses a durable per-subject
+workflow checkpoint whose input identity includes the exact source, retrieval, content version
+and source-outbox event selected by the immutable run. Every claim, heartbeat, retry, terminal
+decision and output commit carries the parent I09 plan/platform/attempt/token authority and is
+rechecked under the established budget → orchestration → execution lock order. A changed-content
+replay cannot silently select newer bytes, and no subject mutation may outlive its parent platform
+lease or run deadline.
+
+The checkpoint records bounded attempts, not-before, lease, input/output hashes and explicit
+completed, permanent-failure and budget-stopped terminals. Exact completed replay returns the
+saved output without source/model effects; partial or crossed output fails closed. Existing v1
+fixtures remain readable for tests but cannot power production execution. This additive internal
+checkpoint/outbox contract leaves frozen public APIs and historical analytical rows unchanged.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

@@ -33,23 +33,57 @@ describe('RNI run and aggregate budget preflight', () => {
   });
 
   it('permits exact 50/500 boundaries and flags the USD 300 warning without changing a hard cap', () => {
+    const limits = planFixture().budgets;
     expect(
-      assertRniAggregateBudget('0.75', { rollingDayUsd: '49.25', calendarMonthUsd: '499.25' })
+      assertRniAggregateBudget(
+        '0.75',
+        { rollingDayUsd: '49.25', calendarMonthUsd: '499.25' },
+        limits,
+      )
         .monthlyWarning,
     ).toBe(true);
     expect(
-      assertRniAggregateBudget('0.75', { rollingDayUsd: '0', calendarMonthUsd: '299.25' })
+      assertRniAggregateBudget(
+        '0.75',
+        { rollingDayUsd: '0', calendarMonthUsd: '299.25' },
+        limits,
+      )
         .monthlyWarning,
     ).toBe(true);
     expect(() =>
-      assertRniAggregateBudget('0.750000000001', { rollingDayUsd: '49.25', calendarMonthUsd: '0' }),
+      assertRniAggregateBudget(
+        '0.750000000001',
+        { rollingDayUsd: '49.25', calendarMonthUsd: '0' },
+        limits,
+      ),
     ).toThrow('BUDGET_DAY');
     expect(() =>
-      assertRniAggregateBudget('0.750000000001', {
-        rollingDayUsd: '0',
-        calendarMonthUsd: '499.25',
-      }),
+      assertRniAggregateBudget(
+        '0.750000000001',
+        { rollingDayUsd: '0', calendarMonthUsd: '499.25' },
+        limits,
+      ),
     ).toThrow('BUDGET_MONTH');
+  });
+
+  it('enforces a lowered future-run aggregate budget snapshot', () => {
+    const plan = planFixture();
+    plan.budgets = {
+      manualRunHardUsd: '0.7',
+      fullUniverseHardUsd: '10',
+      rolling24hHardUsd: '12',
+      monthlyWarningUsd: '20',
+      monthlyHardUsd: '25',
+      currency: 'USD',
+    };
+    expect(() => estimateRniRefreshBudget(plan)).toThrow('BUDGET_RUN');
+    expect(() =>
+      assertRniAggregateBudget(
+        '0.75',
+        { rollingDayUsd: '11.26', calendarMonthUsd: '0' },
+        plan.budgets,
+      ),
+    ).toThrow('BUDGET_DAY');
   });
 
   it('serializes competing different-scope admissions against aggregate headroom', async () => {

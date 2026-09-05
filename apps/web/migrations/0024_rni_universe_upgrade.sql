@@ -1813,12 +1813,13 @@ begin
     raise exception 'RNI AI configuration uses an unapproved policy version'
       using errcode = 'check_violation', constraint = 'rni_ai_config_approved_policy';
   end if;
-  if new.manual_run_hard_usd <> 2
-       or new.full_universe_hard_usd <> 25
-       or new.rolling_24h_hard_usd <> 50
-       or new.monthly_warning_usd <> 300
-       or new.monthly_hard_usd <> 500 then
-    raise exception 'D-RNI-21 policy v1 requires the owner-approved 2/25/50/300/500 USD limits'
+  if new.manual_run_hard_usd > 2
+       or new.full_universe_hard_usd > 25
+       or new.rolling_24h_hard_usd > 50
+       or new.monthly_warning_usd > 300
+       or new.monthly_hard_usd > 500
+       or new.monthly_warning_usd >= new.monthly_hard_usd then
+    raise exception 'D-RNI-30 limits must stay within the owner-approved 2/25/50/300/500 USD ceilings'
       using errcode = 'check_violation', constraint = 'rni_ai_config_policy_v1_limits';
   end if;
   return new;
@@ -2182,6 +2183,198 @@ create table rni_ai_budget_warning (
 create index rni_ai_model_invocation_run_idx on rni_ai_model_invocation (run_id, created_at);
 create index rni_ai_model_invocation_window_idx on rni_ai_model_invocation (created_at);
 
+-- I09 durable orchestration state. These are mutable operational records: immutable analytical
+-- facts still live in the RNI run, slice, source and synthesis tables. Commands are insert-only;
+-- execution rows project the current fenced state; outbox rows retain the exact queue payload
+-- until an acknowledged QStash publication.
+create table rni_orchestration_command (
+  partition    text        not null,
+  command_key  text        not null,
+  intent_hash  text        not null,
+  record       jsonb       not null,
+  created_at   timestamptz not null default now(),
+
+  primary key (partition, command_key),
+  constraint rni_orchestration_command_partition_check check (length(partition) > 0),
+  constraint rni_orchestration_command_key_check check (length(command_key) > 0),
+  constraint rni_orchestration_command_hash_check check (intent_hash ~ '^[0-9a-f]{64}$')
+);
+
+create table rni_orchestration_execution (
+  run_id                  uuid        primary key references rni_run (id),
+  partition               text        not null,
+  job_run_id              uuid        not null unique references job_run (id),
+  plan_hash               text        not null,
+  coalesce_key            text        not null,
+  coalesce_until          timestamptz not null,
+  deadline                timestamptz not null,
+  rerun_of                uuid        null references rni_run (id),
+  admitted_cost_usd       numeric     not null,
+  remaining_admission_usd numeric     not null,
+  admitted_at             timestamptz not null,
+  released_at             timestamptz null,
+  record                   jsonb       not null,
+  updated_at               timestamptz not null default now(),
+
+  constraint rni_orchestration_execution_partition_check check (length(partition) > 0),
+  constraint rni_orchestration_execution_plan_hash_check check (plan_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_orchestration_execution_coalesce_key_check
+    check (coalesce_key ~ '^[0-9a-f]{64}$'),
+  constraint rni_orchestration_execution_window_check check (
+    coalesce_until >= admitted_at and deadline > admitted_at
+  ),
+  constraint rni_orchestration_execution_admission_check check (
+    admitted_cost_usd >= 0 and remaining_admission_usd >= 0
+    and remaining_admission_usd <= admitted_cost_usd
+    and ((remaining_admission_usd = 0) = (released_at is not null))
+  )
+);
+
+create index rni_orchestration_execution_coalesce_idx
+  on rni_orchestration_execution (partition, coalesce_key, coalesce_until desc)
+  where released_at is null;
+create index rni_orchestration_execution_admission_idx
+  on rni_orchestration_execution (admitted_at)
+  where released_at is null;
+
+create table rni_orchestration_outbox (
+  delivery_key  text        primary key,
+  partition     text        not null,
+  kind          text        not null,
+  run_id        uuid        not null references rni_run (id),
+  payload_hash  text        not null,
+  payload       jsonb       not null,
+  not_before    timestamptz not null,
+  published_at  timestamptz null,
+  message_id    text        null,
+  created_at    timestamptz not null default now(),
+
+  constraint rni_orchestration_outbox_key_check check (length(delivery_key) > 0),
+  constraint rni_orchestration_outbox_partition_check check (length(partition) > 0),
+  constraint rni_orchestration_outbox_kind_check check (kind in ('platform', 'combined')),
+  constraint rni_orchestration_outbox_hash_check check (payload_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_orchestration_outbox_publication_check check (
+    (published_at is null and message_id is null)
+    or (published_at is not null and message_id is not null and length(message_id) > 0)
+  )
+);
+
+create index rni_orchestration_outbox_pending_idx
+  on rni_orchestration_outbox (partition, kind, not_before, created_at)
+  where published_at is null;
+
+create table rni_orchestration_invocation_binding (
+  invocation_id  uuid        primary key references rni_ai_model_invocation (id),
+  run_id         uuid        not null references rni_orchestration_execution (run_id),
+  execution_stage text       not null,
+  execution_attempt integer  not null,
+  execution_token uuid       not null,
+  task           text        not null,
+  call_ordinal   integer     not null,
+  created_at     timestamptz not null default now(),
+
+  constraint rni_orchestration_invocation_task_check check (task in (
+    'rni_discovery', 'rni_relationship', 'rni_classifier', 'rni_verification', 'rni_challenger'
+  )),
+  constraint rni_orchestration_invocation_stage_check
+    check (execution_stage in ('reddit', 'x', 'combined')),
+  constraint rni_orchestration_invocation_attempt_check check (execution_attempt > 0),
+  constraint rni_orchestration_invocation_ordinal_check check (call_ordinal > 0),
+  constraint rni_orchestration_invocation_slot_unique
+    unique (run_id, execution_stage, task, call_ordinal)
+);
+
+create table rni_orchestration_publication_receipt (
+  run_id         uuid        primary key references rni_orchestration_execution (run_id),
+  plan_hash      text        not null,
+  artifact_hash  text        not null,
+  status         text        not null,
+  token          uuid        not null,
+  attempt        integer     not null,
+  acquired_at    timestamptz not null,
+  expires_at     timestamptz not null,
+  committed_at   timestamptz not null,
+  artifact       jsonb       not null,
+  created_at     timestamptz not null default now(),
+
+  constraint rni_orchestration_receipt_plan_hash_check check (plan_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_orchestration_receipt_artifact_hash_check
+    check (artifact_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_orchestration_receipt_status_check
+    check (status in ('complete', 'partial', 'insufficient')),
+  constraint rni_orchestration_receipt_attempt_check check (attempt between 1 and 3),
+  constraint rni_orchestration_receipt_window_check check (
+    expires_at > acquired_at and committed_at >= acquired_at and committed_at < expires_at
+  )
+);
+
+create or replace function rni_validate_orchestration_publication_receipt() returns trigger
+language plpgsql as $$
+declare
+  execution_row rni_orchestration_execution%rowtype;
+begin
+  select * into execution_row from rni_orchestration_execution
+   where run_id = new.run_id for update;
+  if execution_row.run_id is null
+     or execution_row.plan_hash is distinct from new.plan_hash
+     or execution_row.deadline <= clock_timestamp()
+     or new.expires_at <= clock_timestamp()
+     or new.expires_at > execution_row.deadline
+     or execution_row.record #>> '{combined,status}' is distinct from 'running'
+     or execution_row.record #>> '{combined,lease,token}' is distinct from new.token::text
+     or (execution_row.record #>> '{combined,attempt}')::integer is distinct from new.attempt
+     or (execution_row.record #>> '{combined,lastAttemptAt}')::timestamptz
+       is distinct from new.acquired_at
+     or (execution_row.record #>> '{combined,lease,expiresAt}')::timestamptz
+       is distinct from new.expires_at
+     or execution_row.record #>> '{combined,publication,token}' is distinct from new.token::text
+     or (execution_row.record #>> '{combined,publication,attempt}')::integer
+       is distinct from new.attempt
+     or (execution_row.record #>> '{combined,publication,acquiredAt}')::timestamptz
+       is distinct from new.acquired_at
+     or (execution_row.record #>> '{combined,publication,expiresAt}')::timestamptz
+       is distinct from new.expires_at
+     or (execution_row.record #>> '{combined,publication,committedAt}')::timestamptz
+       is distinct from new.committed_at
+     or execution_row.record #>> '{combined,publication,artifact,runId}'
+       is distinct from new.run_id::text
+     or execution_row.record #>> '{combined,publication,artifact,planHash}'
+       is distinct from new.plan_hash
+     or execution_row.record #>> '{combined,publication,artifact,status}'
+       is distinct from new.status
+     or execution_row.record #>> '{combined,publication,artifact,artifactHash}'
+       is distinct from new.artifact_hash
+     or execution_row.record #> '{combined,publication,artifact}' is distinct from new.artifact then
+    raise exception 'RNI publication receipt is outside its exact execution fence'
+      using errcode = 'check_violation', constraint = 'rni_orchestration_publication_fence';
+  end if;
+  return null;
+end;
+$$;
+
+create constraint trigger rni_orchestration_publication_fence
+  after insert on rni_orchestration_publication_receipt
+  deferrable initially deferred
+  for each row execute function rni_validate_orchestration_publication_receipt();
+
+create trigger rni_orchestration_command_append_only
+  before update or delete on rni_orchestration_command
+  for each row execute function reject_mutation();
+create trigger rni_orchestration_invocation_binding_append_only
+  before update or delete on rni_orchestration_invocation_binding
+  for each row execute function reject_mutation();
+create trigger rni_orchestration_publication_receipt_append_only
+  before update or delete on rni_orchestration_publication_receipt
+  for each row execute function reject_mutation();
+create trigger rni_orchestration_outbox_content_immutable
+  before update or delete on rni_orchestration_outbox
+  for each row execute function reject_content_mutation('published_at', 'message_id');
+
+comment on table rni_orchestration_execution is
+  'Mutable fenced I09 execution state. remaining_admission_usd is held aggregate headroom and converts atomically into I10 per-call reservations.';
+comment on table rni_orchestration_outbox is
+  'Transactional queue intent. Only publication acknowledgement fields may change after insert.';
+
 do $$
 declare
   table_name text;
@@ -2223,22 +2416,27 @@ create or replace function rni_reserve_ai_invocation(
   p_task text,
   p_request_hash text,
   p_capability_snapshot_id text,
-  p_price_book_version text
+  p_price_book_version text,
+  p_execution_stage text default null,
+  p_execution_attempt integer default null,
+  p_execution_token uuid default null
 ) returns table (
   invocation_id uuid,
   decision text,
   estimated_cost_usd numeric,
   denial_code text,
-  warning_emitted boolean
+  warning_emitted boolean,
+  dispatch_authorized boolean
 )
 language plpgsql as $$
 declare
   existing rni_ai_model_invocation%rowtype;
+  existing_binding rni_orchestration_invocation_binding%rowtype;
   run_row rni_run%rowtype;
   scope_row rni_run_execution_scope%rowtype;
   config_row rni_ai_config%rowtype;
   route_row model_route%rowtype;
-  now_at timestamptz := clock_timestamp();
+  now_at timestamptz;
   input_price numeric;
   output_price numeric;
   search_price numeric := 0;
@@ -2246,6 +2444,14 @@ declare
   run_spend numeric;
   rolling_spend numeric;
   month_spend numeric;
+  rolling_admissions numeric;
+  month_admissions numeric;
+  admission_remaining numeric := 0;
+  admission_exists boolean := false;
+  task_call_limit integer := 0;
+  task_call_count integer := 0;
+  execution_deadline timestamptz;
+  exact_lease_count integer := 0;
   run_limit numeric;
   deny text;
   reservation_event uuid;
@@ -2260,6 +2466,11 @@ begin
       using errcode = 'check_violation';
   end if;
 
+  select cv.environment into strict run_environment
+    from rni_run r join config_version cv on cv.id = r.config_version
+   where r.id = p_run_id;
+  perform pg_advisory_xact_lock(hashtextextended('rni-ai-budget:' || run_environment, 0));
+  now_at := clock_timestamp();
   select * into run_row from rni_run where id = p_run_id for share;
   if run_row.id is null then raise exception 'RNI run % not found', p_run_id; end if;
   select * into config_row from rni_ai_config where config_version = run_row.config_version;
@@ -2270,11 +2481,9 @@ begin
     raise exception 'RNI invocation requires exact run scope, route and configuration lineage'
       using errcode = 'check_violation';
   end if;
-
   select status, environment into strict config_status, run_environment
     from config_version where id = run_row.config_version for share;
 
-  perform pg_advisory_xact_lock(hashtextextended('rni-ai-budget:' || run_environment, 0));
   select * into existing from rni_ai_model_invocation where id = p_invocation_id;
   if existing.id is not null then
     if existing.run_id <> p_run_id or existing.task <> p_task
@@ -2284,14 +2493,80 @@ begin
       raise exception 'RNI invocation idempotency key was reused with different intent'
         using errcode = 'unique_violation';
     end if;
+    if exists (select 1 from rni_orchestration_execution where run_id = p_run_id) then
+      select * into existing_binding from rni_orchestration_invocation_binding binding
+       where binding.invocation_id = p_invocation_id;
+      if existing_binding.invocation_id is null
+         or existing_binding.execution_stage is distinct from p_execution_stage
+         or existing_binding.execution_attempt is distinct from p_execution_attempt
+         or existing_binding.execution_token is distinct from p_execution_token then
+        raise exception 'RNI invocation replay crossed its execution lease authority'
+          using errcode = 'unique_violation';
+      end if;
+    end if;
     return query select existing.id, existing.decision, existing.estimated_cost_usd,
-      existing.denial_code, false;
+      existing.denial_code, false, false;
     return;
   end if;
   if config_status not in ('active', 'superseded')
      or run_row.status not in ('requested', 'running') then
     raise exception 'RNI invocation requires a dispatchable immutable config and a non-terminal run'
       using errcode = 'check_violation';
+  end if;
+
+  -- Resolve and fence I09 authority before pricing or any invocation/audit write. Invalid,
+  -- expired, or crossed leases are observations only: they must not append durable model work.
+  select remaining_admission_usd,
+         case
+           when p_execution_stage = 'combined' then
+             coalesce((record #>> array['plan','calls','reddit',p_task])::integer, 0)
+               + coalesce((record #>> array['plan','calls','x',p_task])::integer, 0)
+           when p_execution_stage in ('reddit', 'x') then
+             coalesce((record #>> array['plan','calls',p_execution_stage,p_task])::integer, 0)
+           else 0
+         end,
+         deadline,
+         case
+           when p_execution_stage = 'combined'
+             and p_task in ('rni_verification', 'rni_challenger')
+             and record #>> '{run,status}' = 'running'
+             and record #>> '{combined,status}' = 'running'
+             and (record #>> '{combined,attempt}')::integer = p_execution_attempt
+             and (record #>> '{combined,lease,token}')::uuid = p_execution_token
+             and (record #>> '{combined,lease,expiresAt}')::timestamptz > now_at then 1
+           when p_execution_stage = 'reddit'
+             and p_task in ('rni_discovery', 'rni_relationship', 'rni_classifier')
+             and record #>> '{run,status}' = 'running'
+             and record #>> '{platforms,reddit,slice,status}' = 'running'
+             and (record #>> '{platforms,reddit,attempt}')::integer = p_execution_attempt
+             and (record #>> '{platforms,reddit,lease,token}')::uuid = p_execution_token
+             and (record #>> '{platforms,reddit,lease,expiresAt}')::timestamptz > now_at then 1
+           when p_execution_stage = 'x'
+             and p_task in ('rni_relationship', 'rni_classifier')
+             and record #>> '{run,status}' = 'running'
+             and record #>> '{platforms,x,slice,status}' = 'running'
+             and (record #>> '{platforms,x,attempt}')::integer = p_execution_attempt
+             and (record #>> '{platforms,x,lease,token}')::uuid = p_execution_token
+             and (record #>> '{platforms,x,lease,expiresAt}')::timestamptz > now_at then 1
+           else 0
+         end
+    into admission_remaining, task_call_limit, execution_deadline, exact_lease_count
+    from rni_orchestration_execution execution
+   where execution.run_id = p_run_id
+   for update;
+  admission_exists := found;
+  admission_remaining := coalesce(admission_remaining, 0);
+  if admission_exists and (execution_deadline <= now_at or exact_lease_count = 0) then
+    return query select p_invocation_id, 'denied'::text, null::numeric,
+      'execution_fence_expired'::text, false, false;
+    return;
+  end if;
+  if admission_exists then
+    select count(*) into task_call_count
+      from rni_orchestration_invocation_binding binding
+     where binding.run_id = p_run_id
+       and binding.execution_stage = p_execution_stage
+       and binding.task = p_task;
   end if;
 
   select unit_price into input_price from unit_price_book
@@ -2325,8 +2600,17 @@ begin
       case when p_task in ('rni_verification', 'rni_challenger') then p_invocation_id else null end,
       now_at
     );
+    if admission_exists then
+      insert into rni_orchestration_invocation_binding (
+        invocation_id, run_id, execution_stage, execution_attempt, execution_token,
+        task, call_ordinal, created_at
+      ) values (
+        p_invocation_id, p_run_id, p_execution_stage, p_execution_attempt, p_execution_token,
+        p_task, task_call_count + 1, now_at
+      );
+    end if;
     return query select p_invocation_id, 'denied'::text, null::numeric,
-      'unpriced_component'::text, false;
+      'unpriced_component'::text, false, false;
     return;
   end if;
 
@@ -2348,12 +2632,30 @@ begin
     run_environment,
     month_start, now_at + interval '1 microsecond'
   );
+  select coalesce(sum(e.remaining_admission_usd), 0)
+    into rolling_admissions
+    from rni_orchestration_execution e
+    join rni_run r on r.id = e.run_id
+    join config_version cv on cv.id = r.config_version
+   where cv.environment = run_environment and e.released_at is null;
+  select coalesce(sum(e.remaining_admission_usd), 0)
+    into month_admissions
+    from rni_orchestration_execution e
+    join rni_run r on r.id = e.run_id
+    join config_version cv on cv.id = r.config_version
+   where cv.environment = run_environment and e.released_at is null;
 
   deny := case
     when estimate > route_row.max_cost_usd then 'route_hard_limit'
     when run_spend + estimate > run_limit then 'run_hard_limit'
-    when rolling_spend + estimate > config_row.rolling_24h_hard_usd then 'rolling_24h_hard_limit'
-    when month_spend + estimate > config_row.monthly_hard_usd then 'monthly_hard_limit'
+    when admission_exists and estimate > admission_remaining then 'admission_exhausted'
+    when admission_exists and task_call_count >= task_call_limit then 'call_limit_exhausted'
+    when rolling_spend + rolling_admissions + estimate
+      - (case when admission_exists then estimate else 0 end)
+      > config_row.rolling_24h_hard_usd then 'rolling_24h_hard_limit'
+    when month_spend + month_admissions + estimate
+      - (case when admission_exists then estimate else 0 end)
+      > config_row.monthly_hard_usd then 'monthly_hard_limit'
     else null
   end;
   if deny is not null then
@@ -2367,7 +2669,16 @@ begin
       case when p_task in ('rni_verification', 'rni_challenger') then p_invocation_id else null end,
       now_at
     );
-    return query select p_invocation_id, 'denied'::text, null::numeric, deny, false;
+    if admission_exists then
+      insert into rni_orchestration_invocation_binding (
+        invocation_id, run_id, execution_stage, execution_attempt, execution_token,
+        task, call_ordinal, created_at
+      ) values (
+        p_invocation_id, p_run_id, p_execution_stage, p_execution_attempt, p_execution_token,
+        p_task, task_call_count + 1, now_at
+      );
+    end if;
+    return query select p_invocation_id, 'denied'::text, null::numeric, deny, false, false;
     return;
   end if;
 
@@ -2395,18 +2706,123 @@ begin
     now_at
   );
 
-  if month_spend + estimate >= config_row.monthly_warning_usd then
+  if admission_exists then
+    insert into rni_orchestration_invocation_binding (
+      invocation_id, run_id, execution_stage, execution_attempt, execution_token,
+      task, call_ordinal, created_at
+    ) values (
+      p_invocation_id, p_run_id, p_execution_stage, p_execution_attempt, p_execution_token,
+      p_task, task_call_count + 1, now_at
+    );
+    update rni_orchestration_execution
+       set remaining_admission_usd = remaining_admission_usd - estimate,
+           released_at = case
+             when remaining_admission_usd = estimate then now_at else null
+           end,
+           updated_at = now_at
+     where run_id = p_run_id;
+  end if;
+
+  if month_spend + month_admissions + estimate
+       - (case when admission_exists then estimate else 0 end)
+     >= config_row.monthly_warning_usd then
     insert into rni_ai_budget_warning (
       config_version, environment, period_start, warning_code, effective_usd, emitted_at
     ) values (
       config_row.config_version,
       run_environment,
-      month_start, 'monthly_warning', month_spend + estimate, now_at
+      month_start, 'monthly_warning',
+      month_spend + month_admissions + estimate
+        - (case when admission_exists then estimate else 0 end), now_at
     ) on conflict do nothing;
     get diagnostics warning_rows = row_count;
     warning_inserted := warning_rows = 1;
   end if;
-  return query select p_invocation_id, 'reserved'::text, estimate, null::text, warning_inserted;
+  return query select p_invocation_id, 'reserved'::text, estimate, null::text, warning_inserted,
+    true;
+end;
+$$;
+
+create or replace function rni_assert_ai_invocation_effect(
+  p_invocation_id uuid,
+  p_run_id uuid,
+  p_execution_stage text,
+  p_execution_attempt integer,
+  p_execution_token uuid
+) returns timestamptz
+language plpgsql volatile as $$
+declare
+  now_at timestamptz;
+  effect_expires_at timestamptz;
+  run_partition text;
+begin
+  select execution.partition into run_partition
+    from rni_orchestration_execution execution
+   where execution.run_id = p_run_id;
+  if run_partition is null then
+    raise exception 'RNI provider effect requires an orchestration execution'
+      using errcode = 'check_violation';
+  end if;
+  -- Linearize against every lifecycle transition in the same mandatory order used by
+  -- PostgresRniOrchestrationStore, then lock/recheck the execution row below.
+  perform pg_advisory_xact_lock(hashtextextended('rni-ai-budget:' || run_partition, 0));
+  perform pg_advisory_xact_lock(hashtextextended('rni-orchestration:' || run_partition, 0));
+  now_at := clock_timestamp();
+  select least(
+           execution.deadline,
+           capability.expires_at,
+           case binding.execution_stage
+             when 'combined' then
+               (execution.record #>> '{combined,lease,expiresAt}')::timestamptz
+             when 'reddit' then
+               (execution.record #>> '{platforms,reddit,lease,expiresAt}')::timestamptz
+             when 'x' then
+               (execution.record #>> '{platforms,x,lease,expiresAt}')::timestamptz
+           end
+         )
+    into effect_expires_at
+    from rni_ai_model_invocation invocation
+    join rni_orchestration_invocation_binding binding
+      on binding.invocation_id = invocation.id
+    join rni_orchestration_execution execution
+      on execution.run_id = binding.run_id
+    join rni_model_capability_snapshot capability
+      on capability.id = invocation.capability_snapshot_id
+     and capability.ai_route = invocation.ai_route
+   where invocation.id = p_invocation_id
+     and invocation.run_id = p_run_id
+     and invocation.decision = 'reserved'
+     and capability.available
+     and capability.expires_at > now_at
+     and binding.run_id = p_run_id
+     and binding.execution_stage = p_execution_stage
+     and binding.execution_attempt = p_execution_attempt
+     and binding.execution_token = p_execution_token
+     and execution.record #>> '{run,status}' = 'running'
+     and case binding.execution_stage
+       when 'combined' then
+         binding.task in ('rni_verification', 'rni_challenger')
+         and execution.record #>> '{combined,status}' = 'running'
+         and (execution.record #>> '{combined,attempt}')::integer = binding.execution_attempt
+         and (execution.record #>> '{combined,lease,token}')::uuid = binding.execution_token
+       when 'reddit' then
+         binding.task in ('rni_discovery', 'rni_relationship', 'rni_classifier')
+         and execution.record #>> '{platforms,reddit,slice,status}' = 'running'
+         and (execution.record #>> '{platforms,reddit,attempt}')::integer = binding.execution_attempt
+         and (execution.record #>> '{platforms,reddit,lease,token}')::uuid = binding.execution_token
+       when 'x' then
+         binding.task in ('rni_relationship', 'rni_classifier')
+         and execution.record #>> '{platforms,x,slice,status}' = 'running'
+         and (execution.record #>> '{platforms,x,attempt}')::integer = binding.execution_attempt
+         and (execution.record #>> '{platforms,x,lease,token}')::uuid = binding.execution_token
+       else false
+     end
+   for update of execution;
+  if effect_expires_at is null or effect_expires_at <= now_at then
+    raise exception 'RNI provider effect requires the exact live execution lease authority'
+      using errcode = 'check_violation';
+  end if;
+  return effect_expires_at;
 end;
 $$;
 
@@ -2431,7 +2847,11 @@ declare
   actual numeric;
   actual_event uuid;
 begin
-  select * into invocation_row from rni_ai_model_invocation where id = p_invocation_id;
+  -- Serialize exact replays before either transaction can create its cost event. The
+  -- settlement's unique key alone is too late: without this lock concurrent callers can
+  -- both insert reconciled cost events before one loses the settlement insert race.
+  select * into invocation_row from rni_ai_model_invocation
+   where id = p_invocation_id for update;
   if invocation_row.id is null or invocation_row.decision <> 'reserved' then
     raise exception 'Only a reserved RNI invocation can be settled'
       using errcode = 'check_violation';

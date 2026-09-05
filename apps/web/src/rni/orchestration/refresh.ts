@@ -284,6 +284,7 @@ export class RniRefreshService implements RniCommandService {
       if (
         definition.id !== (intent.kind === 'schedule' ? intent.jobId : deps.manualJobId) ||
         !definition.enabled ||
+        (intent.kind === 'schedule' && !definition.triggerEligible) ||
         definition.concurrencyPolicy !== 'skip' ||
         definition.jitterSeconds !== 0 ||
         !empty(definition.activeWindows) ||
@@ -433,7 +434,7 @@ export class RniRefreshService implements RniCommandService {
       costUsd: estimate.totalUsd,
       runLimitUsd: estimate.runLimitUsd,
     });
-    assertRniAggregateBudget(estimate.totalUsd, usage);
+    assertRniAggregateBudget(estimate.totalUsd, usage, plan.budgets);
     const planHash = hashRniModelInput(plan);
     const job = jobRun.parse(
       await tx.createJob({

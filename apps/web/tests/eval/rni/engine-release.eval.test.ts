@@ -143,6 +143,7 @@ const invokeRelationship = (
 
 const noOpRecorder: RniModelInvocationRecorder = {
   start: async () => undefined,
+  effectFence: async () => ({ expiresAt: '2099-01-01T00:00:00.000Z' }),
   finish: async () => undefined,
 };
 
@@ -284,6 +285,7 @@ describe('RNI ENGINE governed release eval', () => {
           openaiDirect: forbiddenDirect,
           recorder: {
             start: async () => undefined,
+            effectFence: async () => ({ expiresAt: '2099-01-01T00:00:00.000Z' }),
             finish: async (result) => {
               failed.push(result);
             },
@@ -310,6 +312,7 @@ describe('RNI ENGINE governed release eval', () => {
           openaiDirect: drift,
           recorder: {
             start: async () => undefined,
+            effectFence: async () => ({ expiresAt: '2099-01-01T00:00:00.000Z' }),
             finish: async (result) => {
               drifted.push(result);
             },

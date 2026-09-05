@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 import { NextResponse } from 'next/server';
 import type { RniErrorCode } from './contracts';
 import { RniReadError } from './read-model';
+import { RniOrchestrationError } from './orchestration/budget';
+import { env } from '@/env';
 import {
   PasswordChangeRequiredError,
   requireAdmin,
@@ -102,5 +105,57 @@ export function mapRniReadError(error: unknown, requestId: string): NextResponse
     requestId,
     undefined,
     selected.retryable,
+  );
+}
+
+export function validateRniAdminCommand(request: Request, requestId: string) {
+  if (request.headers.get('origin') !== new URL(env.APP_BASE_URL).origin) {
+    return rniErrorResponse(403, 'FORBIDDEN', 'The request origin is not allowed.', requestId);
+  }
+  const idempotencyKey = request.headers.get('idempotency-key')?.trim();
+  if (!idempotencyKey || idempotencyKey.length > 200) {
+    return rniErrorResponse(
+      400,
+      'INVALID_REQUEST',
+      'A non-empty Idempotency-Key header of at most 200 characters is required.',
+      requestId,
+    );
+  }
+  return { idempotencyKey };
+}
+
+export function mapRniOrchestrationError(error: unknown, requestId: string): NextResponse {
+  if (error instanceof SyntaxError || error instanceof z.ZodError) {
+    return rniErrorResponse(400, 'INVALID_REQUEST', 'The RNI request is invalid.', requestId);
+  }
+  if (!(error instanceof RniOrchestrationError)) {
+    return rniErrorResponse(
+      503,
+      'PROVIDER_UNAVAILABLE',
+      'Live RNI orchestration is currently unavailable.',
+      requestId,
+    );
+  }
+  if (error.code === 'NOT_FOUND') {
+    return rniErrorResponse(404, 'RUN_NOT_FOUND', 'The requested RNI run was not found.', requestId);
+  }
+  if (['BUDGET_RUN', 'BUDGET_DAY', 'BUDGET_MONTH'].includes(error.code)) {
+    return rniErrorResponse(
+      429,
+      'BUDGET_EXHAUSTED',
+      'The RNI budget ceiling does not permit this refresh.',
+      requestId,
+    );
+  }
+  if (error.code === 'INVALID_PLAN') {
+    return rniErrorResponse(400, 'INVALID_REQUEST', 'The RNI refresh request is invalid.', requestId);
+  }
+  return rniErrorResponse(
+    409,
+    'CONFLICT',
+    'The RNI refresh could not be accepted in its current state.',
+    requestId,
+    undefined,
+    ['STALE_EXECUTION', 'NOT_DUE'].includes(error.code),
   );
 }

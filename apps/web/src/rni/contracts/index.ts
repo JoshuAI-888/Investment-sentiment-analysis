@@ -304,12 +304,45 @@ export const rniAiRouteOption = z
   });
 export type RniAiRouteOption = z.infer<typeof rniAiRouteOption>;
 
+const rniAiBudgetAmount = (maximum: number) =>
+  z
+    .string()
+    .regex(/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/u)
+    .refine((value) => Number(value) > 0 && Number(value) <= maximum);
+
+/** D-RNI-30 future-run limits. D-RNI-21 values remain the maximum safety ceilings. */
+export const rniAiBudgetLimits = z
+  .object({
+    manualRunHardUsd: rniAiBudgetAmount(2),
+    fullUniverseHardUsd: rniAiBudgetAmount(25),
+    rolling24hHardUsd: rniAiBudgetAmount(50),
+    monthlyWarningUsd: rniAiBudgetAmount(300),
+    monthlyHardUsd: rniAiBudgetAmount(500),
+    currency: z.literal('USD'),
+  })
+  .strict()
+  .superRefine((limits, context) => {
+    const manual = Number(limits.manualRunHardUsd);
+    const full = Number(limits.fullUniverseHardUsd);
+    const rolling = Number(limits.rolling24hHardUsd);
+    const warning = Number(limits.monthlyWarningUsd);
+    const monthly = Number(limits.monthlyHardUsd);
+    if (manual > full || full > rolling || rolling > warning || warning >= monthly) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'RNI AI budget limits are not safely ordered',
+      });
+    }
+  });
+export type RniAiBudgetLimits = z.infer<typeof rniAiBudgetLimits>;
+
 export const rniAiRouteSetting = z
   .object({
     configVersion: z.string().min(1),
     aiRoute: rniAiRoute,
     resolvedModels: z.array(rniResolvedModelRoute).min(1),
     options: z.array(rniAiRouteOption).length(rniAiRoute.options.length),
+    budgets: rniAiBudgetLimits,
     effectiveAt: rniIsoTimestamp,
   })
   .strict()
@@ -356,6 +389,16 @@ export const rniAiRouteSettingUpdateRequest = z
   .strict();
 export type RniAiRouteSettingUpdateRequest = z.infer<typeof rniAiRouteSettingUpdateRequest>;
 
+/** Intent only; actor, environment and predecessor configuration stay server-owned. */
+export const rniAiBudgetSettingUpdateRequest = z
+  .object({
+    idempotencyKey: z.string().min(1),
+    budgets: rniAiBudgetLimits,
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type RniAiBudgetSettingUpdateRequest = z.infer<typeof rniAiBudgetSettingUpdateRequest>;
+
 export const rniAiRouteSettingUpdateResult = z
   .object({
     disposition: z.enum(['accepted', 'duplicate']),
@@ -369,6 +412,9 @@ export const rniAiRouteSettingUpdateResult = z
     path: ['setting', 'configVersion'],
   });
 export type RniAiRouteSettingUpdateResult = z.infer<typeof rniAiRouteSettingUpdateResult>;
+
+export const rniAiBudgetSettingUpdateResult = rniAiRouteSettingUpdateResult;
+export type RniAiBudgetSettingUpdateResult = z.infer<typeof rniAiBudgetSettingUpdateResult>;
 
 export const rniModelTask = z.enum([
   'rni_discovery',
@@ -1017,6 +1063,9 @@ export interface RniAiRouteSettingsService {
   updateFutureAiRoute(
     request: RniAiRouteSettingUpdateRequest,
   ): Promise<RniAiRouteSettingUpdateResult>;
+  updateFutureAiBudgets(
+    request: RniAiBudgetSettingUpdateRequest,
+  ): Promise<RniAiBudgetSettingUpdateResult>;
 }
 
 /** Admin-only, audited per-task limits; writes stage successors and never rewrite active runs. */

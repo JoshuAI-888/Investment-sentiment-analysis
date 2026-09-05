@@ -421,6 +421,7 @@ describe('persisted RNI semantic classification', () => {
         start: async (attempt) => {
           attempts.push(attempt);
         },
+        effectFence: async () => ({ expiresAt: '2099-01-01T00:00:00.000Z' }),
         finish: async () => undefined,
       },
     });

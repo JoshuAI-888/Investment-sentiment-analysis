@@ -62,6 +62,14 @@ const modelCallScopeSchema = z
     sourceItemIds: uniqueUuidArray,
     claimIds: uniqueUuidArray,
     assessmentCutoffAt: z.string().datetime({ offset: true }).nullable(),
+    executionAuthority: z
+      .object({
+        stage: z.enum(['reddit', 'x', 'combined']),
+        attempt: z.number().int().positive(),
+        token: z.string().uuid(),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
   .superRefine((scope, context) => {
@@ -118,6 +126,11 @@ export type RniModelCallScope = {
   readonly sourceItemIds: readonly string[];
   readonly claimIds: readonly string[];
   readonly assessmentCutoffAt: string | null;
+  readonly executionAuthority?: {
+    readonly stage: 'reddit' | 'x' | 'combined';
+    readonly attempt: number;
+    readonly token: string;
+  } | undefined;
 };
 
 export type RniModelLimits = {
@@ -128,6 +141,11 @@ export type RniModelLimits = {
   readonly maxRetries: 0;
   readonly maxToolCalls: number;
   readonly maxCostUsd: string;
+};
+
+export type RniModelEffectAuthority = {
+  /** Absolute upper bound for starting and completing the provider HTTP effect. */
+  readonly expiresAt: string;
 };
 
 export type RniModelTransportRequest = {
@@ -159,6 +177,7 @@ export type RniModelTransportRequest = {
   readonly dynamicSuffix: string;
   readonly tools: readonly Readonly<Record<string, unknown>>[];
   readonly limits: RniModelLimits;
+  readonly effectAuthority: RniModelEffectAuthority;
 };
 
 export interface RniModelTransport {
@@ -167,7 +186,7 @@ export interface RniModelTransport {
 
 export type RniModelInvocationAttempt = Omit<
   RniModelTransportRequest,
-  'outputSchema' | 'stablePrefix' | 'dynamicSuffix'
+  'outputSchema' | 'stablePrefix' | 'dynamicSuffix' | 'effectAuthority'
 >;
 
 export type RniCanonicalModelInvocation = RniModelInvocationAttempt & {
@@ -215,6 +234,7 @@ export type RniFailedModelInvocation = {
 
 export interface RniModelInvocationRecorder {
   start(attempt: RniModelInvocationAttempt): Promise<void>;
+  effectFence(attempt: RniModelInvocationAttempt): Promise<RniModelEffectAuthority>;
   finish(result: RniCanonicalModelInvocation | RniFailedModelInvocation): Promise<void>;
 }
 
@@ -399,6 +419,7 @@ export const createRniModelRouter = (deps: {
       limits,
     };
     await deps.recorder.start(attempt);
+    const effectAuthority = await deps.recorder.effectFence(attempt);
 
     let invocation: RniCanonicalModelInvocation;
     let parsedResponse: z.infer<typeof transportResponseSchema> | undefined;
@@ -411,6 +432,7 @@ export const createRniModelRouter = (deps: {
       }
       const rawResponse = await transport.invoke({
           ...attempt,
+          effectAuthority,
           outputSchema: definition.outputSchema,
           stablePrefix,
           dynamicSuffix,
@@ -488,6 +510,7 @@ export const createRniRoutedRedditDiscovery = (deps: {
   readonly vercelAiGateway?: OpenAiResponsesTransport;
   readonly recorder: RniModelInvocationRecorder;
   readonly modelRunIdForQuery: (queryId: string) => string;
+  readonly executionAuthority?: RniModelCallScope['executionAuthority'];
   readonly nowMs?: () => number;
 }): { readonly discover: (request: RedditDiscoveryRequest) => Promise<RedditDiscoveryResult> } => ({
   discover: async (input) => {
@@ -531,6 +554,9 @@ export const createRniRoutedRedditDiscovery = (deps: {
       sourceItemIds: [],
       claimIds: [],
       assessmentCutoffAt: null,
+      ...(deps.executionAuthority === undefined
+        ? {}
+        : { executionAuthority: deps.executionAuthority }),
     });
     const limits = modelLimits(model);
     assertSerializedInputWithinEnvelope(stablePrefix, dynamicSuffix, limits);
@@ -562,6 +588,7 @@ export const createRniRoutedRedditDiscovery = (deps: {
       limits,
     };
     await deps.recorder.start(attempt);
+    const effectAuthority = await deps.recorder.effectFence(attempt);
 
     let invocation: RniCanonicalModelInvocation;
     let result: RedditDiscoveryResult;
@@ -575,7 +602,10 @@ export const createRniRoutedRedditDiscovery = (deps: {
       if (transport === undefined) {
         throw new Error('Configured Vercel AI Gateway discovery transport is unavailable');
       }
-      result = await new OpenAiRedditDiscovery(transport, {
+      const authorizedTransport: OpenAiResponsesTransport = {
+        create: (request) => transport.create(request, effectAuthority, limits.timeoutMs),
+      };
+      result = await new OpenAiRedditDiscovery(authorizedTransport, {
         model: model.modelId,
         reasoningEffort: model.reasoningEffort,
         maxOutputTokens: limits.maxOutputTokens,
@@ -683,7 +713,11 @@ const synthesisScope = (
 
 export const createRniCitedSynthesisInferencePorts = (
   router: RniModelRouter,
-  deps: { readonly runConfig: RniImmutableModelRunConfig; readonly tenantCachePartition: string },
+  deps: {
+    readonly runConfig: RniImmutableModelRunConfig;
+    readonly tenantCachePartition: string;
+    readonly executionAuthority?: RniModelCallScope['executionAuthority'];
+  },
 ): { readonly verifier: RniVerificationInferencePort; readonly challenger: RniChallengerInferencePort } => {
   const invoke = async (
     task: 'rni_verification' | 'rni_challenger',
@@ -701,7 +735,12 @@ export const createRniCitedSynthesisInferencePorts = (
       await router.invoke({
         runConfig: deps.runConfig,
         task,
-        scope: synthesisScope(input),
+        scope: {
+          ...synthesisScope(input),
+          ...(deps.executionAuthority === undefined
+            ? {}
+            : { executionAuthority: deps.executionAuthority }),
+        },
         tenantCachePartition: deps.tenantCachePartition,
         dynamicInput: input,
       })
@@ -719,6 +758,7 @@ export const createRniObservationInferencePorts = (
     readonly runConfig: RniImmutableModelRunConfig;
     readonly tenantCachePartition: string;
     readonly relationshipModelRunIdForSource: (sourceItemId: string) => string;
+    readonly executionAuthority?: RniModelCallScope['executionAuthority'];
   },
 ): { readonly relationship: RniRelationshipInferencePort; readonly classifier: RniClassifierInferencePort } => ({
   relationship: {
@@ -735,6 +775,9 @@ export const createRniObservationInferencePorts = (
             sourceItemIds: [input.sourceItemId],
             claimIds: [],
             assessmentCutoffAt: null,
+            ...(deps.executionAuthority === undefined
+              ? {}
+              : { executionAuthority: deps.executionAuthority }),
           },
           tenantCachePartition: deps.tenantCachePartition,
           dynamicInput: input,
@@ -760,6 +803,9 @@ export const createRniObservationInferencePorts = (
             sourceItemIds: [input.sourceItemId],
             claimIds: [],
             assessmentCutoffAt: null,
+            ...(deps.executionAuthority === undefined
+              ? {}
+              : { executionAuthority: deps.executionAuthority }),
           },
           tenantCachePartition: deps.tenantCachePartition,
           dynamicInput: modelVisibleInput,

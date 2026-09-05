@@ -1,4 +1,5 @@
 import Decimal from 'decimal.js';
+import type { RniAiBudgetLimits } from '@/rni/contracts';
 import { budgetUsage, refreshPlan, type RniBudgetUsage, type RniRefreshPlan } from './types';
 
 export class RniOrchestrationError extends Error {
@@ -31,7 +32,12 @@ export function estimateRniRefreshBudget(input: RniRefreshPlan) {
     }
   }
   const total = perPlatform.reddit.plus(perPlatform.x);
-  const runLimit = Decimal.min(plan.scopePreview.kind === 'ticker' ? 2 : 25, plan.maxCostUsd);
+  const runLimit = Decimal.min(
+    plan.scopePreview.kind === 'ticker'
+      ? plan.budgets.manualRunHardUsd
+      : plan.budgets.fullUniverseHardUsd,
+    plan.maxCostUsd,
+  );
   if (total.gt(runLimit)) throw new RniOrchestrationError('BUDGET_RUN');
   return {
     redditUsd: perPlatform.reddit.toFixed(),
@@ -42,13 +48,17 @@ export function estimateRniRefreshBudget(input: RniRefreshPlan) {
 }
 
 /** Usage is before the new admission. Equality at a hard boundary is permitted. */
-export function assertRniAggregateBudget(costUsd: string, input: RniBudgetUsage) {
+export function assertRniAggregateBudget(
+  costUsd: string,
+  input: RniBudgetUsage,
+  limits: RniAiBudgetLimits,
+) {
   const usage = budgetUsage.parse(input);
   const cost = new Decimal(costUsd);
   if (!cost.isFinite() || cost.isNegative()) throw new RniOrchestrationError('INVALID_PLAN');
-  if (new Decimal(usage.rollingDayUsd).plus(cost).gt(50))
+  if (new Decimal(usage.rollingDayUsd).plus(cost).gt(limits.rolling24hHardUsd))
     throw new RniOrchestrationError('BUDGET_DAY');
   const month = new Decimal(usage.calendarMonthUsd).plus(cost);
-  if (month.gt(500)) throw new RniOrchestrationError('BUDGET_MONTH');
-  return { monthlyWarning: month.gte(300) };
+  if (month.gt(limits.monthlyHardUsd)) throw new RniOrchestrationError('BUDGET_MONTH');
+  return { monthlyWarning: month.gte(limits.monthlyWarningUsd) };
 }

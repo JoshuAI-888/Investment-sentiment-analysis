@@ -48,12 +48,15 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
     await pool?.end();
   });
 
-  async function seedGovernedConfig(options: {
-    readonly unitPrice?: string;
-    readonly includeTerraPrices?: boolean;
-    readonly includeSolPrices?: boolean;
-    readonly expiresAt?: string;
-  } = {}): Promise<Seed> {
+  async function seedGovernedConfig(
+    options: {
+      readonly unitPrice?: string;
+      readonly includeTerraPrices?: boolean;
+      readonly includeSolPrices?: boolean;
+      readonly expiresAt?: string;
+      readonly budgets?: readonly [string, string, string, string, string];
+    } = {},
+  ): Promise<Seed> {
     const config = await pool.query<{ id: string }>(
       `insert into config_version
          (environment, status, created_by, change_reason, checksum)
@@ -63,6 +66,7 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
     );
     const configVersion = config.rows[0]!.id;
     const expiresAt = options.expiresAt ?? '2099-01-01T00:00:00Z';
+    const budgets = options.budgets ?? ['2', '25', '50', '300', '500'];
     await pool.query(
       `insert into rni_model_capability_snapshot (
          id, ai_route, configured_model_id, provider, canonical_provider_model_id,
@@ -83,8 +87,8 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
          manual_run_hard_usd, full_universe_hard_usd, rolling_24h_hard_usd,
          monthly_warning_usd, monthly_hard_usd
        ) values ($1, 'openai_direct', 'rni-balanced-model-policy-v1',
-                 'rni-ai-budget-policy-v1', 2, 25, 50, 300, 500)`,
-      [configVersion],
+                 'rni-ai-budget-policy-v1', $2, $3, $4, $5, $6)`,
+      [configVersion, ...budgets],
     );
     for (const [task, model, capability] of TASKS) {
       await pool.query(
@@ -222,10 +226,14 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
       estimated_cost_usd: string | null;
       denial_code: string | null;
       warning_emitted: boolean;
-    }>(
-      `select * from rni_reserve_ai_invocation($1, $2, $3, $4, $5, 'rni-prices-v1')`,
-      [invocationId, run.runId, task, hash, capabilitySnapshotId],
-    );
+      dispatch_authorized: boolean;
+    }>(`select * from rni_reserve_ai_invocation($1, $2, $3, $4, $5, 'rni-prices-v1')`, [
+      invocationId,
+      run.runId,
+      task,
+      hash,
+      capabilitySnapshotId,
+    ]);
     return rows[0]!;
   }
 
@@ -268,12 +276,16 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
     });
     expect(config.resolvedModels).toHaveLength(5);
     expect(priceBookVersion).toBe('rni-prices-v1');
-    expect(reservation).toMatchObject({ decision: 'reserved', denialCode: null });
+    expect(reservation).toMatchObject({
+      decision: 'reserved',
+      denialCode: null,
+      dispatchAuthorized: true,
+    });
     expect(Number(actualCost)).toBeCloseTo(0.0015625, 8);
   });
 
   it('lets an admin stage bounded task envelopes without changing the active configuration', async () => {
-    const seed = await seedGovernedConfig();
+    const seed = await seedGovernedConfig({ budgets: ['1', '10', '20', '30', '40'] });
     const routes = Object.values(RNI_APPROVED_TASK_ENVELOPES).map((envelope) => ({
       ...envelope,
       promptVersion: `${envelope.task}-v1`,
@@ -317,6 +329,24 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
     expect(accepted.setting.envelopes).toHaveLength(5);
     expect(staged.rows).toHaveLength(5);
     expect(staged.rows.every((row) => row.max_input_bytes === row.max_input_tokens)).toBe(true);
+    expect(
+      (
+        await pool.query(
+          `select manual_run_hard_usd::text,full_universe_hard_usd::text,
+                  rolling_24h_hard_usd::text,monthly_warning_usd::text,monthly_hard_usd::text
+             from rni_ai_config where config_version=$1`,
+          [accepted.setting.configVersion],
+        )
+      ).rows,
+    ).toEqual([
+      {
+        manual_run_hard_usd: '1',
+        full_universe_hard_usd: '10',
+        rolling_24h_hard_usd: '20',
+        monthly_warning_usd: '30',
+        monthly_hard_usd: '40',
+      },
+    ]);
     await expect(
       stageRniTaskEnvelopeSuccessor(
         { ...request, requestHash: HASH_A, reason: 'Crossed intent.' },
@@ -328,12 +358,14 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
   it('records four capability snapshots and five price components append-only', async () => {
     const observedAt = '2026-09-05T00:00:00.000Z';
     const expiresAt = '2026-09-06T00:00:00.000Z';
-    const capabilities = ([
-      ['openai_direct', 'gpt-5.6-terra', 'gpt-5.6-terra', HASH_A],
-      ['openai_direct', 'gpt-5.6-sol', 'gpt-5.6-sol', HASH_B],
-      ['vercel_ai_gateway', 'openai/gpt-5.6-terra', 'gpt-5.6-terra', HASH_A],
-      ['vercel_ai_gateway', 'openai/gpt-5.6-sol', 'gpt-5.6-sol', HASH_B],
-    ] as const).map(([route, configuredModelId, providerModelId, responseHash]) => ({
+    const capabilities = (
+      [
+        ['openai_direct', 'gpt-5.6-terra', 'gpt-5.6-terra', HASH_A],
+        ['openai_direct', 'gpt-5.6-sol', 'gpt-5.6-sol', HASH_B],
+        ['vercel_ai_gateway', 'openai/gpt-5.6-terra', 'gpt-5.6-terra', HASH_A],
+        ['vercel_ai_gateway', 'openai/gpt-5.6-sol', 'gpt-5.6-sol', HASH_B],
+      ] as const
+    ).map(([route, configuredModelId, providerModelId, responseHash]) => ({
       route,
       configuredModelId,
       provider: 'openai' as const,
@@ -363,16 +395,22 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
       firstTierInputCeiling: 272000,
     };
 
-    await expect(recordRniModelCatalogueEvidence({ capabilities, priceBook }, pool)).resolves.toEqual({
-      capabilityCount: 4,
-      priceComponentCount: 5,
-    });
-    await expect(recordRniModelCatalogueEvidence({ capabilities, priceBook }, pool)).resolves.toEqual({
+    await expect(
+      recordRniModelCatalogueEvidence({ capabilities, priceBook }, pool),
+    ).resolves.toEqual({
       capabilityCount: 4,
       priceComponentCount: 5,
     });
     await expect(
-      pool.query(`update unit_price_book set unit_price = 0 where price_book_version = 'rni-catalogue-v1'`),
+      recordRniModelCatalogueEvidence({ capabilities, priceBook }, pool),
+    ).resolves.toEqual({
+      capabilityCount: 4,
+      priceComponentCount: 5,
+    });
+    await expect(
+      pool.query(
+        `update unit_price_book set unit_price = 0 where price_book_version = 'rni-catalogue-v1'`,
+      ),
     ).rejects.toThrow('append-only');
     await expect(
       recordRniModelCatalogueEvidence(
@@ -389,10 +427,9 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
 
   it('keeps an in-flight run on its immutable route after a successor supersedes the config', async () => {
     const run = await createRun(await seedGovernedConfig(), 'manual_ticker');
-    await pool.query(
-      `update config_version set status = 'superseded' where id = $1`,
-      [run.configVersion],
-    );
+    await pool.query(`update config_version set status = 'superseded' where id = $1`, [
+      run.configVersion,
+    ]);
 
     const rows = await findRniModelRunRoutes(run.runId, pool);
     const reservation = await reserveRniAiInvocation(
@@ -432,7 +469,9 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
       ),
     ).rejects.toThrow(/successor config|draft successor/u);
     await expect(
-      pool.query(`update rni_model_capability_snapshot set available = false where id = 'terra-capability'`),
+      pool.query(
+        `update rni_model_capability_snapshot set available = false where id = 'terra-capability'`,
+      ),
     ).rejects.toThrow(/append-only/u);
   });
 
@@ -505,7 +544,7 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
                    'rni-ai-budget-policy-v1', 3, 25, 50, 300, 500)`,
         [draft.rows[0]!.id],
       ),
-    ).rejects.toThrow(/2\/25\/50\/300\/500/u);
+    ).rejects.toThrow(/owner-approved.*ceilings/u);
 
     await expect(seedGovernedConfig({ expiresAt: '2026-09-02T00:00:00Z' })).rejects.toThrow(
       /fresh capability/u,
@@ -522,7 +561,7 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
 
     expect(first.decision).toBe('reserved');
     expect(Number(first.estimated_cost_usd)).toBeCloseTo(1, 8);
-    expect(replay).toEqual({ ...first, warning_emitted: false });
+    expect(replay).toEqual({ ...first, warning_emitted: false, dispatch_authorized: false });
     expect(second.decision).toBe('reserved');
     expect(denied).toMatchObject({ decision: 'denied', denial_code: 'run_hard_limit' });
     await expect(reserve(run, firstId, 'rni_relationship', HASH_B)).rejects.toThrow(
@@ -534,10 +573,11 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
     expect(await reserve(run, firstId, 'rni_relationship')).toEqual({
       ...first,
       warning_emitted: false,
+      dispatch_authorized: false,
     });
-    await expect(
-      reserve(run, randomUUID(), 'rni_classifier', 'd'.repeat(64)),
-    ).rejects.toThrow(/non-terminal run/u);
+    await expect(reserve(run, randomUUID(), 'rni_classifier', 'd'.repeat(64))).rejects.toThrow(
+      /non-terminal run/u,
+    );
   });
 
   it('serializes concurrent reservations so the run cannot overspend', async () => {
@@ -675,6 +715,37 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
       [run.runId],
     );
     expect(Number(exposure.rows[0]!.spend)).toBeCloseTo(1.1171875, 8);
+  });
+
+  it('serializes concurrent exact settlement replays without orphan cost events', async () => {
+    const run = await createRun(await seedGovernedConfig(), 'manual_ticker');
+    const invocationId = randomUUID();
+    await reserve(run, invocationId, 'rni_relationship');
+    const settle = () =>
+      pool.query<{ actual: string }>(
+        `select rni_settle_ai_invocation($1, $2, 'resp-concurrent', 'succeeded', 100, 20, 50, 0)::text as actual`,
+        [invocationId, HASH_A],
+      );
+
+    const [first, second] = await Promise.all([settle(), settle()]);
+    expect(second.rows[0]!.actual).toBe(first.rows[0]!.actual);
+    expect(
+      (
+        await pool.query<{ count: string }>(
+          `select count(*)::text as count from rni_ai_model_settlement where invocation_id=$1`,
+          [invocationId],
+        )
+      ).rows[0]!.count,
+    ).toBe('1');
+    expect(
+      (
+        await pool.query<{ count: string }>(
+          `select count(*)::text as count from cost_event
+            where request_id=$1 and cost_status='reconciled'`,
+          [invocationId],
+        )
+      ).rows[0]!.count,
+    ).toBe('1');
   });
 
   it('stores monthly warning evidence at most once under concurrency', async () => {

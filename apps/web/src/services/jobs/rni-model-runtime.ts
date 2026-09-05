@@ -8,12 +8,14 @@ import {
   type RniModelTransport,
   type RniModelTransportRequest,
   type RniImmutableModelRunConfig,
+  type RniModelEffectAuthority,
 } from '@/rni/agents';
 import type { OpenAiResponsesTransport, OpenAiWebSearchRequest } from '@/rni/discovery';
 import { assertRniBalancedRuntimePolicy } from '@/rni/config';
 import {
   findCurrentRniPriceBookVersion,
   findRniModelRunRoutes,
+  assertRniAiInvocationEffect,
   reserveRniAiInvocation,
   settleRniAiInvocation,
   type RniAiReservation,
@@ -218,12 +220,14 @@ type RniResponsesTransportOptions = {
   readonly identities: readonly RniTransportIdentity[];
   readonly fetch?: FetchLike;
   readonly defaultTimeoutMs?: number;
+  readonly nowMs?: () => number;
 };
 
 /** Server-only OpenAI Responses transport shared by Direct and explicitly selected Gateway. */
 export class RniResponsesHttpTransport implements RniModelTransport, OpenAiResponsesTransport {
   private readonly identities: ReadonlyMap<string, RniTransportIdentity>;
   private readonly fetch: FetchLike;
+  private readonly nowMs: () => number;
 
   constructor(private readonly options: RniResponsesTransportOptions) {
     if (options.apiKey.trim() === '') throw new Error(`${options.route} API key is required`);
@@ -232,6 +236,7 @@ export class RniResponsesHttpTransport implements RniModelTransport, OpenAiRespo
       throw new Error('RNI transport model identities must be unique by configured model ID');
     }
     this.fetch = options.fetch ?? fetch;
+    this.nowMs = options.nowMs ?? Date.now;
   }
 
   private identityFor(modelId: string): RniTransportIdentity {
@@ -244,10 +249,19 @@ export class RniResponsesHttpTransport implements RniModelTransport, OpenAiRespo
     body: JsonRecord,
     identity: RniTransportIdentity,
     timeoutMs: number,
+    effectAuthority?: RniModelEffectAuthority,
   ): Promise<{ readonly raw: JsonRecord; readonly latencyMs: number; readonly routing: GatewayRouting | null }> {
+    if (effectAuthority === undefined) {
+      throw new Error('RNI provider effect authority is required');
+    }
+    const authorityRemainingMs = new Date(effectAuthority.expiresAt).getTime() - this.nowMs();
+    if (!Number.isFinite(authorityRemainingMs) || authorityRemainingMs <= 0) {
+      throw new Error('RNI provider effect authority expired before dispatch');
+    }
+    const boundedTimeoutMs = Math.max(1, Math.min(timeoutMs, Math.floor(authorityRemainingMs)));
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    const startedAt = Date.now();
+    const timeout = setTimeout(() => controller.abort(), boundedTimeoutMs);
+    const startedAt = this.nowMs();
     try {
       const response = await this.fetch(joinUrl(this.options.baseUrl, 'responses'), {
         method: 'POST',
@@ -272,7 +286,7 @@ export class RniResponsesHttpTransport implements RniModelTransport, OpenAiRespo
       assertResponseModel(rawModel, identity);
       const routing = this.options.route === 'vercel_ai_gateway' ? gatewayRoutingFrom(raw) : null;
       if (routing !== null) assertGatewayOpenAiOnly(routing, identity);
-      return { raw, latencyMs: Math.max(0, Date.now() - startedAt), routing };
+      return { raw, latencyMs: Math.max(0, this.nowMs() - startedAt), routing };
     } finally {
       clearTimeout(timeout);
     }
@@ -321,7 +335,12 @@ export class RniResponsesHttpTransport implements RniModelTransport, OpenAiRespo
       prompt_cache_key: request.promptCacheKey,
       store: false,
     });
-    const { raw, latencyMs, routing } = await this.post(body, identity, request.limits.timeoutMs);
+    const { raw, latencyMs, routing } = await this.post(
+      body,
+      identity,
+      request.limits.timeoutMs,
+      request.effectAuthority,
+    );
     const output = raw['output'];
     return {
       responseId: readString(raw, 'id') ?? '',
@@ -338,13 +357,18 @@ export class RniResponsesHttpTransport implements RniModelTransport, OpenAiRespo
     };
   }
 
-  async create(request: OpenAiWebSearchRequest): Promise<unknown> {
+  async create(
+    request: OpenAiWebSearchRequest,
+    effectAuthority?: RniModelEffectAuthority,
+    timeoutMs?: number,
+  ): Promise<unknown> {
     const identity = this.identityFor(request.model);
     const body = this.governedBody(request as unknown as JsonRecord);
     const { raw, routing } = await this.post(
       body,
       identity,
-      this.options.defaultTimeoutMs ?? 30_000,
+      timeoutMs ?? this.options.defaultTimeoutMs ?? 30_000,
+      effectAuthority,
     );
     return {
       ...raw,
@@ -445,6 +469,7 @@ export const loadRniImmutableModelRunConfig = async (
 export type RniBudgetStore = {
   readonly currentPriceBookVersion: () => Promise<string>;
   readonly reserve: (input: Parameters<typeof reserveRniAiInvocation>[0]) => Promise<RniAiReservation>;
+  readonly effectFence: (input: Parameters<typeof assertRniAiInvocationEffect>[0]) => Promise<string>;
   readonly settle: (input: Parameters<typeof settleRniAiInvocation>[0]) => Promise<string>;
 };
 
@@ -455,9 +480,21 @@ export class RniAiBudgetDeniedError extends Error {
   }
 }
 
-const invocationRequestHash = (attempt: RniModelInvocationAttempt): string =>
-  canonicalHash({
+const invocationRequestHash = (attempt: RniModelInvocationAttempt): string => {
+  const { executionAuthority, ...scope } = attempt.scope;
+  return canonicalHash({
     ...attempt,
+    scope: {
+      ...scope,
+      ...(executionAuthority === undefined
+        ? {}
+        : {
+            executionAuthority: {
+              ...executionAuthority,
+              attempt: String(executionAuthority.attempt),
+            },
+          }),
+    },
     limits: {
       maxOutputTokens: String(attempt.limits.maxOutputTokens),
       timeoutMs: String(attempt.limits.timeoutMs),
@@ -468,6 +505,7 @@ const invocationRequestHash = (attempt: RniModelInvocationAttempt): string =>
       maxCostUsd: attempt.limits.maxCostUsd,
     },
   });
+};
 
 const resultAttempt = (
   result: RniCanonicalModelInvocation | RniFailedModelInvocation,
@@ -487,13 +525,38 @@ export const createRniBudgetInvocationRecorder = (options: {
   const store: RniBudgetStore = options.store ?? {
     currentPriceBookVersion: () => findCurrentRniPriceBookVersion(),
     reserve: (input) => reserveRniAiInvocation(input),
+    effectFence: (input) => assertRniAiInvocationEffect(input),
     settle: (input) => settleRniAiInvocation(input),
   };
-  const started = new Map<string, { readonly requestHash: string }>();
+  const started = new Map<
+    string,
+    {
+      readonly requestHash: string;
+      readonly runId: string;
+      readonly warningEmitted: boolean;
+    }
+  >();
+  const notifyWarning = async (
+    reservation: { readonly runId: string; readonly warningEmitted: boolean },
+    invocationId: string,
+  ): Promise<void> => {
+    if (reservation.warningEmitted) {
+      try {
+        await options.onMonthlyWarning?.({ runId: reservation.runId, invocationId });
+      } catch {
+        // The warning row is already durable with the reservation. Notification is best effort
+        // and must never turn settled provider work into a retryable model-call failure.
+      }
+    }
+  };
   return {
     start: async (attempt) => {
       const invocationId = attempt.scope.modelRunId;
       const requestHash = invocationRequestHash(attempt);
+      const executionAuthority = attempt.scope.executionAuthority;
+      if (executionAuthority === undefined) {
+        throw new RniAiBudgetDeniedError('execution_authority_missing');
+      }
       const reservation = await store.reserve({
         invocationId,
         runId: attempt.runId,
@@ -501,14 +564,36 @@ export const createRniBudgetInvocationRecorder = (options: {
         requestHash,
         capabilitySnapshotId: attempt.capabilitySnapshotId,
         priceBookVersion: await store.currentPriceBookVersion(),
+        executionAuthority,
       });
       if (reservation.decision !== 'reserved') {
         throw new RniAiBudgetDeniedError(reservation.denialCode ?? 'unknown_budget_denial');
       }
-      started.set(invocationId, { requestHash });
-      if (reservation.warningEmitted) {
-        await options.onMonthlyWarning?.({ runId: attempt.runId, invocationId });
+      if (!reservation.dispatchAuthorized) {
+        throw new RniAiBudgetDeniedError('reservation_replay');
       }
+      started.set(invocationId, {
+        requestHash,
+        runId: attempt.runId,
+        warningEmitted: reservation.warningEmitted,
+      });
+    },
+    effectFence: async (attempt) => {
+      const invocationId = attempt.scope.modelRunId;
+      if (!started.has(invocationId)) {
+        throw new Error('RNI model invocation was not reserved before its provider effect fence');
+      }
+      const executionAuthority = attempt.scope.executionAuthority;
+      if (executionAuthority === undefined) {
+        throw new RniAiBudgetDeniedError('execution_authority_missing');
+      }
+      return {
+        expiresAt: await store.effectFence({
+          invocationId,
+          runId: attempt.runId,
+          executionAuthority,
+        }),
+      };
     },
     finish: async (result) => {
       const attempt = resultAttempt(result);
@@ -525,6 +610,7 @@ export const createRniBudgetInvocationRecorder = (options: {
         telemetry.usage.outputTokens === null
       ) {
         started.delete(invocationId);
+        await notifyWarning(reservation, invocationId);
         return;
       }
       await store.settle({
@@ -539,6 +625,7 @@ export const createRniBudgetInvocationRecorder = (options: {
           attempt.task === 'rni_discovery' ? new Set(telemetry.toolCalls).size : 0,
       });
       started.delete(invocationId);
+      await notifyWarning(reservation, invocationId);
     },
   };
 };

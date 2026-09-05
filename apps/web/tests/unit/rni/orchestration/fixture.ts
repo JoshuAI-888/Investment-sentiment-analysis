@@ -53,6 +53,14 @@ export const planFixture = (): RniRefreshPlan => ({
   baseBackoffMs: 1000,
   maxBackoffMs: 8000,
   coalesceMs: 5000,
+  budgets: {
+    manualRunHardUsd: '2',
+    fullUniverseHardUsd: '25',
+    rolling24hHardUsd: '50',
+    monthlyWarningUsd: '300',
+    monthlyHardUsd: '500',
+    currency: 'USD',
+  },
   maxCostUsd: '2',
   coverage: { reddit: 'Sampled Reddit discovery', x: 'Configured X sample' },
 });
@@ -87,7 +95,7 @@ export class TransactionalStore implements RniOrchestrationStore {
       dependencies: [],
       maxCallsPerRun: 100,
       maxCostUsdPerRun: '25',
-      triggerEligible: false,
+      triggerEligible: true,
       nextDueAt: START,
       configVersion: '1',
       version: 1,
@@ -207,7 +215,7 @@ export class TransactionalStore implements RniOrchestrationStore {
           rollingDayUsd: reserved.plus(this.usage.rollingDayUsd).toFixed(),
           calendarMonthUsd: reserved.plus(this.usage.calendarMonthUsd).toFixed(),
         };
-        assertRniAggregateBudget(costUsd, usage);
+        assertRniAggregateBudget(costUsd, usage, this.activePlan.budgets);
         draft.admissions.set(runId, costUsd);
         return usage;
       },

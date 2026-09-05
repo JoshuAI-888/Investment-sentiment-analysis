@@ -66,23 +66,32 @@ export function previewRniSchedule(
   if (weekdays.has(7)) weekdays.add(0);
   const weekdayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const begin = Math.floor(after.getTime() / 60_000) * 60_000 + 60_000;
-  // Bounded preview: an impossible date or a sparse schedule fails rather than looping forever.
-  for (let index = 0; index < 527_040 && result.length < count; index++) {
-    const date = new Date(begin + index * 60_000);
-    const parts = Object.fromEntries(
-      format.formatToParts(date).map((part) => [part.type, part.value]),
-    );
-    if (
-      !minutes.has(Number(parts.minute)) ||
-      !hours.has(Number(parts.hour)) ||
-      !months.has(Number(parts.month))
-    )
-      continue;
-    const matchesDay = days.has(Number(parts.day));
-    const matchesWeekday = weekdays.has(weekdayNames.indexOf(parts.weekday!));
-    const dayMatches =
-      day === '*' ? matchesWeekday : weekday === '*' ? matchesDay : matchesDay || matchesWeekday;
-    if (dayMatches) append(date);
+  // Five valid leap-day fires can span twenty years. Scan bounded UTC hours and only the
+  // configured minute values, preserving exact DST identities without a 10M-minute hot loop.
+  const minuteValues = [...minutes].sort((left, right) => left - right);
+  const firstHour = Math.floor(begin / 3_600_000) * 3_600_000;
+  const maximumHours = 21 * 366 * 24;
+  for (let hourIndex = 0; hourIndex < maximumHours && result.length < count; hourIndex++) {
+    const hourStart = firstHour + hourIndex * 3_600_000;
+    for (const minuteValue of minuteValues) {
+      const timestamp = hourStart + minuteValue * 60_000;
+      if (timestamp < begin) continue;
+      const date = new Date(timestamp);
+      const parts = Object.fromEntries(
+        format.formatToParts(date).map((part) => [part.type, part.value]),
+      );
+      if (!hours.has(Number(parts.hour)) || !months.has(Number(parts.month))) continue;
+      const matchesDay = days.has(Number(parts.day));
+      const matchesWeekday = weekdays.has(weekdayNames.indexOf(parts.weekday!));
+      const dayMatches =
+        day === '*'
+          ? matchesWeekday
+          : weekday === '*'
+            ? matchesDay
+            : matchesDay || matchesWeekday;
+      if (dayMatches) append(date);
+      if (result.length === count) break;
+    }
   }
   if (result.length !== count) throw new RniOrchestrationError('INVALID_PLAN');
   return result;

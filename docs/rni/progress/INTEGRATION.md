@@ -32,7 +32,7 @@
 | I07D | Close DATA D10 exact semantic-identity review findings | `PASSED` | Migration 0024 requires one exact SHA-256 E05 output identity per run/security observation; PostgreSQL schema/universe 23/23 |
 | I07E | Compose trusted cited-synthesis persistence boundary | `PASSED` | SQL-free trusted prepare, zero-model accepted replay and opaque-preparation atomic commit; composition 13/13, independent re-review PASS |
 | I08 | Compose SURFACE routes/nav/API with auth | `PASSED` | Accepted PostgreSQL read model plus authenticated production pages/APIs, guarded fixture demos, live route settings, shared nav and honest states; PostgreSQL 48/48, focused unit 28/28, build/bundle/type/lint pass; expanded Chromium 17/18 then corrected audit 2/2 |
-| I09 | Wire QStash jobs/manual idempotent refresh | `IN_PROGRESS` | Isolated orchestration builder starts from the coordinator checkpoint; signed redelivery/double-click tests remain the gate |
+| I09 | Wire QStash jobs/manual idempotent refresh | `IN_PROGRESS` | Durable control plane plus reviewed D-RNI-32/33/34 manifest/release/checkpoint contracts pass; transactional persistence/read gating and the real production acquisition/analysis/publication executor remain |
 | I10 | Seed RNI Direct routes and optional Gateway selection | `PASSED` | Direct-default/Gateway-parity routing, append-only capability/price evidence, budgets and admin-staged task envelopes pass; live parity remains I11 |
 | I10A | Enforce balanced runtime model policy and exact route lineage | `PASSED` | Direct default, five-task Terra/Sol low mapping, fresh capabilities, Gateway provider/canonical identity and stable cache semantics; unit/contract/eval regression and independent review pass |
 | I10B | Persist immutable route capabilities and atomic RNI AI budgets | `PASSED` | Additive migration 0024 schema; PostgreSQL 11/11 focused and 129/129 RNI regression; transports remain I10C |
@@ -76,12 +76,44 @@
 | CR-I07-005 | I07 | `ACCEPTED` | Persist both invocation descriptors before E08 guards, but hydrate the verifier-dependent challenger input snapshot/hash exactly once after verification and before dispatch or policy skip | I07, I10, ENGINE, INTEGRATION | D-RNI-28 |
 | CR-I07-006 | I07 | `ACCEPTED` | D-RNI-29 permits only canonical terminal zero-evidence E06 artifacts for failed/unavailable slices, preserving E07/D12's mandatory exact component hash and status equality | DATA, ENGINE E06/E07, I07, I08, INTEGRATION | D-RNI-29 |
 | CR-I09-001 | I09 | `ACCEPTED` | Extend the existing job ledger with one transactional command/execution/outbox representation and separately fenced Reddit, X and combined-publication stage leases; I10 remains the spend authority | I07, I09, I10, SURFACE, INTEGRATION | D-RNI-27 |
+| CR-I09-002 | coordinator brief | `ACCEPTED` | Adopt one environment-bound full-universe schedule read/update service and additive GET endpoint; bounded interval/cron changes advance strictly forward, audit atomically and never rewrite historical runs | I09, SURFACE, INTEGRATION | D-RNI-31 |
+| CR-I09-003 | I09 production-worker audit | `ACCEPTED` | Create one append-only canonical worker-run manifest that pins exact config, routes/capabilities/prices, sources/policies, ordered member set, build and orchestration authority before any production effect | I09, I10, ENGINE, DATA, INTEGRATION | D-RNI-32 |
+| CR-I09-004 | I09 production-worker audit | `ACCEPTED` | Stage each full-universe I07 result under the exact manifest/lease and expose the set only through one complete, atomic aggregate release manifest and receipt | I07, I08, I09, DATA, ENGINE, INTEGRATION | D-RNI-33 |
+| CR-I09-005 | I09 workflow adapter | `ACCEPTED` | Add per-subject checkpoints with exact retrieval/content/outbox identity, explicit terminals and parent I09 lease authority; v1 fixture workflows cannot execute in production | I09, ENGINE, DATA, INTEGRATION | D-RNI-34 |
+| CR-I10-001 | coordinator brief | `ACCEPTED` | Supersede only D-RNI-25's fixed-global-limit clause: expose the five D-RNI-21 values as audited future-run settings that an admin may lower, while retaining those owner-approved values as defaults and hard safety ceilings | I09, I10, SURFACE, INTEGRATION | D-RNI-30 |
 | CR-SURFACE-01 | SURFACE | `ACCEPTED` | Add `RniReadService.getCitation(citationId)` returning frozen `RniCitation`; evidence remains a second source-ID read | DATA, SURFACE, INTEGRATION | `264ea9c` |
 | CR-SURFACE-02 | SURFACE | `ACCEPTED` | Add a cursor-paginated Radar page with run lineage, security identity, two non-poolable platform-labelled cells, and explicit pending/aligned/divergent/partial/insufficient cross-source state | DATA, ENGINE, SURFACE, INTEGRATION | `84dca87` / D-RNI-13 |
 | CR-SURFACE-03 | SURFACE | `ACCEPTED` | Add a bounded security-detail read with canonical identity and exactly four cited dimension assignments for each independently labelled platform | DATA, ENGINE, SURFACE, INTEGRATION | `ce80424` / D-RNI-14 |
 | CR-SURFACE-04 | SURFACE | `ACCEPTED` | Add an idempotent manual-refresh command boundary for ticker/full scope; server owns auth/audit/active config/universe/model/window resolution and returns one durable run identity plus resolved preview | ENGINE, SURFACE, INTEGRATION | D-RNI-17 / current I02E commit |
 | CR-SURFACE-05 | SURFACE | `ACCEPTED` | Add a separate read-only universe service for active metadata/default, bounded any-member search, and immutable staged impact preview; legacy first-deployment parent remains representable; no provider or activation access | DATA, SURFACE, INTEGRATION | D-RNI-18 / current I02F1 correction |
 | CR-SURFACE-06 | SURFACE | `ACCEPTED` | Add a future-run route setting read plus idempotent intent-only command; server resolves availability/models and creates a successor config without rewriting historical runs | ENGINE, SURFACE, INTEGRATION | D-RNI-20 / current I02H commit |
+
+### I09 production-worker contract decisions
+
+- **CR-I09-003 current/requested:** the mutable v1 execution plan does not pin exact model,
+  capability, price, source-policy, methodology, build or ordered-member inputs. Accept one
+  canonical append-only v2 run manifest created atomically with acceptance and validated against
+  all relational lineage. **Justification:** replay cannot safely reconstruct production inputs
+  from mutable state. **Compatibility:** additive Migration `0024`; v1 remains readable but
+  effect-ineligible; public APIs do not change. **Acceptance:** atomic creation/rollback, exact
+  idempotent replay, mutation-independent inputs, complete 1–600 membership, no secrets, fresh
+  capability/price evidence and crossed-hash rejection.
+- **CR-I09-004 current/requested:** one per-security I07 commit plus the current small run receipt
+  cannot prove a full-universe set is complete or release it atomically. Accept immutable
+  manifest-bound staging items and one aggregate release/receipt transaction; gate new full-run
+  reads until it commits. **Justification:** resumability must not expose an incomplete universe.
+  **Compatibility:** additive internal tables and read gate; manual and historical paths and public
+  shapes remain unchanged. **Acceptance:** N−1, extra, duplicate, crossed or hash-mismatched items
+  cannot release; exact staged replay makes no new model call; final release and terminal/budget
+  state commit or roll back together under the live combined lease.
+- **CR-I09-005 current/requested:** the generic workflow has no durable subject checkpoint,
+  terminal claim, exact retrieval/content/outbox identity or parent I09 authority. Accept one
+  lease-fenced checkpoint plus delivery binding carrying all four identities and explicit terminal
+  states. **Justification:** changed-content replay and child work outside its parent lease are not
+  reproducible or safe. **Compatibility:** additive v2 internals; historical rows and public APIs
+  remain unchanged. **Acceptance:** claim/busy/recovery, deadline/token fencing, exact content
+  selection, crash/replay boundaries, completed no-effect replay, terminal redelivery and lock-order
+  concurrency all pass.
 
 ### CR-DATA-001 decision
 
@@ -359,6 +391,47 @@
   durable jobs/outbox/QStash. Credential-backed live Direct/Gateway and production authorization
   proof remain I11/deployment gates.
 
+## I09 control-plane integration checkpoint
+
+- **Status:** `IN_PROGRESS`. The durable control plane and pure D-RNI-32/33/34 contracts are
+  accepted locally; the production worker pipeline is not configured and every manual, rerun,
+  schedule and worker entry point therefore fails closed before creating work, claiming a
+  delivery or contacting a provider.
+- **Behaviour:** manual refresh, rerun and schedule admission resolve immutable future-run plans,
+  snapshot the active route, task envelopes and D-RNI-30 budgets, serialize aggregate admission,
+  and atomically create the existing job/run identities plus separate Reddit/X deliveries. Exact
+  command and outbox replay is stable; crossed intent, stale attempts, expired leases and
+  post-deadline publication are rejected. QStash publication uses the durable outbox, a stable
+  deduplication identity, bounded retry/timeout and not-before delivery. The receiver authenticates
+  the bounded exact request bytes against both configured signing keys and the configured worker
+  URL before constructing storage or executor services.
+- **Settings:** an administrator may lower all five aggregate AI limits through an audited,
+  same-origin successor activation; later plans snapshot those values while historical runs remain
+  unchanged. D-RNI-31 adds one versioned full-universe schedule control with pause/resume,
+  bounded interval or five-field cron, IANA timezone, next-five preview and forward-only due-state
+  advancement. Budget, orchestration and job locks use one consistent order.
+- **Delegated production contracts:** the canonical v2 worker manifest pins exact D-RNI-21 routes,
+  complete source/policy values, pricing applicability, ordered members, build identity and
+  microsecond time fences. The full-universe release index self-validates its member identities,
+  counts, derived status and aggregate hash without pooling stance. The source checkpoint binds
+  retrieval/content/outbox identity, immutable lease/backoff policy, exact retry arithmetic and
+  parent attempt/token/deadline authority. All three remain effect-ineligible until their
+  relational lineage and commit-time fences are persisted and wired.
+- **Coordinator verification:** RNI unit **623/623**, contract **38/38**, eval **18 passed / 1
+  credential-gated live skip**, serialized RNI PostgreSQL **351/351**, focused final review
+  **175/175**, TypeScript, full lint, production build, bundle/copy scans and integrated RNI
+  Chromium **37/37** pass. The final independent review reports no remaining P0/P1/P2 finding in
+  the accepted control plane or pure contracts.
+- **Remaining composition:** persist and validate the v2 manifest atomically at admission; add
+  durable exact-content checkpoints/outboxes under the parent lease; stage and atomically release
+  the complete full-universe set with a read visibility gate; then compose the non-fixture worker
+  across acquisition, source-first persistence, E05/E06/E07 analytics, I10-governed calls and
+  I07 publication. The provisional `rni-workflow-source.ts` is unexported and rejected for
+  production because it lacks exact retrieval/content/outbox binding and a deferred commit-time
+  lease fence. After composition, run the required `gpt-6-astra` max review and live QStash,
+  Reddit Web Search, X, FMP and Direct/Gateway gates. No credential value has been read, printed
+  or committed.
+
 ### CR-SURFACE-06 decision
 
 - **Current behaviour:** `RniAiRoute` existed only on immutable run records. SURFACE could neither
@@ -393,6 +466,23 @@
 - **Acceptance:** I10 must prove Direct default resolution, configured Gateway parity, unavailable-
   model fail-closed behavior, exact per-task model/reasoning lineage, hard-limit rejection, monthly
   warning observability and historical replay across a successor configuration.
+
+### CR-I10-001 decision
+
+- **Current behaviour:** D-RNI-25 and migration `0024` freeze the five aggregate RNI AI-spend
+  values, while the current coordinator brief explicitly requires authorized administrators to
+  edit model budgets in Settings and requires later runs to use the persisted result.
+- **Decision:** D-RNI-30 makes the D-RNI-21 values editable downward through an authenticated,
+  same-origin, idempotent future-run command. The values remain the initial defaults and maximum
+  safety ceilings; raising a ceiling still requires separate owner approval and measured evidence.
+- **Compatibility:** historical configurations, accepted/running jobs, reservations and
+  settlements remain immutable. Route changes and task-envelope staging preserve the selected
+  aggregate limits. Only a newly activated successor affects subsequently accepted runs.
+- **Affected lanes:** coordinator-owned contract, migration, settings service/API/UI,
+  orchestration admission and I10 reservation enforcement. No builder-owned file is required.
+- **Acceptance:** prove validation and ordering, exact replay/crossed intent, atomic rollback,
+  unchanged historical runs, route/envelope successor preservation, and a later run denied at a
+  newly lowered boundary.
 
 ## Lane intake
 
@@ -581,6 +671,8 @@
 | `CURRENT` | Start I10C2B versioned task-envelope settings | Owner approved the recommended five per-task envelopes and required admin portal configurability; freeze a bounded intent contract, enforce serialized-input and cost limits before dispatch, and stage a successor without rewriting active/historical runs |
 | `CURRENT` | Start I07–I09 parallel integration lanes | Refreshed from current `origin/main`; no open PRs or pushed RNI branches; I07 cited persistence, I08 live surface and I09 durable orchestration begin from one coordinator checkpoint and integrate strictly I07 → I08 → I09 |
 | `CURRENT` | Accept and integrate I08 live consumption | PostgreSQL read/settings 48/48; live-composition unit 28/28; production build, bundle scan, typecheck, scoped lint and diff pass; expanded Chromium 17/18 then corrected audit 2/2; production pages and APIs are authenticated and fixture-free |
+| `CURRENT` | Accept I09 durable control-plane checkpoint | Manual/rerun/schedule admission, separate stage leases, signed QStash receiver, transactional outboxes, future-run budgets and schedule controls pass; live entry points remain fail-closed without a production executor |
+| `CURRENT` | Delegate and harden D-RNI-32/33/34 foundations | v2 manifest, self-verifying aggregate release and parent-authority checkpoint contracts pass focused 175/175 independent review; final local gates are unit 623/623, contract 38/38, PostgreSQL 351/351, eval 18/1 live skip, Chromium 37/37, type/lint/build/bundle/copy; database wiring remains |
 
 ## I10A handoff
 
@@ -691,8 +783,8 @@
   Serialized input bytes fail before recording/dispatch, the same number is conservatively
   reserved as input tokens, and per-call caps feed the atomic ledger. Fresh model capability and
   compatible first-tier price evidence are mandatory.
-- **Risks/handoff:** the portal deliberately cannot activate a staged config or edit the fixed
-  global USD 2/25/50/300/500 controls. I11 must refresh real catalogue evidence, run Direct and
+- **Risks/handoff:** D-RNI-30 now permits an audited future-run successor to lower the global USD
+  2/25/50/300/500 defaults while retaining them as hard safety ceilings. I11 must refresh real catalogue evidence, run Direct and
   optional Gateway probes, inspect the staged version/evals and obtain `joshuai` approval before
   activation. No credential was read or stored.
 
