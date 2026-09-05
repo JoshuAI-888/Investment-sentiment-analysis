@@ -130,9 +130,23 @@ export type ApiRoute = { readonly path: string; readonly method: 'GET' | 'POST';
  * `tests/e2e/auth.spec.ts`'s "F02 — sign-in" describe block, mirroring the two precedents
  * immediately above — this needs no `DATABASE_URL` since the auth check runs before any repository
  * read.
+ *
+ * **F16a removes `POST /api/cron/dispatch`, and never adds `/api/cron/heartbeat`.** The
+ * dispatcher is no longer F01's `{ state: 'fixture' }` stub: it verifies a QStash signature
+ * before anything else and answers `401` to an unsigned request, which is the whole point of
+ * F16 §4.1 step 1 and of §7's first review step. The generic loop asserts a fixture body, so it
+ * is the wrong tool here for the same reason as every entry above. Dedicated coverage — that an
+ * unsigned POST is rejected, and that the rejection precedes any work — lives in
+ * `tests/e2e/auth.spec.ts`'s "F02 — sign-up and sign-in" describe block, mirroring the
+ * precedents above; the contract suite's `cron-dispatch-signature.test.ts` carries the twelve
+ * positive and negative signature cases. `/api/cron/heartbeat` is deliberately absent from this
+ * list rather than added to it: it was never a fixture route, and it is likewise gated.
+ *
+ * This graduation is the same seam F11's was: `tests/e2e/` is SURFACE-owned, so a COLLECT lane
+ * replacing a route cannot update this list, and the route silently keeps being asserted as a
+ * fixture long after it stopped being one.
  */
 export const API_ROUTES: readonly ApiRoute[] = [
-  { path: '/api/cron/dispatch', method: 'POST', source: 'api/cron/dispatch' },
   { path: '/api/health/providers', method: 'GET', source: 'api/health/providers' },
   { path: '/api/architecture', method: 'GET', source: 'api/architecture' },
   {
