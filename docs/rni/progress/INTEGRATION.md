@@ -73,6 +73,7 @@
 | CR-I07-002 | I07 | `ACCEPTED` | Persist an explicit, reason-bound `skipped` terminal state when deterministic E08 policy correctly avoids verifier or challenger dispatch | ENGINE, INTEGRATION | D-RNI-26 |
 | CR-I07-003 | I07 | `ACCEPTED` | Persist role edges as the eligible evidence candidates supplied to E08, while assessment arrays record and validate a same-role subset selected by the verifier | DATA, ENGINE, INTEGRATION | D-RNI-26 |
 | CR-I07-004 | I07 | `ACCEPTED` | Resolve the frozen P0 source-rights version from server-owned active configuration and inject it into the trusted reader; a batch row cannot declare itself active | DATA, ENGINE, INTEGRATION | D-RNI-26 |
+| CR-I09-001 | I09 | `ACCEPTED` | Extend the existing job ledger with one transactional command/execution/outbox representation and separately fenced Reddit, X and combined-publication stage leases; I10 remains the spend authority | I07, I09, I10, SURFACE, INTEGRATION | D-RNI-27 |
 | CR-SURFACE-01 | SURFACE | `ACCEPTED` | Add `RniReadService.getCitation(citationId)` returning frozen `RniCitation`; evidence remains a second source-ID read | DATA, SURFACE, INTEGRATION | `264ea9c` |
 | CR-SURFACE-02 | SURFACE | `ACCEPTED` | Add a cursor-paginated Radar page with run lineage, security identity, two non-poolable platform-labelled cells, and explicit pending/aligned/divergent/partial/insufficient cross-source state | DATA, ENGINE, SURFACE, INTEGRATION | `84dca87` / D-RNI-13 |
 | CR-SURFACE-03 | SURFACE | `ACCEPTED` | Add a bounded security-detail read with canonical identity and exactly four cited dimension assignments for each independently labelled platform | DATA, ENGINE, SURFACE, INTEGRATION | `ce80424` / D-RNI-14 |
@@ -241,6 +242,27 @@
   verifier/challenger recording and I08 reads of accepted publication artifacts. D-RNI-26 records
   these linked cross-lane corrections; D-RNI-19's public contract and P0 source scope remain
   unchanged.
+
+### CR-I09-001 durable orchestration decision
+
+- **Current behaviour:** the frozen command API and existing `job_run` contract identify a
+  refresh request, but migration `0024` has no durable command, execution-stage lease or
+  transactional QStash outbox representation. The preferred I09 primitive initially fenced only
+  Reddit and X; its combined publication could complete after the immutable run deadline.
+- **Requested shape and decision:** D-RNI-27 accepts one existing-job-linked execution with an
+  immutable plan, exact-key command replay, separate Reddit/X/combined attempts and lease tokens,
+  and an atomic outbox/audit/schedule boundary. All effectful provider and publication boundaries
+  must validate the active lease and deadline. I10 remains the sole spend ledger.
+- **Compatibility:** this is additive storage inside the already allocated migration `0024` and
+  coordinator-owned composition. Frozen API bodies, source contracts, job-run meaning and
+  historical records are unchanged.
+- **Affected lanes:** I09 supplies isolated lifecycle primitives; I07 consumes the combined lease
+  at publication; I10 supplies admission and per-call spend authority; SURFACE invokes only the
+  frozen command boundary; INTEGRATION owns SQL, HTTP/QStash, auth, audit and job wiring.
+- **Acceptance:** exact replay and crossed-intent rejection; double-click coalescing; separate
+  source outcomes; current/next-key signature verification; concurrent, expired and stale worker
+  rejection; bounded retries; no completion after deadline; atomic busy-schedule skip/advance;
+  PostgreSQL rollback/redelivery tests; and no provider call within a database transaction.
 
 ### CR-SURFACE-06 decision
 

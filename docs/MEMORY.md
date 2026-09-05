@@ -1130,6 +1130,37 @@ injection under the publication lock and compares it with the batch, claim, role
 none of those rows can declare itself active. A future rights-policy successor or activation
 surface requires a separate owner-approved, versioned decision.
 
+### D-RNI-27 — Durable refresh orchestration extends the existing job ledger and fences every publishing stage
+
+**Accepts CR-I09-001, 2026-09-05.** Manual refresh, rerun and scheduled execution share one
+durable command/execution representation. A newly accepted command first creates the existing
+`job_run`, then links exactly one `rni_run` and its immutable resolved plan to that job identity.
+The plan binds scope, configuration, universe, prompt, AI route, windows, task envelopes, maximum
+attempts, runtime deadline and admitted cost. Exact-key replay returns the original identity;
+crossed intent fails before any write. Rerun creates a new identity linked to its predecessor and
+never mutates historical work.
+
+The execution owns separate Reddit, X and combined-publication stages. Every stage uses a durable
+attempt, not-before time, opaque lease token and lease expiry. Claim, heartbeat, retry, failure and
+finish must compare that token and the immutable run deadline. The token must reach every provider
+and commit boundary capable of causing an external or publishable effect; rejecting a stale worker
+only after it publishes is insufficient. The combined stage therefore has the same lifecycle as a
+platform stage and cannot publish after its deadline unless trusted storage proves the identical
+artifact was already committed by a valid earlier lease.
+
+Command, execution, schedule advancement, audit and transactional-outbox writes commit atomically;
+provider and QStash calls remain outside the database transaction. Ambiguous QStash delivery is
+retried with the same delivery identity. A due skip-policy schedule takes its job lock and either
+creates work or atomically records a busy skip and advances once, so a busy instant cannot remain
+perpetually due. Current and next QStash signing keys are server-only authority.
+
+I10 remains the only spend ledger. Run admission takes its global budget lock and counts actual,
+uncertain and outstanding admitted spend exactly once; every real model dispatch still performs
+the existing per-call reservation and settlement. Unknown provider outcomes retain their
+reservation. Migration `0024` may add the narrow orchestration, stage, command and outbox storage
+needed for this decision; no public RNI API shape, frozen source contract or existing job-ledger
+meaning changes.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to
