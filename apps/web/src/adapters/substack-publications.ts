@@ -16,12 +16,29 @@
  */
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
+import seedJson from '../../migrations/seed/substack-publications-v1.json';
 
-const SEED_FILE = fileURLToPath(
-  new URL('../../migrations/seed/substack-publications-v1.json', import.meta.url),
-);
+/**
+ * **Statically imported, not read from disk, and that is load-bearing.**
+ *
+ * This module used to resolve the JSON at runtime via
+ * `fileURLToPath(new URL(..., import.meta.url))` + `readFile`. That works under `tsx` in a script
+ * and under vitest, and fails in both places this code actually has to run:
+ *
+ * 1. **The Next.js build.** Once `substack.collect`'s handler made the collector reachable from
+ *    `/api/cron/dispatch`, webpack bundled this module into the route and `next build` died with
+ *    `The "path" argument must be of type string or an instance of URL` while collecting page
+ *    data.
+ * 2. **A Vercel lambda, more importantly.** `migrations/seed/` is not traced into a function
+ *    bundle, so even a build that survived would have thrown `ENOENT` on the first real dispatch
+ *    — at which point the collector fails every hour and, under D-16, the corpus for those hours
+ *    does not exist and cannot be recovered.
+ *
+ * A static import makes the bundler carry the data, which is the only form that works in a
+ * serverless function. The `file` parameter below is retained purely so tests can still exercise
+ * the missing-file path.
+ */
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'must be an ISO date');
 
@@ -63,8 +80,12 @@ export class SubstackPublicationListMissing extends Error {
  * a list rather than silently returning an empty one.
  */
 export async function loadSubstackPublicationSeed(
-  file: string = SEED_FILE,
+  file?: string,
 ): Promise<SubstackPublicationSeedFile> {
+  // The bundled list is the production path. Validated exactly as a read file would be — a
+  // committed artifact is not exempt from its own schema.
+  if (file === undefined) return substackPublicationSeedFile.parse(seedJson);
+
   let raw: string;
   try {
     raw = await readFile(file, 'utf8');
@@ -75,9 +96,7 @@ export async function loadSubstackPublicationSeed(
 }
 
 /** The flat publication list — what a dispatcher iterates over. */
-export async function getSubstackPublications(
-  file: string = SEED_FILE,
-): Promise<SubstackPublication[]> {
+export async function getSubstackPublications(file?: string): Promise<SubstackPublication[]> {
   const seed = await loadSubstackPublicationSeed(file);
   return seed.publications;
 }
@@ -88,7 +107,7 @@ export async function getSubstackPublications(
  * `{v}` clause is left for the future `config_version` wiring; today's disclosure names the JSON
  * artifact instead, which is the only version that currently exists.
  */
-export async function getSubstackDisclosureBasis(file: string = SEED_FILE): Promise<string> {
+export async function getSubstackDisclosureBasis(file?: string): Promise<string> {
   const seed = await loadSubstackPublicationSeed(file);
   return `${seed.basis} Confirmed ${seed.confirmedAt}; ${seed.publications.length} publications across ${seed.sectorsRepresented} of ${seed.sectorsTotal} GICS sectors.`;
 }

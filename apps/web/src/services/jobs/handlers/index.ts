@@ -4,19 +4,16 @@
  * it once, at module load, before any request is handled.
  *
  * **Adding a job is exactly one line here, never a change to `registry.ts` or `service.ts`.**
- * `substack.collect` (F04's Substack collector, `services/substack/collector.ts`, already
- * merged) is seeded as a disabled `job_definition` row by `scripts/seed-job-definitions.ts` but
- * deliberately has **no** handler registered below yet — it is the next one to land, and this
- * file is exactly where that registration goes:
  *
- * ```ts
- * import { substackCollectHandler } from './substack';
- * registerJobHandler('substack.collect', substackCollectHandler);
- * ```
+ * `substack.collect` landed exactly that way, and its seed row is now `enabled: true` in the
+ * same change — the sequencing that row's own `notes` field asked for, so the job never spends a
+ * tick enabled-with-no-handler (a loud, misleading `no_handler_registered` failure every hour).
+ * It is the job that starts D-16's forward-only clock.
  */
 import { registerJobHandler } from '../registry';
 import { attentionSnapshotHandler, ATTENTION_SNAPSHOT_JOB_KEY } from './attention';
 import { marketDataPollHandler, MARKET_DATA_POLL_JOB_KEY } from './market-data';
+import { substackCollectHandler, SUBSTACK_COLLECT_JOB_KEY } from './substack';
 
 let registered = false;
 
@@ -31,5 +28,6 @@ export function registerAllJobHandlers(): void {
   if (registered) return;
   registerJobHandler(ATTENTION_SNAPSHOT_JOB_KEY, attentionSnapshotHandler);
   registerJobHandler(MARKET_DATA_POLL_JOB_KEY, marketDataPollHandler);
+  registerJobHandler(SUBSTACK_COLLECT_JOB_KEY, substackCollectHandler);
   registered = true;
 }
