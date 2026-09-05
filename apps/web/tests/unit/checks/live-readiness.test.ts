@@ -4,6 +4,7 @@ import { checkLiveReadiness, parseDotenv } from '../../../scripts/checks/live-re
 /** Every key `REQUIRED_IN_LIVE_MODE` names, plus the allowlist and the default transport's key. */
 const COMPLETE_LIVE_ENV: Record<string, string> = {
   DATABASE_URL: 'postgres://user:pw@host/db',
+  APP_BASE_URL: 'https://app.example.com',
   UPSTASH_REDIS_REST_URL: 'https://example.upstash.io',
   UPSTASH_REDIS_REST_TOKEN: 'token',
   FMP_API_KEY: 'k',
@@ -73,6 +74,22 @@ describe('check:live-readiness', () => {
     expect(report.ok).toBe(false);
     if (report.ok) return;
     expect(report.missingKeys).toContain('DATABASE_URL');
+  });
+
+  it('catches APP_BASE_URL still on its development default', () => {
+    // The trap this guard exists for: APP_BASE_URL carries a default, so it is never absent and
+    // a presence check can never catch it. /api/cron/dispatch builds its expected URL from this
+    // value and compares it against the `sub` claim QStash signs — left on localhost in
+    // production, every scheduled delivery 401s silently and forever.
+    const report = checkLiveReadiness({ ...COMPLETE_LIVE_ENV, APP_BASE_URL: 'http://localhost:3000' });
+    expect(report.ok).toBe(false);
+    if (report.ok) return;
+    expect(report.missingKeys).toEqual(['APP_BASE_URL']);
+  });
+
+  it('accepts a real APP_BASE_URL origin', () => {
+    const report = checkLiveReadiness({ ...COMPLETE_LIVE_ENV, APP_BASE_URL: 'https://real.vercel.app' });
+    expect(report).toEqual({ ok: true });
   });
 
   it('catches a malformed value, not only an absent one', () => {
