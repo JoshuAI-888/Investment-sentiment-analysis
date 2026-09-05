@@ -386,6 +386,7 @@
 | `CURRENT` | Complete I07D shared exact semantic identity | required SHA-256 `semantic_output_hash` on immutable run-observation membership; synthesis/universe PostgreSQL 23/23, typecheck/scoped lint/diff pass; DATA owns canonical producer and remaining shape/replay tests |
 | `CURRENT` | Start I07E cited-synthesis composition | define the smallest trusted preparation, accepted replay and exact atomic-commit identity boundary around E08 while DATA adapters proceed independently |
 | `CURRENT` | Complete I07E cited-synthesis composition | focused composition 13/13, typecheck/scoped lint/diff pass; initial P1/P2 replay/preparation/failure findings corrected; independent re-review PASS |
+| `CURRENT` | Re-review DATA D10/D11 corrected handoff | `825e68c` based `a161b6b`; coordinator focused 13/13, full DATA 50/50, typecheck/lint/diff pass; D11 and original D10 findings close, but cross-run exact-hash attachment remains P1 and was returned to DATA |
 
 ## I07A handoff
 
