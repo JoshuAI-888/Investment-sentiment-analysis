@@ -464,7 +464,7 @@ export async function seedReadModel(
             id,
             batch,
             stage,
-            canonicalHash(input),
+            stage === 'verification' ? canonicalHash(input) : null,
             J({
               descriptor: input.invocation,
               idempotencyIdentityHash: hash(batch),
@@ -472,12 +472,20 @@ export async function seedReadModel(
               convergenceArtifactId: convergenceId,
               convergenceArtifactHash: canonicalHash(convergence),
               summaryId,
-              modelInput: input,
+              ...(stage === 'verification' ? { modelInput: input } : {}),
             }),
             now,
             J(descriptor.claimIds),
           ],
         );
+        if (stage === 'challenger') {
+          await tx.query(
+            `update rni_synthesis_model_invocation
+             set input_hash=$2, prepared_snapshot=prepared_snapshot || jsonb_build_object('modelInput',$3::jsonb)
+             where id=$1`,
+            [id, canonicalHash(input), J(input)],
+          );
+        }
         await tx.query(
           `update rni_synthesis_model_invocation set status=$3,output_hash=$4,
           terminal_metadata=$5,completed_at=$2 where id=$1`,
