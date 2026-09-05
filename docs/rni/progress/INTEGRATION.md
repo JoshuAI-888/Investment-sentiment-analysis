@@ -28,7 +28,7 @@
 | I06R2 | Add durable pre-fetch sync command and clean security bootstrap | `PASSED` | Pre-fetch claim, concurrent/replay one-fetch, terminal audits/lineage and clean 501-security import pass |
 | I06R3 | Make command abandonment and stage completion fail-closed | `PASSED` | D-RNI-16; active conflict, stale terminalization, atomic rollback, invalid replay and bootstrap integrity tests pass |
 | I06R4 | Retain abandoned-command provider lineage and prove bootstrap rollback | `PASSED` | typecheck/lint; PostgreSQL command/bootstrap 9/9; IR-10/11 resolved |
-| I07 | Compose DATA repositories and ENGINE services | `IN_PROGRESS` | Semantic/artifact ports plus migration-backed D-RNI-19 trace; DATA D10 adapter and final cited-synthesis adapters/composition remain |
+| I07 | Compose DATA repositories and ENGINE services | `IN_PROGRESS` | D10 semantic and D12 analytics/convergence adapters merged; final cited-synthesis adapter/composition remains |
 | I07D | Close DATA D10 exact semantic-identity review findings | `PASSED` | Migration 0024 requires one exact SHA-256 E05 output identity per run/security observation; PostgreSQL schema/universe 23/23 |
 | I07E | Compose trusted cited-synthesis persistence boundary | `PASSED` | SQL-free trusted prepare, zero-model accepted replay and opaque-preparation atomic commit; composition 13/13, independent re-review PASS |
 | I08 | Compose SURFACE routes/nav/API with auth | `NOT_STARTED` | Authenticated preview e2e |
@@ -227,7 +227,7 @@
 
 | Lane | Review | Rebased | CI | Ownership clean | Merge status |
 |---|---|---|---|---|---|
-| DATA | `ACCEPTED` | yes at `4ab744e` | coordinator: typecheck, contract 81/22 skipped, fresh PostgreSQL 41/41 | yes | merged sequentially at `254fe45`; DR-01–05 closed |
+| DATA | `ACCEPTED_THROUGH_D12` | D12 based `5a75969`; merged onto current integration | coordinator D12 15/15 then combined D12/I10B 26/26, typecheck/lint/diff; independent review PASS | yes | D12 merge `59ab04a`; CR-DATA-005 resolved by D-RNI-23 |
 | ENGINE | `ACCEPTED` | yes at `e52052f`; final handoff `62eab1d` | coordinator focused E10 plus E08 57/1 live skip, full eval 18/1 live skip, typecheck/lint/diff pass; independent review PASS | yes | E01–E10 merged sequentially at `62eab1d`; ER-20–23 closed |
 | SURFACE | `ACCEPTED` | yes at `01a088c`; code `c224c78`, tracker head `b60ec14` | coordinator typecheck/lint and expanded RNI contract 37/37; builder production build and complete Chromium 22/22; prior independent review PASS | yes | S01–S10 merged sequentially at `b60ec14` |
 
@@ -396,6 +396,7 @@
 | `CURRENT` | Start I10B persisted routing and AI budget substrate | Extend coordinator-owned migration 0024 only: immutable capability/config/run lineage plus atomic worst-case reservation, settlement, rolling-day/month enforcement and once-only warning evidence under D-RNI-21 |
 | `CURRENT` | Resolve CR-DATA-005 overall convergence provenance | D-RNI-23 makes overall platform stance a deterministic weighted projection of persisted E05 overall scores through the exact E06 current weight trace; no frozen contract or schema expansion |
 | `CURRENT` | Complete I10B persisted routing and AI budget substrate | Migration 0024 preserves activation and per-call capability snapshots, exact run/config/task lineage, synthesis invocation identity, numeric reservation/settlement, 2/25/50/300/500 enforcement and once-only monthly warnings; focused 11/11 and full RNI PostgreSQL 129/129 |
+| `CURRENT` | Accept and merge DATA D12 analytics/convergence persistence | corrected tip `cf2b635` closes exact observation/component/slice lineage and D-RNI-23 overall projection findings; coordinator D12 15/15 and post-merge D12/I10B 26/26 with typecheck/lint/diff pass; merge `59ab04a` |
 
 ## I10A handoff
 
