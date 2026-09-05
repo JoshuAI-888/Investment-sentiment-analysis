@@ -1161,6 +1161,30 @@ reservation. Migration `0024` may add the narrow orchestration, stage, command a
 needed for this decision; no public RNI API shape, frozen source contract or existing job-ledger
 meaning changes.
 
+### D-RNI-28 — Challenger plans are durable before guards; their dependent input is hydrated exactly once
+
+**Accepts CR-I07-005, 2026-09-05.** D-RNI-26 requires verifier and challenger descriptors to
+exist before E08 evaluates either deterministic dispatch guard, but the challenger model input
+contains the verifier's selected assessment array. That array is not known when the batch and
+descriptors are created and, under D-RNI-26, may be a valid subset of the candidate evidence.
+Persisting an all-candidate placeholder as the challenger input would create false provider
+lineage and reject valid E08 output.
+
+The verification invocation is created with its complete immutable input snapshot and hash. The
+challenger invocation is created at the same time with its immutable descriptor, ordered claims
+and preparation lineage, but a null exact input snapshot/hash. After the verifier result is
+validated, the challenger input is hydrated exactly once while the plan remains `prepared`. A
+challenger transport must perform that hydration before I10 reservation and provider dispatch.
+When policy skips the challenger, the publication transaction hydrates the deterministic input
+before recording the reason-bound skip. Hydration cannot change the descriptor, claims, model,
+policy, batch or preparation identity; it cannot be repeated, reversed or occur after a terminal
+transition.
+
+An accepted synthesis artifact requires both exact input hashes and snapshots and binds them to
+the immutable artifact foreign keys. I10 still reserves the actual hydrated provider request hash,
+never a placeholder. No new public field or engine output exists; this is narrow persistence and
+composition semantics inside migration `0024`.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

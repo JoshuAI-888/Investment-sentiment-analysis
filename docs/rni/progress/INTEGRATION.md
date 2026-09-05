@@ -73,6 +73,7 @@
 | CR-I07-002 | I07 | `ACCEPTED` | Persist an explicit, reason-bound `skipped` terminal state when deterministic E08 policy correctly avoids verifier or challenger dispatch | ENGINE, INTEGRATION | D-RNI-26 |
 | CR-I07-003 | I07 | `ACCEPTED` | Persist role edges as the eligible evidence candidates supplied to E08, while assessment arrays record and validate a same-role subset selected by the verifier | DATA, ENGINE, INTEGRATION | D-RNI-26 |
 | CR-I07-004 | I07 | `ACCEPTED` | Resolve the frozen P0 source-rights version from server-owned active configuration and inject it into the trusted reader; a batch row cannot declare itself active | DATA, ENGINE, INTEGRATION | D-RNI-26 |
+| CR-I07-005 | I07 | `ACCEPTED` | Persist both invocation descriptors before E08 guards, but hydrate the verifier-dependent challenger input snapshot/hash exactly once after verification and before dispatch or policy skip | I07, I10, ENGINE, INTEGRATION | D-RNI-28 |
 | CR-I09-001 | I09 | `ACCEPTED` | Extend the existing job ledger with one transactional command/execution/outbox representation and separately fenced Reddit, X and combined-publication stage leases; I10 remains the spend authority | I07, I09, I10, SURFACE, INTEGRATION | D-RNI-27 |
 | CR-SURFACE-01 | SURFACE | `ACCEPTED` | Add `RniReadService.getCitation(citationId)` returning frozen `RniCitation`; evidence remains a second source-ID read | DATA, SURFACE, INTEGRATION | `264ea9c` |
 | CR-SURFACE-02 | SURFACE | `ACCEPTED` | Add a cursor-paginated Radar page with run lineage, security identity, two non-poolable platform-labelled cells, and explicit pending/aligned/divergent/partial/insufficient cross-source state | DATA, ENGINE, SURFACE, INTEGRATION | `84dca87` / D-RNI-13 |
@@ -238,6 +239,18 @@
   no client field, schema vocabulary or activation UI change; a future policy successor requires
   a separate owner-approved versioned decision. **Acceptance:** exact active rights publishes;
   stale, mixed, caller-declared or missing authority fails before inference/publication.
+- **CR-I07-005 current behaviour:** both invocation rows currently require an exact input hash at
+  batch preparation, but the challenger input contains the verifier's selected assessments and
+  therefore does not exist yet. Precomputing every candidate contradicts D-RNI-26 subset semantics
+  and records input that was never sent. **Requested shape and decision:** D-RNI-28 persists both
+  immutable descriptors initially, stores the complete verifier input immediately, and permits
+  one fill-only hydration of the challenger's exact input snapshot/hash after verification while
+  the plan remains prepared. Challenger dispatch must hydrate before I10 reservation/provider
+  access; a deterministic no-call hydrates within the terminal skip transaction. **Compatibility:**
+  no public artifact or provider contract changes; accepted artifacts still require both exact
+  hashes, and placeholders are forbidden. **Acceptance:** concurrent or repeated hydration,
+  altered descriptor/claims/model/policy, dispatch-before-hydration, terminal-without-hydration
+  and artifact/hash mismatch all fail closed; selected subsets and both D-RNI-26 skip paths replay.
 - **Affected boundaries:** migration `0024`, I07 cited-synthesis persistence, I10 governed
   verifier/challenger recording and I08 reads of accepted publication artifacts. D-RNI-26 records
   these linked cross-lane corrections; D-RNI-19's public contract and P0 source scope remain
