@@ -40,6 +40,7 @@
 | I10C1 | Compose provider-pinned transports and governed recorder | `PASSED` | Direct and OpenAI-only Gateway Responses adapters, immutable run-config loading, pre-dispatch reservation and usage-based settlement; PostgreSQL 153/153 serial RNI sweep |
 | I10C2 | Discover capability/price evidence and stage successor config | `IN_PROGRESS` | Append-only Direct/Gateway evidence and reviewable staging only; activation remains human-owned and live proof remains I11 |
 | I10C2A | Discover and persist capability/price evidence | `PASSED` | Direct identity lookup plus Gateway catalogue parsing; four append-only capabilities, five hashed price components and three-search reservation; focused 42/42 plus PostgreSQL 14/14 |
+| I10C2B | Version per-task envelopes and expose admin settings | `IN_PROGRESS` | Owner approved the recommended 16 KB/64 KB, existing output, three-search and USD 0.10–0.20 envelopes; portal edits must create a successor and preserve global hard limits/history |
 | I11 | Run live Reddit, X and FMP gates | `NOT_STARTED` | Provider audit IDs and screenshots/log links |
 | I12 | Full regression, preview, production approval and smoke | `NOT_STARTED` | `joshuai` approval + production evidence |
 
@@ -405,6 +406,7 @@
 | `CURRENT` | Complete I10C1 governed transport and recorder composition | Direct and OpenAI-only Gateway adapters validate exact provider/model routing; immutable run routes survive successor activation; reservation precedes dispatch and settlement uses provider token/tool telemetry rather than provider-reported cost |
 | `CURRENT` | Start I10C2 capability and successor-staging composition | Discover exact Direct/Gateway model identities and current price evidence into append-only records, then create an immutable staged successor for review without activating it or claiming live parity |
 | `CURRENT` | Complete I10C2A catalogue and price evidence | D-RNI-24; Direct lookup plus Gateway catalogue yield four append-only capability snapshots and five exact hashed price components; discovery reserves all three governed Web Search calls; focused 42/42 and PostgreSQL 14/14 |
+| `CURRENT` | Start I10C2B versioned task-envelope settings | Owner approved the recommended five per-task envelopes and required admin portal configurability; freeze a bounded intent contract, enforce serialized-input and cost limits before dispatch, and stage a successor without rewriting active/historical runs |
 
 ## I10A handoff
 
