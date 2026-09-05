@@ -109,6 +109,7 @@ function responseWith(options: {
 function discoveryFor(response: unknown): OpenAiRedditDiscovery {
   return new OpenAiRedditDiscovery(new CapturingTransport(response), {
     model: 'model',
+    reasoningEffort: 'low',
     maxOutputTokens: 2_000,
     maxToolCalls: 3,
   });
@@ -154,11 +155,13 @@ describe('OpenAI Web Search discovery request', () => {
   it('uses exact UTC bounds, governed communities, strict output and the Reddit domain filter', () => {
     const payload = buildOpenAiWebSearchRequest(request, {
       model: 'configured-web-search-model',
+      reasoningEffort: 'low',
       maxOutputTokens: 2_000,
       maxToolCalls: 3,
     });
 
     expect(payload.model).toBe('configured-web-search-model');
+    expect(payload.reasoning).toEqual({ effort: 'low' });
     expect(payload.tools).toEqual([
       { type: 'web_search', filters: { allowed_domains: ['reddit.com'] } },
     ]);
@@ -189,19 +192,19 @@ describe('OpenAI Web Search discovery request', () => {
     expect(() =>
       buildOpenAiWebSearchRequest(
         { ...request, windowEnd: request.windowStart },
-        { model: 'model', maxOutputTokens: 1, maxToolCalls: 1 },
+        { model: 'model', reasoningEffort: 'low', maxOutputTokens: 1, maxToolCalls: 1 },
       ),
     ).toThrow(/windowEnd must be after/u);
     expect(() =>
       buildOpenAiWebSearchRequest(
         { ...request, communities: ['r/stocks', 'r/Stocks'] },
-        { model: 'model', maxOutputTokens: 1, maxToolCalls: 1 },
+        { model: 'model', reasoningEffort: 'low', maxOutputTokens: 1, maxToolCalls: 1 },
       ),
     ).toThrow(/unique ignoring case/u);
     expect(() =>
       buildOpenAiWebSearchRequest(
         { ...request, securities: [] },
-        { model: 'model', maxOutputTokens: 1, maxToolCalls: 1 },
+        { model: 'model', reasoningEffort: 'low', maxOutputTokens: 1, maxToolCalls: 1 },
       ),
     ).toThrow(/requires at least one security/u);
   });
@@ -213,6 +216,7 @@ describe('OpenAI Web Search response normalization', () => {
     const ticks = [1_000, 1_042];
     const discovery = new OpenAiRedditDiscovery(transport, {
       model: 'configured-web-search-model',
+      reasoningEffort: 'low',
       maxOutputTokens: 2_000,
       maxToolCalls: 3,
       nowMs: () => ticks.shift() ?? 1_042,
@@ -258,6 +262,7 @@ describe('OpenAI Web Search response normalization', () => {
     };
     const discovery = new OpenAiRedditDiscovery(new CapturingTransport(withoutSources), {
       model: 'model',
+      reasoningEffort: 'low',
       maxOutputTokens: 1,
       maxToolCalls: 1,
     });
@@ -461,6 +466,7 @@ describe('OpenAI Web Search response normalization', () => {
     };
     const discovery = new OpenAiRedditDiscovery(new CapturingTransport(malformed), {
       model: 'model',
+      reasoningEffort: 'low',
       maxOutputTokens: 1,
       maxToolCalls: 1,
     });
@@ -482,6 +488,7 @@ describe('OpenAI Web Search response normalization', () => {
     const transport = new CapturingTransport(injectedResponse);
     const discovery = new OpenAiRedditDiscovery(transport, {
       model: 'model',
+      reasoningEffort: 'low',
       maxOutputTokens: 2_000,
       maxToolCalls: 3,
     });

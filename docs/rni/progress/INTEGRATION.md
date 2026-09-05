@@ -34,6 +34,7 @@
 | I08 | Compose SURFACE routes/nav/API with auth | `NOT_STARTED` | Authenticated preview e2e |
 | I09 | Wire QStash jobs/manual idempotent refresh | `NOT_STARTED` | Signed redelivery/double-click tests |
 | I10 | Seed RNI Direct routes and optional Gateway selection | `IN_PROGRESS` | I10A starts versioned Direct/Gateway resolution and pre-dispatch budget enforcement under D-RNI-21; live parity remains I11 |
+| I10A | Enforce balanced runtime model policy and exact route lineage | `PASSED` | Direct default, five-task Terra/Sol low mapping, fresh capabilities, Gateway provider/canonical identity and stable cache semantics; unit/contract/eval regression and independent review pass |
 | I11 | Run live Reddit, X and FMP gates | `NOT_STARTED` | Provider audit IDs and screenshots/log links |
 | I12 | Full regression, preview, production approval and smoke | `NOT_STARTED` | `joshuai` approval + production evidence |
 
@@ -389,6 +390,27 @@
 | `CURRENT` | Re-review DATA D10/D11 corrected handoff | `825e68c` based `a161b6b`; coordinator focused 13/13, full DATA 50/50, typecheck/lint/diff pass; D11 and original D10 findings close, but cross-run exact-hash attachment remains P1 and was returned to DATA |
 | `CURRENT` | Accept and merge final DATA D10/D11 | final `7dd9454` rebased on `2099936`; cross-run identity finding closed; coordinator post-merge DATA/composition/PostgreSQL 87/87, typecheck/focused lint/diff pass; independent re-review PASS |
 | `CURRENT` | Start I10A versioned route and budget enforcement | D-RNI-21 is owner-approved; implement Direct-default task resolution, capability-gated same-family Gateway parity and atomic pre-dispatch USD 2/25/50/500 enforcement with USD 300 warning; no credential values enter code or trackers |
+| `CURRENT` | Complete I10A runtime route policy | Direct defaults to exact Terra/Sol task mapping with low reasoning; all invocations retain dispatch, canonical model, capability and policy lineage; Gateway discovery requires actual OpenAI provider metadata; unit 1,360, contract 107/22 skipped, RNI eval 18/1 live skip, typecheck/lint/diff and independent re-review PASS |
+
+## I10A handoff
+
+- **Status:** `PASSED`; I10 remains `IN_PROGRESS` for versioned database configuration,
+  capability snapshots, transports and budget reservation/settlement.
+- **Files changed:** `apps/web/src/rni/config/model-policy.ts`,
+  `apps/web/src/rni/config/index.ts`, `apps/web/src/rni/agents/model-router.ts`,
+  `apps/web/src/rni/discovery/openai-web-search.ts`, `apps/web/src/rni/discovery/types.ts`, and
+  focused unit/contract/eval tests.
+- **Tests run:** full unit 1,360/1,360; full contract 107/107 with 22 database-gated skips;
+  RNI eval 18/18 with one credential-gated live skip; TypeScript; scoped ESLint; diff check.
+- **Result:** Direct is the default when route intent is absent. Runtime policy must resolve all
+  five tasks exactly once: Terra/low for discovery, relationship and classifier; Sol/low for
+  verifier and challenger. Capability evidence must be fresh and complete. Gateway dispatch
+  slugs remain configured data while canonical OpenAI identity and actual provider metadata are
+  independently validated; capability-only refreshes retain prompt-cache identity.
+- **Risks/handoff:** no credential was read and no live provider claim is made. I10B must persist
+  immutable capability/config lineage and atomic budget reservations; I11 must prove live Direct
+  and Gateway responses. Frozen contracts were not changed. Independent review returned PASS
+  after Direct alias, Gateway-provider, arbitrary-config, cache-key and telemetry findings closed.
 
 ## I07A handoff
 

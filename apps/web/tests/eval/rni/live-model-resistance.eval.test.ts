@@ -300,6 +300,7 @@ const readDiscoveryOutput = async (
       { create: async () => payload },
       {
         model: modelForTask('rni_discovery'),
+        reasoningEffort: 'low',
         maxOutputTokens: Math.min(definition.limits.maxOutputTokens, 1_024),
         maxToolCalls: 1,
         governance: {

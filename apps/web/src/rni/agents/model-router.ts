@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 import { canonicalHash, sha256Hex } from '../../calc/canonical';
-import type { RniAiRoute, RniResolvedModelRoute } from '../contracts';
+import type { RniAiRoute } from '../contracts';
+import { assertRniBalancedRuntimePolicy, type RniRuntimeModelRoute } from '../config';
 import {
   DiscoveryResponseError,
   OpenAiRedditDiscovery,
@@ -31,6 +32,7 @@ const transportResponseSchema = z
     responseId: z.string().min(1),
     provider: z.string().min(1),
     modelId: z.string().min(1),
+    canonicalProviderModelId: z.string().min(1),
     modelRevision: z.string().min(1),
     output: z.unknown(),
     usage: z
@@ -96,7 +98,8 @@ export type RniImmutableModelRunConfig = {
   readonly runId: string;
   readonly configVersion: string;
   readonly aiRoute: RniAiRoute;
-  readonly resolvedModels: readonly RniResolvedModelRoute[];
+  readonly resolvedAt: string;
+  readonly resolvedModels: readonly RniRuntimeModelRoute[];
 };
 
 export type RniModelStage =
@@ -132,7 +135,15 @@ export type RniModelTransportRequest = {
   readonly scope: RniModelCallScope;
   readonly provider: string;
   readonly modelId: string;
+  readonly canonicalProviderModelId: string;
   readonly modelRevision: string;
+  readonly reasoningEffort: 'low';
+  readonly capabilitySnapshotId: string;
+  readonly capabilityResponseHash: string;
+  readonly capabilityObservedAt: string;
+  readonly capabilityExpiresAt: string;
+  readonly routeResolvedAt: string;
+  readonly modelPolicyVersion: string;
   readonly promptVersion: string;
   readonly inputSchemaVersion: string;
   readonly outputSchemaVersion: string;
@@ -171,6 +182,7 @@ export type RniFailedProviderTelemetry = {
   readonly responseId: string;
   readonly provider: string;
   readonly modelId: string;
+  readonly canonicalProviderModelId: string;
   readonly modelRevision: string | null;
   readonly usage: z.infer<typeof transportResponseSchema>['usage'];
   readonly latencyMs: number | null;
@@ -218,7 +230,7 @@ const expectedStage = (task: RniPromptTask): RniModelStage => task.replace('rni_
 const resolvedModelFor = (
   config: RniImmutableModelRunConfig,
   task: RniPromptTask,
-): RniResolvedModelRoute => {
+): RniRuntimeModelRoute => {
   const matches = config.resolvedModels.filter((model) => model.task === task);
   if (matches.length !== 1) throw new Error(`RNI task ${task} must resolve exactly once`);
   return matches[0]!;
@@ -228,7 +240,7 @@ const validateInputBinding = (
   task: RniStructuredPromptTask,
   input: unknown,
   scope: RniModelCallScope,
-  model: RniResolvedModelRoute,
+  model: RniRuntimeModelRoute,
 ): void => {
   if (task === 'rni_relationship') {
     const parsed = input as Parameters<RniRelationshipInferencePort['infer']>[0];
@@ -293,6 +305,7 @@ export const createRniModelRouter = (deps: {
       throw new Error('Immutable RNI run and config identities are required');
     }
     if (tenantCachePartition.trim() === '') throw new Error('Tenant cache partition is required');
+    assertRniBalancedRuntimePolicy(runConfig);
     const parsedScope = modelCallScopeSchema.parse(scope);
     if (parsedScope.runId !== runConfig.runId || parsedScope.stage !== expectedStage(task)) {
       throw new Error('RNI model-call scope does not match the immutable run/task');
@@ -319,7 +332,10 @@ export const createRniModelRouter = (deps: {
       route: runConfig.aiRoute,
       provider: model.provider,
       modelId: model.modelId,
+      canonicalProviderModelId: model.canonicalProviderModelId,
       modelRevision: model.modelRevision,
+      reasoningEffort: model.reasoningEffort,
+      modelPolicyVersion: model.policyVersion,
       task,
       promptVersion: definition.promptVersion,
       inputSchemaVersion: definition.inputSchemaVersion,
@@ -337,7 +353,15 @@ export const createRniModelRouter = (deps: {
       scope: parsedScope,
       provider: model.provider,
       modelId: model.modelId,
+      canonicalProviderModelId: model.canonicalProviderModelId,
       modelRevision: model.modelRevision,
+      reasoningEffort: model.reasoningEffort,
+      capabilitySnapshotId: model.capabilitySnapshotId,
+      capabilityResponseHash: model.capabilityResponseHash,
+      capabilityObservedAt: model.capabilityObservedAt,
+      capabilityExpiresAt: model.capabilityExpiresAt,
+      routeResolvedAt: runConfig.resolvedAt,
+      modelPolicyVersion: model.policyVersion,
       promptVersion: definition.promptVersion,
       inputSchemaVersion: definition.inputSchemaVersion,
       outputSchemaVersion: definition.outputSchemaVersion,
@@ -372,6 +396,7 @@ export const createRniModelRouter = (deps: {
       if (
         response.provider !== model.provider ||
         response.modelId !== model.modelId ||
+        response.canonicalProviderModelId !== model.canonicalProviderModelId ||
         response.modelRevision !== model.modelRevision
       ) {
         throw new Error('RNI transport silently changed the resolved provider or model');
@@ -407,6 +432,7 @@ export const createRniModelRouter = (deps: {
                   responseId: parsedResponse.responseId,
                   provider: parsedResponse.provider,
                   modelId: parsedResponse.modelId,
+                  canonicalProviderModelId: parsedResponse.canonicalProviderModelId,
                   modelRevision: parsedResponse.modelRevision,
                   usage: parsedResponse.usage,
                   latencyMs: parsedResponse.latencyMs,
@@ -440,6 +466,7 @@ export const createRniRoutedRedditDiscovery = (deps: {
 }): { readonly discover: (request: RedditDiscoveryRequest) => Promise<RedditDiscoveryResult> } => ({
   discover: async (input) => {
     if (deps.tenantCachePartition.trim() === '') throw new Error('Tenant cache partition is required');
+    assertRniBalancedRuntimePolicy(deps.runConfig);
     const task = 'rni_discovery' as const;
     const model = resolvedModelFor(deps.runConfig, task);
     if (deps.runConfig.aiRoute === 'openai_direct' && model.provider !== 'openai') {
@@ -458,7 +485,10 @@ export const createRniRoutedRedditDiscovery = (deps: {
       route: deps.runConfig.aiRoute,
       provider: model.provider,
       modelId: model.modelId,
+      canonicalProviderModelId: model.canonicalProviderModelId,
       modelRevision: model.modelRevision,
+      reasoningEffort: model.reasoningEffort,
+      modelPolicyVersion: model.policyVersion,
       task,
       promptVersion: definition.promptVersion,
       inputSchemaVersion: definition.inputSchemaVersion,
@@ -484,7 +514,15 @@ export const createRniRoutedRedditDiscovery = (deps: {
       scope,
       provider: model.provider,
       modelId: model.modelId,
+      canonicalProviderModelId: model.canonicalProviderModelId,
       modelRevision: model.modelRevision,
+      reasoningEffort: model.reasoningEffort,
+      capabilitySnapshotId: model.capabilitySnapshotId,
+      capabilityResponseHash: model.capabilityResponseHash,
+      capabilityObservedAt: model.capabilityObservedAt,
+      capabilityExpiresAt: model.capabilityExpiresAt,
+      routeResolvedAt: deps.runConfig.resolvedAt,
+      modelPolicyVersion: model.policyVersion,
       promptVersion: definition.promptVersion,
       inputSchemaVersion: definition.inputSchemaVersion,
       outputSchemaVersion: definition.outputSchemaVersion,
@@ -511,6 +549,7 @@ export const createRniRoutedRedditDiscovery = (deps: {
       }
       result = await new OpenAiRedditDiscovery(transport, {
         model: model.modelId,
+        reasoningEffort: model.reasoningEffort,
         maxOutputTokens: definition.limits.maxOutputTokens,
         maxToolCalls: definition.limits.maxToolCalls,
         ...(deps.nowMs === undefined ? {} : { nowMs: deps.nowMs }),
@@ -526,8 +565,9 @@ export const createRniRoutedRedditDiscovery = (deps: {
       }).discover(parsedInput);
       providerTelemetry = {
         responseId: result.providerRequestId,
-        provider: model.provider,
+        provider: result.resolvedProvider ?? 'unknown',
         modelId: result.resolvedModel,
+        canonicalProviderModelId: result.resolvedModel,
         modelRevision: null,
         usage: { ...result.usage, cacheWriteTokens: null },
         latencyMs: result.latencyMs,
@@ -536,7 +576,10 @@ export const createRniRoutedRedditDiscovery = (deps: {
         citations: result.consultedSources.map(({ url }) => url),
       };
       failureCode = 'model_identity_mismatch';
-      if (result.resolvedModel !== model.modelId) {
+      if (
+        result.resolvedModel !== model.canonicalProviderModelId ||
+        (deps.runConfig.aiRoute === 'vercel_ai_gateway' && result.resolvedProvider !== model.provider)
+      ) {
         throw new Error('RNI discovery transport silently changed the resolved model');
       }
       invocation = {
@@ -563,8 +606,9 @@ export const createRniRoutedRedditDiscovery = (deps: {
       if (cause instanceof DiscoveryResponseError && cause.providerTelemetry !== null) {
         providerTelemetry = {
           responseId: cause.providerTelemetry.responseId,
-          provider: model.provider,
+          provider: cause.providerTelemetry.resolvedProvider ?? 'unknown',
           modelId: cause.providerTelemetry.resolvedModel,
+          canonicalProviderModelId: cause.providerTelemetry.resolvedModel,
           modelRevision: null,
           usage: { ...cause.providerTelemetry.usage, cacheWriteTokens: null },
           latencyMs: cause.providerTelemetry.latencyMs,

@@ -142,6 +142,7 @@ const responseSchema = z
   .object({
     id: z.string().min(1),
     status: z.string(),
+    provider: z.string().min(1).nullable().optional(),
     model: z.string().min(1),
     output: z.array(z.unknown()),
     usage: z
@@ -219,6 +220,7 @@ export class DiscoveryResponseError extends Error {
 
 export type DiscoveryProviderTelemetry = {
   readonly responseId: string;
+  readonly resolvedProvider: string | null;
   readonly resolvedModel: string;
   readonly usage: DiscoveryUsage;
   readonly latencyMs: number;
@@ -267,6 +269,7 @@ export function buildOpenAiWebSearchRequest(
   value: RedditDiscoveryRequest,
   config: {
     model: string;
+    reasoningEffort: 'low';
     maxOutputTokens: number;
     maxToolCalls: number;
     governance?: DiscoveryPromptGovernance;
@@ -283,6 +286,7 @@ export function buildOpenAiWebSearchRequest(
 
   return {
     model: config.model,
+    reasoning: { effort: config.reasoningEffort },
     instructions: config.governance?.systemPolicy ?? RNI_DISCOVERY_SYSTEM_PROMPT,
     input:
       config.governance?.serializeInput(request) ??
@@ -628,6 +632,7 @@ export class OpenAiRedditDiscovery {
     private readonly transport: OpenAiResponsesTransport,
     private readonly config: {
       model: string;
+      reasoningEffort: 'low';
       maxOutputTokens: number;
       maxToolCalls: number;
       nowMs?: () => number;
@@ -648,6 +653,7 @@ export class OpenAiRedditDiscovery {
     }
     let providerTelemetry: DiscoveryProviderTelemetry = {
       responseId: response.data.id,
+      resolvedProvider: response.data.provider ?? null,
       resolvedModel: response.data.model,
       usage: usageFrom(response.data),
       latencyMs,
@@ -693,6 +699,7 @@ export class OpenAiRedditDiscovery {
       return {
         queryId: request.queryId,
         providerRequestId: response.data.id,
+        resolvedProvider: response.data.provider ?? null,
         resolvedModel: response.data.model,
         promptVersion: this.config.governance?.promptVersion ?? RNI_DISCOVERY_PROMPT_VERSION,
         candidates: normalized.candidates,

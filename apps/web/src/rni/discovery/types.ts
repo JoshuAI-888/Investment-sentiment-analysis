@@ -95,6 +95,7 @@ export type DiscoveryUsage = {
 export type RedditDiscoveryResult = {
   queryId: string;
   providerRequestId: string;
+  resolvedProvider: string | null;
   resolvedModel: string;
   promptVersion: string;
   candidates: readonly RedditDiscoveryCandidate[];
@@ -109,6 +110,7 @@ export type RedditDiscoveryResult = {
 
 export type OpenAiWebSearchRequest = {
   model: string;
+  reasoning: { effort: 'low' };
   instructions: string;
   input: string;
   tools: readonly [

@@ -14,6 +14,7 @@ import {
   type RniPersistedClassificationRequest,
 } from '@/rni/observations';
 import { RNI_INSUFFICIENT_CLAIM_SUMMARY } from '@/rni/observations/classifier';
+import { RNI_PROMPT_REGISTRY, type RniPromptTask } from '../../../../prompts/rni/registry';
 
 const ids = {
   source: '00000000-0000-4000-8000-000000000701',
@@ -351,19 +352,34 @@ describe('persisted RNI semantic classification', () => {
   it('records the exact dispatched classifier input hash on each observation', async () => {
     const attempts: RniModelInvocationAttempt[] = [];
     const dispatchedHashesBySecurity = new Map<string, string>();
+    const routedRequest = { ...request, modelId: 'gpt-5.6-terra' };
     const runConfig = {
       runId: '00000000-0000-4000-8000-000000000799',
       configVersion: 'rni-config-v1',
       aiRoute: 'openai_direct' as const,
-      resolvedModels: [
-        {
-          task: 'rni_classifier' as const,
+      resolvedAt: '2026-09-05T00:30:00.000Z',
+      resolvedModels: (Object.keys(RNI_PROMPT_REGISTRY) as RniPromptTask[]).map((task) => {
+        const modelId = task === 'rni_verification' || task === 'rni_challenger'
+          ? 'gpt-5.6-sol'
+          : 'gpt-5.6-terra';
+        return {
+          task,
           provider: 'openai',
-          modelId: request.modelId,
+          modelId,
+          canonicalProviderModelId: modelId,
           modelRevision: 'fixture-revision',
-          promptVersion: request.promptVersion,
-        },
-      ],
+          promptVersion: RNI_PROMPT_REGISTRY[task].promptVersion,
+          reasoningEffort: 'low' as const,
+          capabilitySnapshotId: 'fixture-capability-snapshot',
+          capabilityResponseHash: 'a'.repeat(64),
+          capabilityObservedAt: '2026-09-05T00:00:00.000Z',
+          capabilityExpiresAt: '2026-09-05T01:00:00.000Z',
+          supportsResponses: true as const,
+          supportsStructuredOutputs: true as const,
+          supportsWebSearch: true,
+          policyVersion: 'rni-balanced-model-policy-v1' as const,
+        };
+      }),
     };
     const router = createRniModelRouter({
       openaiDirect: {
@@ -383,6 +399,7 @@ describe('persisted RNI semantic classification', () => {
             responseId: `response-${call.scope.securityId}`,
             provider: call.provider,
             modelId: call.modelId,
+            canonicalProviderModelId: call.canonicalProviderModelId,
             modelRevision: call.modelRevision,
             output: (outputs() as Record<string, unknown>)[call.scope.securityId],
             usage: {
@@ -411,7 +428,7 @@ describe('persisted RNI semantic classification', () => {
       relationshipModelRunIdForSource: () => ids.classifierRun,
     });
 
-    const result = await classifyPersistedSecurityObservations(request, {
+    const result = await classifyPersistedSecurityObservations(routedRequest, {
       evidence,
       inference: routed.classifier,
       observationIdFactory,

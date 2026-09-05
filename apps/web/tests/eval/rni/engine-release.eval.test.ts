@@ -72,21 +72,34 @@ const runConfig = (aiRoute: 'openai_direct' | 'vercel_ai_gateway'): RniImmutable
   runId: RUN_ID,
   configVersion: 'rni-eval-config-v1',
   aiRoute,
-  resolvedModels: [
-    {
-      task: 'rni_relationship',
+  resolvedAt: '2026-09-05T00:30:00.000Z',
+  resolvedModels: (Object.keys(evaluatorExpectationSnapshot) as RniPromptTask[]).map((task) => {
+    const model = evaluatorExpectationSnapshot[task].model;
+    return {
+      task,
       provider: 'openai',
-      modelId: evaluatorExpectationSnapshot.rni_relationship.model,
+      modelId: aiRoute === 'openai_direct' ? model : `openai/${model}`,
+      canonicalProviderModelId: model,
       modelRevision: 'owner-approved-eval-revision',
-      promptVersion: RNI_PROMPT_REGISTRY.rni_relationship.promptVersion,
-    },
-  ],
+      promptVersion: RNI_PROMPT_REGISTRY[task].promptVersion,
+      reasoningEffort: 'low',
+      capabilitySnapshotId: 'eval-capability-snapshot',
+      capabilityResponseHash: 'a'.repeat(64),
+      capabilityObservedAt: '2026-09-05T00:00:00.000Z',
+      capabilityExpiresAt: '2026-09-05T01:00:00.000Z',
+      supportsResponses: true,
+      supportsStructuredOutputs: true,
+      supportsWebSearch: true,
+      policyVersion: 'rni-balanced-model-policy-v1',
+    };
+  }),
 });
 
 const responseFor = (request: RniModelTransportRequest) => ({
   responseId: `response-${request.route}`,
   provider: request.provider,
   modelId: request.modelId,
+  canonicalProviderModelId: request.canonicalProviderModelId,
   modelRevision: request.modelRevision,
   output: { relationships: [] },
   usage: {

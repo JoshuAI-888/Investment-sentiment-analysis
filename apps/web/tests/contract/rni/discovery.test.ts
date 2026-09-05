@@ -7,7 +7,7 @@ describe('RNI E01 discovery-to-frozen-source contract', () => {
   it('normalizes a Web Search candidate into a valid bounded persisted-source shape', async () => {
     const discovery = new OpenAiRedditDiscovery(
       { create: async () => fixtureResponse },
-      { model: 'configured-model', maxOutputTokens: 2_000, maxToolCalls: 3 },
+      { model: 'configured-model', reasoningEffort: 'low', maxOutputTokens: 2_000, maxToolCalls: 3 },
     );
     const result = await discovery.discover({
       queryId: '00000000-0000-4000-8000-000000000101',

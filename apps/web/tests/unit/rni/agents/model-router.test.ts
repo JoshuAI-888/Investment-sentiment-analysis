@@ -46,41 +46,92 @@ const config = (
   runId: 'c0000000-0000-4000-8000-000000000001',
   configVersion: 'rni-config-v1',
   aiRoute,
+  resolvedAt: '2026-09-05T00:30:00.000Z',
   resolvedModels: [
     {
       task: 'rni_discovery',
       provider: 'openai',
-      modelId: aiRoute === 'openai_direct' ? 'configured-direct-model' : 'configured/gateway-model',
+      modelId: aiRoute === 'openai_direct' ? 'gpt-5.6-terra' : 'openai/gpt-5.6-terra',
+      canonicalProviderModelId: 'gpt-5.6-terra',
       modelRevision: 'configured-revision-2026-09-05',
       promptVersion: RNI_PROMPT_REGISTRY.rni_discovery.promptVersion,
+      reasoningEffort: 'low',
+      capabilitySnapshotId: 'capability-snapshot-2026-09-05',
+      capabilityResponseHash: 'a'.repeat(64),
+      capabilityObservedAt: '2026-09-05T00:00:00.000Z',
+      capabilityExpiresAt: '2026-09-05T01:00:00.000Z',
+      supportsResponses: true,
+      supportsStructuredOutputs: true,
+      supportsWebSearch: true,
+      policyVersion: 'rni-balanced-model-policy-v1',
     },
     {
       task: 'rni_relationship',
       provider: 'openai',
-      modelId: aiRoute === 'openai_direct' ? 'configured-direct-model' : 'configured/gateway-model',
+      modelId: aiRoute === 'openai_direct' ? 'gpt-5.6-terra' : 'openai/gpt-5.6-terra',
+      canonicalProviderModelId: 'gpt-5.6-terra',
       modelRevision: 'configured-revision-2026-09-05',
       promptVersion: RNI_PROMPT_REGISTRY.rni_relationship.promptVersion,
+      reasoningEffort: 'low',
+      capabilitySnapshotId: 'capability-snapshot-2026-09-05',
+      capabilityResponseHash: 'a'.repeat(64),
+      capabilityObservedAt: '2026-09-05T00:00:00.000Z',
+      capabilityExpiresAt: '2026-09-05T01:00:00.000Z',
+      supportsResponses: true,
+      supportsStructuredOutputs: true,
+      supportsWebSearch: true,
+      policyVersion: 'rni-balanced-model-policy-v1',
     },
     {
       task: 'rni_classifier',
       provider: 'openai',
-      modelId: aiRoute === 'openai_direct' ? 'configured-direct-model' : 'configured/gateway-model',
+      modelId: aiRoute === 'openai_direct' ? 'gpt-5.6-terra' : 'openai/gpt-5.6-terra',
+      canonicalProviderModelId: 'gpt-5.6-terra',
       modelRevision: 'configured-revision-2026-09-05',
       promptVersion: RNI_PROMPT_REGISTRY.rni_classifier.promptVersion,
+      reasoningEffort: 'low',
+      capabilitySnapshotId: 'capability-snapshot-2026-09-05',
+      capabilityResponseHash: 'a'.repeat(64),
+      capabilityObservedAt: '2026-09-05T00:00:00.000Z',
+      capabilityExpiresAt: '2026-09-05T01:00:00.000Z',
+      supportsResponses: true,
+      supportsStructuredOutputs: true,
+      supportsWebSearch: true,
+      policyVersion: 'rni-balanced-model-policy-v1',
     },
     {
       task: 'rni_verification',
       provider: 'openai',
-      modelId: aiRoute === 'openai_direct' ? 'configured-direct-model' : 'configured/gateway-model',
+      modelId: aiRoute === 'openai_direct' ? 'gpt-5.6-sol' : 'openai/gpt-5.6-sol',
+      canonicalProviderModelId: 'gpt-5.6-sol',
       modelRevision: 'configured-revision-2026-09-05',
       promptVersion: RNI_PROMPT_REGISTRY.rni_verification.promptVersion,
+      reasoningEffort: 'low',
+      capabilitySnapshotId: 'capability-snapshot-2026-09-05',
+      capabilityResponseHash: 'a'.repeat(64),
+      capabilityObservedAt: '2026-09-05T00:00:00.000Z',
+      capabilityExpiresAt: '2026-09-05T01:00:00.000Z',
+      supportsResponses: true,
+      supportsStructuredOutputs: true,
+      supportsWebSearch: true,
+      policyVersion: 'rni-balanced-model-policy-v1',
     },
     {
       task: 'rni_challenger',
       provider: 'openai',
-      modelId: aiRoute === 'openai_direct' ? 'configured-direct-model' : 'configured/gateway-model',
+      modelId: aiRoute === 'openai_direct' ? 'gpt-5.6-sol' : 'openai/gpt-5.6-sol',
+      canonicalProviderModelId: 'gpt-5.6-sol',
       modelRevision: 'configured-revision-2026-09-05',
       promptVersion: RNI_PROMPT_REGISTRY.rni_challenger.promptVersion,
+      reasoningEffort: 'low',
+      capabilitySnapshotId: 'capability-snapshot-2026-09-05',
+      capabilityResponseHash: 'a'.repeat(64),
+      capabilityObservedAt: '2026-09-05T00:00:00.000Z',
+      capabilityExpiresAt: '2026-09-05T01:00:00.000Z',
+      supportsResponses: true,
+      supportsStructuredOutputs: true,
+      supportsWebSearch: true,
+      policyVersion: 'rni-balanced-model-policy-v1',
     },
   ],
 });
@@ -89,6 +140,7 @@ const responseFor = (request: RniModelTransportRequest) => ({
   responseId: `response-${request.route}`,
   provider: request.provider,
   modelId: request.modelId,
+  canonicalProviderModelId: request.canonicalProviderModelId,
   modelRevision: request.modelRevision,
   output,
   usage: {
@@ -110,7 +162,8 @@ const transport = (): RniModelTransport & { invoke: ReturnType<typeof vi.fn> } =
 const discoveryResponseFor = (request: { model: string }) => ({
     id: `discovery-${request.model}`,
     status: 'completed',
-    model: request.model,
+    provider: 'openai',
+    model: request.model.includes('/') ? request.model.slice(request.model.indexOf('/') + 1) : request.model,
     output: [
       {
         id: `search-${request.model}`,
@@ -230,10 +283,11 @@ describe('RNI model router', () => {
 
     await expect(routed.discover(input)).resolves.toMatchObject({
       queryId: input.queryId,
-      resolvedModel: 'configured/gateway-model',
+      resolvedModel: 'gpt-5.6-terra',
     });
     expect(direct.create).not.toHaveBeenCalled();
     expect(gateway.create).toHaveBeenCalledOnce();
+    expect(gateway.create.mock.calls[0]?.[0]).toMatchObject({ reasoning: { effort: 'low' } });
     expect(records.starts).toHaveLength(1);
     expect(records.finishes).toHaveLength(1);
     expect(records.starts[0]).toMatchObject({
@@ -308,6 +362,41 @@ describe('RNI model router', () => {
     );
   });
 
+  it('rejects Gateway discovery when actual-provider metadata is missing or not OpenAI', async () => {
+    const input = {
+      queryId: 'c0000000-0000-4000-8000-000000000041',
+      mode: 'on_demand_security' as const,
+      windowStart: '2026-09-04T00:00:00.000Z',
+      windowEnd: '2026-09-05T00:00:00.000Z',
+      communities: ['r/stocks'],
+      securities: [{ ticker: 'NVDA', companyName: 'NVIDIA', aliases: ['NVIDIA'] }],
+      maxCandidates: 1,
+    };
+    for (const provider of [undefined, 'azure'] as const) {
+      const gateway = discoveryTransport();
+      gateway.create.mockImplementationOnce(async (request) => ({
+        ...discoveryResponseFor(request),
+        provider,
+      }));
+      const records = recording();
+      await expect(
+        createRniRoutedRedditDiscovery({
+          runConfig: config('vercel_ai_gateway'),
+          tenantCachePartition: 'tenant-hash-a',
+          openaiDirect: discoveryTransport(),
+          vercelAiGateway: gateway,
+          recorder: records.recorder,
+          modelRunIdForQuery: () => 'c0000000-0000-4000-8000-000000000042',
+        }).discover(input),
+      ).rejects.toThrow(/silently changed/u);
+      expect(records.finishes[0]).toMatchObject({
+        status: 'failed',
+        error: { code: 'model_identity_mismatch' },
+        providerTelemetry: { provider: provider ?? 'unknown' },
+      });
+    }
+  });
+
   it('uses the immutable Direct route and emits the complete canonical invocation envelope', async () => {
     const direct = transport();
     const gateway = transport();
@@ -325,7 +414,10 @@ describe('RNI model router', () => {
     expect(result).toMatchObject({
       route: 'openai_direct',
       provider: 'openai',
-      modelId: 'configured-direct-model',
+      modelId: 'gpt-5.6-sol',
+      reasoningEffort: 'low',
+      capabilitySnapshotId: 'capability-snapshot-2026-09-05',
+      modelPolicyVersion: 'rni-balanced-model-policy-v1',
       output,
       usage: { cachedInputTokens: 80 },
       latencyMs: 42,
@@ -433,7 +525,7 @@ describe('RNI model router', () => {
     expect(driftRecords.finishes[0]).toMatchObject({
       status: 'failed',
       providerTelemetry: {
-        responseId: 'discovery-configured-direct-model',
+        responseId: 'discovery-gpt-5.6-terra',
         modelId: 'silent-fallback-model',
         usage: { inputTokens: 10, outputTokens: 5, cachedInputTokens: 3 },
         latencyMs: 42,
@@ -443,7 +535,7 @@ describe('RNI model router', () => {
       status: 'failed',
       providerTelemetry: {
         responseId: 'discovery-invalid-trace',
-        modelId: 'configured-direct-model',
+        modelId: 'gpt-5.6-terra',
         usage: { inputTokens: 10, outputTokens: 5, cachedInputTokens: 3 },
         latencyMs: 42,
         toolCalls: [],
@@ -459,10 +551,10 @@ describe('RNI model router', () => {
       },
       providerTelemetry: {
         responseId: 'discovery-invalid-schema',
-        modelId: 'configured-direct-model',
+        modelId: 'gpt-5.6-terra',
         usage: { inputTokens: 10, outputTokens: 5, cachedInputTokens: 3 },
         latencyMs: 42,
-        toolCalls: ['search-configured-direct-model'],
+        toolCalls: ['search-gpt-5.6-terra'],
       },
     });
     expect(driftRecords.finishes[0]).not.toHaveProperty('providerTelemetry.output');
@@ -500,7 +592,7 @@ describe('RNI model router', () => {
     expect(gatewayResult).toMatchObject({
       route: 'vercel_ai_gateway',
       provider: 'openai',
-      modelId: 'configured/gateway-model',
+      modelId: 'openai/gpt-5.6-sol',
     });
   });
 
@@ -588,6 +680,23 @@ describe('RNI model router', () => {
     const gateway = await invoke(router, config('vercel_ai_gateway'));
 
     expect(new Set([base.promptCacheKey, tenant.promptCacheKey, gateway.promptCacheKey])).toHaveLength(3);
+  });
+
+  it('retains the prompt cache key when only capability observation lineage rotates', async () => {
+    const router = createRniModelRouter({ openaiDirect: transport(), recorder: recording().recorder });
+    const firstConfig = config();
+    const secondConfig = {
+      ...firstConfig,
+      resolvedAt: '2026-09-05T00:45:00.000Z',
+      resolvedModels: firstConfig.resolvedModels.map((model) => ({
+        ...model,
+        capabilitySnapshotId: 'capability-snapshot-2026-09-05-b',
+        capabilityResponseHash: 'b'.repeat(64),
+      })),
+    };
+    const first = await invoke(router, firstConfig);
+    const second = await invoke(router, secondConfig);
+    expect(second.promptCacheKey).toBe(first.promptCacheKey);
   });
 
   it('replays an exact historical prompt version after a successor exists', async () => {
@@ -691,14 +800,36 @@ describe('RNI model router', () => {
           provider: 'not-openai',
         })),
       }),
-    ).rejects.toThrow(/OpenAI Direct requires/u);
+    ).rejects.toThrow(/unapproved mapping/u);
     expect(direct.invoke).not.toHaveBeenCalled();
+  });
+
+  it('rejects Gateway provider bypass and stale capability lineage before dispatch', async () => {
+    const gateway = transport();
+    const router = createRniModelRouter({
+      openaiDirect: transport(),
+      vercelAiGateway: gateway,
+      recorder: recording().recorder,
+    });
+    const gatewayConfig = config('vercel_ai_gateway');
+    await expect(
+      invoke(router, {
+        ...gatewayConfig,
+        resolvedModels: gatewayConfig.resolvedModels.map((model) =>
+          model.task === 'rni_discovery' ? { ...model, provider: 'azure' } : model,
+        ),
+      }),
+    ).rejects.toThrow(/unapproved mapping/u);
+    await expect(
+      invoke(router, { ...gatewayConfig, resolvedAt: '2026-09-05T01:00:00.000Z' }),
+    ).rejects.toThrow(/stale capability/u);
+    expect(gateway.invoke).not.toHaveBeenCalled();
   });
 
   it('rejects missing/duplicate task resolution and prompt-version drift before transport', async () => {
     const direct = transport();
     const router = createRniModelRouter({ openaiDirect: direct, recorder: recording().recorder });
-    await expect(invoke(router, { ...config(), resolvedModels: [] })).rejects.toThrow(/resolve exactly once/u);
+    await expect(invoke(router, { ...config(), resolvedModels: [] })).rejects.toThrow(/exactly five tasks/u);
     await expect(
       invoke(router, {
         ...config(),
@@ -707,7 +838,7 @@ describe('RNI model router', () => {
           config().resolvedModels.find(({ task }) => task === 'rni_verification')!,
         ],
       }),
-    ).rejects.toThrow(/resolve exactly once/u);
+    ).rejects.toThrow(/exactly five tasks|exactly once/u);
     await expect(
       invoke(router, {
         ...config(),
@@ -727,6 +858,22 @@ describe('RNI model router', () => {
       modelId: 'silent-fallback-model',
     }));
     await expect(invoke(createRniModelRouter({ openaiDirect: changed, recorder: changedRecords.recorder }), config())).rejects.toThrow(/silently changed/u);
+
+    const canonicalChanged = transport();
+    const canonicalChangedRecords = recording();
+    canonicalChanged.invoke.mockImplementationOnce(async (request: RniModelTransportRequest) => ({
+      ...responseFor(request),
+      canonicalProviderModelId: 'silent-provider-model',
+    }));
+    await expect(
+      invoke(
+        createRniModelRouter({
+          openaiDirect: canonicalChanged,
+          recorder: canonicalChangedRecords.recorder,
+        }),
+        config(),
+      ),
+    ).rejects.toThrow(/silently changed/u);
 
     const tool = transport();
     const toolRecords = recording();
@@ -751,7 +898,12 @@ describe('RNI model router', () => {
         config(),
       ),
     ).rejects.toThrow();
-    for (const records of [changedRecords, toolRecords, invalidOutputRecords]) {
+    for (const records of [
+      changedRecords,
+      canonicalChangedRecords,
+      toolRecords,
+      invalidOutputRecords,
+    ]) {
       expect(records.finishes).toHaveLength(1);
       expect(records.finishes[0]).toMatchObject({
         status: 'failed',
@@ -772,6 +924,9 @@ describe('RNI model router', () => {
     });
     expect(JSON.stringify(invalidOutputRecords.finishes[0])).not.toContain(hostileKey);
     expect(JSON.stringify(invalidOutputRecords.finishes[0])).not.toContain(hostileValue);
+    expect(canonicalChangedRecords.finishes[0]).toMatchObject({
+      providerTelemetry: { canonicalProviderModelId: 'silent-provider-model' },
+    });
 
     const invalidInput = transport();
     await expect(
@@ -897,12 +1052,12 @@ describe('RNI model router', () => {
       ...base,
       verificationInvocation: {
         ...base.verificationInvocation,
-        modelId: 'configured-direct-model',
+        modelId: 'gpt-5.6-sol',
         promptVersion: RNI_PROMPT_REGISTRY.rni_verification.promptVersion,
       },
       challengerInvocation: {
         ...base.challengerInvocation,
-        modelId: 'configured-direct-model',
+        modelId: 'gpt-5.6-sol',
         promptVersion: RNI_PROMPT_REGISTRY.rni_challenger.promptVersion,
       },
     };
@@ -1038,7 +1193,7 @@ describe('RNI model router', () => {
           },
         },
         promptVersion: RNI_PROMPT_REGISTRY.rni_classifier.promptVersion,
-        modelId: 'configured-direct-model',
+        modelId: 'gpt-5.6-terra',
         sourceItemId,
         platform: 'reddit',
         untrustedBoundedContent: 'NVDA',
