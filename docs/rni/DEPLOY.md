@@ -26,6 +26,10 @@ Do not request G7 or G8, enable the production heartbeat, or describe RNI 1.0 as
 - `joshuai` explicitly approves the D-RNI-33 self-verifying database-validator rewrite and the
   database independently reconstructs member slices/status/hashes rather than trusting release
   JSON supplied by the caller;
+- `joshuai` approves one semantic-completion identity for a source that resolves to multiple
+  securities, including whether comparative relationships participate in checkpoint completion;
+- `joshuai` approves a manifest-bound acquisition policy for query/chunk allocation, candidate
+  ranking/deduplication and complete/partial/failed coverage aggregation across the 501 members;
 - owner authority values and an immutable build identity are seeded through a reviewed command,
   and the non-fixture executor is fully composed;
 - `joshuai` approves exact deterministic formulas and normalization for all seven confidence

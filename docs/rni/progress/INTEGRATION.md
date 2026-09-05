@@ -454,9 +454,14 @@
   content with one unambiguous retrieval/content/outbox/checkpoint identity; the storage semantics
   require owner approval before Migration `0024` changes. D-RNI-33 still needs a null-safe,
   independently recomputed database validator rather than trusting caller-provided release JSON;
-  that high-blast rewrite also awaits explicit approval. After those decisions, compose the real
-  acquisition, source-first persistence, E05/E06/E07 analytics, I10-governed calls and I07
-  publication pipeline and rerun final adversarial/preview gates. Owner-approved production
+  that high-blast rewrite also awaits explicit approval. A comparative source can currently create
+  one semantic output hash per resolved security while its D-RNI-34 checkpoint stores only one
+  hash; the owner must choose a canonical per-security hash manifest or one whole-source identity.
+  The owner must also freeze manifest-bound Reddit/X query/chunk allocation, candidate
+  ranking/deduplication, slice coverage/status aggregation and whether comparative relationships
+  participate in checkpoint completion. After those decisions, compose the real acquisition,
+  source-first persistence, E05/E06/E07 analytics, I10-governed calls and I07 publication pipeline
+  and rerun final adversarial/preview gates. Owner-approved production
   authority values, the confidence/readiness authority above, a real build environment, live
   credentials, G7 evidence and G8 approval are not present. No credential value has been read,
   printed or committed.
@@ -625,6 +630,8 @@
 | 2026-09-05 | `READY` | Migration `0024` has passed disposable local PostgreSQL only; ephemeral Neon forward apply remains a deployment gate | coordinator + joshuai | Clean and forward migration tests preserve the historical active version and enforce 600/601 | G6/G7 |
 | 2026-09-05 | `AWAITING_APPROVAL` | D-RNI-34 repeated/changed-content retrieval, content-version, outbox and checkpoint identity is not coherent under the current schema | coordinator + joshuai | Exact failing lineage was isolated; no high-blast schema change was made without owner-approved semantics | G6 |
 | 2026-09-05 | `AWAITING_APPROVAL` | D-RNI-33 release validation does not yet independently reconstruct and recompute every stored member/status/hash invariant | coordinator + joshuai | Repository/read gates fail closed; validator rewrite is held for explicit approval | G6 |
+| 2026-09-05 | `AWAITING_OWNER_DECISION` | One source can produce multiple per-security semantic hashes, but its completion checkpoint stores one semantic hash | joshuai | Production executor remains disabled; choose a per-security hash manifest or one whole-source identity, including relationship participation | G6 |
+| 2026-09-05 | `AWAITING_OWNER_DECISION` | No manifest-bound policy allocates bounded Reddit/X calls across 501 members or derives candidate selection and slice coverage/status | joshuai | No ad hoc ranking, chunking or coverage claim is enabled | G6 |
 | 2026-09-05 | `AWAITING_OWNER_DECISION` | Exact deterministic formulas/normalization for seven confidence components and four penalties, plus manifest-bound eval/narrative/catalyst readiness lineage, are absent | joshuai | Unowned empirical constants were removed; production confidence fails closed as unavailable | G6 |
 | 2026-09-05 | `RESOLVED` | Prompt input authority was hand-described and could drift from the five runtime Zod schemas | coordinator | Schemas mechanically compile the authority; refinements are declarative and function source is not hashed; typecheck/lint, 128 focused and 6 drift tests pass. Regenerate/review authority packs because input hashes changed | G6 evidence |
 | 2026-09-05 | `BLOCKED_EXTERNAL` | Owner authority values, production build environment and live provider/deployment credentials are absent | joshuai | Typed parsers/verifiers and fail-closed executor shell are implemented without inventing values | G6/G7 |
