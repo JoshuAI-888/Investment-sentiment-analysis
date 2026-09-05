@@ -21,7 +21,6 @@ export async function signUpAction(_prev: unknown, formData: FormData): Promise<
   }
 
   const message = {
-    not_allowed: 'This address is not authorized to create an account.',
     already_exists: 'An account already exists for this address — sign in instead.',
     weak_password: 'Password must be at least 12 characters.',
     unknown: 'Something went wrong. Try again.',

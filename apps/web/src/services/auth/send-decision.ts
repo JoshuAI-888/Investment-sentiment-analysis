@@ -4,17 +4,23 @@
  *
  * Pulled out of the plugin closure and given every dependency as a parameter — including
  * `providerMode`, rather than reading `env.PROVIDER_MODE` itself — specifically so this is
- * testable directly: F02 §5's "a non-allowlisted address never reaches Resend" needs to exercise
- * `providerMode: 'live'` behaviour without a live database, a live Redis, or a live Resend key
- * anywhere in the process.
+ * testable directly with `providerMode: 'live'` behaviour and no live database, Redis, or Resend
+ * key anywhere in the process.
  *
- * The allowlist check here is defense-in-depth, not the primary gate: `instance.ts`'s
- * `databaseHooks.user.create.before` already refuses to create a user for any other address, so
- * in practice only the one allowlisted address can ever reach this function at all. Kept anyway
- * so this module's own guarantee does not silently depend on that other mechanism staying wired
- * up correctly.
+ * **No allowlist check here (D-39).** Before D-39, account creation itself was allowlist-gated
+ * (`instance.ts`'s `databaseHooks.user.create.before`), so this module's own allowlist check was
+ * defense-in-depth for a population that could only ever be the one admin address. D-39 opened
+ * account creation to any address, which makes "is this address allowlisted" the wrong question
+ * for a mail send anyway: Better Auth's own `sendResetPassword` route only invokes this for an
+ * address with a real, already-existing account (it looks the user up first and no-ops
+ * otherwise — verified against the installed `better-auth`'s `dist/api/routes/password.mjs`),
+ * and `sendVerificationEmail` only fires for an account `signUpEmail` just created. The **send
+ * cap** (`send-cap.ts`, D-28) is what still bounds volume — it is a global window, not
+ * per-address, so it protects Resend's free-tier allowance against a burst of real signups or
+ * resets exactly the way it protected against a burst of requests for the one admin address
+ * before.
  */
-import { isAllowlisted, normalizeEmail } from './allowlist';
+import { normalizeEmail } from './allowlist';
 import { recordAndCheckSendCap, type RedisRestClient } from './send-cap';
 import { sendAuthEmail, type MailerConfig, type MailError, type AuthEmailInput } from './mailer';
 
@@ -22,10 +28,10 @@ import { sendAuthEmail, type MailerConfig, type MailError, type AuthEmailInput }
  * A **floor**, not a fixed delay: every path waits up to this long past `started`, so none of
  * the four outcomes below can finish faster than this and thereby stand out as the fast one. It
  * cannot bound a path from above — a live Resend round trip commonly takes 250-600ms, well past
- * this floor, so a slow `sent`/`send_failed` call is still distinguishable from a
- * `not_allowlisted`/`capped` refusal that never left the process. Closing that residual gap needs
- * the send dispatched out of the request path entirely (respond once dispatched, not once
- * delivered) — real, but out of scope for this fix.
+ * this floor, so a slow `sent`/`send_failed` call is still distinguishable from a `capped`
+ * refusal that never left the process. Closing that residual gap needs the send dispatched out
+ * of the request path entirely (respond once dispatched, not once delivered) — real, but out of
+ * scope for this fix.
  */
 const TIMING_EQUALIZER_MS = 180;
 
@@ -35,14 +41,12 @@ function wait(ms: number): Promise<void> {
 
 export type SendDecisionOutcome =
   | { readonly action: 'fixture' }
-  | { readonly action: 'not_allowlisted' }
   | { readonly action: 'capped'; readonly window: 'hour' | 'day' }
   | { readonly action: 'sent' }
   | { readonly action: 'send_failed'; readonly error: MailError };
 
 export type SendDecisionDeps = {
   readonly providerMode: 'fixture' | 'live';
-  readonly allowlist: readonly string[];
   readonly redisClient: RedisRestClient | undefined;
   readonly mailerConfig: MailerConfig;
   readonly now?: () => Date;
@@ -64,11 +68,6 @@ export async function decideAndSend(input: AuthEmailInput, deps: SendDecisionDep
   if (deps.providerMode !== 'live') {
     deps.rememberFixtureLink(normalized, input.url);
     return { action: 'fixture' };
-  }
-
-  if (!isAllowlisted(normalized, deps.allowlist)) {
-    await doWait(TIMING_EQUALIZER_MS - (Date.now() - started));
-    return { action: 'not_allowlisted' };
   }
 
   if (deps.redisClient !== undefined) {

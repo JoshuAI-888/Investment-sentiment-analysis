@@ -499,7 +499,20 @@ data displayed to third parties is a licensing question, not a technical one.
 
 ---
 
-## MT-10 ⬛ — VOID (D-11)
+## MT-10 🔴 — REOPENED by D-39
+
+**Reopened 2026-09-05.** This task's own text said the legal-read obligation "would return the
+moment anyone else gets an account." **D-39 (`../features/F02-auth-authorization.md`) opened
+self-service sign-up to any address** — that moment is now, not hypothetical. The fact pattern
+this task originally named — *open signup across NZ/US for a financial-content product* — is the
+actual current state again. Needs the same action the original task asked for: a person qualified
+to advise should read the terms before anyone outside an invited circle uses this, given the
+product now holds account emails, sessions, and dashboard access for an open population, not one
+operator. This reopening, and the underlying D-39 decision, still need a formal `../MEMORY.md`
+entry — flagged here rather than added directly, since that file's write access is reserved to
+whoever plays coordinator for this repo.
+
+<details><summary>Previously void under D-11 — the reasoning that no longer holds, retained for the record</summary>
 
 **Closed 2026-09-03.** The fact pattern that required a legal read was *open signup across
 NZ/US for a financial-content product*. Under D-11 there is one account, held by the owner, with
@@ -507,6 +520,8 @@ no signup path and no third-party data subjects. **OQ-4 closed.**
 
 The obligation would return the moment anyone else gets an account. It is recorded here so that
 reopening signup is understood to reopen this.
+
+</details>
 
 <details><summary>Original task, retained for the record</summary>
 
@@ -831,6 +846,6 @@ as-is, exactly as listed in the table above.
 | **MT-14** | ~~Choose the market-data tier~~ — FMP Starter daily bars; intraday deferred with an evidence trigger | ✅ | ☑ **D-31** |
 | MT-15 | Substack set — **fully confirmed 2026-09-04**: 13 publications, 10/11 GICS sectors (Utilities a disclosed gap). Still needs wiring into F04's collection config | ✅ | ☑ **owner-confirmed** |
 | MT-09 | ~~Vercel Pro + FMP display agreement~~ | ⬛ | **void (D-11)** |
-| MT-10 | ~~Privacy, terms, legal read~~ | ⬛ | **void (D-11)** |
+| MT-10 | Privacy, terms, legal read — **reopened by D-39** (open signup) | 🔴 | ☐ |
 | MT-11 | Calibrate the judge | 🟢 | ☐ |
 | MT-12 | ~~Set budget thresholds~~ — D-20 values adopted, X ceilings start at 0 (D-32) | ✅ | ☑ **D-32** |
