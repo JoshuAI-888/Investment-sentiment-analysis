@@ -29,7 +29,7 @@
 | I06R3 | Make command abandonment and stage completion fail-closed | `PASSED` | D-RNI-16; active conflict, stale terminalization, atomic rollback, invalid replay and bootstrap integrity tests pass |
 | I06R4 | Retain abandoned-command provider lineage and prove bootstrap rollback | `PASSED` | typecheck/lint; PostgreSQL command/bootstrap 9/9; IR-10/11 resolved |
 | I07 | Compose DATA repositories and ENGINE services | `IN_PROGRESS` | Semantic/artifact ports plus migration-backed D-RNI-19 trace; DATA D10 adapter and final cited-synthesis adapters/composition remain |
-| I07D | Close DATA D10 exact semantic-identity review findings | `IN_PROGRESS` | Add coordinator-owned exact per-security output hash to migration 0024; DATA validates four dimensions and exact security/hash key sets |
+| I07D | Close DATA D10 exact semantic-identity review findings | `PASSED` | Migration 0024 requires one exact SHA-256 E05 output identity per run/security observation; PostgreSQL schema/universe 23/23 |
 | I08 | Compose SURFACE routes/nav/API with auth | `NOT_STARTED` | Authenticated preview e2e |
 | I09 | Wire QStash jobs/manual idempotent refresh | `NOT_STARTED` | Signed redelivery/double-click tests |
 | I10 | Seed RNI Direct routes and optional Gateway selection | `NOT_STARTED` | D-RNI-21 policy locked; legacy route unchanged, budget enforcement and parity tests pending |
@@ -382,6 +382,7 @@
 | `CURRENT` | Compose E06/E07 artifact persistence boundary | Reddit/X artifacts commit independently; convergence binds their exact complete-artifact hashes and rejects crossed storage identity; focused composition 5/5, typecheck/scoped lint pass |
 | `CURRENT` | Persist D-RNI-19 cited-synthesis lineage in migration 0024 | PostgreSQL schema/universe 23/23; typecheck/scoped lint/diff pass; four adversarial P1 findings closed; independent re-review PASS; broader persistence 38/41 because three superseded D05 standalone-write expectations now reach the intended trace guard and are assigned to DATA D11 |
 | `CURRENT` | Start I07D after DATA D10 adversarial review | D10 focused 9/9 and DATA 50/50 pass, but review found storage-rounding identity collision plus incomplete four-dimension/input-hash-set validation; shared hash column assigned to coordinator and adapter corrections returned to DATA |
+| `CURRENT` | Complete I07D shared exact semantic identity | required SHA-256 `semantic_output_hash` on immutable run-observation membership; synthesis/universe PostgreSQL 23/23, typecheck/scoped lint/diff pass; DATA owns canonical producer and remaining shape/replay tests |
 
 ## I07A handoff
 
@@ -444,6 +445,24 @@
   the otherwise-unused standalone summary write export and replace its obsolete success tests;
   final publication uses the atomic cited-synthesis adapter. No frozen public contract or
   source-kind vocabulary changed.
+
+## I07D handoff
+
+- **Status:** `COMPLETE`; DATA D10 remains `CHANGES_REQUESTED` until its adapter consumes the
+  shared identity and closes both reviewer findings.
+- **Files changed:** `apps/web/migrations/0024_rni_universe_upgrade.sql`,
+  `apps/web/tests/integration/rni/{universe-upgrade.test.ts,composition/synthesis-schema.test.ts}`,
+  D-RNI-22 and coordinator trackers.
+- **Behaviour:** every immutable run/source/security observation membership now requires a
+  lowercase SHA-256 identity of the complete exact canonical per-security E05 output. This keeps
+  values that round to the same historical NUMERIC(5,4) storage representation from replaying as
+  identical. The public E05 and frozen RNI contracts are unchanged.
+- **Verification:** disposable PostgreSQL cited-synthesis 18/18 plus universe upgrade 5/5
+  (23/23), web typecheck, scoped ESLint and `git diff --check` pass.
+- **Risks/handoff:** DATA must calculate the hash from the unrounded full per-security result,
+  persist and compare it on replay, require exactly the four frozen dimensions and require exact
+  observation/input-hash security-key equality. Classifier invocation FK lineage remains for the
+  I10 model-call adapter; no credential is needed for these deterministic gates.
 
 ## Coordinator notes
 

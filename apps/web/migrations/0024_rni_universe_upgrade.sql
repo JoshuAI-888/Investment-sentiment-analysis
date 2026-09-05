@@ -208,22 +208,25 @@ alter table rni_evidence_claim
   );
 
 create table rni_run_observation (
-  run_id         uuid        not null references rni_run (id),
-  observation_id uuid        not null,
-  source_item_id uuid        not null,
-  security_id    uuid        not null,
-  created_at     timestamptz not null default now(),
+  run_id               uuid        not null references rni_run (id),
+  observation_id       uuid        not null,
+  source_item_id       uuid        not null,
+  security_id          uuid        not null,
+  semantic_output_hash text        not null,
+  created_at           timestamptz not null default now(),
 
   primary key (run_id, observation_id),
   constraint rni_run_observation_observation_fk
     foreign key (observation_id, source_item_id, security_id)
     references rni_security_observation (id, source_item_id, security_id),
+  constraint rni_run_observation_semantic_output_hash_check
+    check (semantic_output_hash ~ '^[a-f0-9]{64}$'),
   constraint rni_run_observation_identity_unique
     unique (run_id, source_item_id, security_id)
 );
 
 comment on table rni_run_observation is
-  'Immutable run membership for an independently classified source/security observation. One multi-ticker source therefore has one row per security and never shares semantic output.';
+  'Immutable run membership and exact canonical E05 output identity for one independently classified source/security observation. One multi-ticker source therefore has one row per security and never shares semantic output.';
 
 create table rni_observation_semantic_quality (
   observation_id       uuid         primary key,

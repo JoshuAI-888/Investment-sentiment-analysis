@@ -1032,6 +1032,11 @@ observation. Multi-ticker content therefore has separate run membership and qual
 each source/security observation. The DATA adapter owns the transaction over these additions and
 the existing observation/claim/citation/theme tables.
 
+Each run/observation membership also stores a required SHA-256 identity of the complete,
+unrounded canonical E05 result for that security. Relational NUMERIC columns remain useful query
+projections, but they are never the replay authority: two outputs that round to the same database
+precision still have different semantic identities and the later delivery must fail closed.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

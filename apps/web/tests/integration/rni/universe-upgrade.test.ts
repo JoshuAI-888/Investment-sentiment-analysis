@@ -183,7 +183,8 @@ describe.skipIf(url === undefined)('I05 — forward RNI universe migration', () 
         where table_schema = 'public'
           and (
             (table_name = 'rni_evidence_claim' and column_name = 'dimension')
-            or (table_name = 'rni_run_observation' and column_name = 'observation_id')
+            or (table_name = 'rni_run_observation'
+              and column_name in ('observation_id', 'semantic_output_hash'))
             or (table_name = 'rni_observation_semantic_quality' and column_name = 'evidence_quality')
           )
         order by table_name, column_name`,
@@ -195,6 +196,7 @@ describe.skipIf(url === undefined)('I05 — forward RNI universe migration', () 
         column_name: 'evidence_quality',
       },
       { table_name: 'rni_run_observation', column_name: 'observation_id' },
+      { table_name: 'rni_run_observation', column_name: 'semantic_output_hash' },
     ]);
     await expectCeiling(configVersion);
 

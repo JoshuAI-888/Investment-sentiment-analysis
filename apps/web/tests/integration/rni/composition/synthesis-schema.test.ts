@@ -203,9 +203,9 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
         );
         await pool.query(
           `insert into rni_run_observation
-             (run_id, observation_id, source_item_id, security_id)
-           values ($1, $2, $3, $4)`,
-          [ids.run, observationId, sourceId, securityId],
+             (run_id, observation_id, source_item_id, security_id, semantic_output_hash)
+           values ($1, $2, $3, $4, $5)`,
+          [ids.run, observationId, sourceId, securityId, H(observationId.slice(-1))],
         );
       }
 
