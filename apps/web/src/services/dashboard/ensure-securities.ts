@@ -49,7 +49,7 @@ async function ensure(symbol: string, exchange: string, name: string, db?: Query
       // not edit `repositories/`) — passing the JSON text directly, rather than the array, is
       // the narrowest fix reachable from this file alone, and only works here because this
       // feature always passes an empty list.
-      aliases: '[]' as unknown as string[],
+      aliases: [],
     },
     db,
   );

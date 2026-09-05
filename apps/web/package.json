@@ -20,6 +20,7 @@
     "check:bundle": "tsx scripts/check-bundle.ts",
     "check:copy": "tsx scripts/check-copy.ts",
     "migrate": "tsx scripts/migrate.ts",
+    "seed:securities": "tsx scripts/seed-securities.ts",
     "seed:universe": "tsx scripts/seed-universe.ts",
     "seed:jobs": "tsx scripts/seed-job-definitions.ts",
     "check:storage": "tsx scripts/check-storage-projection.ts",

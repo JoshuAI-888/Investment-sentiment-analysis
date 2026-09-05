@@ -116,7 +116,7 @@ async function ensureSecurity(symbol: string, name: string): Promise<EnsuredSecu
     // JSON — which happens to parse back as `{}` (an empty *object*) for `[]` and fails outright
     // for a non-empty array. Passing the JSON text directly, exactly as F07's workaround does,
     // is the narrowest fix reachable from this lane — `insertSecurity` itself is SPINE's to fix.
-    aliases: '[]' as unknown as string[],
+    aliases: [],
   };
   try {
     const inserted = await insertSecurity(input);
