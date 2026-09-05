@@ -974,6 +974,12 @@ platform URLs at publication, and permits only a small numeric token-usage allow
 metadata. Application adapters remain responsible for canonical snapshot hashing and for
 rechecking the currently active route and rights configuration under the integration-owned lock.
 
+The SQL-free composition accepts only run/security/convergence/idempotency intent. Storage must
+return the complete trusted request and an opaque durable preparation identity, and the final
+atomic commit must carry that same identity. An already accepted command is replayed from its
+stored artifact without model calls, with the stored and replayed canonical hashes required to
+match exactly; inference failure never reaches publication.
+
 ### D-RNI-20 — AI route settings create future config versions, never rewrite runs
 
 **Accepts CR-SURFACE-06, 2026-09-05.** `RniAiRouteSettingsService` exposes the active RNI config,

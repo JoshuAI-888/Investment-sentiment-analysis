@@ -1,6 +1,11 @@
 import type { RniPersistedClassificationResult } from '../observations';
 import type { RniPlatformAnalyticsArtifact } from '../analytics';
 import type { RniConvergenceArtifact } from '../convergence';
+import type {
+  RniCitedSynthesisArtifact,
+  RniCitedSynthesisRequest,
+  RniSynthesisEvidenceReader,
+} from '../agents';
 
 export type RniSemanticCommitRequest = {
   /** Durable run selected by server-side orchestration. */
@@ -38,4 +43,45 @@ export interface RniAnalyticsArtifactPersistencePort {
     artifact: RniPlatformAnalyticsArtifact,
   ): Promise<RniArtifactCommitResult>;
   commitConvergence(artifact: RniConvergenceArtifact): Promise<RniArtifactCommitResult>;
+}
+
+export type RniCitedSynthesisPreparationRequest = {
+  readonly runId: string;
+  readonly securityId: string;
+  readonly convergenceArtifactHash: string;
+  readonly idempotencyKey: string;
+  readonly createdAt: string;
+};
+
+export type RniStoredCitedSynthesis = {
+  readonly artifact: RniCitedSynthesisArtifact;
+  readonly artifactHash: string;
+};
+
+export type RniCitedSynthesisPreparation =
+  | {
+      readonly status: 'ready';
+      /** Opaque durable claim returned by storage; callers cannot construct publication lineage. */
+      readonly preparationId: string;
+      readonly request: RniCitedSynthesisRequest;
+    }
+  | { readonly status: 'accepted'; readonly stored: RniStoredCitedSynthesis };
+
+export type RniCitedSynthesisCommitResult = RniArtifactCommitResult & {
+  readonly summaryId: string;
+};
+
+/**
+ * D-RNI-19's trusted storage boundary. Callers supply only intent and durable identities; the
+ * adapter constructs claims, cutoffs, evidence roles and model descriptors from persisted state.
+ */
+export interface RniCitedSynthesisPersistencePort extends RniSynthesisEvidenceReader {
+  prepare(
+    input: RniCitedSynthesisPreparationRequest,
+  ): Promise<RniCitedSynthesisPreparation>;
+  commitAccepted(input: {
+    readonly preparationId: string;
+    readonly artifact: RniCitedSynthesisArtifact;
+  }): Promise<RniCitedSynthesisCommitResult>;
+  loadAccepted(summaryId: string): Promise<RniStoredCitedSynthesis>;
 }

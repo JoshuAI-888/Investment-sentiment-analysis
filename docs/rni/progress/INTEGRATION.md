@@ -30,7 +30,7 @@
 | I06R4 | Retain abandoned-command provider lineage and prove bootstrap rollback | `PASSED` | typecheck/lint; PostgreSQL command/bootstrap 9/9; IR-10/11 resolved |
 | I07 | Compose DATA repositories and ENGINE services | `IN_PROGRESS` | Semantic/artifact ports plus migration-backed D-RNI-19 trace; DATA D10 adapter and final cited-synthesis adapters/composition remain |
 | I07D | Close DATA D10 exact semantic-identity review findings | `PASSED` | Migration 0024 requires one exact SHA-256 E05 output identity per run/security observation; PostgreSQL schema/universe 23/23 |
-| I07E | Compose trusted cited-synthesis persistence boundary | `IN_PROGRESS` | SQL-free prepare/accepted-replay/atomic-commit wrapper over E08; no repository or frozen-contract widening |
+| I07E | Compose trusted cited-synthesis persistence boundary | `PASSED` | SQL-free trusted prepare, zero-model accepted replay and opaque-preparation atomic commit; composition 13/13, independent re-review PASS |
 | I08 | Compose SURFACE routes/nav/API with auth | `NOT_STARTED` | Authenticated preview e2e |
 | I09 | Wire QStash jobs/manual idempotent refresh | `NOT_STARTED` | Signed redelivery/double-click tests |
 | I10 | Seed RNI Direct routes and optional Gateway selection | `NOT_STARTED` | D-RNI-21 policy locked; legacy route unchanged, budget enforcement and parity tests pending |
@@ -385,6 +385,7 @@
 | `CURRENT` | Start I07D after DATA D10 adversarial review | D10 focused 9/9 and DATA 50/50 pass, but review found storage-rounding identity collision plus incomplete four-dimension/input-hash-set validation; shared hash column assigned to coordinator and adapter corrections returned to DATA |
 | `CURRENT` | Complete I07D shared exact semantic identity | required SHA-256 `semantic_output_hash` on immutable run-observation membership; synthesis/universe PostgreSQL 23/23, typecheck/scoped lint/diff pass; DATA owns canonical producer and remaining shape/replay tests |
 | `CURRENT` | Start I07E cited-synthesis composition | define the smallest trusted preparation, accepted replay and exact atomic-commit identity boundary around E08 while DATA adapters proceed independently |
+| `CURRENT` | Complete I07E cited-synthesis composition | focused composition 13/13, typecheck/scoped lint/diff pass; initial P1/P2 replay/preparation/failure findings corrected; independent re-review PASS |
 
 ## I07A handoff
 
@@ -465,6 +466,28 @@
   persist and compare it on replay, require exactly the four frozen dimensions and require exact
   observation/input-hash security-key equality. Classifier invocation FK lineage remains for the
   I10 model-call adapter; no credential is needed for these deterministic gates.
+
+## I07E handoff
+
+- **Status:** `COMPLETE`; I07 remains `IN_PROGRESS` for concrete DATA persistence and I10's
+  active route/rights/budget composition.
+- **Files changed:** `apps/web/src/rni/composition/{cited-synthesis,index,types}.ts`,
+  `apps/web/tests/integration/rni/composition/cited-synthesis-composition.test.ts` and coordinator
+  trackers.
+- **Behaviour:** callers provide only run, security, convergence hash, idempotency key and time.
+  Persistence returns either a trusted E08 request plus opaque durable preparation identity, or
+  an already accepted artifact. Accepted retries replay with zero model calls and exact stored-
+  versus-replayed hash equality. Fresh artifacts publish only through `commitAccepted` carrying
+  the opaque preparation identity; crossed returned summary/artifact identity fails closed, and
+  verifier or challenger failure performs no publication commit.
+- **Verification:** complete SQL-free I07 composition 13/13, web typecheck, scoped ESLint and
+  `git diff --check` pass. Initial independent review returned two P1s and one P2; exact replay
+  hashing, preparation-bound commit and both failure tests close them, with focused re-review
+  `PASS`.
+- **Risks/handoff:** the concrete DATA adapter must bind `preparationId` to the original
+  idempotency claim, request snapshot and final atomic graph under concurrency. I10 supplies the
+  immutable run configuration, active-rights recheck, routed inference ports and budget
+  reservation; no credential or frozen-contract change was needed here.
 
 ## Coordinator notes
 
