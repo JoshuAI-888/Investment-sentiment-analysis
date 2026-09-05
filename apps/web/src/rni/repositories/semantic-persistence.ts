@@ -271,6 +271,16 @@ async function insertRunObservation(
   createdAt: string,
   db: Queryable,
 ): Promise<boolean> {
+  const priorHashes = await db.query<{ semantic_output_hash: string }>(
+    `select distinct semantic_output_hash from rni_run_observation
+      where observation_id = $1`,
+    [observationId],
+  );
+  if (
+    priorHashes.rows.some(({ semantic_output_hash: priorHash }) => priorHash !== outputHash)
+  ) {
+    fail('observation identity reused across runs with different semantic output');
+  }
   const { rows } = await db.query<{
     observation_id: string;
     source_item_id: string;
@@ -579,6 +589,17 @@ async function commit(
   db: Queryable,
 ): Promise<RniSemanticCommitResult> {
   validateRequest(input);
+  const observationLockIds = input.classification.observations
+    .map(
+      ({ sourceItemId, securityId, classifierRunId }) =>
+        `${sourceItemId}:${securityId}:${classifierRunId}`,
+    )
+    .sort((left, right) => left.localeCompare(right));
+  for (const observationId of observationLockIds) {
+    await db.query('select pg_advisory_xact_lock(hashtextextended($1, 0))', [
+      `rni-observation:${observationId}`,
+    ]);
+  }
   await db.query('select pg_advisory_xact_lock(hashtextextended($1, 0))', [
     `${input.runId}:${input.sourceItemId}`,
   ]);

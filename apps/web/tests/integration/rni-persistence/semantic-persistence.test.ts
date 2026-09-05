@@ -25,6 +25,7 @@ const competitionTheme = '30000000-0000-4000-8000-000000000002';
 describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => {
   let pool: pg.Pool;
   let adapter: PostgresRniSemanticPersistence;
+  let versions: { configVersion: string; universeVersion: string };
 
   beforeAll(async () => {
     pool = makePool();
@@ -34,7 +35,7 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
 
   beforeEach(async () => {
     await truncateAll(pool);
-    const versions = await seedRniVersionLineage(pool, 'd10');
+    versions = await seedRniVersionLineage(pool, 'd10');
     await pool.query(
       `insert into security (id, symbol, name, exchange, asset_type, currency) values
        ($1, 'NVDA', 'NVIDIA Corporation', 'NASDAQ', 'equity', 'USD'),
@@ -43,7 +44,7 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
     );
     await persistRniSource(comparativeSource, pool);
     for (const mention of comparativeMentions) await persistRniSecurityMention(mention, pool);
-    await persistRniRunWithSlices(run(versions), slices(), pool);
+    await persistRniRunWithSlices(run(versions), slices(rniFixtureIds.run), pool);
     await persistRniThemeDefinition(
       {
         id: executionTheme,
@@ -76,7 +77,10 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
     await pool?.end();
   });
 
-  function run(versions: { configVersion: string; universeVersion: string }): RniRun {
+  function run(
+    lineage: { configVersion: string; universeVersion: string },
+    overrides: Partial<RniRun> = {},
+  ): RniRun {
     return {
       id: rniFixtureIds.run,
       idempotencyKey: 'rni-d10-run',
@@ -86,19 +90,20 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
       windowEnd: '2026-09-05T00:00:00.000Z',
       comparisonStart: null,
       comparisonEnd: null,
-      universeVersion: versions.universeVersion,
-      configVersion: versions.configVersion,
+      universeVersion: lineage.universeVersion,
+      configVersion: lineage.configVersion,
       promptVersion: 'rni-prompts-v1',
       aiRoute: 'openai_direct',
       requestedAt: '2026-09-05T00:00:01.000Z',
       completedAt: null,
+      ...overrides,
     };
   }
 
-  function slices(): readonly [RniPlatformSlice, RniPlatformSlice] {
+  function slices(runId: string): readonly [RniPlatformSlice, RniPlatformSlice] {
     return ['reddit', 'x'].map((platform) => ({
       id: randomUUID(),
-      runId: rniFixtureIds.run,
+      runId,
       platform,
       status: platform === 'reddit' ? ('complete' as const) : ('unavailable' as const),
       eligibleSourceCount: platform === 'reddit' ? 1 : 0,
@@ -231,12 +236,16 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
     };
   }
 
-  async function commit(value = classification()) {
+  async function commitForRun(runId: string, value: RniPersistedClassificationResult) {
     return adapter.commitClassification({
-      runId: rniFixtureIds.run,
+      runId,
       sourceItemId: comparativeSource.id,
       classification: value,
     });
+  }
+
+  async function commit(value = classification()) {
+    return commitForRun(rniFixtureIds.run, value);
   }
 
   it('commits opposing two-security output, multiple claims, run membership and noise independently', async () => {
@@ -399,6 +408,78 @@ describe.skipIf(url === undefined)('RNI D10 atomic semantic persistence', () => 
     expect(results.filter(({ status }) => status === 'rejected')).toHaveLength(1);
     expect((await pool.query('select id from rni_evidence_claim')).rowCount).toBe(3);
     expect((await pool.query('select id from rni_claim_citation')).rowCount).toBe(3);
+  });
+
+  it('allows only the exact observation identity to attach across concurrent runs', async () => {
+    const original = classification();
+    const precise: RniPersistedClassificationResult = {
+      ...original,
+      observations: original.observations.map((observation, index) =>
+        index === 0 ? { ...observation, stanceScore: '0.650001' } : observation,
+      ),
+    };
+    await commit(precise);
+
+    const rejectedRunId = randomUUID();
+    await persistRniRunWithSlices(
+      run(versions, {
+        id: rejectedRunId,
+        idempotencyKey: 'rni-d10-cross-run-rejected',
+      }),
+      slices(rejectedRunId),
+      pool,
+    );
+    const crossed: RniPersistedClassificationResult = {
+      ...precise,
+      observations: precise.observations.map((observation, index) =>
+        index === 0 ? { ...observation, stanceScore: '0.650002' } : observation,
+      ),
+    };
+    await expect(commitForRun(rejectedRunId, crossed)).rejects.toThrow(
+      'observation identity reused across runs',
+    );
+    expect(
+      (
+        await pool.query('select observation_id from rni_run_observation where run_id = $1', [
+          rejectedRunId,
+        ])
+      ).rowCount,
+    ).toBe(0);
+
+    const exactRunId = randomUUID();
+    const concurrentCrossedRunId = randomUUID();
+    await persistRniRunWithSlices(
+      run(versions, { id: exactRunId, idempotencyKey: 'rni-d10-cross-run-exact' }),
+      slices(exactRunId),
+      pool,
+    );
+    await persistRniRunWithSlices(
+      run(versions, {
+        id: concurrentCrossedRunId,
+        idempotencyKey: 'rni-d10-cross-run-concurrent-crossed',
+      }),
+      slices(concurrentCrossedRunId),
+      pool,
+    );
+    const results = await Promise.allSettled([
+      commitForRun(exactRunId, precise),
+      commitForRun(concurrentCrossedRunId, crossed),
+    ]);
+    expect(results.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected']);
+    expect(
+      (
+        await pool.query('select observation_id from rni_run_observation where run_id = $1', [
+          exactRunId,
+        ])
+      ).rowCount,
+    ).toBe(2);
+    expect(
+      (
+        await pool.query('select observation_id from rni_run_observation where run_id = $1', [
+          concurrentCrossedRunId,
+        ])
+      ).rowCount,
+    ).toBe(0);
   });
 
   it('rejects crossed JSONB dimension scores even when numeric rounding would match', async () => {
