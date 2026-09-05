@@ -26,8 +26,16 @@
  * attention, and taking FMP's value would guarantee the universe seed then fails to resolve.
  *
  * Idempotent: a symbol already present at `(symbol, exchange)` is left exactly as it is.
+ *
+ * **This script does not import `src/env.ts`, deliberately.** That module validates the *entire*
+ * environment at import time, so touching it here made a one-shot bootstrap that needs exactly
+ * two values — `DATABASE_URL` and `FMP_API_KEY` — demand all twenty-one production keys, and the
+ * first real workflow run died listing every one of them. The adapter takes `providerMode` as a
+ * parameter rather than reading it from the environment, so the script decides its own mode: live
+ * when an FMP key is present, fixture when it is not, printed either way so a run is never
+ * ambiguous about whether it called a provider. `seed-universe.ts` reads `process.env` directly
+ * for the same reason.
  */
-import { env } from '../src/env';
 import { fetchCompanyProfiles } from '../src/adapters/market';
 import { marketCollectorWrapperDeps } from '../src/services/market/provider-deps';
 import { closePool, getPool } from '../src/repositories/client';
@@ -38,6 +46,16 @@ import { loadSeedFile } from '../src/repositories/universe-seed';
 const BATCH_SIZE = 25;
 
 async function main(): Promise<void> {
+  const apiKey = process.env['FMP_API_KEY'];
+  const hasKey = apiKey !== undefined && apiKey !== '';
+  const providerMode: 'fixture' | 'live' = hasKey ? 'live' : 'fixture';
+  process.stdout.write(
+    hasKey
+      ? 'FMP_API_KEY present — fetching real company profiles (providerMode=live)\n'
+      : 'No FMP_API_KEY — reading committed fixtures instead (providerMode=fixture). Set the key ' +
+        'to fetch real profiles.\n',
+  );
+
   const seed = await loadSeedFile();
   const db = getPool();
 
@@ -74,9 +92,9 @@ async function main(): Promise<void> {
     const result = await fetchCompanyProfiles(
       {
         symbols: batch.map((entry) => entry.symbol),
-        ...(env.FMP_API_KEY === undefined ? {} : { apiKey: env.FMP_API_KEY }),
+        ...(hasKey ? { apiKey } : {}),
       },
-      env.PROVIDER_MODE,
+      providerMode,
       deps,
     );
     if (!result.ok) {

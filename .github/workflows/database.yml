@@ -113,8 +113,12 @@ jobs:
         # if FMP cannot resolve some symbol, which fails the run deliberately: those are universe
         # members with no company behind them, and dropping them quietly would change a frozen
         # methodological commitment (D-27, D-30) without anyone deciding to.
+        #
+        # No `PROVIDER_MODE: live` here. `src/env.ts` validates the whole environment at import,
+        # so setting it made this two-secret bootstrap demand all twenty-one production keys —
+        # the first real run of this workflow died listing every one of them. The script decides
+        # its own provider mode from whether FMP_API_KEY is present, and prints which it chose.
         env:
-          PROVIDER_MODE: live
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
         run: pnpm seed:securities
 
