@@ -1043,6 +1043,24 @@ unrounded canonical E05 result for that security. Relational NUMERIC columns rem
 projections, but they are never the replay authority: two outputs that round to the same database
 precision still have different semantic identities and the later delivery must fail closed.
 
+### D-RNI-23 — Overall platform stance is a persisted-evidence projection, not caller input
+
+**Accepts CR-DATA-005 for D12, 2026-09-05.** E07's overall platform stance and score are derived
+from the exact committed E06 current-window weight trace and the matching persisted E05
+per-source, per-security overall stance scores. For each trace with positive weight and a non-null
+persisted overall score, deterministic code computes the unrounded weighted mean
+`sum(weight * stance_score) / sum(weight)`. No eligible score, zero eligible weight, or failure of
+the E06 methodology's minimum effective-attention or independent-source requirements produces
+`insufficient` with a null score. A positive result maps to `bullish`, a negative result to
+`bearish`, and exact zero to `neutral`; aggregate code does not manufacture `strong_*` labels.
+
+The projection must use exact run, security, platform and source-item membership, the committed
+E06 input/result hashes, its current-window trace weights and its methodology snapshot. DATA's D12
+adapter validates this projection before committing E07. Changing only the caller-supplied overall
+stance or score while the persisted E05/E06 lineage is unchanged therefore fails. This adds no
+frozen contract field and no second aggregate: E06 dimension results remain independent, E07 keeps
+its existing overall fact, and historical artifacts remain immutable.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

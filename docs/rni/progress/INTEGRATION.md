@@ -62,6 +62,7 @@
 | CR-DATA-002 | DATA | `ACCEPTED_FOR_I07` | D-RNI-22 freezes one atomic complete-E05-result port; storage rows stay DATA-private and the coordinator wrapper commits only after every security classifies | DATA, ENGINE, INTEGRATION | D-RNI-22 / current I07A commit |
 | CR-DATA-003 | DATA | `RESOLVED_NO_CHANGE` | pgvector remains deferred for this vertical slice; relational claim/narrative storage proceeds without an extension or placeholder | DATA, ENGINE, INTEGRATION | `264ea9c` |
 | CR-DATA-004 | DATA | `RESOLVED_NO_CHANGE` | I06 synchronizer owns duplicate, completeness, NVDA, ambiguous, and unresolved validation; transport schema remains structural | DATA, INTEGRATION | `e535624` + `264ea9c` |
+| CR-DATA-005 | DATA | `ACCEPTED` | D-RNI-23 defines E07 overall stance from persisted E05 overall scores and the exact committed E06 weight trace; DATA validates the projection and rejects caller-only changes | DATA, ENGINE, INTEGRATION | D-RNI-23 |
 | CR-ENGINE-001 | ENGINE | `ACCEPTED_FOR_I07` | Persist claim-bound point-in-time corroboration, separate verifier/challenger invocations, citation roles, analytics lineage and ordered sentence trace; no P0 source-kind expansion or factual-verification copy | DATA, ENGINE, INTEGRATION | D-RNI-19 / current I02G commit |
 | CR-SURFACE-01 | SURFACE | `ACCEPTED` | Add `RniReadService.getCitation(citationId)` returning frozen `RniCitation`; evidence remains a second source-ID read | DATA, SURFACE, INTEGRATION | `264ea9c` |
 | CR-SURFACE-02 | SURFACE | `ACCEPTED` | Add a cursor-paginated Radar page with run lineage, security identity, two non-poolable platform-labelled cells, and explicit pending/aligned/divergent/partial/insufficient cross-source state | DATA, ENGINE, SURFACE, INTEGRATION | `84dca87` / D-RNI-13 |
@@ -393,6 +394,7 @@
 | `CURRENT` | Start I10A versioned route and budget enforcement | D-RNI-21 is owner-approved; implement Direct-default task resolution, capability-gated same-family Gateway parity and atomic pre-dispatch USD 2/25/50/500 enforcement with USD 300 warning; no credential values enter code or trackers |
 | `CURRENT` | Complete I10A runtime route policy | Direct defaults to exact Terra/Sol task mapping with low reasoning; all invocations retain dispatch, canonical model, capability and policy lineage; Gateway discovery requires actual OpenAI provider metadata; unit 1,360, contract 107/22 skipped, RNI eval 18/1 live skip, typecheck/lint/diff and independent re-review PASS |
 | `CURRENT` | Start I10B persisted routing and AI budget substrate | Extend coordinator-owned migration 0024 only: immutable capability/config/run lineage plus atomic worst-case reservation, settlement, rolling-day/month enforcement and once-only warning evidence under D-RNI-21 |
+| `CURRENT` | Resolve CR-DATA-005 overall convergence provenance | D-RNI-23 makes overall platform stance a deterministic weighted projection of persisted E05 overall scores through the exact E06 current weight trace; no frozen contract or schema expansion |
 
 ## I10A handoff
 
