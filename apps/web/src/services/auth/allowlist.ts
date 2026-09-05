@@ -41,14 +41,19 @@ export function isAllowlisted(email: string, allowlist: readonly string[]): bool
 }
 
 /**
- * The account-creation gate `databaseHooks.user.create.before` (`instance.ts`) enforces —
- * pulled out as a pure function so it is unit-testable without standing up a full Better Auth
- * instance. **`fixture` mode always allows creation, regardless of the allowlist.** This mirrors
- * the old OTP flow's own fixture short-circuit (`send-decision.ts`'s `decideAndSend`, which
- * never reached its allowlist check outside `live` mode either) and exists for the same reason:
- * fixture mode has no live mailbox and nothing real to protect, and `tests/e2e/auth.spec.ts`
- * needs to create a genuinely non-allowlisted, signed-in session to prove `requireAdmin()`
- * actually refuses one.
+ * **D-39: no longer the general account-creation gate.** Before D-39, this gated every
+ * self-service sign-up via `databaseHooks.user.create.before` (`instance.ts`). D-39 opened
+ * self-service sign-up to any address — the member/admin split now lives entirely in
+ * `requireAdmin()`'s own live-allowlist check (`session.ts`), not in who can have an account at
+ * all. This function's only remaining caller is `seed-account.ts`'s
+ * `provisionSeedAccountIfEligible` — the `welcome1` bootstrap path stays allowlist-gated on
+ * purpose, since a shared operator password is not something an open member signup should ever
+ * be able to trigger.
+ *
+ * **`fixture` mode always allows creation, regardless of the allowlist.** This mirrors the old
+ * OTP flow's own fixture short-circuit and exists for the same reason: fixture mode has no live
+ * mailbox and nothing real to protect, and `tests/e2e/auth.spec.ts` needs to create a genuinely
+ * non-allowlisted, signed-in session to prove `requireAdmin()` actually refuses one.
  */
 export function isAccountCreationAllowed(
   providerMode: 'fixture' | 'live',

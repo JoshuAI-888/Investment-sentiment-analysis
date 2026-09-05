@@ -8,13 +8,13 @@
  * outage. That decision is made inside `sendResetPassword` (`instance.ts`) and never surfaces
  * here.
  *
- * **`signUpWithPassword` is not generic in the same way, deliberately.** Unlike a sign-in
- * request-code call — which fires for *any* address and must not let a stranger learn which ones
- * are admin — sign-up only ever succeeds for the one allowlisted address, and that address is
- * already public knowledge to anyone who has seen the app (D-28's own reasoning). Telling a
- * caller "that address isn't authorized" or "an account already exists" leaks nothing not already
- * known, and a clear message is better UX for the one legitimate user than a fake generic success
- * that never explains why sign-up appears to do nothing.
+ * **`signUpWithPassword` (D-39): sign-up is now open to any address**, so `not_allowed` is no
+ * longer a reachable outcome of this call — `databaseHooks.user.create.before` (`instance.ts`)
+ * that used to produce it is gone. `already_exists`/`weak_password` remain genuine, actionable
+ * outcomes worth naming to the caller rather than hiding behind a generic response: unlike a
+ * broadcast, enumeration-sensitive endpoint (password-reset's request call, still generic below),
+ * sign-up telling someone "an account already exists for this address" leaks nothing a stranger
+ * couldn't already learn by trying to sign in with a guessed password.
  *
  * **D-38: `signInWithPassword` also carries the "welcome1" seeded-account fallback.** A normal
  * sign-in is always tried first; only on failure, with the submitted password exactly equal to
@@ -35,7 +35,7 @@ function errorCode(error: unknown): string {
 
 export type SignUpResult =
   | { readonly ok: true }
-  | { readonly ok: false; readonly reason: 'not_allowed' | 'already_exists' | 'weak_password' | 'unknown' };
+  | { readonly ok: false; readonly reason: 'already_exists' | 'weak_password' | 'unknown' };
 
 /** Creates the account and triggers the verification email; the account cannot sign in yet. */
 export async function signUpWithPassword(email: string, password: string): Promise<SignUpResult> {
@@ -44,7 +44,6 @@ export async function signUpWithPassword(email: string, password: string): Promi
     return { ok: true };
   } catch (error) {
     const code = errorCode(error);
-    if (code === 'FORBIDDEN') return { ok: false, reason: 'not_allowed' };
     if (code === 'USER_ALREADY_EXISTS') return { ok: false, reason: 'already_exists' };
     if (code.includes('PASSWORD')) return { ok: false, reason: 'weak_password' };
     return { ok: false, reason: 'unknown' };

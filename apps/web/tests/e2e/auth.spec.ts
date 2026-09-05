@@ -157,11 +157,10 @@ test.describe('F02 — sign-up and sign-in', () => {
     expect(new URL(page.url()).pathname).toBe('/dashboard');
   });
 
-  // "sign-up refuses a non-allowlisted address" is not exercisable here: the allowlist gate on
-  // account creation (`isAccountCreationAllowed`, `src/services/auth/allowlist.ts`) is
-  // `live`-mode only, by design — see `instance.ts`'s doc comment on why, and the non-admin
-  // suite below for the test seam that decision exists to preserve. Covered instead at the unit
-  // level (`tests/unit/services/auth/allowlist.test.ts`).
+  // D-39: sign-up no longer refuses any address, in any mode — self-service account creation
+  // dropped its allowlist gate entirely. `ADMIN_EMAIL_ALLOWLIST` still decides who reaches
+  // `requireAdmin()`-gated routes (the non-admin suite below), and `welcome1` provisioning
+  // (`tests/unit/services/auth/seed-account.test.ts`) is still allowlist-gated on its own.
 
   test('the password-reset request: an allowlisted-looking and an arbitrary address get the same response shape', async ({
     request,
@@ -317,14 +316,13 @@ test.describe('F02 — every operator route refuses a signed-in, non-admin sessi
   test.beforeEach(async ({ page, request }) => {
     // `playwright.config.ts` sets `ADMIN_EMAIL_ALLOWLIST` to exactly one fixed address,
     // `e2e-admin@example.com` (see the admin-session suite below). Any address that is not that
-    // literal string still signs up successfully here: `isAccountCreationAllowed`
-    // (`src/services/auth/allowlist.ts`) only enforces the allowlist in `live` mode — e2e runs
-    // in fixture mode, deliberately (see `instance.ts`'s doc comment), which is what makes it
-    // possible to build a genuinely signed-in, non-allowlisted session here at all. Do not switch
-    // this to a fixed address: doing so risks colliding with the one allowlisted address below
-    // and turning "refuses a non-admin" into "an admin was refused", passing on the wrong
-    // premise. `Date.now()` alone is also not unique enough across parallel workers, hence the
-    // random suffix too.
+    // literal string still signs up successfully here (D-39: sign-up is open to any address) and
+    // is exactly the "member, not admin" session this suite needs — `requireAdmin()`'s own
+    // live-allowlist check (`session.ts`) is what refuses it below, not anything about whether the
+    // account could be created. Do not switch this to a fixed address: doing so risks colliding
+    // with the one allowlisted address below and turning "refuses a non-admin" into "an admin was
+    // refused", passing on the wrong premise. `Date.now()` alone is also not unique enough across
+    // parallel workers, hence the random suffix too.
     const email = `e2e-non-admin-${Date.now()}-${Math.random().toString(36).slice(2, 10)}@example.com`;
     await signUpAndVerify(page, request, email);
   });

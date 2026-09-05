@@ -8,7 +8,6 @@ const { decideAndSend } = await import('@/services/auth/send-decision');
 import type { RedisRestClient } from '@/services/auth/send-cap';
 
 const MAILER_CONFIG = { apiKey: 'test-key', from: 'welcome@accounts.joshuai.nz' };
-const ALLOWLIST = ['joshuaifang@gmail.com'];
 const URL = 'https://example.com/api/auth/reset-password/abc123';
 
 function allowingRedis(): RedisRestClient {
@@ -24,13 +23,12 @@ describe('decideAndSend', () => {
     sendAuthEmailMock.mockClear();
   });
 
-  it('fixture mode: remembers the link and never touches the mailer, allowlisted or not', async () => {
+  it('fixture mode: remembers the link and never touches the mailer', async () => {
     const remember = vi.fn();
     const outcome = await decideAndSend(
       { to: 'anyone@example.com', url: URL, kind: 'reset-password' },
       {
         providerMode: 'fixture',
-        allowlist: ALLOWLIST,
         redisClient: allowingRedis(),
         mailerConfig: MAILER_CONFIG,
         rememberFixtureLink: remember,
@@ -42,29 +40,11 @@ describe('decideAndSend', () => {
     expect(sendAuthEmailMock).not.toHaveBeenCalled();
   });
 
-  it('§4.2: a non-allowlisted address in live mode never reaches the mailer', async () => {
+  it('D-39: any address in live mode, under the cap, reaches the mailer with the normalized address', async () => {
     const outcome = await decideAndSend(
-      { to: 'attacker@example.com', url: URL, kind: 'reset-password' },
+      { to: 'Any.Address+tag@GMAIL.com', url: URL, kind: 'verify-email' },
       {
         providerMode: 'live',
-        allowlist: ALLOWLIST,
-        redisClient: allowingRedis(),
-        mailerConfig: MAILER_CONFIG,
-        rememberFixtureLink: vi.fn(),
-        wait: async () => {},
-      },
-    );
-
-    expect(outcome).toEqual({ action: 'not_allowlisted' });
-    expect(sendAuthEmailMock).not.toHaveBeenCalled();
-  });
-
-  it('an allowlisted address in live mode, under the cap, reaches the mailer with the normalized address', async () => {
-    const outcome = await decideAndSend(
-      { to: 'Joshua.iFang@GMAIL.com', url: URL, kind: 'verify-email' },
-      {
-        providerMode: 'live',
-        allowlist: ALLOWLIST,
         redisClient: allowingRedis(),
         mailerConfig: MAILER_CONFIG,
         rememberFixtureLink: vi.fn(),
@@ -73,17 +53,16 @@ describe('decideAndSend', () => {
 
     expect(outcome).toEqual({ action: 'sent' });
     expect(sendAuthEmailMock).toHaveBeenCalledWith(
-      { to: 'joshuaifang@gmail.com', url: URL, kind: 'verify-email' },
+      { to: 'anyaddress@gmail.com', url: URL, kind: 'verify-email' },
       MAILER_CONFIG,
     );
   });
 
-  it('D-28: an allowlisted address over the send cap never reaches the mailer', async () => {
+  it('D-28: once the global send cap is hit, no further address reaches the mailer', async () => {
     const outcome = await decideAndSend(
-      { to: 'joshuaifang@gmail.com', url: URL, kind: 'reset-password' },
+      { to: 'someone@example.com', url: URL, kind: 'reset-password' },
       {
         providerMode: 'live',
-        allowlist: ALLOWLIST,
         redisClient: cappingRedis(),
         mailerConfig: MAILER_CONFIG,
         rememberFixtureLink: vi.fn(),
@@ -103,10 +82,9 @@ describe('decideAndSend', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const outcome = await decideAndSend(
-      { to: 'joshuaifang@gmail.com', url: URL, kind: 'reset-password' },
+      { to: 'someone@example.com', url: URL, kind: 'reset-password' },
       {
         providerMode: 'live',
-        allowlist: ALLOWLIST,
         redisClient: allowingRedis(),
         mailerConfig: MAILER_CONFIG,
         rememberFixtureLink: vi.fn(),
@@ -121,12 +99,11 @@ describe('decideAndSend', () => {
     consoleError.mockRestore();
   });
 
-  it('with no Redis configured, an allowlisted address still reaches the mailer (cap is best-effort, not a hard dependency)', async () => {
+  it('with no Redis configured, an address still reaches the mailer (cap is best-effort, not a hard dependency)', async () => {
     const outcome = await decideAndSend(
-      { to: 'joshuaifang@gmail.com', url: URL, kind: 'reset-password' },
+      { to: 'someone@example.com', url: URL, kind: 'reset-password' },
       {
         providerMode: 'live',
-        allowlist: ALLOWLIST,
         redisClient: undefined,
         mailerConfig: MAILER_CONFIG,
         rememberFixtureLink: vi.fn(),
@@ -136,7 +113,7 @@ describe('decideAndSend', () => {
     expect(outcome).toEqual({ action: 'sent' });
   });
 
-  it('enumeration: the not-allowlisted path and the sent path take comparable wall-clock time', async () => {
+  it('timing: the capped path and the sent path take comparable wall-clock time', async () => {
     const fastMailer = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
 
     sendAuthEmailMock.mockImplementationOnce(async () => {
@@ -146,10 +123,9 @@ describe('decideAndSend', () => {
 
     const startSent = Date.now();
     await decideAndSend(
-      { to: 'joshuaifang@gmail.com', url: URL, kind: 'reset-password' },
+      { to: 'someone@example.com', url: URL, kind: 'reset-password' },
       {
         providerMode: 'live',
-        allowlist: ALLOWLIST,
         redisClient: allowingRedis(),
         mailerConfig: MAILER_CONFIG,
         rememberFixtureLink: vi.fn(),
@@ -157,24 +133,23 @@ describe('decideAndSend', () => {
     );
     const sentElapsed = Date.now() - startSent;
 
-    const startRefused = Date.now();
+    const startCapped = Date.now();
     await decideAndSend(
-      { to: 'attacker@example.com', url: URL, kind: 'reset-password' },
+      { to: 'someone-else@example.com', url: URL, kind: 'reset-password' },
       {
         providerMode: 'live',
-        allowlist: ALLOWLIST,
-        redisClient: allowingRedis(),
+        redisClient: cappingRedis(),
         mailerConfig: MAILER_CONFIG,
         rememberFixtureLink: vi.fn(),
       },
     );
-    const refusedElapsed = Date.now() - startRefused;
+    const cappedElapsed = Date.now() - startCapped;
 
     expect(sentElapsed).toBeGreaterThanOrEqual(170);
-    expect(Math.abs(sentElapsed - refusedElapsed)).toBeLessThan(120);
+    expect(Math.abs(sentElapsed - cappedElapsed)).toBeLessThan(120);
   });
 
-  it('a slow, realistic mailer call remains distinguishable — a disclosed limit, not a silent one', async () => {
+  it('a slow, realistic mailer call remains distinguishable from a capped refusal — a disclosed limit, not a silent one', async () => {
     sendAuthEmailMock.mockImplementationOnce(async () => {
       await new Promise<void>((resolve) => setTimeout(resolve, 400));
       return { ok: true as const };
@@ -182,10 +157,9 @@ describe('decideAndSend', () => {
 
     const startSent = Date.now();
     await decideAndSend(
-      { to: 'joshuaifang@gmail.com', url: URL, kind: 'reset-password' },
+      { to: 'someone@example.com', url: URL, kind: 'reset-password' },
       {
         providerMode: 'live',
-        allowlist: ALLOWLIST,
         redisClient: allowingRedis(),
         mailerConfig: MAILER_CONFIG,
         rememberFixtureLink: vi.fn(),
@@ -193,19 +167,18 @@ describe('decideAndSend', () => {
     );
     const sentElapsed = Date.now() - startSent;
 
-    const startRefused = Date.now();
+    const startCapped = Date.now();
     await decideAndSend(
-      { to: 'attacker@example.com', url: URL, kind: 'reset-password' },
+      { to: 'someone-else@example.com', url: URL, kind: 'reset-password' },
       {
         providerMode: 'live',
-        allowlist: ALLOWLIST,
-        redisClient: allowingRedis(),
+        redisClient: cappingRedis(),
         mailerConfig: MAILER_CONFIG,
         rememberFixtureLink: vi.fn(),
       },
     );
-    const refusedElapsed = Date.now() - startRefused;
+    const cappedElapsed = Date.now() - startCapped;
 
-    expect(sentElapsed - refusedElapsed).toBeGreaterThan(150);
+    expect(sentElapsed - cappedElapsed).toBeGreaterThan(150);
   });
 });

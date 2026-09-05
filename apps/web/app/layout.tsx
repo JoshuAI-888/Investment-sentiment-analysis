@@ -12,7 +12,7 @@ import './globals.css';
 logAdminAllowlistOnBoot();
 
 export const metadata: Metadata = {
-  title: 'Barebone Social Sentiment',
+  title: 'Retail Market Radar',
   description:
     'Observed social samples across Reddit, X and Substack, with every number inspectable and every aggregate labelled with its coverage.',
 };

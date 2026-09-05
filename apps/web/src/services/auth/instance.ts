@@ -19,49 +19,35 @@
  * actually shares. Without this, fixture mode's whole storage strategy would only ever work
  * within a single request.
  *
- * **The auth model: email + password, self-service sign-up, allowlist-gated.** D-37 supersedes
- * D-11/D-28's "OTP sign-in is kept" clause: this app is single-operator and OTP's structural
- * cost (no client can be built or tested without a mailbox in the loop) was judged not worth it
- * against the simpler, more familiar email+password model. What D-11/D-28 got right — one
- * account, no open population, a send cap on the one mail path that exists — is preserved
- * exactly; only the credential mechanism changed.
+ * **The auth model: email + password, self-service sign-up, open to any address (D-39).**
+ * D-37 moved from OTP to email+password; **D-39 removed the allowlist gate on account
+ * creation** — any address can now sign up and reach `requireUser()`-gated ("member+") surfaces
+ * such as `/dashboard`. `ADMIN_EMAIL_ALLOWLIST` still names who reaches `requireAdmin()`-gated
+ * surfaces (`/admin/*`): `requireAdmin()` (`session.ts`) is unchanged and re-derives admin status
+ * from the live allowlist on every call, so the member/admin split now falls entirely out of
+ * that one check rather than out of who is allowed to have an account at all. The seeded
+ * `welcome1` path (`seed-account.ts`) is **not** part of this opening — it remains
+ * allowlist-gated by its own explicit check, independent of this file's (now permissive) account
+ * creation — a shared bootstrap password is an operator-onboarding tool, not something a member
+ * signup should ever be able to trigger.
  *
- * **`databaseHooks.user.create.before` is the allowlist gate**, not an application-layer check
- * in `flow.ts`. This runs inside Better Auth's own user-creation path regardless of entry point
- * — `auth.api.signUpEmail` and the raw `POST /api/auth/sign-up/email` endpoint both go through
- * it — so there is no route that can create a user Better Auth itself did not refuse first. This
- * is the same structural guarantee the old `emailOTP` plugin's `sendVerificationOTP` closure gave
- * the OTP flow: the gate lives where every caller is forced through it, not in a wrapper a caller
- * could bypass by hitting the HTTP endpoint directly.
+ * **`requireEmailVerification: true` matters more now, not less.** With any address able to
+ * create an account, the mailed verification link is the only proof a signup's caller controls
+ * the mailbox they typed. `emailVerification.sendOnSignUp` fires that mail automatically.
  *
- * **The gate itself is `live`-mode only**, mirroring `decideAndSend`'s own fixture short-circuit
- * exactly. This is deliberate, not an oversight: the old OTP flow let *any* address sign in
- * under `PROVIDER_MODE=fixture` (`decideAndSend` never reached its allowlist check there
- * either), which is what let `tests/e2e/auth.spec.ts` build a genuinely signed-in,
- * non-allowlisted session to prove `requireAdmin()` actually refuses one — the property
- * `requireAdmin()`'s own doc calls out as needing proof beyond "there is one account in
- * practice". Gating account creation unconditionally would close off that test seam entirely:
- * fixture mode has no live mailbox and no real security boundary to defend in the first place,
- * so the only thing worth protecting there is the ability to test `requireAdmin()`'s two
- * outcomes independently of whether an account could ever exist for real.
- *
- * **`requireEmailVerification: true` is why self-service sign-up is safe.** Anyone can *submit*
- * the allowlisted address at `/sign-up` with a password of their choosing — the allowlist only
- * checks the address, not who is typing it — but the account cannot sign in until the link
- * mailed to that address is clicked. An attacker who does not control the real mailbox can create
- * an unverified row and nothing else; the real owner still owns the only path to a usable
- * account. `emailVerification.sendOnSignUp` fires that mail automatically.
- *
- * **The send cap (D-28) still applies**, now to two mail paths instead of one:
- * `sendVerificationEmail` (on sign-up) and `sendResetPassword` (forgotten password). Both are
- * routed through `decideAndSend` (`send-decision.ts`), exactly like the old OTP send was — pulled
- * out of the config closures specifically so each is unit- and integration-testable with
- * `providerMode: 'live'` and no live database, Redis, or Resend key anywhere in the process.
- * Both hooks always resolve with no return value, which is what makes the generic-response
- * property structural: neither a mail failure nor a cap refusal changes what the HTTP caller
- * sees.
+ * **The send cap (D-28) still applies**, to both mail paths — `sendVerificationEmail` (on
+ * sign-up) and `sendResetPassword` (forgotten password) — via `decideAndSend`
+ * (`send-decision.ts`). It is a **global** window (not per-address, `send-cap.ts`), which is what
+ * makes it the right control here: D-28 originally sized it to protect Resend's free-tier
+ * allowance against anyone spamming the one admin address; that same global ceiling now bounds
+ * total signup/reset volume across an open population instead, which is exactly what an
+ * open-signup mail path needs. `decideAndSend` no longer checks the allowlist itself (D-39) —
+ * gating who *can have* an account and gating whether a real, already-existing recipient's mail
+ * *gets sent* are now two different questions, and only the cap answers the second one. Both
+ * hooks always resolve with no return value, which is what makes the generic-response property
+ * structural: neither a mail failure nor a cap refusal changes what the HTTP caller sees.
  */
-import { betterAuth, APIError } from 'better-auth';
+import { betterAuth } from 'better-auth';
 import { nextCookies } from 'better-auth/next-js';
 import { memoryAdapter } from 'better-auth/adapters/memory';
 import type { MemoryDB } from 'better-auth/adapters/memory';
@@ -70,7 +56,6 @@ import { env } from '@/env';
 import { defaultRedisClient, type RedisRestClient } from './send-cap';
 import { rememberFixtureLink } from './fixture-link-store';
 import { decideAndSend } from './send-decision';
-import { isAccountCreationAllowed, normalizeEmail } from './allowlist';
 
 /**
  * Better Auth's `memoryAdapter` looks up `activeDb[model]` directly and throws "Model X not
@@ -108,7 +93,6 @@ export function createAuthInstance(deps: AuthInstanceDeps = {}) {
   function mailerDeps() {
     return {
       providerMode: env.PROVIDER_MODE,
-      allowlist: env.ADMIN_EMAIL_ALLOWLIST,
       redisClient: deps.redisClient ?? defaultRedisClient(),
       mailerConfig: {
         apiKey: env.RESEND_API_KEY ?? '',
@@ -164,29 +148,6 @@ export function createAuthInstance(deps: AuthInstanceDeps = {}) {
           type: 'boolean',
           defaultValue: false,
           input: false,
-        },
-      },
-    },
-    /**
-     * The allowlist gate for account creation — see this file's own doc comment above for why
-     * this is the structurally correct place for it, rather than a check in `flow.ts`.
-     */
-    databaseHooks: {
-      user: {
-        create: {
-          before: async (user) => {
-            const allowed = isAccountCreationAllowed(
-              env.PROVIDER_MODE === 'live' ? 'live' : 'fixture',
-              normalizeEmail(user.email),
-              env.ADMIN_EMAIL_ALLOWLIST,
-            );
-            if (!allowed) {
-              throw new APIError('FORBIDDEN', {
-                message: 'This address is not authorized to create an account.',
-              });
-            }
-            return { data: user };
-          },
         },
       },
     },
