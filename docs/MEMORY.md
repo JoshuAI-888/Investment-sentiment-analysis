@@ -1081,6 +1081,26 @@ than silently applying the cheaper price. Discovery reservation includes all thr
 permitted by the governed prompt. Missing, duplicated or conflicting model, capability, ownership,
 price or unit evidence fails closed.
 
+### D-RNI-25 — Admin task envelopes stage successors; global spend controls stay fixed
+
+**Owner-approved coordinator decision for I10C2B, 2026-09-05.** The initial balanced per-call
+envelopes are: discovery 16,000 serialized-input bytes/tokens, 2,000 output tokens, three governed
+Web Search calls and USD 0.15; relationship and classifier each 16,000 input bytes/tokens, 2,000
+output tokens, no tools and USD 0.10; verifier 64,000 input bytes/tokens, 2,000 output tokens, no
+tools and USD 0.20; challenger 64,000 input bytes/tokens, 1,000 output tokens, no tools and USD
+0.20. Every task starts with a 30-second timeout. Until a tokenizer-specific bound is frozen, the
+serialized byte ceiling is enforced before dispatch and the same number is conservatively
+reserved as input tokens.
+
+An authenticated admin may change these bounded per-task values in the Settings portal. Saving
+requires the complete five-task set and a reason, creates an audited staged successor, and never
+silently activates it or rewrites active, running or historical configuration. The contract caps
+input at 131,072 bytes/tokens, output at 8,000 tokens, timeout at 120 seconds and one call at USD
+2; only discovery may use one to three governed searches. A successor requires fresh approved
+model capability evidence and compatible current first-tier price evidence. The owner-approved
+global USD 2 manual-run, USD 25 full-universe, USD 50 rolling-day, USD 300 monthly warning and USD
+500 monthly stop remain fixed and are not editable in this portal.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

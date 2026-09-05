@@ -14,6 +14,7 @@ import {
   type RniModelTransport,
   type RniModelTransportRequest,
 } from '../../../src/rni/agents';
+import { RNI_APPROVED_TASK_ENVELOPES } from '../../../src/rni/config';
 import {
   evidenceReader,
   NO_MATERIAL_CHALLENGE,
@@ -91,6 +92,7 @@ const runConfig = (aiRoute: 'openai_direct' | 'vercel_ai_gateway'): RniImmutable
       supportsStructuredOutputs: true,
       supportsWebSearch: true,
       policyVersion: 'rni-balanced-model-policy-v1',
+      envelope: RNI_APPROVED_TASK_ENVELOPES[task],
     };
   }),
 });

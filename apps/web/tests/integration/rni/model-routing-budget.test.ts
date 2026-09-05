@@ -9,7 +9,9 @@ import {
   recordRniModelCatalogueEvidence,
   reserveRniAiInvocation,
   settleRniAiInvocation,
+  stageRniTaskEnvelopeSuccessor,
 } from '../../../src/repositories/versions';
+import { RNI_APPROVED_TASK_ENVELOPES } from '../../../src/rni/config';
 import { loadRniImmutableModelRunConfig } from '../../../src/services/jobs/rni-model-runtime';
 
 const url = databaseUrl();
@@ -91,12 +93,18 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
            fallback_chain, prompt_version, schema_version, temperature, max_input_tokens,
            max_output_tokens, timeout_ms, max_cost_usd, allowed_data_classes, canary_percent,
            ai_route, canonical_provider_model_id, reasoning_effort, capability_snapshot_id,
-           policy_version
+           policy_version, max_input_bytes, max_tool_calls
          ) values (
            $1, $2, 'openai_responses', 'openai', $3,
            case when $3 = 'gpt-5.6-terra' then 'terra-2026-07-09' else 'sol-2026-07-09' end,
-           '[]', $2 || '-v1', 'rni-schema-v1', 0, 500, 500, 30000, 25, '[]', 0,
-           'openai_direct', $3, 'low', $4, 'rni-balanced-model-policy-v1'
+           '[]', $2 || '-v1', 'rni-schema-v1', 0,
+           1024, 256,
+           30000,
+           2,
+           '[]', 0,
+           'openai_direct', $3, 'low', $4, 'rni-balanced-model-policy-v1',
+           1024,
+           case when $2 = 'rni_discovery' then 3 else 0 end
          )`,
         [configVersion, task, model, capability],
       );
@@ -123,7 +131,14 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
       [universeVersion, securityId],
     );
 
-    const unitPrice = options.unitPrice ?? '0.001';
+    const unitPrice = options.unitPrice ?? '0.00078125';
+    await pool.query(
+      `insert into rni_price_book_evidence (
+         price_book_version, source_url, response_hash, observed_at, first_tier_input_ceiling
+       ) values ('rni-prices-v1', 'https://example.test/rni-prices', $1,
+                 '2026-09-01T00:00:00Z', 272000)`,
+      [HASH_A],
+    );
     const pricedModels = [
       ...(options.includeTerraPrices === false ? [] : ['gpt-5.6-terra']),
       ...(options.includeSolPrices === false ? [] : ['gpt-5.6-sol']),
@@ -254,7 +269,60 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
     expect(config.resolvedModels).toHaveLength(5);
     expect(priceBookVersion).toBe('rni-prices-v1');
     expect(reservation).toMatchObject({ decision: 'reserved', denialCode: null });
-    expect(actualCost).toBe('0.002');
+    expect(Number(actualCost)).toBeCloseTo(0.0015625, 8);
+  });
+
+  it('lets an admin stage bounded task envelopes without changing the active configuration', async () => {
+    const seed = await seedGovernedConfig();
+    const routes = Object.values(RNI_APPROVED_TASK_ENVELOPES).map((envelope) => ({
+      ...envelope,
+      promptVersion: `${envelope.task}-v1`,
+      schemaVersion: 'rni-schema-v1',
+    }));
+    const request = {
+      environment: 'test',
+      actorId: 'admin-fixture',
+      idempotencyKey: 'stage-rni-task-envelopes-1',
+      requestHash: HASH_B,
+      reason: 'Approve initial balanced limits.',
+      routes,
+    };
+
+    const accepted = await stageRniTaskEnvelopeSuccessor(request, pool);
+    const duplicate = await stageRniTaskEnvelopeSuccessor(request, pool);
+    const active = await pool.query<{ id: string }>(
+      `select id::text as id from config_version where environment = 'test' and status = 'active'`,
+    );
+    const staged = await pool.query<{
+      task: string;
+      max_input_bytes: number;
+      max_input_tokens: number;
+      max_cost_usd: string;
+    }>(
+      `select task, max_input_bytes, max_input_tokens, max_cost_usd
+         from model_route where config_version = $1 order by task`,
+      [accepted.setting.configVersion],
+    );
+
+    expect(accepted).toMatchObject({
+      disposition: 'accepted',
+      previousConfigVersion: seed.configVersion,
+      setting: { status: 'staged' },
+    });
+    expect(duplicate).toMatchObject({
+      disposition: 'duplicate',
+      setting: { configVersion: accepted.setting.configVersion },
+    });
+    expect(active.rows).toEqual([{ id: seed.configVersion }]);
+    expect(accepted.setting.envelopes).toHaveLength(5);
+    expect(staged.rows).toHaveLength(5);
+    expect(staged.rows.every((row) => row.max_input_bytes === row.max_input_tokens)).toBe(true);
+    await expect(
+      stageRniTaskEnvelopeSuccessor(
+        { ...request, requestHash: HASH_A, reason: 'Crossed intent.' },
+        pool,
+      ),
+    ).rejects.toThrow(/reused for different intent/u);
   });
 
   it('records four capability snapshots and five price components append-only', async () => {
@@ -284,12 +352,15 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
     const priceBook = {
       priceBookVersion: 'rni-catalogue-v1',
       effectiveFrom: observedAt,
+      sourceUrl: 'https://ai-gateway.vercel.sh/v1/models',
+      responseHash: HASH_A,
       sourceReference: `https://ai-gateway.vercel.sh/v1/models#sha256=${HASH_A}`,
       terraInputTokenUsd: '0.000002',
       terraOutputTokenUsd: '0.000012',
       solInputTokenUsd: '0.000002',
       solOutputTokenUsd: '0.000010',
       webSearchUsd: '0.01',
+      firstTierInputCeiling: 272000,
     };
 
     await expect(recordRniModelCatalogueEvidence({ capabilities, priceBook }, pool)).resolves.toEqual({
@@ -449,7 +520,8 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
     const second = await reserve(run, randomUUID(), 'rni_classifier', HASH_B);
     const denied = await reserve(run, randomUUID(), 'rni_relationship', 'c'.repeat(64));
 
-    expect(first).toMatchObject({ decision: 'reserved', estimated_cost_usd: '1.000' });
+    expect(first.decision).toBe('reserved');
+    expect(Number(first.estimated_cost_usd)).toBeCloseTo(1, 8);
     expect(replay).toEqual({ ...first, warning_emitted: false });
     expect(second.decision).toBe('reserved');
     expect(denied).toMatchObject({ decision: 'denied', denial_code: 'run_hard_limit' });
@@ -480,23 +552,24 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
   });
 
   it('allows the exact rolling boundary and denies the next full-universe reservation', async () => {
-    const seed = await seedGovernedConfig({ unitPrice: '0.025' });
-    const first = await reserve(await createRun(seed, 'full_universe'), randomUUID(), 'rni_classifier');
-    const second = await reserve(
-      await createRun(seed, 'full_universe'),
-      randomUUID(),
-      'rni_classifier',
-      HASH_B,
-    );
-    const third = await reserve(
-      await createRun(seed, 'full_universe'),
-      randomUUID(),
-      'rni_classifier',
-      'c'.repeat(64),
-    );
-    expect(first.estimated_cost_usd).toBe('25.000');
-    expect(second.decision).toBe('reserved');
-    expect(third).toMatchObject({ decision: 'denied', denial_code: 'rolling_24h_hard_limit' });
+    const seed = await seedGovernedConfig({ unitPrice: '0.0015625' });
+    const outcomes = [];
+    for (let index = 0; index < 26; index += 1) {
+      outcomes.push(
+        await reserve(
+          await createRun(seed, 'full_universe'),
+          randomUUID(),
+          'rni_classifier',
+          index.toString(16).padStart(64, '0'),
+        ),
+      );
+    }
+    expect(outcomes.slice(0, 25).every(({ decision }) => decision === 'reserved')).toBe(true);
+    expect(Number(outcomes[0]!.estimated_cost_usd)).toBeCloseTo(2, 8);
+    expect(outcomes[25]).toMatchObject({
+      decision: 'denied',
+      denial_code: 'rolling_24h_hard_limit',
+    });
   });
 
   it('fails closed before dispatch when any required price component is absent', async () => {
@@ -521,7 +594,8 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
     const run = await createRun(await seedGovernedConfig(), 'manual_ticker');
     const invocationId = randomUUID();
     const result = await reserve(run, invocationId, 'rni_discovery');
-    expect(result).toMatchObject({ decision: 'reserved', estimated_cost_usd: '1.003' });
+    expect(result.decision).toBe('reserved');
+    expect(Number(result.estimated_cost_usd)).toBeCloseTo(1.00234375, 8);
     await expect(
       pool.query(
         `select rni_settle_ai_invocation($1, $2, 'resp-too-many', 'succeeded', 0, 0, 0, 4)`,
@@ -532,7 +606,7 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
       `select rni_settle_ai_invocation($1, $2, 'resp-three-searches', 'succeeded', 0, 0, 0, 3)::text as actual`,
       [invocationId, HASH_A],
     );
-    expect(settled.rows[0]!.actual).toBe('0.003');
+    expect(Number(settled.rows[0]!.actual)).toBeCloseTo(0.00234375, 8);
   });
 
   it('will not detach verifier or challenger spend from its prepared synthesis invocation', async () => {
@@ -558,7 +632,7 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
       `select rni_settle_ai_invocation($1, $2, 'resp-1', 'succeeded', 100, 20, 50, 0)::text as actual`,
       [settledId, HASH_A],
     );
-    expect(Number(settled.rows[0]!.actual)).toBeCloseTo(0.15);
+    expect(Number(settled.rows[0]!.actual)).toBeCloseTo(0.1171875, 8);
     const replay = await pool.query<{ actual: string }>(
       `select rni_settle_ai_invocation($1, $2, 'resp-1', 'succeeded', 100, 20, 50, 0)::text as actual`,
       [settledId, HASH_A],
@@ -575,7 +649,7 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
               now() + interval '1 hour', $1)::text as spend`,
       [run.runId],
     );
-    expect(Number(exposure.rows[0]!.spend)).toBeCloseTo(1.15);
+    expect(Number(exposure.rows[0]!.spend)).toBeCloseTo(1.1171875, 8);
   });
 
   it('stores monthly warning evidence at most once under concurrency', async () => {

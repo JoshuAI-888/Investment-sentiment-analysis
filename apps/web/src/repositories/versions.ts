@@ -14,6 +14,12 @@ import {
   UNIVERSE_MAX_SYMBOLS,
 } from '../contracts/config';
 import type { RniModelCapability } from '../rni/config';
+import type {
+  RniAiRoute,
+  RniTaskEnvelope,
+  RniTaskEnvelopeSetting,
+  RniTaskEnvelopeUpdateResult,
+} from '../rni/contracts';
 import { camelizeRow, insertClause } from './rows';
 import { getPool, withTransaction, type Queryable } from './client';
 import type { Pool } from 'pg';
@@ -87,6 +93,12 @@ export type RniModelRunRouteRow = {
   readonly supports_responses: boolean;
   readonly supports_structured_outputs: boolean;
   readonly supports_web_search: boolean;
+  readonly max_input_bytes: number;
+  readonly max_input_tokens: number;
+  readonly max_output_tokens: number;
+  readonly max_tool_calls: number;
+  readonly timeout_ms: number;
+  readonly max_cost_usd: string;
 };
 
 /**
@@ -109,7 +121,8 @@ export async function findRniModelRunRoutes(
             capability.observed_at as capability_observed_at,
             capability.expires_at as capability_expires_at,
             capability.supports_responses, capability.supports_structured_outputs,
-            capability.supports_web_search
+            capability.supports_web_search, mr.max_input_bytes, mr.max_input_tokens,
+            mr.max_output_tokens, mr.max_tool_calls, mr.timeout_ms, mr.max_cost_usd
        from rni_run r
        join config_version cv
          on cv.id = r.config_version and cv.status in ('active', 'superseded')
@@ -147,21 +160,22 @@ export async function findCurrentRniPriceBookVersion(
   db: Queryable = getPool(),
 ): Promise<string> {
   const { rows } = await db.query<{ price_book_version: string }>(
-    `select price_book_version
-       from unit_price_book
-      where provider = 'openai' and currency = 'USD'
-        and effective_from <= clock_timestamp()
-        and (effective_until is null or effective_until > clock_timestamp())
+    `select p.price_book_version
+       from unit_price_book p
+       join rni_price_book_evidence e on e.price_book_version = p.price_book_version
+      where p.provider = 'openai' and p.currency = 'USD'
+        and p.effective_from <= clock_timestamp()
+        and (p.effective_until is null or p.effective_until > clock_timestamp())
         and (
-          (service = 'openai_responses'
-            and operation_or_model in ('gpt-5.6-terra', 'gpt-5.6-sol')
-            and unit_type in ('input_token', 'output_token'))
-          or (service = 'openai_web_search' and operation_or_model = 'web_search'
-            and unit_type = 'search')
+          (p.service = 'openai_responses'
+            and p.operation_or_model in ('gpt-5.6-terra', 'gpt-5.6-sol')
+            and p.unit_type in ('input_token', 'output_token'))
+          or (p.service = 'openai_web_search' and p.operation_or_model = 'web_search'
+            and p.unit_type = 'search')
         )
-      group by price_book_version
+      group by p.price_book_version
      having count(*) = 5
-      order by max(effective_from) desc, price_book_version desc
+      order by max(p.effective_from) desc, p.price_book_version desc
       limit 1`,
   );
   const version = rows[0]?.price_book_version;
@@ -174,12 +188,15 @@ export async function findCurrentRniPriceBookVersion(
 export type RniPriceBookEvidence = {
   readonly priceBookVersion: string;
   readonly effectiveFrom: string;
+  readonly sourceUrl: string;
+  readonly responseHash: string;
   readonly sourceReference: string;
   readonly terraInputTokenUsd: string;
   readonly terraOutputTokenUsd: string;
   readonly solInputTokenUsd: string;
   readonly solOutputTokenUsd: string;
   readonly webSearchUsd: string;
+  readonly firstTierInputCeiling: number;
 };
 
 /** Persist catalogue facts append-only; exact replay is a no-op and crossed IDs fail closed. */
@@ -275,6 +292,40 @@ export async function recordRniModelCatalogueEvidence(
       }
     }
 
+    await tx.query(
+      `insert into rni_price_book_evidence (
+         price_book_version, source_url, response_hash, observed_at, first_tier_input_ceiling
+       ) values ($1, $2, $3, $4, $5)
+       on conflict (price_book_version) do nothing`,
+      [
+        input.priceBook.priceBookVersion,
+        input.priceBook.sourceUrl,
+        input.priceBook.responseHash,
+        input.priceBook.effectiveFrom,
+        input.priceBook.firstTierInputCeiling,
+      ],
+    );
+    const evidence = await tx.query<{
+      source_url: string;
+      response_hash: string;
+      observed_at: Date;
+      first_tier_input_ceiling: number;
+    }>(
+      `select source_url, response_hash, observed_at, first_tier_input_ceiling
+         from rni_price_book_evidence where price_book_version = $1`,
+      [input.priceBook.priceBookVersion],
+    );
+    const evidenceRow = evidence.rows[0];
+    if (
+      evidenceRow === undefined ||
+      evidenceRow.source_url !== input.priceBook.sourceUrl ||
+      evidenceRow.response_hash !== input.priceBook.responseHash ||
+      evidenceRow.observed_at.toISOString() !== new Date(input.priceBook.effectiveFrom).toISOString() ||
+      evidenceRow.first_tier_input_ceiling !== input.priceBook.firstTierInputCeiling
+    ) {
+      throw new Error(`RNI price-book replay crossed immutable ${input.priceBook.priceBookVersion}`);
+    }
+
     const prices = [
       ['openai_responses', 'gpt-5.6-terra', 'input_token', input.priceBook.terraInputTokenUsd],
       ['openai_responses', 'gpt-5.6-terra', 'output_token', input.priceBook.terraOutputTokenUsd],
@@ -321,6 +372,302 @@ export async function recordRniModelCatalogueEvidence(
       }
     }
     return { capabilityCount: input.capabilities.length, priceComponentCount: prices.length };
+  }, poolOverride);
+}
+
+const RNI_TASKS = [
+  'rni_discovery',
+  'rni_relationship',
+  'rni_classifier',
+  'rni_verification',
+  'rni_challenger',
+] as const;
+
+type RniEnvelopeRouteRow = {
+  readonly config_version: string;
+  readonly status: 'active' | 'staged';
+  readonly effective_at: Date;
+  readonly task: RniTaskEnvelope['task'];
+  readonly max_input_bytes: number;
+  readonly max_input_tokens: number;
+  readonly max_output_tokens: number;
+  readonly max_tool_calls: number;
+  readonly timeout_ms: number;
+  readonly max_cost_usd: string;
+};
+
+const envelopeSettingFromRows = (rows: readonly RniEnvelopeRouteRow[]): RniTaskEnvelopeSetting => {
+  const first = rows[0];
+  if (first === undefined || rows.length !== RNI_TASKS.length) {
+    throw new Error('RNI configuration does not contain exactly five task envelopes');
+  }
+  return {
+    configVersion: first.config_version,
+    status: first.status,
+    effectiveAt: first.effective_at.toISOString(),
+    envelopes: rows.map((row) => ({
+      task: row.task,
+      maxInputBytes: row.max_input_bytes,
+      maxInputTokensReserved: row.max_input_tokens,
+      maxOutputTokens: row.max_output_tokens,
+      maxToolCalls: row.max_tool_calls,
+      timeoutMs: row.timeout_ms,
+      maxCostUsd: row.max_cost_usd,
+    })),
+  };
+};
+
+const selectRniTaskEnvelopeSetting = async (
+  configVersion: string,
+  db: Queryable,
+): Promise<RniTaskEnvelopeSetting> => {
+  const { rows } = await db.query<RniEnvelopeRouteRow>(
+    `select cv.id::text as config_version, cv.status, cv.effective_at, mr.task,
+            mr.max_input_bytes, mr.max_input_tokens, mr.max_output_tokens,
+            mr.max_tool_calls, mr.timeout_ms, mr.max_cost_usd
+       from config_version cv
+       join model_route mr on mr.config_version = cv.id
+      where cv.id = $1 and cv.status in ('active', 'staged')
+        and mr.task = any($2::text[])
+      order by array_position($2::text[], mr.task)`,
+    [configVersion, RNI_TASKS],
+  );
+  return envelopeSettingFromRows(rows);
+};
+
+export async function findActiveRniTaskEnvelopeSetting(
+  environment: string,
+  db: Queryable = getPool(),
+): Promise<RniTaskEnvelopeSetting | null> {
+  const { rows } = await db.query<{ id: string }>(
+    `select cv.id::text as id from config_version cv
+       join rni_ai_config rc on rc.config_version = cv.id
+      where cv.environment = $1 and cv.status = 'active'`,
+    [environment],
+  );
+  return rows[0] === undefined ? null : selectRniTaskEnvelopeSetting(rows[0].id, db);
+}
+
+export type RniTaskEnvelopeStageRoute = RniTaskEnvelope & {
+  readonly promptVersion: string;
+  readonly schemaVersion: string;
+};
+
+export async function stageRniTaskEnvelopeSuccessor(
+  input: {
+    readonly environment: string;
+    readonly actorId: string;
+    readonly idempotencyKey: string;
+    readonly requestHash: string;
+    readonly reason: string;
+    readonly routes: readonly RniTaskEnvelopeStageRoute[];
+  },
+  poolOverride?: Pool,
+): Promise<RniTaskEnvelopeUpdateResult> {
+  return withTransaction(async (tx) => {
+    await tx.query('select pg_advisory_xact_lock(hashtext($1))', [
+      `rni-envelope:${input.environment}:${input.idempotencyKey}`,
+    ]);
+    const replay = await tx.query<{
+      object_id: string;
+      after_value: { requestHash?: string };
+    }>(
+      `select object_id, after_value from audit_event
+        where environment = $1 and action = 'stage' and object_type = 'rni_ai_config'
+          and request_id = $2
+        order by occurred_at desc limit 1`,
+      [input.environment, input.idempotencyKey],
+    );
+    const replayRow = replay.rows[0];
+    if (replayRow !== undefined) {
+      if (replayRow.after_value.requestHash !== input.requestHash) {
+        throw new Error('RNI task-envelope idempotency key was reused for different intent');
+      }
+      const replaySetting = await selectRniTaskEnvelopeSetting(replayRow.object_id, tx);
+      return {
+        disposition: 'duplicate',
+        idempotencyKey: input.idempotencyKey,
+        previousConfigVersion: String(
+          (await tx.query<{ parent_version: string }>(
+            `select parent_version::text as parent_version from config_version where id = $1`,
+            [replayRow.object_id],
+          )).rows[0]!.parent_version,
+        ),
+        setting: { ...replaySetting, status: 'staged' },
+      };
+    }
+    if (input.routes.length !== 5 || new Set(input.routes.map(({ task }) => task)).size !== 5) {
+      throw new Error('RNI successor requires exactly five distinct task envelopes');
+    }
+
+    const active = await tx.query<{ id: string; ai_route: RniAiRoute | null }>(
+      `select cv.id::text as id, rc.ai_route
+         from config_version cv
+         left join rni_ai_config rc on rc.config_version = cv.id
+        where cv.environment = $1 and cv.status = 'active'
+        for share of cv`,
+      [input.environment],
+    );
+    const activeRow = active.rows[0];
+    if (activeRow === undefined) throw new Error(`No active config_version in ${input.environment}`);
+    const aiRoute = activeRow.ai_route ?? 'openai_direct';
+
+    const price = await tx.query<{ first_tier_input_ceiling: number }>(
+      `select e.first_tier_input_ceiling
+         from rni_price_book_evidence e
+         join unit_price_book p on p.price_book_version = e.price_book_version
+        where p.provider = 'openai' and p.effective_from <= clock_timestamp()
+          and (p.effective_until is null or p.effective_until > clock_timestamp())
+        group by e.price_book_version, e.first_tier_input_ceiling, e.observed_at
+       having count(*) filter (
+         where (p.service = 'openai_responses' and p.operation_or_model in ('gpt-5.6-terra', 'gpt-5.6-sol')
+                and p.unit_type in ('input_token', 'output_token'))
+            or (p.service = 'openai_web_search' and p.operation_or_model = 'web_search'
+                and p.unit_type = 'search')
+       ) = 5
+        order by e.observed_at desc limit 1`,
+    );
+    const tierCeiling = price.rows[0]?.first_tier_input_ceiling;
+    if (
+      tierCeiling === undefined ||
+      input.routes.some(({ maxInputTokensReserved }) => maxInputTokensReserved >= tierCeiling)
+    ) {
+      throw new Error('RNI task envelope lacks compatible current first-tier price evidence');
+    }
+
+    const capabilities = await tx.query<{
+      id: string;
+      configured_model_id: string;
+      canonical_provider_model_id: 'gpt-5.6-terra' | 'gpt-5.6-sol';
+      model_revision: string;
+    }>(
+      `select distinct on (canonical_provider_model_id)
+              id, configured_model_id, canonical_provider_model_id, model_revision
+         from rni_model_capability_snapshot
+        where ai_route = $1 and provider = 'openai' and available
+          and supports_responses and supports_structured_outputs
+          and (canonical_provider_model_id <> 'gpt-5.6-terra' or supports_web_search)
+          and reasoning_efforts ? 'low' and observed_at <= clock_timestamp()
+          and expires_at > clock_timestamp()
+        order by canonical_provider_model_id, observed_at desc, id desc`,
+      [aiRoute],
+    );
+    if (
+      capabilities.rows.length !== 2 ||
+      !capabilities.rows.some(({ canonical_provider_model_id }) => canonical_provider_model_id === 'gpt-5.6-terra') ||
+      !capabilities.rows.some(({ canonical_provider_model_id }) => canonical_provider_model_id === 'gpt-5.6-sol')
+    ) {
+      throw new Error(`RNI ${aiRoute} lacks fresh approved Terra/Sol capability evidence`);
+    }
+    const byModel = new Map(
+      capabilities.rows.map((row) => [row.canonical_provider_model_id, row]),
+    );
+    const created = await tx.query<{ id: string }>(
+      `insert into config_version (
+         environment, status, parent_version, created_by, change_reason, checksum
+       ) values ($1, 'draft', $2, $3, $4, $5) returning id::text as id`,
+      [input.environment, activeRow.id, input.actorId, input.reason, input.requestHash],
+    );
+    const successorId = created.rows[0]!.id;
+
+    await tx.query(
+      `insert into app_setting (
+         config_version, setting_key, scope_type, scope_id, value, value_type,
+         governance_class, setting_schema_version, method_affecting, sensitive
+       ) select $1, setting_key, scope_type, scope_id, value, value_type,
+                governance_class, setting_schema_version, method_affecting, sensitive
+           from app_setting where config_version = $2`,
+      [successorId, activeRow.id],
+    );
+    await tx.query(
+      `insert into provider_policy (
+         config_version, provider, enabled, plan_name, allowed_operations, default_job_id,
+         timeout_ms, retry_count, daily_call_cap, warning_age_seconds, hard_expiry_seconds,
+         retention_days, rights_status, attribution_text
+       ) select $1, provider, enabled, plan_name, allowed_operations, default_job_id,
+                timeout_ms, retry_count, daily_call_cap, warning_age_seconds, hard_expiry_seconds,
+                retention_days, rights_status, attribution_text
+           from provider_policy where config_version = $2`,
+      [successorId, activeRow.id],
+    );
+    await tx.query(
+      `insert into budget_policy (
+         environment, scope_type, scope_id, period, soft_limit, hard_limit,
+         currency, actions, enabled, config_version
+       ) select environment, scope_type, scope_id, period, soft_limit, hard_limit,
+                currency, actions, enabled, $1
+           from budget_policy where config_version = $2`,
+      [successorId, activeRow.id],
+    );
+    await tx.query(
+      `insert into model_route (
+         config_version, task, transport, primary_provider, primary_model, model_revision,
+         fallback_chain, prompt_version, schema_version, calibration_version, temperature,
+         max_input_tokens, max_output_tokens, timeout_ms, max_cost_usd, allowed_data_classes,
+         shadow_model, canary_percent, evaluation_run_id, enabled, ai_route,
+         canonical_provider_model_id, reasoning_effort, capability_snapshot_id, policy_version,
+         max_input_bytes, max_tool_calls
+       ) select $1, task, transport, primary_provider, primary_model, model_revision,
+                fallback_chain, prompt_version, schema_version, calibration_version, temperature,
+                max_input_tokens, max_output_tokens, timeout_ms, max_cost_usd, allowed_data_classes,
+                shadow_model, canary_percent, evaluation_run_id, enabled, ai_route,
+                canonical_provider_model_id, reasoning_effort, capability_snapshot_id,
+                policy_version, max_input_bytes, max_tool_calls
+           from model_route where config_version = $2 and task <> all($3::text[])`,
+      [successorId, activeRow.id, RNI_TASKS],
+    );
+    await tx.query(
+      `insert into rni_ai_config (
+         config_version, ai_route, model_policy_version, budget_policy_version,
+         manual_run_hard_usd, full_universe_hard_usd, rolling_24h_hard_usd,
+         monthly_warning_usd, monthly_hard_usd
+       ) values ($1, $2, 'rni-balanced-model-policy-v1', 'rni-ai-budget-policy-v1',
+                 2, 25, 50, 300, 500)`,
+      [successorId, aiRoute],
+    );
+    for (const route of input.routes) {
+      const canonicalModel = ['rni_discovery', 'rni_relationship', 'rni_classifier'].includes(route.task)
+        ? 'gpt-5.6-terra'
+        : 'gpt-5.6-sol';
+      const model = byModel.get(canonicalModel)!;
+      await tx.query(
+        `insert into model_route (
+           config_version, task, transport, primary_provider, primary_model, model_revision,
+           fallback_chain, prompt_version, schema_version, temperature, max_input_tokens,
+           max_output_tokens, timeout_ms, max_cost_usd, allowed_data_classes, canary_percent,
+           ai_route, canonical_provider_model_id, reasoning_effort, capability_snapshot_id,
+           policy_version, max_input_bytes, max_tool_calls
+         ) values ($1, $2, 'openai_responses', 'openai', $3, $4, '[]', $5, $6, 0,
+                   $7, $8, $9, $10, '["public_forum_content"]', 0, $11, $12, 'low', $13,
+                   'rni-balanced-model-policy-v1', $14, $15)`,
+        [
+          successorId, route.task, model.configured_model_id, model.model_revision,
+          route.promptVersion, route.schemaVersion, route.maxInputTokensReserved,
+          route.maxOutputTokens, route.timeoutMs, route.maxCostUsd, aiRoute,
+          model.canonical_provider_model_id, model.id, route.maxInputBytes, route.maxToolCalls,
+        ],
+      );
+    }
+    await tx.query(`update config_version set status = 'staged' where id = $1`, [successorId]);
+    const setting = await selectRniTaskEnvelopeSetting(successorId, tx);
+    await tx.query(
+      `insert into audit_event (
+         actor_id, actor_role, action, object_type, object_id, environment, reason,
+         before_value, after_value, result, request_id, correlation_id
+       ) values ($1, 'admin', 'stage', 'rni_ai_config', $2, $3, $4, $5, $6,
+                 'success', $7, $7)`,
+      [
+        input.actorId, successorId, input.environment, input.reason,
+        JSON.stringify({ configVersion: activeRow.id }),
+        JSON.stringify({ requestHash: input.requestHash, setting }), input.idempotencyKey,
+      ],
+    );
+    return {
+      disposition: 'accepted',
+      idempotencyKey: input.idempotencyKey,
+      previousConfigVersion: activeRow.id,
+      setting: { ...setting, status: 'staged' },
+    };
   }, poolOverride);
 }
 

@@ -12,6 +12,8 @@ import {
   rniAiRouteSettingUpdateResult,
   rniManualRefreshRequest,
   rniManualRefreshResult,
+  rniTaskEnvelope,
+  rniTaskEnvelopeUpdateRequest,
   rniSecurityDetail,
   rniSecurityMention,
   rniSecurityObservation,
@@ -29,6 +31,7 @@ import {
   type RniUniverseReadService,
   type RniAiRouteSettingsService,
 } from '@/rni/contracts';
+import { RNI_APPROVED_TASK_ENVELOPES } from '@/rni/config';
 import {
   comparativeCitation,
   comparativeMentions,
@@ -390,6 +393,42 @@ describe('RNI frozen contracts', () => {
         ],
       }),
     ).toThrow(/resolve exactly once/u);
+  });
+
+  it('freezes five bounded admin-configurable task envelopes', () => {
+    const envelopes = Object.values(RNI_APPROVED_TASK_ENVELOPES);
+    expect(
+      rniTaskEnvelopeUpdateRequest.parse({
+        idempotencyKey: 'stage-rni-envelopes-1',
+        reason: 'Tune bounded future-run limits.',
+        envelopes,
+      }).envelopes,
+    ).toEqual(envelopes);
+    expect(() =>
+      rniTaskEnvelopeUpdateRequest.parse({
+        idempotencyKey: 'missing-task',
+        reason: 'Invalid partial update.',
+        envelopes: envelopes.slice(1),
+      }),
+    ).toThrow(/every governed RNI task/u);
+    expect(() =>
+      rniTaskEnvelope.parse({
+        ...RNI_APPROVED_TASK_ENVELOPES.rni_classifier,
+        maxInputTokensReserved: 15_999,
+      }),
+    ).toThrow(/must equal the serialized-input byte ceiling/u);
+    expect(() =>
+      rniTaskEnvelope.parse({
+        ...RNI_APPROVED_TASK_ENVELOPES.rni_relationship,
+        maxToolCalls: 1,
+      }),
+    ).toThrow(/Only discovery/u);
+    expect(() =>
+      rniTaskEnvelope.parse({
+        ...RNI_APPROVED_TASK_ENVELOPES.rni_verification,
+        maxCostUsd: '2.01',
+      }),
+    ).toThrow();
   });
 
   it('freezes client-owned manual refresh intent and server-resolved scope previews', () => {

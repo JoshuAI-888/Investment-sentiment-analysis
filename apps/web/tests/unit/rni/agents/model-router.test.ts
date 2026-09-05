@@ -17,6 +17,7 @@ import {
   type RniModelTransportRequest,
 } from '../../../../src/rni/agents';
 import type { OpenAiResponsesTransport } from '../../../../src/rni/discovery';
+import { RNI_APPROVED_TASK_ENVELOPES } from '../../../../src/rni/config';
 import {
   evidenceReader,
   NO_MATERIAL_CHALLENGE,
@@ -64,6 +65,7 @@ const config = (
       supportsStructuredOutputs: true,
       supportsWebSearch: true,
       policyVersion: 'rni-balanced-model-policy-v1',
+      envelope: RNI_APPROVED_TASK_ENVELOPES.rni_discovery,
     },
     {
       task: 'rni_relationship',
@@ -81,6 +83,7 @@ const config = (
       supportsStructuredOutputs: true,
       supportsWebSearch: true,
       policyVersion: 'rni-balanced-model-policy-v1',
+      envelope: RNI_APPROVED_TASK_ENVELOPES.rni_relationship,
     },
     {
       task: 'rni_classifier',
@@ -98,6 +101,7 @@ const config = (
       supportsStructuredOutputs: true,
       supportsWebSearch: true,
       policyVersion: 'rni-balanced-model-policy-v1',
+      envelope: RNI_APPROVED_TASK_ENVELOPES.rni_classifier,
     },
     {
       task: 'rni_verification',
@@ -115,6 +119,7 @@ const config = (
       supportsStructuredOutputs: true,
       supportsWebSearch: true,
       policyVersion: 'rni-balanced-model-policy-v1',
+      envelope: RNI_APPROVED_TASK_ENVELOPES.rni_verification,
     },
     {
       task: 'rni_challenger',
@@ -132,6 +137,7 @@ const config = (
       supportsStructuredOutputs: true,
       supportsWebSearch: true,
       policyVersion: 'rni-balanced-model-policy-v1',
+      envelope: RNI_APPROVED_TASK_ENVELOPES.rni_challenger,
     },
   ],
 });
@@ -994,6 +1000,35 @@ describe('RNI model router', () => {
       providerTelemetry: null,
     });
     expect(JSON.stringify(records.finishes[0])).not.toContain(hostileValue);
+  });
+
+  it('rejects serialized input above the configured byte ceiling before recording or dispatch', async () => {
+    const direct = transport();
+    const records = recording();
+    const boundedConfig: RniImmutableModelRunConfig = {
+      ...config(),
+      resolvedModels: config().resolvedModels.map((model) =>
+        model.task === 'rni_verification'
+          ? {
+              ...model,
+              envelope: {
+                ...model.envelope,
+                maxInputBytes: 1_024,
+                maxInputTokensReserved: 1_024,
+              },
+            }
+          : model,
+      ),
+    };
+
+    await expect(
+      invoke(
+        createRniModelRouter({ openaiDirect: direct, recorder: records.recorder }),
+        boundedConfig,
+      ),
+    ).rejects.toThrow(/serialized model input exceeds the immutable pre-dispatch byte ceiling/u);
+    expect(records.starts).toHaveLength(0);
+    expect(direct.invoke).not.toHaveBeenCalled();
   });
 
   it('never double-finalizes when either success or failure finalization throws', async () => {

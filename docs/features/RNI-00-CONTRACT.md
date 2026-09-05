@@ -251,6 +251,16 @@ successful command creates and returns a new config version for runs requested a
 same-key replay returns `duplicate`, crossed-key intent fails, and historical run/model-call
 lineage is never rewritten.
 
+`RniTaskEnvelopeSettingsService` is the admin-only future-run limit boundary. Its read returns
+exactly one bounded envelope for each governed task: serialized-input bytes, a conservative token
+reservation equal to that byte ceiling, output tokens, tool calls, timeout and per-call USD cap.
+Only discovery may allow one to three governed Web Search calls; all other tasks allow none.
+The command accepts the complete five-task set, an idempotency key and bounded reason. A successful
+save creates an audited staged successor for review and never activates it, mutates the active
+configuration or changes a running/historical call. Exact replay returns `duplicate`; crossed-key
+intent fails. The global USD 2/25/50/300/500 run, rolling-day and monthly controls are not editable
+through this boundary.
+
 `RniUniverseReadService` is the separate read-only boundary for universe Settings and security
 selection. `getActiveUniverse()` returns active version metadata and canonical NVDA default. The
 active shape can represent either the preserved 100-member legacy seed during first deployment or

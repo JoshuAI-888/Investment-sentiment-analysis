@@ -31,6 +31,15 @@ Owner-approved RNI baseline, 2026-09-05:
 - The RNI AI ledger includes model-token and OpenAI Web Search tool charges. X and FMP commercial
   charges are governed separately. Revisit these limits after the first measured full-universe
   run; any change creates a later versioned configuration and does not rewrite historical runs.
+- Initial per-call limits are 16,000 input bytes/tokens and 2,000 output tokens for discovery,
+  relationship and classifier; 64,000 input bytes/tokens and 2,000 output tokens for verifier;
+  and 64,000 input bytes/tokens and 1,000 output tokens for challenger. Discovery allows three
+  Web Search calls. Per-call caps are USD 0.15, 0.10, 0.10, 0.20 and 0.20 respectively; every
+  timeout starts at 30 seconds.
+- An admin may edit those bounded task envelopes at `/admin/settings/rni-ai`. Saving only stages
+  an audited successor. `joshuai` must review the exact staged version, capability/price evidence,
+  eval results and impact before separately activating it. The portal does not edit the global
+  run/day/month controls and never changes running or historical calls.
 
 Prohibited for the Milford constrained demo: Bloomberg, FactSet, LSEG/Refinitiv, broker research, institutional feeds, or any source a normal private retail user could not obtain. A convenient API does not make its terms suitable; approve use and redistribution separately.
 

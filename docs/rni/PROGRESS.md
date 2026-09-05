@@ -28,7 +28,7 @@
 | G3 DATA accepted | `PASSED` | DATA + reviewer | merged sequentially at `254fe45`; coordinator type/contract plus fresh PostgreSQL DATA 41/41 pass |
 | G4 ENGINE accepted | `PASSED` | ENGINE + reviewer | merged sequentially at `62eab1d`; ER-20–23 closed; coordinator and independent E10 gates pass |
 | G5 SURFACE accepted | `PASSED` | SURFACE + reviewer | merged sequentially at `b60ec14`; final code `c224c78`; type/lint/contracts/build/Chromium pass |
-| G6 integrated preview | `IN_PROGRESS` | coordinator | I07 persistence completion and I10 route/budget composition are active |
+| G6 integrated preview | `IN_PROGRESS` | coordinator | I10 route/budget/settings composition passed; I07 final adapter plus I08–I09 composition remain |
 | G7 live Reddit/X/FMP gates | `NOT_STARTED` | coordinator + joshuai | Depends G6 and configured credentials |
 | G8 production approval | `NOT_STARTED` | joshuai | Depends all prior gates |
 
@@ -39,7 +39,7 @@
 | DATA | `feat/rni-data-source-first` | `MERGED_TO_INTEGRATION` | `DATA.md` | D12 merge `59ab04a`; source tip `cf2b635` |
 | ENGINE | `feat/rni-engine-live-slice` | `MERGED_TO_INTEGRATION` | `ENGINE.md` | lane/merge `62eab1d` |
 | SURFACE | `feat/rni-surface-demo` | `MERGED_TO_INTEGRATION` | `SURFACE.md` | code `c224c78`; tracker/merge `b60ec14` |
-| INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I07 artifact boundary `a5a0c98`; cited-synthesis schema follows |
+| INTEGRATION | `feat/rni-integration-demo` | `IN_PROGRESS` | `INTEGRATION.md` | I10C2B admin-configurable task envelopes complete in this task commit |
 
 ## Confirmed product decisions
 
@@ -52,6 +52,9 @@
   verification and challenger; Gateway is explicit same-family parity with no silent fallback.
 - Initial RNI AI limits: USD 2/manual ticker run, USD 25/full-universe run, USD 50/rolling day,
   USD 300/month warning and USD 500/month hard stop (D-RNI-21).
+- Initial task envelopes: 16 KB input for discovery/relationship/classifier, 64 KB for
+  verifier/challenger, 2k output except 1k challenger, three discovery searches, 30-second
+  timeout and USD 0.10–0.20 per-call caps. Admin edits stage successors only (D-RNI-25).
 - Universe: current FMP S&P 500, configurable; NVDA selected by default.
 - Retention: bounded relevant post/comment/X content and metadata only.
 - MCP: read-only contract/skeleton for this release.
@@ -80,7 +83,7 @@ The canonical matrix is [`INTEGRATION_PLAN.md`](INTEGRATION_PLAN.md) §10. Coord
 | Model route and CI | `PASSED` | PR #2 route validation; PR #5 RNI path filter and green eval |
 | Toolchain reproducibility | `PASSED` | pinned pnpm 10.33 clean install plus PR #5 independent CI |
 | Retention and citation safety | `IN_PROGRESS` | DATA claim/source FK and ENGINE source/content binding findings resolved; full publication gate remains later work |
-| Cost and 500+ symbol workload | `POLICY_LOCKED` | D-RNI-21 owner-approved limits; I10 enforcement and measured full-universe calibration pending |
+| Cost and 500+ symbol workload | `POLICY_LOCKED` | D-RNI-21/D-RNI-25 limits and I10 enforcement pass; measured full-universe calibration remains I11 |
 | Authentication/deployment | `READY` | — |
 
 ## Merge log
@@ -146,6 +149,7 @@ Append one line per material transition; do not erase history.
 - 2026-09-05 — started I10C2 for append-only Direct/Gateway capability and price evidence plus a reviewable successor configuration. The slice must derive Gateway dispatch identity from discovery, preserve the approved Terra/Sol low policy, clone the current active shared configuration, and stop at `staged`; activation and live parity remain human/I11 gates.
 - 2026-09-05 — completed I10C2A catalogue/price evidence under D-RNI-24: authenticated Direct identity lookup plus the public Gateway catalogue produce four append-only capability snapshots and five response-hash-bound price components; exact replay is idempotent and crossed evidence fails. The ledger now reserves all three governed discovery searches and rejects a fourth. Focused non-database 42/42 and PostgreSQL 14/14 pass with typecheck/lint/diff. I10C2 remains active for owner-approved per-call input/cost bounds and staged successor creation; no activation or live parity claim occurred.
 - 2026-09-05 — started I10C2B after owner approval of the recommended five per-task call envelopes, with the explicit requirement that an authenticated admin can change them in the Settings portal. Changes will be bounded, audited successor configuration—not mutable environment constants—and must enforce input/cost limits before provider dispatch while leaving global D-RNI-21 hard limits and historical runs immutable.
+- 2026-09-05 — completed I10C2B and I10 under D-RNI-25: Settings exposes the complete bounded five-task envelope and stages an audited successor without activation; serialized byte limits fail before dispatch and conservative token/per-call reservations reach the atomic ledger. Focused non-database 76/76, focused PostgreSQL 15/15, full serialized RNI integration 158/158, unit 1,363/1,363, contract 108/22 skipped, eval 18/1 live skip, production build and authenticated Chromium 49/49 pass with typecheck/lint/diff. I11 retains live capability/price refresh, provider parity, measured calibration and human activation.
 - 2026-09-05 — merged final SURFACE lane sequentially at `b60ec14` after rebasing on accepted ENGINE. The refreshed code head `c224c78` remains ownership/frozen-contract clean; coordinator typecheck, focused lint and expanded RNI contract 37/37 pass, while the builder reran the production build and complete Chromium 22/22. G5 is complete and I07 composition is now in progress.
 - 2026-09-05 — accepted CR-DATA-002 as D-RNI-22 and implemented I07's SQL-free semantic composition boundary: committed evidence is read before E05, all per-security classifications complete before one atomic port call, and any partial classification failure writes nothing. Focused integration 3/3, typecheck and scoped lint pass; the DATA adapter and migration-backed idempotent transaction remain the next I07 slice.
 - 2026-09-05 — extended coordinator-owned migration `0024` for D-RNI-22 with claim dimension, immutable run/observation membership and per-observation semantic-quality lineage. The clean/forward migration gate passes 5/5 on disposable PostgreSQL; historical rows remain compatible. The DATA transaction adapter can now implement the accepted port without owning shared schema.

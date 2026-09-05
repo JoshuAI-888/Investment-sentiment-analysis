@@ -427,6 +427,15 @@ export const loadRniImmutableModelRunConfig = async (
       supportsStructuredOutputs: true,
       supportsWebSearch: row.supports_web_search,
       policyVersion: 'rni-balanced-model-policy-v1',
+      envelope: {
+        task: row.task,
+        maxInputBytes: row.max_input_bytes,
+        maxInputTokensReserved: row.max_input_tokens,
+        maxOutputTokens: row.max_output_tokens,
+        maxToolCalls: row.max_tool_calls,
+        timeoutMs: row.timeout_ms,
+        maxCostUsd: row.max_cost_usd,
+      },
     })),
   };
   assertRniBalancedRuntimePolicy(config);
@@ -454,6 +463,9 @@ const invocationRequestHash = (attempt: RniModelInvocationAttempt): string =>
       timeoutMs: String(attempt.limits.timeoutMs),
       maxRetries: String(attempt.limits.maxRetries),
       maxToolCalls: String(attempt.limits.maxToolCalls),
+      maxInputBytes: String(attempt.limits.maxInputBytes),
+      maxInputTokensReserved: String(attempt.limits.maxInputTokensReserved),
+      maxCostUsd: attempt.limits.maxCostUsd,
     },
   });
 

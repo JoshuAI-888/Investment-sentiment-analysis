@@ -6,6 +6,7 @@ import {
   type RniModelTransportRequest,
 } from '@/rni/agents';
 import type { RniSecurityMention, RniSourceItem } from '@/rni/contracts';
+import { RNI_APPROVED_TASK_ENVELOPES } from '@/rni/config';
 import { hashRniSerializedModelInput } from '@/rni/agents/model-input';
 import {
   classifyPersistedSecurityObservations,
@@ -378,6 +379,7 @@ describe('persisted RNI semantic classification', () => {
           supportsStructuredOutputs: true as const,
           supportsWebSearch: true,
           policyVersion: 'rni-balanced-model-policy-v1' as const,
+          envelope: RNI_APPROVED_TASK_ENVELOPES[task],
         };
       }),
     };

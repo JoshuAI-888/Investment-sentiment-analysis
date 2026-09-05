@@ -1,11 +1,39 @@
 import { z } from 'zod';
 
 import { RNI_PROMPT_REGISTRY, type RniPromptTask } from '../../../prompts/rni/registry';
-import type { RniAiRoute, RniResolvedModelRoute } from '../contracts';
+import {
+  rniTaskEnvelope,
+  type RniAiRoute,
+  type RniResolvedModelRoute,
+  type RniTaskEnvelope,
+} from '../contracts';
 
 export const RNI_BALANCED_MODEL_POLICY_VERSION = 'rni-balanced-model-policy-v1' as const;
 export const RNI_BALANCED_REASONING_EFFORT = 'low' as const;
 export const RNI_DEFAULT_AI_ROUTE = 'openai_direct' as const;
+
+export const RNI_APPROVED_TASK_ENVELOPES = {
+  rni_discovery: {
+    task: 'rni_discovery', maxInputBytes: 16_000, maxInputTokensReserved: 16_000,
+    maxOutputTokens: 2_000, maxToolCalls: 3, timeoutMs: 30_000, maxCostUsd: '0.15',
+  },
+  rni_relationship: {
+    task: 'rni_relationship', maxInputBytes: 16_000, maxInputTokensReserved: 16_000,
+    maxOutputTokens: 2_000, maxToolCalls: 0, timeoutMs: 30_000, maxCostUsd: '0.10',
+  },
+  rni_classifier: {
+    task: 'rni_classifier', maxInputBytes: 16_000, maxInputTokensReserved: 16_000,
+    maxOutputTokens: 2_000, maxToolCalls: 0, timeoutMs: 30_000, maxCostUsd: '0.10',
+  },
+  rni_verification: {
+    task: 'rni_verification', maxInputBytes: 64_000, maxInputTokensReserved: 64_000,
+    maxOutputTokens: 2_000, maxToolCalls: 0, timeoutMs: 30_000, maxCostUsd: '0.20',
+  },
+  rni_challenger: {
+    task: 'rni_challenger', maxInputBytes: 64_000, maxInputTokensReserved: 64_000,
+    maxOutputTokens: 1_000, maxToolCalls: 0, timeoutMs: 30_000, maxCostUsd: '0.20',
+  },
+} as const satisfies Readonly<Record<RniPromptTask, RniTaskEnvelope>>;
 
 const APPROVED_MODELS = {
   terra: 'gpt-5.6-terra',
@@ -58,6 +86,7 @@ export type RniRuntimeModelRoute = RniResolvedModelRoute & {
   readonly supportsStructuredOutputs: true;
   readonly supportsWebSearch: boolean;
   readonly policyVersion: typeof RNI_BALANCED_MODEL_POLICY_VERSION;
+  readonly envelope: RniTaskEnvelope;
 };
 
 export type RniResolvedRuntimePolicy = {
@@ -93,6 +122,10 @@ export const assertRniBalancedRuntimePolicy = (input: RuntimePolicyInput): void 
       (TASK_POLICY[task].requiresWebSearch && route.supportsWebSearch !== true)
     ) {
       throw new Error(`RNI runtime policy lacks required capabilities for ${task}`);
+    }
+    const envelope = rniTaskEnvelope.parse(route.envelope);
+    if (envelope.task !== task) {
+      throw new Error(`RNI runtime policy has a crossed task envelope for ${task}`);
     }
     if (input.aiRoute === 'openai_direct' && route.modelId !== route.canonicalProviderModelId) {
       throw new Error(`RNI Direct dispatch identity does not match ${task}'s approved model`);
@@ -190,6 +223,7 @@ export const resolveRniBalancedModelPolicy = (input: {
         supportsStructuredOutputs: true,
         supportsWebSearch: capability.supportsWebSearch,
         policyVersion: RNI_BALANCED_MODEL_POLICY_VERSION,
+        envelope: RNI_APPROVED_TASK_ENVELOPES[task],
       };
     }),
   };

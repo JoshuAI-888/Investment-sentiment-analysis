@@ -82,6 +82,7 @@ export const GATED_PAGE_ROUTES: readonly PageRoute[] = [
   { path: '/admin/data-explorer', source: '(admin)/admin/data-explorer' },
   { path: '/admin/costs', source: '(admin)/admin/costs' },
   { path: '/admin/settings', source: '(admin)/admin/settings' },
+  { path: '/admin/settings/rni-ai', source: '(admin)/admin/settings/rni-ai' },
   { path: '/admin/settings/universe', source: '(admin)/admin/settings/universe' },
   { path: '/admin/audit', source: '(admin)/admin/audit' },
   { path: '/admin/calculations', source: '(admin)/admin/calculations' },

@@ -63,6 +63,8 @@ type CatalogueModel = z.infer<typeof catalogueModel>;
 export type RniDiscoveredPriceBook = {
   readonly priceBookVersion: string;
   readonly effectiveFrom: string;
+  readonly sourceUrl: string;
+  readonly responseHash: string;
   readonly sourceReference: string;
   readonly terraInputTokenUsd: string;
   readonly terraOutputTokenUsd: string;
@@ -293,6 +295,8 @@ export const discoverRniModelCatalogueEvidence = async (options: {
     priceBook: {
       priceBookVersion,
       effectiveFrom: observedAtIso,
+      sourceUrl: joinUrl(gatewayBaseUrl, 'models'),
+      responseHash: gatewayResponse.hash,
       sourceReference: `${joinUrl(gatewayBaseUrl, 'models')}#sha256=${gatewayResponse.hash}`,
       terraInputTokenUsd: terra.pricing.input,
       terraOutputTokenUsd: terra.pricing.output,

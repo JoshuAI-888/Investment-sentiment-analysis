@@ -1609,6 +1609,24 @@ create trigger unit_price_book_rni_append_only
   before update or delete on unit_price_book
   for each row execute function rni_reject_price_book_mutation();
 
+create table rni_price_book_evidence (
+  price_book_version        text        primary key,
+  source_url                text        not null,
+  response_hash             text        not null,
+  observed_at               timestamptz not null,
+  first_tier_input_ceiling  integer     not null,
+  created_at                timestamptz not null default now(),
+
+  constraint rni_price_book_evidence_version_check check (price_book_version like 'rni-%'),
+  constraint rni_price_book_evidence_url_check check (source_url like 'https://%'),
+  constraint rni_price_book_evidence_hash_check check (response_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_price_book_evidence_ceiling_check check (first_tier_input_ceiling > 0)
+);
+
+create trigger rni_price_book_evidence_append_only
+  before update or delete on rni_price_book_evidence
+  for each row execute function reject_mutation();
+
 create table rni_ai_config (
   config_version             bigint      primary key references config_version (id),
   ai_route                   text        not null,
@@ -1677,6 +1695,8 @@ alter table model_route
   add column reasoning_effort text null,
   add column capability_snapshot_id text null,
   add column policy_version text null,
+  add column max_input_bytes integer null,
+  add column max_tool_calls integer null,
   add constraint model_route_rni_lineage_complete_check check (
     task not in (
       'rni_discovery', 'rni_relationship', 'rni_classifier', 'rni_verification', 'rni_challenger'
@@ -1684,7 +1704,7 @@ alter table model_route
     or (
       ai_route is not null and canonical_provider_model_id is not null
       and reasoning_effort is not null and capability_snapshot_id is not null
-      and policy_version is not null
+      and policy_version is not null and max_input_bytes is not null and max_tool_calls is not null
     )
   ) not valid,
   add constraint model_route_rni_ai_route_check check (
@@ -1692,6 +1712,21 @@ alter table model_route
   ),
   add constraint model_route_rni_reasoning_check check (
     reasoning_effort is null or reasoning_effort in ('none', 'low', 'medium', 'high', 'xhigh', 'max')
+  ),
+  add constraint model_route_rni_envelope_check check (
+    task not in (
+      'rni_discovery', 'rni_relationship', 'rni_classifier', 'rni_verification', 'rni_challenger'
+    ) or (
+      max_input_bytes between 1024 and 131072
+      and max_input_tokens = max_input_bytes
+      and max_output_tokens between 256 and 8000
+      and timeout_ms between 5000 and 120000
+      and max_cost_usd > 0 and max_cost_usd <= 2
+      and (
+        (task = 'rni_discovery' and max_tool_calls between 1 and 3)
+        or (task <> 'rni_discovery' and max_tool_calls = 0)
+      )
+    )
   ),
   add constraint model_route_rni_config_fk foreign key (config_version, ai_route)
     references rni_ai_config (config_version, ai_route) not valid,
@@ -1736,6 +1771,13 @@ begin
      or new.primary_provider <> 'openai'
      or new.fallback_chain <> '[]'::jsonb
      or new.reasoning_effort <> 'low'
+     or new.max_input_tokens <> new.max_input_bytes
+     or new.max_input_bytes < 1024 or new.max_input_bytes > 131072
+     or new.max_output_tokens < 256 or new.max_output_tokens > 8000
+     or new.timeout_ms < 5000 or new.timeout_ms > 120000
+     or new.max_cost_usd <= 0 or new.max_cost_usd > 2
+     or (new.task = 'rni_discovery' and new.max_tool_calls not between 1 and 3)
+     or (new.task <> 'rni_discovery' and new.max_tool_calls <> 0)
      or not capability_row.available
      or not capability_row.supports_responses
      or not capability_row.supports_structured_outputs

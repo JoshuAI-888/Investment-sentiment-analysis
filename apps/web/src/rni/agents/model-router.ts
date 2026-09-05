@@ -121,10 +121,13 @@ export type RniModelCallScope = {
 };
 
 export type RniModelLimits = {
+  readonly maxInputBytes: number;
+  readonly maxInputTokensReserved: number;
   readonly maxOutputTokens: number;
   readonly timeoutMs: number;
   readonly maxRetries: 0;
   readonly maxToolCalls: number;
+  readonly maxCostUsd: string;
 };
 
 export type RniModelTransportRequest = {
@@ -226,6 +229,28 @@ export type RniModelRouter = {
 };
 
 const expectedStage = (task: RniPromptTask): RniModelStage => task.replace('rni_', '') as RniModelStage;
+
+const modelLimits = (model: RniRuntimeModelRoute): RniModelLimits => ({
+  maxInputBytes: model.envelope.maxInputBytes,
+  maxInputTokensReserved: model.envelope.maxInputTokensReserved,
+  maxOutputTokens: model.envelope.maxOutputTokens,
+  timeoutMs: model.envelope.timeoutMs,
+  maxRetries: 0,
+  maxToolCalls: model.envelope.maxToolCalls,
+  maxCostUsd: model.envelope.maxCostUsd,
+});
+
+const assertSerializedInputWithinEnvelope = (
+  stablePrefix: string,
+  dynamicSuffix: string,
+  limits: RniModelLimits,
+): void => {
+  const bytes = new TextEncoder().encode(stablePrefix).byteLength +
+    new TextEncoder().encode(dynamicSuffix).byteLength;
+  if (bytes > limits.maxInputBytes) {
+    throw new Error('RNI serialized model input exceeds the immutable pre-dispatch byte ceiling');
+  }
+};
 
 const resolvedModelFor = (
   config: RniImmutableModelRunConfig,
@@ -344,7 +369,8 @@ export const createRniModelRouter = (deps: {
       cacheContextVersion,
       stablePrefixHash,
     });
-    const limits = definition.limits;
+    const limits = modelLimits(model);
+    assertSerializedInputWithinEnvelope(stablePrefix, dynamicSuffix, limits);
     const attempt: RniModelInvocationAttempt = {
       route: runConfig.aiRoute,
       runId: runConfig.runId,
@@ -506,6 +532,8 @@ export const createRniRoutedRedditDiscovery = (deps: {
       claimIds: [],
       assessmentCutoffAt: null,
     });
+    const limits = modelLimits(model);
+    assertSerializedInputWithinEnvelope(stablePrefix, dynamicSuffix, limits);
     const attempt: RniModelInvocationAttempt = {
       route: deps.runConfig.aiRoute,
       runId: deps.runConfig.runId,
@@ -531,7 +559,7 @@ export const createRniRoutedRedditDiscovery = (deps: {
       promptCacheKey,
       dynamicInputHash,
       tools: definition.tools,
-      limits: definition.limits,
+      limits,
     };
     await deps.recorder.start(attempt);
 
@@ -550,8 +578,8 @@ export const createRniRoutedRedditDiscovery = (deps: {
       result = await new OpenAiRedditDiscovery(transport, {
         model: model.modelId,
         reasoningEffort: model.reasoningEffort,
-        maxOutputTokens: definition.limits.maxOutputTokens,
-        maxToolCalls: definition.limits.maxToolCalls,
+        maxOutputTokens: limits.maxOutputTokens,
+        maxToolCalls: limits.maxToolCalls,
         ...(deps.nowMs === undefined ? {} : { nowMs: deps.nowMs }),
         governance: {
           promptVersion: definition.promptVersion,

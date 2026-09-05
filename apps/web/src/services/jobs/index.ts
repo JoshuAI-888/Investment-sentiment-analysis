@@ -16,3 +16,4 @@ export * from './rescore';
 export * from './stance-availability';
 export * from './rni-model-runtime';
 export * from './rni-model-catalogue';
+export * from './rni-task-envelope-settings';

@@ -100,7 +100,15 @@ const transportRequest = (
   dynamicInputHash: HASH,
   dynamicSuffix: '<untrusted_evidence>{}</untrusted_evidence>',
   tools: [],
-  limits: { maxOutputTokens: 300, timeoutMs: 5_000, maxRetries: 0, maxToolCalls: 0 },
+  limits: {
+    maxInputBytes: 16_000,
+    maxInputTokensReserved: 16_000,
+    maxOutputTokens: 300,
+    timeoutMs: 5_000,
+    maxRetries: 0,
+    maxToolCalls: 0,
+    maxCostUsd: '0.10',
+  },
   ...overrides,
 });
 
@@ -317,6 +325,17 @@ describe('I10C — live model transport and budget composition', () => {
       supports_responses: true,
       supports_structured_outputs: true,
       supports_web_search: Boolean(webSearch),
+      max_input_bytes: task === 'rni_verification' || task === 'rni_challenger' ? 64_000 : 16_000,
+      max_input_tokens: task === 'rni_verification' || task === 'rni_challenger' ? 64_000 : 16_000,
+      max_output_tokens: task === 'rni_challenger' ? 1_000 : 2_000,
+      max_tool_calls: task === 'rni_discovery' ? 3 : 0,
+      timeout_ms: 30_000,
+      max_cost_usd:
+        task === 'rni_discovery'
+          ? '0.15'
+          : task === 'rni_verification' || task === 'rni_challenger'
+            ? '0.20'
+            : '0.10',
     }));
 
     const config = await loadRniImmutableModelRunConfig(RUN_ID, async () => rows);

@@ -33,14 +33,14 @@
 | I07E | Compose trusted cited-synthesis persistence boundary | `PASSED` | SQL-free trusted prepare, zero-model accepted replay and opaque-preparation atomic commit; composition 13/13, independent re-review PASS |
 | I08 | Compose SURFACE routes/nav/API with auth | `NOT_STARTED` | Authenticated preview e2e |
 | I09 | Wire QStash jobs/manual idempotent refresh | `NOT_STARTED` | Signed redelivery/double-click tests |
-| I10 | Seed RNI Direct routes and optional Gateway selection | `IN_PROGRESS` | I10A starts versioned Direct/Gateway resolution and pre-dispatch budget enforcement under D-RNI-21; live parity remains I11 |
+| I10 | Seed RNI Direct routes and optional Gateway selection | `PASSED` | Direct-default/Gateway-parity routing, append-only capability/price evidence, budgets and admin-staged task envelopes pass; live parity remains I11 |
 | I10A | Enforce balanced runtime model policy and exact route lineage | `PASSED` | Direct default, five-task Terra/Sol low mapping, fresh capabilities, Gateway provider/canonical identity and stable cache semantics; unit/contract/eval regression and independent review pass |
 | I10B | Persist immutable route capabilities and atomic RNI AI budgets | `PASSED` | Additive migration 0024 schema; PostgreSQL 11/11 focused and 129/129 RNI regression; transports remain I10C |
-| I10C | Compose live Direct/Gateway transports and governed recorder | `IN_PROGRESS` | I10C1 transport/recorder passed; live capability discovery and successor staging remain I10C2; no live claim until I11 |
+| I10C | Compose live Direct/Gateway transports and governed recorder | `PASSED` | Provider-pinned transports, recorder, catalogue evidence and staged successor settings pass; no live claim until I11 |
 | I10C1 | Compose provider-pinned transports and governed recorder | `PASSED` | Direct and OpenAI-only Gateway Responses adapters, immutable run-config loading, pre-dispatch reservation and usage-based settlement; PostgreSQL 153/153 serial RNI sweep |
-| I10C2 | Discover capability/price evidence and stage successor config | `IN_PROGRESS` | Append-only Direct/Gateway evidence and reviewable staging only; activation remains human-owned and live proof remains I11 |
+| I10C2 | Discover capability/price evidence and stage successor config | `PASSED` | Append-only evidence plus bounded admin task-envelope staging pass; activation remains human-owned and live proof remains I11 |
 | I10C2A | Discover and persist capability/price evidence | `PASSED` | Direct identity lookup plus Gateway catalogue parsing; four append-only capabilities, five hashed price components and three-search reservation; focused 42/42 plus PostgreSQL 14/14 |
-| I10C2B | Version per-task envelopes and expose admin settings | `IN_PROGRESS` | Owner approved the recommended 16 KB/64 KB, existing output, three-search and USD 0.10–0.20 envelopes; portal edits must create a successor and preserve global hard limits/history |
+| I10C2B | Version per-task envelopes and expose admin settings | `PASSED` | D-RNI-25; admin portal stages audited bounded successors, pre-dispatch bytes and ledger reservations enforce the selected envelope; RNI integration 158/158 |
 | I11 | Run live Reddit, X and FMP gates | `NOT_STARTED` | Provider audit IDs and screenshots/log links |
 | I12 | Full regression, preview, production approval and smoke | `NOT_STARTED` | `joshuai` approval + production evidence |
 
@@ -496,6 +496,31 @@
   owner-approved per-call input-token/byte envelope and route hard cap; the global 2/25/50/300/500
   policy is already fixed. Base prices may be used only below the recorded first tier boundary.
   No credentials were recorded and no frozen contract changed.
+
+## I10C2B handoff
+
+- **Status:** `PASSED`; I10/I10C/I10C2 are complete. Activation and credential-backed Direct,
+  Gateway and Web Search proof remain I11/human gates.
+- **Files changed:** migration `0024`; frozen RNI task-envelope contracts; model policy/router and
+  immutable runtime loader; version repository and catalogue evidence; task-envelope settings
+  service; `/admin/settings` navigation and `/admin/settings/rni-ai` page/action; focused
+  contract, unit, integration, eval and route registries; D-RNI-25, deployment runbook and both
+  coordinator trackers.
+- **Tests run:** focused non-database 76/76; focused PostgreSQL route/budget/settings 15/15;
+  complete serialized RNI integration 158/158; full unit 1,363/1,363; full contract 108/108 with
+  22 database-gated skips; full eval 18/18 with one credential-gated live skip; TypeScript,
+  scoped ESLint, production build, authenticated Chromium 49/49 and diff check.
+- **Result:** the approved 16 KB/64 KB, 2,000/1,000 output, three-search, 30-second and USD
+  0.10–0.20 defaults are versioned data. Admins can edit the bounded complete five-task set in
+  Settings. Saving requires a reason and stages an audited successor only; exact replay is
+  idempotent, crossed intent fails, and active/running/historical configuration is unchanged.
+  Serialized input bytes fail before recording/dispatch, the same number is conservatively
+  reserved as input tokens, and per-call caps feed the atomic ledger. Fresh model capability and
+  compatible first-tier price evidence are mandatory.
+- **Risks/handoff:** the portal deliberately cannot activate a staged config or edit the fixed
+  global USD 2/25/50/300/500 controls. I11 must refresh real catalogue evidence, run Direct and
+  optional Gateway probes, inspect the staged version/evals and obtain `joshuai` approval before
+  activation. No credential was read or stored.
 
 ## I07A handoff
 

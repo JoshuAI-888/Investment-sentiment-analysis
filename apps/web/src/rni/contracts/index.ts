@@ -370,6 +370,95 @@ export const rniAiRouteSettingUpdateResult = z
   });
 export type RniAiRouteSettingUpdateResult = z.infer<typeof rniAiRouteSettingUpdateResult>;
 
+export const rniModelTask = z.enum([
+  'rni_discovery',
+  'rni_relationship',
+  'rni_classifier',
+  'rni_verification',
+  'rni_challenger',
+]);
+export type RniModelTask = z.infer<typeof rniModelTask>;
+
+const rniRouteCostLimit = z
+  .string()
+  .regex(/^(?:(?:0|1)(?:\.\d+)?|2(?:\.0+)?)$/u)
+  .refine((value) => /[1-9]/u.test(value), 'Per-call cost limit must be positive');
+
+export const rniTaskEnvelope = z
+  .object({
+    task: rniModelTask,
+    maxInputBytes: z.number().int().min(1024).max(131072),
+    maxInputTokensReserved: z.number().int().min(1024).max(131072),
+    maxOutputTokens: z.number().int().min(256).max(8000),
+    maxToolCalls: z.number().int().min(0).max(3),
+    timeoutMs: z.number().int().min(5000).max(120000),
+    maxCostUsd: rniRouteCostLimit,
+  })
+  .strict()
+  .superRefine((envelope, context) => {
+    if (envelope.maxInputBytes !== envelope.maxInputTokensReserved) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['maxInputTokensReserved'],
+        message: 'Conservative token reservation must equal the serialized-input byte ceiling',
+      });
+    }
+    if (
+      (envelope.task === 'rni_discovery' && envelope.maxToolCalls < 1) ||
+      (envelope.task !== 'rni_discovery' && envelope.maxToolCalls !== 0)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['maxToolCalls'],
+        message: 'Only discovery may use one to three governed Web Search calls',
+      });
+    }
+  });
+export type RniTaskEnvelope = z.infer<typeof rniTaskEnvelope>;
+
+const rniTaskEnvelopeSet = z
+  .array(rniTaskEnvelope)
+  .length(rniModelTask.options.length)
+  .refine(
+    (envelopes) =>
+      new Set(envelopes.map(({ task }) => task)).size === rniModelTask.options.length &&
+      rniModelTask.options.every((task) => envelopes.some((envelope) => envelope.task === task)),
+    'Task envelope settings require every governed RNI task exactly once',
+  );
+
+export const rniTaskEnvelopeSetting = z
+  .object({
+    configVersion: z.string().min(1),
+    status: z.enum(['active', 'staged']),
+    effectiveAt: rniIsoTimestamp,
+    envelopes: rniTaskEnvelopeSet,
+  })
+  .strict();
+export type RniTaskEnvelopeSetting = z.infer<typeof rniTaskEnvelopeSetting>;
+
+export const rniTaskEnvelopeUpdateRequest = z
+  .object({
+    idempotencyKey: z.string().min(1),
+    reason: z.string().trim().min(1).max(500),
+    envelopes: rniTaskEnvelopeSet,
+  })
+  .strict();
+export type RniTaskEnvelopeUpdateRequest = z.infer<typeof rniTaskEnvelopeUpdateRequest>;
+
+export const rniTaskEnvelopeUpdateResult = z
+  .object({
+    disposition: z.enum(['accepted', 'duplicate']),
+    idempotencyKey: z.string().min(1),
+    previousConfigVersion: z.string().min(1),
+    setting: rniTaskEnvelopeSetting.extend({ status: z.literal('staged') }),
+  })
+  .strict()
+  .refine((result) => result.previousConfigVersion !== result.setting.configVersion, {
+    message: 'Envelope changes must stage a successor configuration',
+    path: ['setting', 'configVersion'],
+  });
+export type RniTaskEnvelopeUpdateResult = z.infer<typeof rniTaskEnvelopeUpdateResult>;
+
 export const rniManualRefreshScope = z.discriminatedUnion('kind', [
   z
     .object({
@@ -928,4 +1017,12 @@ export interface RniAiRouteSettingsService {
   updateFutureAiRoute(
     request: RniAiRouteSettingUpdateRequest,
   ): Promise<RniAiRouteSettingUpdateResult>;
+}
+
+/** Admin-only, audited per-task limits; writes stage successors and never rewrite active runs. */
+export interface RniTaskEnvelopeSettingsService {
+  getCurrentTaskEnvelopes(): Promise<RniTaskEnvelopeSetting>;
+  stageFutureTaskEnvelopes(
+    request: RniTaskEnvelopeUpdateRequest,
+  ): Promise<RniTaskEnvelopeUpdateResult>;
 }
