@@ -116,6 +116,27 @@ corpus, live-model verification) are named with triggers, not dropped. **F21 is 
 lane allocation** (it depends on F12 and F20, both merged) — not allocated this session. See
 "Wave 3 lanes" below and `MEMORY.md` D-43.
 
+**2026-09-05 — F16a merged; the dispatcher exists.** Until today `/api/cron/dispatch` was F01's
+`{ state: 'fixture' }` stub, so the QStash schedule confirmed under MT-04 had been firing every
+five minutes into a 200-with-no-effect, and **zero `job_definition` rows existed** for it to claim
+in any case. Both are now closed (`progress/collect.md`, `MEMORY.md` **D-44**). The same PR
+carried F10/F11/F12 — ~14,600 lines that had been built, reviewed and CI-fixed on a branch no PR
+was ever opened for, so `main` had never received them — plus **the Substack collector**, the
+first channel that can actually collect (no key, no approval), and the pinned scorer's Render
+deploy.
+
+**What still stands between this and a collecting system**, both recorded in `MEMORY.md` **B-31**:
+
+1. **F20's scoring queue has no durable store.** `ScoringQueuePort` is an interface with
+   consumers and test fakes — no implementation, no table in any migration. `substack.collect` is
+   therefore deliberately unregistered: registering it against an in-memory `Map` would report
+   evidence as enqueued and then silently never score it. **Owner decision pending** — start
+   D-16's clock now with scoring deferred (the collector's write-before-enqueue ordering makes an
+   unscored backlog recoverable by design), or build the store first.
+2. **The D-15 price trigger structurally abstains**, for a reason unrelated to D-32's zero X
+   ceiling: `priceRegimeInputs` declares `close_unadjusted` where `computePriceRegime` accepts
+   only `adjusted_close`. F04 supplying adjusted-close data is what starts it firing.
+
 **Next work, in order:**
 
 1. **`DEPLOY.md` MT-13** — file the Reddit application. **Confirmed unfiled on 2026-09-03.** Free,

@@ -1166,6 +1166,38 @@ gate-breaking cases included), typecheck, lint and `next build` all green on `ma
 
 ---
 
+### D-44 — F16a merged: the dispatcher exists, and five Wave 1 constants are declared assumptions
+
+**2026-09-05.** `/api/cron/dispatch` was F01's `{ state: 'fixture' }` stub until today, which
+means the QStash schedule confirmed under MT-04 had been firing every five minutes into a
+200-with-no-effect. F16a replaces it: signature verification before any work, Redis lock,
+`(job_id, due_at)` idempotency, one `JobService` path shared by scheduled/manual/triggered runs,
+the D-15 trigger path, and the daily staleness heartbeat. `job_definition` rows are seeded for
+the first time — there were **zero** before, so even a correct dispatcher would have claimed an
+empty set.
+
+**Five constants are declared assumptions, not derived from any spec, and are recorded here so a
+successor does not mistake them for researched values:**
+
+| Constant | Value | Basis |
+|---|---|---|
+| `PRICE_SPIKE_R5_THRESHOLD` | `0.05` (\|r_5\| ≥ 5%) | **No spec document names it.** A Wave 1 placeholder for the owner to confirm or replace, the same discipline F20's label-mapping flag was given |
+| Dispatch lock TTL | 600s | Double the 5-minute cadence. Policy, not derived |
+| Heartbeat staleness threshold | 30 min | Six missed ticks. Policy, not derived |
+| Triggered-window idempotency key | `(job_id, due_at, security_id)` | Extends the base grammar; one market-data poll can open windows for several securities in one tick |
+| `/api/cron/heartbeat` auth | `INTERNAL_DISPATCH_SECRET` when set, open otherwise | The spec names QStash-signature auth for `/api/cron/dispatch` only. A judgment call, flagged for review |
+
+**Job definitions are seeded by a script, never a migration.** Every one of the fourteen
+migrations in this repository is pure DDL, verified zero inserts. `scripts/seed-job-definitions.ts`
+follows `seed-universe.ts`'s precedent instead. This confirms the convention for future job rows.
+
+**The trigger is built but structurally cannot fire yet, for a reason unrelated to D-32's zero X
+ceiling.** `services/dashboard/inputs.ts#priceRegimeInputs` declares
+`quote_kind: 'close_unadjusted'`, and `computePriceRegime` accepts only `adjusted_close`
+(`adapters/market.ts#DailyBar` carries no `adjClose` — an already-open F04/F07 contract item). So
+every real invocation abstains today. The dispatch machinery is complete and tested; it begins
+firing when F04 supplies adjusted-close data, with no change to F16a.
+
 ## 2. Rulings made during review
 
 Each closes a finding in `00-ADVERSARIAL-REVIEW.md`. Rationale is there; recorded here so a
@@ -1201,6 +1233,53 @@ successor does not silently reverse one.
 Same standing as §2 — recorded so a successor does not silently reverse one. These were decided
 while implementing, which is why they are separated: §2's rulings close a review finding, these
 close a question the specification did not anticipate. **Newest first.**
+
+### B-31 — Three deployment defects the F16a build surfaced, and one gap it did not cause
+
+**2026-09-05.**
+
+**1. `APP_BASE_URL` would have 401'd every scheduled dispatch, silently and forever.**
+`/api/cron/dispatch` builds its expected URL as `${env.APP_BASE_URL}/api/cron/dispatch` and
+compares it against the `sub` claim QStash signs. The variable carries a default
+(`http://localhost:3000`) and was **confirmed unset in this project's Vercel environment**, so
+every real delivery would have mismatched while the deployment looked perfectly healthy. It
+cannot be added to `REQUIRED_IN_LIVE_MODE` — a default means it is never `undefined` and that
+check would never fire — so it has its own live-mode refinement rejecting the development
+default. Worth failing at boot rather than leaving to the heartbeat: the heartbeat does catch an
+up-but-dispatching-nothing dispatcher, but under D-16 every tick between deploy and detection is
+corpus that cannot be recovered.
+
+**2. The `tests/e2e/routes.ts` fixture-state seam claimed a third feature.** F16a replaced
+`/api/cron/dispatch` with a real handler, but the route stayed in the generic "every route
+renders a fixture state" loop. This is the identical failure F11's research routes hit
+(`4a9c735`) and F02/F07/F08/F09 each had to be walked through before that: `tests/e2e/` is
+SURFACE-owned, so a COLLECT or SPINE lane that graduates a route **cannot** update the list, and
+the route keeps being asserted as a fixture long after it stopped being one. Three occurrences is
+a pattern, not a coincidence — the list should eventually derive from the routes themselves
+rather than be maintained by hand, and until it does, every route graduation needs an explicit
+cross-lane handoff.
+
+**3. The scorer's `/health` reported item kinds as scorers.** `create_app`'s `models` argument is
+keyed by item kind (`/score` looks it up by kind), but `/health` returned `sorted(keys)` under the
+label "scorers" — so the first production deploy answered with five item kinds where there have
+only ever been two scorers. In the same three lines, the argument was optional with a default
+keyed by `scorer_id`, which `/score` would then have looked up by kind: a `KeyError` on every
+scoring request for any caller taking the default. Unexercised, because `main.py` and all four
+test constructions pass the argument. The argument is now required, closing the trap structurally
+rather than correcting the default's value. The old health test asserted only `status == "ok"`,
+which is why it shipped.
+
+**4. Not caused by F16a, found while integrating it: F20's scoring queue has no durable store.**
+`ScoringQueuePort` is an interface with consumers (`enqueueForScoring`, `scoring-worker.ts`,
+`rescore.ts`) and test fakes, but **no implementation anywhere in `src/`, and no queue table in
+any migration**. `progress/collect.md` records F20's "queue-and-persistence half" as merged; what
+merged was the lease/drain/attempt-budget *logic* against a port, proven against fakes. This is
+why `substack.collect` is deliberately left unregistered in `services/jobs/handlers/index.ts`:
+registering it against an in-memory `Map` would mean collected evidence is reported as enqueued
+and then silently never scored. The collector's own design anticipates the gap — bodies are
+written before any enqueue precisely so an unscored backlog stays recoverable by a later sweep —
+so this is a real choice between starting D-16's clock now with scoring deferred, and building the
+store first. **Owner decision pending.**
 
 ### B-30 — Production had never deployed (CVE gate on `main`'s Next.js), and three lane files had drifted five merged PRs behind the tree
 
