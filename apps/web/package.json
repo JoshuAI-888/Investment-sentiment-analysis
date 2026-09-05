@@ -16,6 +16,7 @@
     "test:eval": "vitest run tests/eval",
     "test:e2e": "playwright test",
     "check:calc-coverage": "tsx scripts/check-calc-coverage.ts",
+    "check:live-readiness": "tsx scripts/check-live-readiness.ts",
     "check:bundle": "tsx scripts/check-bundle.ts",
     "check:copy": "tsx scripts/check-copy.ts",
     "migrate": "tsx scripts/migrate.ts",
