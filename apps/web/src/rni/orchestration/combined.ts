@@ -198,11 +198,14 @@ export class RniCombinedExecutionService {
     const lease = leaseSchema.parse(input);
     await this.deps.store.transact(this.deps.partition, async (tx) => {
       const record = await this.read(tx, lease.delivery);
-      this.fence(record, lease);
+      const originalFence = this.fence(record, lease);
       record.combined.lease!.expiresAt = new Date(
         Math.min(this.now() + record.plan.leaseMs, Date.parse(record.deadline)),
       ).toISOString();
       await tx.putExecution(record);
+      // A renewal cannot use its uncommitted extension to outlive the original authority.
+      if (this.now() >= Date.parse(originalFence.expiresAt))
+        throw new RniOrchestrationError('STALE_EXECUTION');
       this.fence(record, lease);
     });
   }

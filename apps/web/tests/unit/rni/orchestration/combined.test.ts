@@ -202,6 +202,16 @@ describe('D-RNI-27 combined publication lifecycle', () => {
     },
   );
 
+  it('rolls back a heartbeat write that reaches the original lease expiry before the extension commits', async () => {
+    const h = await ready(),
+      lease = await acquired(h);
+    h.advance(5000);
+    const before = structuredClone(h.store.data);
+    h.store.afterPutExecution = () => h.advance(5000);
+    await expect(h.combinedWorker.heartbeat(lease)).rejects.toThrow('STALE_EXECUTION');
+    expect(h.store.data).toEqual(before);
+  });
+
   it('rolls back a publication and receipt if the audit fails', async () => {
     const h = await ready(),
       lease = await acquired(h);
