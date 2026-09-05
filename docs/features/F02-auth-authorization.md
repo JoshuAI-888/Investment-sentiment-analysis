@@ -22,6 +22,31 @@
 > how `mustChangePassword` is kept unreachable by any client that would benefit from forging it,
 > is in `../MEMORY.md` D-38.
 
+> **Amended by D-39 — self-service sign-up opened to any address; a real member tier.** The
+> owner asked directly to let anyone sign up, not only `ADMIN_EMAIL_ALLOWLIST` addresses. **This
+> reopens D-11's population question deliberately** — there is no longer "one account" — but
+> reuses structure that already existed rather than building a new tier concept:
+> `requireUser()`-gated ("member+") surfaces (`/dashboard`, ticker/social pages, `/api/dashboard`,
+> `/api/search`) were already distinct from `requireAdmin()`-gated `/admin/*` routes (F07 §2/§4.6
+> called this split out explicitly before D-39 existed). Removing `databaseHooks.user.create.
+> before`'s allowlist check (`instance.ts`) is the only change that matters structurally: anyone
+> can now become a `requireUser()`-level member, and `requireAdmin()`'s live-allowlist check
+> (unchanged) is what still keeps `/admin/*` to the addresses in `ADMIN_EMAIL_ALLOWLIST`.
+> **Not reopened:** the `welcome1` seeded path (`seed-account.ts`) — it keeps its own,
+> independent allowlist check and stays operator-onboarding-only, since a shared bootstrap
+> password must never be something an open member signup can trigger. `decideAndSend`
+> (`send-decision.ts`) also drops its allowlist check — the send cap (D-28, a **global** window,
+> not per-address) is what now bounds mail volume across an open population, matching what it
+> already bounded before. §4.1, §4.2, §5, §6 below need re-reading with this in mind (their text
+> is not yet rewritten for D-39 the way D-37/D-38 rewrote it for their own changes) —
+> in particular §4.2's "allowlist before account creation" row and §6's DoD item "a
+> non-allowlisted address cannot become a user in `live` mode" are **superseded, not satisfied**.
+> **Also reopened, not addressed by this decision alone:** `../DEPLOY.md` MT-10 (the privacy/
+> legal read) — its own text already said the obligation "would return the moment anyone else
+> gets an account," and that moment is now. This still needs a `../MEMORY.md` entry recording
+> D-39 formally; write access to that file is reserved to whoever plays coordinator for this
+> repo, so it is flagged here rather than added by the change that made it necessary.
+
 **Wave:** 1 · **Lane:** **SURFACE** — but built serially in Wave 1 by the skeleton agent (`../03-ROADMAP.md` §3) · **Estimate:** 14–18 h · **Depends on:** F01
 **Blocking manual task:** `../DEPLOY.md` **MT-00** (admin email verification) — this feature
 must not merge until MT-00 is answered.

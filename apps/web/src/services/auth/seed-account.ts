@@ -9,10 +9,15 @@
  * skip *to* — knowing the shared temporary password already **is** the out-of-band proof the
  * self-service path gets from a mailed link — so this writes the user and its credential account
  * directly through `context.internalAdapter`, the same primitive `signUpEmail`'s own route uses
- * internally. This still runs through `databaseHooks.user.create.before` (`instance.ts`)
- * exactly like every other path, since `internalAdapter.createUser` calls `createWithHooks`
- * regardless of caller — so a non-allowlisted address is refused here the same way it would be
- * anywhere else.
+ * internally.
+ *
+ * **D-39: this module is now the only allowlist gate on account creation.** Before D-39,
+ * `instance.ts`'s `databaseHooks.user.create.before` independently refused a non-allowlisted
+ * address too, so the `isAccountCreationAllowed` check below was defense in depth. D-39 opened
+ * self-service sign-up to any address, which removed that hook entirely — the explicit check
+ * below (before `internalAdapter.createUser` is ever called) is now the sole reason a stranger's
+ * address cannot claim the `welcome1` bootstrap password for an address that was never meant to
+ * have standing operator access.
  *
  * `createLocalAccountIssuer` is `better-auth/db`'s own exported helper for the credential
  * account's `issuer` field, used so the linked account matches exactly what `signUpEmail` itself
