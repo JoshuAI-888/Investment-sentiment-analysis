@@ -1061,6 +1061,26 @@ stance or score while the persisted E05/E06 lineage is unchanged therefore fails
 frozen contract field and no second aggregate: E06 dimension results remain independent, E07 keeps
 its existing overall fact, and historical artifacts remain immutable.
 
+### D-RNI-24 — Model catalogue evidence is preflight; exact pricing units remain ledger authority
+
+**Coordinator decision for I10C2, 2026-09-05.** RNI capability refresh reads the public Vercel AI
+Gateway model catalogue for the exact configured Gateway slug, OpenAI ownership, Responses v4,
+reasoning effort, Web Search and price metadata, and separately confirms both approved canonical
+model IDs through authenticated OpenAI Direct model lookup. The raw response hashes, observation
+window and Direct/Gateway identities are stored append-only. Catalogue presence is capability
+preflight, not live quality or parity proof: I11 must still execute the governed structured
+Responses/Web Search probes and the human gate must pass before a staged successor is activated.
+
+The Gateway catalogue's `input` and `output` prices are USD per token. Its `web_search` value is
+displayed on the corresponding provider page as USD per 1,000 searches, so ingestion divides that
+field by 1,000 before storing this repository's USD-per-search unit. The price-book version records
+the catalogue URL and raw SHA-256 response hash, and all RNI price rows are append-only. Initial
+staging may use a catalogue base token price only while every route's maximum input stays below the
+catalogue's first tier boundary; crossing a tier requires an explicit tier-aware successor rather
+than silently applying the cheaper price. Discovery reservation includes all three tool calls
+permitted by the governed prompt. Missing, duplicated or conflicting model, capability, ownership,
+price or unit evidence fails closed.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

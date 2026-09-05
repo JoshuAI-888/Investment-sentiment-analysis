@@ -13,8 +13,10 @@ import {
   type UniverseVersion,
   UNIVERSE_MAX_SYMBOLS,
 } from '../contracts/config';
+import type { RniModelCapability } from '../rni/config';
 import { camelizeRow, insertClause } from './rows';
 import { getPool, withTransaction, type Queryable } from './client';
+import type { Pool } from 'pg';
 
 const CONFIG_COLUMNS =
   'id, environment, status, parent_version, created_by, change_reason, created_at, effective_at, activated_at, approved_by, checksum';
@@ -167,6 +169,159 @@ export async function findCurrentRniPriceBookVersion(
     throw new Error('No complete currently effective RNI OpenAI price book is available');
   }
   return version;
+}
+
+export type RniPriceBookEvidence = {
+  readonly priceBookVersion: string;
+  readonly effectiveFrom: string;
+  readonly sourceReference: string;
+  readonly terraInputTokenUsd: string;
+  readonly terraOutputTokenUsd: string;
+  readonly solInputTokenUsd: string;
+  readonly solOutputTokenUsd: string;
+  readonly webSearchUsd: string;
+};
+
+/** Persist catalogue facts append-only; exact replay is a no-op and crossed IDs fail closed. */
+export async function recordRniModelCatalogueEvidence(
+  input: {
+    readonly capabilities: readonly RniModelCapability[];
+    readonly priceBook: RniPriceBookEvidence;
+  },
+  poolOverride?: Pool,
+): Promise<{ readonly capabilityCount: number; readonly priceComponentCount: number }> {
+  const capabilityKeys = new Set(
+    input.capabilities.map(({ route, providerModelId }) => `${route}:${providerModelId}`),
+  );
+  const expectedKeys = [
+    'openai_direct:gpt-5.6-terra',
+    'openai_direct:gpt-5.6-sol',
+    'vercel_ai_gateway:gpt-5.6-terra',
+    'vercel_ai_gateway:gpt-5.6-sol',
+  ];
+  if (
+    input.capabilities.length !== 4 ||
+    new Set(input.capabilities.map(({ capabilitySnapshotId }) => capabilitySnapshotId)).size !== 4 ||
+    expectedKeys.some((key) => !capabilityKeys.has(key))
+  ) {
+    throw new Error('RNI catalogue evidence requires four distinct Direct/Gateway model snapshots');
+  }
+  return withTransaction(async (tx) => {
+    for (const capability of input.capabilities) {
+      await tx.query(
+        `insert into rni_model_capability_snapshot (
+           id, ai_route, configured_model_id, provider, canonical_provider_model_id,
+           model_revision, response_hash, observed_at, expires_at, available,
+           supports_responses, supports_structured_outputs, supports_web_search, reasoning_efforts
+         ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+         on conflict (id) do nothing`,
+        [
+          capability.capabilitySnapshotId,
+          capability.route,
+          capability.configuredModelId,
+          capability.provider,
+          capability.providerModelId,
+          capability.modelRevision,
+          capability.capabilityResponseHash,
+          capability.observedAt,
+          capability.expiresAt,
+          capability.available,
+          capability.supportsResponses,
+          capability.supportsStructuredOutputs,
+          capability.supportsWebSearch,
+          JSON.stringify(capability.reasoningEfforts),
+        ],
+      );
+      const { rows } = await tx.query<{
+        ai_route: string;
+        configured_model_id: string;
+        provider: string;
+        canonical_provider_model_id: string;
+        model_revision: string;
+        response_hash: string;
+        observed_at: Date;
+        expires_at: Date;
+        available: boolean;
+        supports_responses: boolean;
+        supports_structured_outputs: boolean;
+        supports_web_search: boolean;
+        reasoning_efforts: unknown;
+      }>(
+        `select ai_route, configured_model_id, provider, canonical_provider_model_id,
+                model_revision, response_hash, observed_at, expires_at, available,
+                supports_responses, supports_structured_outputs, supports_web_search,
+                reasoning_efforts
+           from rni_model_capability_snapshot where id = $1`,
+        [capability.capabilitySnapshotId],
+      );
+      const row = rows[0];
+      if (
+        row === undefined ||
+        row.ai_route !== capability.route ||
+        row.configured_model_id !== capability.configuredModelId ||
+        row.provider !== capability.provider ||
+        row.canonical_provider_model_id !== capability.providerModelId ||
+        row.model_revision !== capability.modelRevision ||
+        row.response_hash !== capability.capabilityResponseHash ||
+        row.observed_at.toISOString() !== new Date(capability.observedAt).toISOString() ||
+        row.expires_at.toISOString() !== new Date(capability.expiresAt).toISOString() ||
+        row.available !== capability.available ||
+        row.supports_responses !== capability.supportsResponses ||
+        row.supports_structured_outputs !== capability.supportsStructuredOutputs ||
+        row.supports_web_search !== capability.supportsWebSearch ||
+        JSON.stringify(row.reasoning_efforts) !== JSON.stringify(capability.reasoningEfforts)
+      ) {
+        throw new Error(`RNI capability replay crossed immutable snapshot ${capability.capabilitySnapshotId}`);
+      }
+    }
+
+    const prices = [
+      ['openai_responses', 'gpt-5.6-terra', 'input_token', input.priceBook.terraInputTokenUsd],
+      ['openai_responses', 'gpt-5.6-terra', 'output_token', input.priceBook.terraOutputTokenUsd],
+      ['openai_responses', 'gpt-5.6-sol', 'input_token', input.priceBook.solInputTokenUsd],
+      ['openai_responses', 'gpt-5.6-sol', 'output_token', input.priceBook.solOutputTokenUsd],
+      ['openai_web_search', 'web_search', 'search', input.priceBook.webSearchUsd],
+    ] as const;
+    for (const [service, operationOrModel, unitType, unitPrice] of prices) {
+      await tx.query(
+        `insert into unit_price_book (
+           price_book_version, provider, service, operation_or_model, unit_type, unit_price,
+           currency, effective_from, source_reference
+         ) values ($1, 'openai', $2, $3, $4, $5, 'USD', $6, $7)
+         on conflict (price_book_version, provider, service, operation_or_model, unit_type)
+         do nothing`,
+        [
+          input.priceBook.priceBookVersion,
+          service,
+          operationOrModel,
+          unitType,
+          unitPrice,
+          input.priceBook.effectiveFrom,
+          input.priceBook.sourceReference,
+        ],
+      );
+      const { rows } = await tx.query<{
+        unit_price: string;
+        effective_from: Date;
+        source_reference: string;
+      }>(
+        `select unit_price, effective_from, source_reference from unit_price_book
+          where price_book_version = $1 and provider = 'openai' and service = $2
+            and operation_or_model = $3 and unit_type = $4`,
+        [input.priceBook.priceBookVersion, service, operationOrModel, unitType],
+      );
+      const row = rows[0];
+      if (
+        row === undefined ||
+        row.unit_price !== unitPrice ||
+        row.effective_from.toISOString() !== new Date(input.priceBook.effectiveFrom).toISOString() ||
+        row.source_reference !== input.priceBook.sourceReference
+      ) {
+        throw new Error(`RNI price-book replay crossed immutable ${operationOrModel}/${unitType}`);
+      }
+    }
+    return { capabilityCount: input.capabilities.length, priceComponentCount: prices.length };
+  }, poolOverride);
 }
 
 export type RniAiReservation = {

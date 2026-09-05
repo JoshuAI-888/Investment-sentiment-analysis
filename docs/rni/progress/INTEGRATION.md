@@ -39,6 +39,7 @@
 | I10C | Compose live Direct/Gateway transports and governed recorder | `IN_PROGRESS` | I10C1 transport/recorder passed; live capability discovery and successor staging remain I10C2; no live claim until I11 |
 | I10C1 | Compose provider-pinned transports and governed recorder | `PASSED` | Direct and OpenAI-only Gateway Responses adapters, immutable run-config loading, pre-dispatch reservation and usage-based settlement; PostgreSQL 153/153 serial RNI sweep |
 | I10C2 | Discover capability/price evidence and stage successor config | `IN_PROGRESS` | Append-only Direct/Gateway evidence and reviewable staging only; activation remains human-owned and live proof remains I11 |
+| I10C2A | Discover and persist capability/price evidence | `PASSED` | Direct identity lookup plus Gateway catalogue parsing; four append-only capabilities, five hashed price components and three-search reservation; focused 42/42 plus PostgreSQL 14/14 |
 | I11 | Run live Reddit, X and FMP gates | `NOT_STARTED` | Provider audit IDs and screenshots/log links |
 | I12 | Full regression, preview, production approval and smoke | `NOT_STARTED` | `joshuai` approval + production evidence |
 
@@ -403,6 +404,7 @@
 | `CURRENT` | Start I10C live transport/configuration composition | Add server-only Direct and provider-pinned Gateway adapters, capability discovery/config loading and an I10B-backed invocation recorder; credentials are environment-only and live evidence remains I11 |
 | `CURRENT` | Complete I10C1 governed transport and recorder composition | Direct and OpenAI-only Gateway adapters validate exact provider/model routing; immutable run routes survive successor activation; reservation precedes dispatch and settlement uses provider token/tool telemetry rather than provider-reported cost |
 | `CURRENT` | Start I10C2 capability and successor-staging composition | Discover exact Direct/Gateway model identities and current price evidence into append-only records, then create an immutable staged successor for review without activating it or claiming live parity |
+| `CURRENT` | Complete I10C2A catalogue and price evidence | D-RNI-24; Direct lookup plus Gateway catalogue yield four append-only capability snapshots and five exact hashed price components; discovery reserves all three governed Web Search calls; focused 42/42 and PostgreSQL 14/14 |
 
 ## I10A handoff
 
@@ -470,6 +472,28 @@
   PostgreSQL suites share schema state and therefore require `--no-file-parallelism`; the initial
   parallel sweep collided during resets, while the serialized complete sweep passed 153/153.
   No credential value was read or stored and no frozen contract changed.
+
+## I10C2A handoff
+
+- **Status:** `PASSED`; I10C2 remains `IN_PROGRESS` for input-bound enforcement and successor
+  staging. Activation and live Responses parity remain I11/human gates.
+- **Files changed:** `apps/web/src/services/jobs/{index,rni-model-catalogue}.ts`,
+  `apps/web/src/repositories/versions.ts`, migration `0024`, focused catalogue and PostgreSQL
+  route/budget tests, D-RNI-24, deployment runbook and both coordinator trackers.
+- **Tests run:** focused environment/catalogue/runtime 42/42; focused PostgreSQL route, catalogue
+  and budget 14/14; TypeScript, scoped ESLint and diff check.
+- **Result:** refresh confirms each approved canonical model through authenticated Direct model
+  lookup and derives the corresponding Gateway dispatch slug, ownership, Responses v4, low
+  reasoning and Web Search metadata from the public catalogue. Four observed capability snapshots
+  and five price components are recorded append-only with raw response hashes. Token prices retain
+  their documented per-token units; Web Search is normalized from USD per 1,000 searches to USD
+  per search. Reservation now prices all three discovery tool calls and settlement rejects a
+  fourth. Repeated exact evidence is idempotent; a crossed capability or price identity fails.
+- **Risks/handoff:** catalogue evidence is preflight, not live parity. I11 must prove actual
+  structured Responses and Web Search behavior before activation. Initial route staging needs an
+  owner-approved per-call input-token/byte envelope and route hard cap; the global 2/25/50/300/500
+  policy is already fixed. Base prices may be used only below the recorded first tier boundary.
+  No credentials were recorded and no frozen contract changed.
 
 ## I07A handoff
 

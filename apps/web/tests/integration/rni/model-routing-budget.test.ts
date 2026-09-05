@@ -6,6 +6,7 @@ import { databaseUrl, makePool, resetSchema } from '../helpers/db';
 import {
   findCurrentRniPriceBookVersion,
   findRniModelRunRoutes,
+  recordRniModelCatalogueEvidence,
   reserveRniAiInvocation,
   settleRniAiInvocation,
 } from '../../../src/repositories/versions';
@@ -256,6 +257,65 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
     expect(actualCost).toBe('0.002');
   });
 
+  it('records four capability snapshots and five price components append-only', async () => {
+    const observedAt = '2026-09-05T00:00:00.000Z';
+    const expiresAt = '2026-09-06T00:00:00.000Z';
+    const capabilities = ([
+      ['openai_direct', 'gpt-5.6-terra', 'gpt-5.6-terra', HASH_A],
+      ['openai_direct', 'gpt-5.6-sol', 'gpt-5.6-sol', HASH_B],
+      ['vercel_ai_gateway', 'openai/gpt-5.6-terra', 'gpt-5.6-terra', HASH_A],
+      ['vercel_ai_gateway', 'openai/gpt-5.6-sol', 'gpt-5.6-sol', HASH_B],
+    ] as const).map(([route, configuredModelId, providerModelId, responseHash]) => ({
+      route,
+      configuredModelId,
+      provider: 'openai' as const,
+      providerModelId,
+      modelRevision: providerModelId,
+      capabilitySnapshotId: `catalog-${route}-${providerModelId}`,
+      capabilityResponseHash: responseHash,
+      observedAt,
+      expiresAt,
+      available: true,
+      supportsResponses: true,
+      supportsStructuredOutputs: true,
+      supportsWebSearch: true,
+      reasoningEfforts: ['low' as const],
+    }));
+    const priceBook = {
+      priceBookVersion: 'rni-catalogue-v1',
+      effectiveFrom: observedAt,
+      sourceReference: `https://ai-gateway.vercel.sh/v1/models#sha256=${HASH_A}`,
+      terraInputTokenUsd: '0.000002',
+      terraOutputTokenUsd: '0.000012',
+      solInputTokenUsd: '0.000002',
+      solOutputTokenUsd: '0.000010',
+      webSearchUsd: '0.01',
+    };
+
+    await expect(recordRniModelCatalogueEvidence({ capabilities, priceBook }, pool)).resolves.toEqual({
+      capabilityCount: 4,
+      priceComponentCount: 5,
+    });
+    await expect(recordRniModelCatalogueEvidence({ capabilities, priceBook }, pool)).resolves.toEqual({
+      capabilityCount: 4,
+      priceComponentCount: 5,
+    });
+    await expect(
+      pool.query(`update unit_price_book set unit_price = 0 where price_book_version = 'rni-catalogue-v1'`),
+    ).rejects.toThrow('append-only');
+    await expect(
+      recordRniModelCatalogueEvidence(
+        {
+          capabilities: capabilities.map((row, index) =>
+            index === 0 ? { ...row, modelRevision: 'crossed-revision' } : row,
+          ),
+          priceBook,
+        },
+        pool,
+      ),
+    ).rejects.toThrow('crossed immutable snapshot');
+  });
+
   it('keeps an in-flight run on its immutable route after a successor supersedes the config', async () => {
     const run = await createRun(await seedGovernedConfig(), 'manual_ticker');
     await pool.query(
@@ -457,10 +517,22 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
     expect(costs.rows[0]!.count).toBe('0');
   });
 
-  it('reserves the discovery model envelope plus one governed Web Search call', async () => {
+  it('reserves the discovery model envelope plus all three governed Web Search calls', async () => {
     const run = await createRun(await seedGovernedConfig(), 'manual_ticker');
-    const result = await reserve(run, randomUUID(), 'rni_discovery');
-    expect(result).toMatchObject({ decision: 'reserved', estimated_cost_usd: '1.001' });
+    const invocationId = randomUUID();
+    const result = await reserve(run, invocationId, 'rni_discovery');
+    expect(result).toMatchObject({ decision: 'reserved', estimated_cost_usd: '1.003' });
+    await expect(
+      pool.query(
+        `select rni_settle_ai_invocation($1, $2, 'resp-too-many', 'succeeded', 0, 0, 0, 4)`,
+        [invocationId, HASH_A],
+      ),
+    ).rejects.toThrow('exceeds the reserved invocation envelope');
+    const settled = await pool.query<{ actual: string }>(
+      `select rni_settle_ai_invocation($1, $2, 'resp-three-searches', 'succeeded', 0, 0, 0, 3)::text as actual`,
+      [invocationId, HASH_A],
+    );
+    expect(settled.rows[0]!.actual).toBe('0.003');
   });
 
   it('will not detach verifier or challenger spend from its prepared synthesis invocation', async () => {

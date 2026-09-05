@@ -1594,6 +1594,21 @@ create trigger rni_model_capability_snapshot_append_only
   before update or delete on rni_model_capability_snapshot
   for each row execute function reject_mutation();
 
+create or replace function rni_reject_price_book_mutation() returns trigger
+language plpgsql as $$
+begin
+  if old.price_book_version like 'rni-%' then
+    raise exception 'RNI price-book evidence is append-only'
+      using errcode = 'restrict_violation';
+  end if;
+  return case when tg_op = 'DELETE' then old else new end;
+end;
+$$;
+
+create trigger unit_price_book_rni_append_only
+  before update or delete on unit_price_book
+  for each row execute function rni_reject_price_book_mutation();
+
 create table rni_ai_config (
   config_version             bigint      primary key references config_version (id),
   ai_route                   text        not null,
@@ -2131,7 +2146,8 @@ begin
   end if;
 
   estimate := route_row.max_input_tokens * input_price
-    + route_row.max_output_tokens * output_price + search_price;
+    + route_row.max_output_tokens * output_price
+    + case when p_task = 'rni_discovery' then 3 * search_price else 0 end;
   month_start := date_trunc('month', now_at at time zone 'UTC') at time zone 'UTC';
   run_limit := case when scope_row.scope_kind = 'manual_ticker'
     then config_row.manual_run_hard_usd else config_row.full_universe_hard_usd end;
@@ -2263,7 +2279,7 @@ begin
      or p_input_tokens > route_row.max_input_tokens
      or p_output_tokens > route_row.max_output_tokens
      or p_web_search_calls < 0
-     or (invocation_row.task = 'rni_discovery' and p_web_search_calls > 1)
+     or (invocation_row.task = 'rni_discovery' and p_web_search_calls > 3)
      or (invocation_row.task <> 'rni_discovery' and p_web_search_calls <> 0) then
     raise exception 'RNI settlement usage exceeds the reserved invocation envelope'
       using errcode = 'check_violation';

@@ -111,6 +111,11 @@ Neon supports branching for isolated development/testing and pgvector for vector
 11. Seed or discover a complete effective RNI price book before dispatch. Missing model-token or
     Web Search prices fail closed; Gateway-reported cost is observability evidence, not ledger
     settlement authority.
+12. Retain the exact Gateway catalogue URL and response hash used for the price book. Catalogue
+    token prices are per token; its OpenAI `web_search` field is normalized from the provider
+    page's USD-per-1,000-search display to USD per search (D-RNI-24). Keep staged route input limits
+    below the recorded first pricing-tier boundary or create a tier-aware successor. Reserve all
+    three discovery searches allowed by the governed prompt.
 
 ## 6. Sources and discovery
 
