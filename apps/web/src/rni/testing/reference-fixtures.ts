@@ -1,10 +1,21 @@
 import type {
+  RniCitation,
   RniCombinedSummary,
   RniComparativeRelation,
   RniPlatformSlice,
+  RniRadarPage,
+  RniRun,
+  RniSecurityDetail,
   RniSecurityMention,
   RniSecurityObservation,
+  RniSourceCommitResult,
   RniSourceItem,
+  RniActiveUniverse,
+  RniActiveUniverseVersion,
+  RniAiRouteSetting,
+  RniAiRouteSettingUpdateResult,
+  RniStagedUniversePreview,
+  RniUniverseSearchResult,
 } from '../contracts';
 
 const hashA = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
@@ -26,6 +37,9 @@ export const rniFixtureIds = {
   summary: '00000000-0000-4000-8000-000000000013',
   redditCitation: '00000000-0000-4000-8000-000000000014',
   searchQuery: '00000000-0000-4000-8000-000000000015',
+  xCitation: '00000000-0000-4000-8000-000000000016',
+  msft: '00000000-0000-4000-8000-000000000017',
+  pltr: '00000000-0000-4000-8000-000000000018',
 } as const;
 
 export const comparativeSource: RniSourceItem = {
@@ -49,6 +63,28 @@ export const comparativeSource: RniSourceItem = {
   metadata: { fixture: true },
   rightsPolicyVersion: 'rni-source-policy-v1',
   createdAt: '2026-09-05T00:05:01.000Z',
+};
+
+export const comparativeCitation: RniCitation = {
+  id: rniFixtureIds.redditCitation,
+  sourceItemId: rniFixtureIds.source,
+  platform: 'reddit',
+  url: comparativeSource.originalUrl,
+  evidenceText: 'NVDA has execution momentum',
+};
+
+export const comparativeSourceCommit: RniSourceCommitResult = {
+  sourceItemId: rniFixtureIds.source,
+  sourceInserted: true,
+  retrievalInserted: true,
+  contentVersionInserted: true,
+};
+
+export const comparativeSourceDuplicateCommit: RniSourceCommitResult = {
+  sourceItemId: rniFixtureIds.source,
+  sourceInserted: false,
+  retrievalInserted: false,
+  contentVersionInserted: false,
 };
 
 export const comparativeMentions: readonly RniSecurityMention[] = [
@@ -189,4 +225,313 @@ export const partialCombinedSummary: RniCombinedSummary = {
     },
   ],
   createdAt: '2026-09-05T00:08:00.000Z',
+};
+
+export const referenceRun: RniRun = {
+  id: rniFixtureIds.run,
+  idempotencyKey: 'fixture-radar-run',
+  trigger: 'manual',
+  status: 'partial',
+  windowStart: '2026-09-04T00:00:00.000Z',
+  windowEnd: '2026-09-05T00:00:00.000Z',
+  comparisonStart: '2026-09-03T00:00:00.000Z',
+  comparisonEnd: '2026-09-04T00:00:00.000Z',
+  universeVersion: 'fixture-universe-v1',
+  configVersion: 'fixture-config-v1',
+  promptVersion: 'fixture-prompt-v1',
+  aiRoute: 'openai_direct',
+  requestedAt: '2026-09-05T00:00:00.000Z',
+  completedAt: '2026-09-05T00:08:00.000Z',
+};
+
+const referenceRniResolvedModels: RniAiRouteSetting['resolvedModels'] = [
+  {
+    task: 'rni_verification',
+    provider: 'openai',
+    modelId: 'fixture-rni-model',
+    modelRevision: 'fixture-rni-model-2026-09-05',
+    promptVersion: 'rni-verification-fixture-v1',
+  },
+  {
+    task: 'rni_challenger',
+    provider: 'openai',
+    modelId: 'fixture-rni-model',
+    modelRevision: 'fixture-rni-model-2026-09-05',
+    promptVersion: 'rni-challenger-fixture-v1',
+  },
+];
+
+export const referenceDirectAiRouteSetting: RniAiRouteSetting = {
+  configVersion: 'fixture-config-v1',
+  aiRoute: 'openai_direct',
+  resolvedModels: referenceRniResolvedModels,
+  options: [
+    { aiRoute: 'openai_direct', available: true, unavailableReason: null },
+    { aiRoute: 'vercel_ai_gateway', available: true, unavailableReason: null },
+  ],
+  budgets: {
+    manualRunHardUsd: '2',
+    fullUniverseHardUsd: '25',
+    rolling24hHardUsd: '50',
+    monthlyWarningUsd: '300',
+    monthlyHardUsd: '500',
+    currency: 'USD',
+  },
+  effectiveAt: '2026-09-05T00:00:00.000Z',
+};
+
+export const referenceGatewayAiRouteSetting: RniAiRouteSetting = {
+  ...referenceDirectAiRouteSetting,
+  configVersion: 'fixture-config-v2',
+  aiRoute: 'vercel_ai_gateway',
+  resolvedModels: referenceRniResolvedModels.map((model) => ({
+    ...model,
+    modelId: `openai/${model.modelId}`,
+  })),
+  effectiveAt: '2026-09-05T01:00:00.000Z',
+};
+
+export const referenceGatewayAiRouteUpdateResult: RniAiRouteSettingUpdateResult = {
+  disposition: 'accepted',
+  idempotencyKey: 'fixture-ai-route-gateway-1',
+  previousConfigVersion: referenceDirectAiRouteSetting.configVersion,
+  setting: referenceGatewayAiRouteSetting,
+};
+
+export const referenceRadarPage: RniRadarPage = {
+  run: referenceRun,
+  rows: [
+    {
+      security: {
+        id: rniFixtureIds.nvda,
+        ticker: 'NVDA',
+        companyName: 'NVIDIA Corporation',
+        exchange: 'NASDAQ',
+      },
+      reddit: {
+        platform: 'reddit',
+        status: 'complete',
+        stance: 'bullish',
+        summary: 'The observed Reddit sample is bullish on NVDA execution.',
+        eligibleSourceCount: 2,
+        coverageDisclosure: 'Observed Reddit sample discovered through OpenAI Web Search.',
+        confidence: '0.82',
+        lastSuccessfulRefreshAt: '2026-09-05T00:07:00.000Z',
+        dataThroughAt: '2026-09-05T00:00:00.000Z',
+        computedAt: '2026-09-05T00:07:00.000Z',
+        citationIds: [rniFixtureIds.redditCitation],
+      },
+      x: {
+        platform: 'x',
+        status: 'complete',
+        stance: 'bearish',
+        summary: 'The configured X sample is bearish on near-term valuation.',
+        eligibleSourceCount: 5,
+        coverageDisclosure: 'Configured X query sample; not platform-wide coverage.',
+        confidence: '0.74',
+        lastSuccessfulRefreshAt: '2026-09-05T00:06:00.000Z',
+        dataThroughAt: '2026-09-05T00:00:00.000Z',
+        computedAt: '2026-09-05T00:07:30.000Z',
+        citationIds: [rniFixtureIds.xCitation],
+      },
+      combined: {
+        state: 'divergent',
+        summary: 'Reddit and X disagree; neither source result is replaced or averaged away.',
+        citationIds: [rniFixtureIds.redditCitation, rniFixtureIds.xCitation],
+      },
+    },
+    {
+      security: {
+        id: rniFixtureIds.amd,
+        ticker: 'AMD',
+        companyName: 'Advanced Micro Devices, Inc.',
+        exchange: 'NASDAQ',
+      },
+      reddit: {
+        platform: 'reddit',
+        status: 'complete',
+        stance: 'bearish',
+        summary: 'The observed Reddit sample presents AMD as trailing NVDA.',
+        eligibleSourceCount: 1,
+        coverageDisclosure: 'Observed Reddit sample discovered through OpenAI Web Search.',
+        confidence: '0.68',
+        lastSuccessfulRefreshAt: '2026-09-05T00:07:00.000Z',
+        dataThroughAt: '2026-09-05T00:00:00.000Z',
+        computedAt: '2026-09-05T00:07:00.000Z',
+        citationIds: [rniFixtureIds.redditCitation],
+      },
+      x: {
+        platform: 'x',
+        status: 'unavailable',
+        stance: 'insufficient',
+        summary: 'X evidence is unavailable for this run.',
+        eligibleSourceCount: 0,
+        coverageDisclosure: 'Configured X sample unavailable; no fallback was used.',
+        confidence: null,
+        lastSuccessfulRefreshAt: null,
+        dataThroughAt: null,
+        computedAt: null,
+        citationIds: [],
+      },
+      combined: {
+        state: 'partial',
+        summary: 'Only Reddit has publishable evidence; no cross-source agreement is claimed.',
+        citationIds: [rniFixtureIds.redditCitation],
+      },
+    },
+  ],
+  nextCursor: null,
+};
+
+const referenceActiveUniverseVersion = {
+  id: '100',
+  status: 'active' as const,
+  parentVersion: '99',
+  securityCount: 503,
+  source: 'fmp_sp500_constituent' as const,
+  retrievedAt: '2026-09-04T23:30:00.000Z',
+  payloadSha256: hashA,
+  createdAt: '2026-09-04T23:31:00.000Z',
+};
+
+export const referenceActiveUniverse: RniActiveUniverse = {
+  version: referenceActiveUniverseVersion,
+  defaultSecurity: referenceRadarPage.rows[0]!.security,
+};
+
+export const referenceLegacyActiveUniverseVersion: RniActiveUniverseVersion = {
+  id: '98',
+  status: 'active',
+  parentVersion: null,
+  securityCount: 100,
+  source: 'legacy_seed',
+  retrievedAt: null,
+  payloadSha256: null,
+  createdAt: '2026-09-01T00:00:00.000Z',
+};
+
+export const referenceUniverseSearchResult: RniUniverseSearchResult = {
+  version: referenceActiveUniverseVersion,
+  query: 'micro',
+  members: [
+    {
+      id: rniFixtureIds.msft,
+      ticker: 'MSFT',
+      companyName: 'Microsoft Corporation',
+      exchange: 'NASDAQ',
+    },
+  ],
+  hasMore: false,
+};
+
+export const referenceStagedUniversePreview: RniStagedUniversePreview = {
+  activeVersion: referenceActiveUniverseVersion,
+  stagedVersion: {
+    id: '101',
+    status: 'staged',
+    parentVersion: referenceActiveUniverseVersion.id,
+    securityCount: 504,
+    source: 'fmp_sp500_constituent',
+    retrievedAt: '2026-09-05T00:30:00.000Z',
+    payloadSha256: hashB,
+    createdAt: '2026-09-05T00:31:00.000Z',
+  },
+  added: [
+    {
+      id: rniFixtureIds.pltr,
+      ticker: 'PLTR',
+      companyName: 'Palantir Technologies Inc.',
+      exchange: 'NASDAQ',
+    },
+  ],
+  removed: [],
+};
+
+export const referenceSecurityDetail: RniSecurityDetail = {
+  runId: rniFixtureIds.run,
+  security: referenceRadarPage.rows[0]!.security,
+  reddit: {
+    platform: 'reddit',
+    status: 'complete',
+    summary: 'The observed Reddit sample is bullish on NVDA execution.',
+    citationIds: [rniFixtureIds.redditCitation],
+    dimensions: [
+      {
+        dimension: 'company_fundamentals',
+        stance: 'bullish',
+        score: '0.75',
+        rationale: 'Execution and product demand are viewed positively.',
+        citationIds: [rniFixtureIds.redditCitation],
+      },
+      {
+        dimension: 'market_trading',
+        stance: 'bullish',
+        score: '0.62',
+        rationale: 'The sampled discussion expresses positive trading intent.',
+        citationIds: [rniFixtureIds.redditCitation],
+      },
+      {
+        dimension: 'catalyst_event',
+        stance: 'neutral',
+        score: '0.05',
+        rationale: 'No dominant near-term catalyst stance appears in the sample.',
+        citationIds: [rniFixtureIds.redditCitation],
+      },
+      {
+        dimension: 'retail_narrative',
+        stance: 'bullish',
+        score: '0.70',
+        rationale: 'The sampled narrative emphasizes continued execution momentum.',
+        citationIds: [rniFixtureIds.redditCitation],
+      },
+    ],
+    eligibleSourceCount: 2,
+    coverageDisclosure: 'Observed Reddit sample discovered through OpenAI Web Search.',
+    confidence: '0.82',
+    lastSuccessfulRefreshAt: '2026-09-05T00:07:00.000Z',
+    dataThroughAt: '2026-09-05T00:00:00.000Z',
+    computedAt: '2026-09-05T00:07:00.000Z',
+  },
+  x: {
+    platform: 'x',
+    status: 'complete',
+    summary: 'The configured X sample is bearish on near-term valuation.',
+    citationIds: [rniFixtureIds.xCitation],
+    dimensions: [
+      {
+        dimension: 'company_fundamentals',
+        stance: 'neutral',
+        score: '0.08',
+        rationale: 'The sample does not take a clear stance on business fundamentals.',
+        citationIds: [rniFixtureIds.xCitation],
+      },
+      {
+        dimension: 'market_trading',
+        stance: 'bearish',
+        score: '-0.68',
+        rationale: 'The sampled discussion expresses valuation and near-term trading concern.',
+        citationIds: [rniFixtureIds.xCitation],
+      },
+      {
+        dimension: 'catalyst_event',
+        stance: 'neutral',
+        score: '0',
+        rationale: 'No dominant catalyst stance appears in the configured sample.',
+        citationIds: [rniFixtureIds.xCitation],
+      },
+      {
+        dimension: 'retail_narrative',
+        stance: 'bearish',
+        score: '-0.58',
+        rationale: 'The configured sample emphasizes valuation pressure.',
+        citationIds: [rniFixtureIds.xCitation],
+      },
+    ],
+    eligibleSourceCount: 5,
+    coverageDisclosure: 'Configured X query sample; not platform-wide coverage.',
+    confidence: '0.74',
+    lastSuccessfulRefreshAt: '2026-09-05T00:06:00.000Z',
+    dataThroughAt: '2026-09-05T00:00:00.000Z',
+    computedAt: '2026-09-05T00:07:30.000Z',
+  },
 };

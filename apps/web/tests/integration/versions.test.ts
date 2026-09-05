@@ -197,7 +197,7 @@ describe.skipIf(url === undefined)('F03 §4.3 — one active version, activated 
         changeReason: 'seed',
       });
 
-      const tooMany = Array.from({ length: 101 }, (_, index) => ({
+      const tooMany = Array.from({ length: 601 }, (_, index) => ({
         securityId: `00000000-0000-0000-0000-${String(index).padStart(12, '0')}`,
         addedBy: 'owner',
         selectionSource: 'seed',
@@ -214,7 +214,7 @@ describe.skipIf(url === undefined)('F03 §4.3 — one active version, activated 
       await expect(
         pool.query(
           `insert into universe_version (environment, config_version, status, selected_count, created_by, change_reason)
-           values ('test', $1, 'draft', 101, 'owner', 'sneaky')`,
+           values ('test', $1, 'draft', 601, 'owner', 'sneaky')`,
           [config.id],
         ),
       ).rejects.toThrow(/max_symbols/);

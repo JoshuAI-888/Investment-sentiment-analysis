@@ -20,6 +20,8 @@
     "check:copy": "tsx scripts/check-copy.ts",
     "migrate": "tsx scripts/migrate.ts",
     "seed:universe": "tsx scripts/seed-universe.ts",
+    "rni:bootstrap-security-master": "tsx scripts/rni-bootstrap-security-master.ts",
+    "rni:seed-worker-authorities": "tsx scripts/rni-seed-worker-authorities.ts",
     "check:storage": "tsx scripts/check-storage-projection.ts",
     "measure:storage": "tsx scripts/measure-storage.ts"
   },

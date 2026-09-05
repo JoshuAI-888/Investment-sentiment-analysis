@@ -3,7 +3,7 @@
 **Writer:** SURFACE builder only  
 **Branch:** `feat/rni-surface-demo`  
 **Depends on:** merged RNI contract-freeze SHA; fixture-backed `RniReadService`  
-**Status:** `NOT_STARTED`
+**Status:** `READY_FOR_MERGE` — S01–S10 accepted; awaiting coordinator merge order
 
 ## Owned paths
 
@@ -11,18 +11,18 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 
 ## Tasks
 
-| ID | Task | Status | Acceptance evidence |
-|---|---|---|---|
-| S01 | Typed fixture `RniReadService` and state catalogue | `NOT_STARTED` | Component contract tests |
-| S02 | Retail Radar with Reddit/X/combined columns | `NOT_STARTED` | Desktop/narrow/keyboard tests |
-| S03 | Security detail and four dimensions per platform | `NOT_STARTED` | NVDA and divergence fixtures |
-| S04 | Evidence drawer with platform-labelled canonical citations | `NOT_STARTED` | Citation navigation e2e |
-| S05 | Raw data/lineage explorer | `NOT_STARTED` | Summary-to-source traversal e2e |
-| S06 | Per-platform freshness, run progress and partial/failure states | `NOT_STARTED` | State-matrix visual/e2e tests |
-| S07 | Manual ticker/full refresh controls and double-submit prevention | `NOT_STARTED` | Idempotency UI test |
-| S08 | S&P 500 search, NVDA default and universe Settings components | `NOT_STARTED` | Any-member search + staged preview fixture |
-| S09 | Route/model display and Direct/Gateway future-run setting | `NOT_STARTED` | Setting/history immutability test |
-| S10 | Accessibility, responsive and full SURFACE handoff | `NOT_STARTED` | Required audits and lane report |
+| ID  | Task                                                             | Status            | Acceptance evidence                        |
+| --- | ---------------------------------------------------------------- | ----------------- | ------------------------------------------ |
+| S01 | Typed fixture `RniReadService` and state catalogue               | `READY_FOR_MERGE` | Citation resolution contract tests         |
+| S02 | Retail Radar with Reddit/X/combined columns                      | `READY_FOR_MERGE` | Coordinator accepted `c4899b8`             |
+| S03 | Security detail and four dimensions per platform                 | `READY_FOR_MERGE` | Coordinator accepted `b85d9c7`             |
+| S04 | Evidence drawer with platform-labelled canonical citations       | `READY_FOR_MERGE` | Coordinator accepted `6c0df68`             |
+| S05 | Raw data/lineage explorer                                        | `READY_FOR_MERGE` | Coordinator accepted `d4c1a09`             |
+| S06 | Per-platform freshness, run progress and partial/failure states  | `READY_FOR_MERGE` | Coordinator accepted `ffd5119`             |
+| S07 | Manual ticker/full refresh controls and double-submit prevention | `READY_FOR_MERGE` | Coordinator accepted through `babd940` |
+| S08 | S&P 500 search, NVDA default and universe Settings components    | `READY_FOR_MERGE` | Coordinator accepted                         |
+| S09 | Route/model display and Direct/Gateway future-run setting        | `READY_FOR_MERGE` | Coordinator accepted `8d1d943`             |
+| S10 | Accessibility, responsive and full SURFACE handoff               | `READY_FOR_MERGE` | Coordinator accepted `c68980b`             |
 
 ## Required invariants
 
@@ -39,51 +39,178 @@ See `../RNI_BUILD_LOOP.md` §3.4. Shared layout/navigation and API composition r
 
 ## Contract requests
 
-| ID | Status | Request | Impact |
-|---|---|---|---|
-| — | — | none | — |
+| ID            | Status     | Request                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Impact                                                                            |
+| ------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| CR-SURFACE-01 | `ACCEPTED` | I02B / D-RNI-12 (`264ea9c`) adds `getCitation(citationId)` returning frozen `RniCitation`. Consumers must resolve citation ID → citation source ID → bounded evidence, never equate citation and source IDs.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | S01 must implement the additive method; this unblocks S04’s evidence-drawer flow. |
+| CR-SURFACE-02 | `ACCEPTED` | D-RNI-13 / `84dca87` adds frozen `getRadarPage` query/page schemas and `referenceRadarPage`. The page has canonical ticker/company/exchange identity plus separate Reddit, X and combined cells; no pooled source count exists.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | S02 may use only this frozen response shape and fixture.                          |
+| CR-SURFACE-03 | `ACCEPTED` | D-RNI-14 / `ce80424` adds frozen `getSecurityDetail(runId, securityId)` with canonical identity, fixed Reddit/X detail records, exactly four cited platform-bound dimensions, and independent state/freshness/coverage/confidence.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | S03 consumes only the additive read shape; Radar remains unchanged.               |
+| CR-SURFACE-04 | `ACCEPTED` | D-RNI-17 / `fec8c46` adds frozen `RniCommandService.requestManualRefresh` with a required idempotency key, ticker/full scope, accepted/duplicate disposition, durable run ID, and resolved scope preview. Exact same-key replay returns the original run/preview; crossed-key scope fails closed. | S07 uses the fixture command boundary; I09 owns live auth, CSRF, audit and queue composition. |
+| CR-SURFACE-05 | `ACCEPTED` | D-RNI-18 corrected at `098f010` / integration `573d7be` adds frozen read-only active-member search and immutable staged preview. | S08 consumes only `RniUniverseReadService`; no FMP or activation access. |
+| CR-SURFACE-06 | `ACCEPTED` | D-RNI-20 freezes `RniAiRouteSettingsService`: a credential-free active-setting read plus intent-only idempotent future-config command. The service resolves task models server-side, exposes both route availability states, creates successor config versions only for future runs, and preserves historical run/model lineage. | S09 may consume the service through its fixture; I08/I10 retain authenticated API and live routing composition. |
 
 ## Test evidence
 
-| Suite | Status | Command/run link | Notes |
-|---|---|---|---|
-| component/contract | `NOT_STARTED` | — | — |
-| e2e happy path | `NOT_STARTED` | — | — |
-| e2e partial/divergent/failure | `NOT_STARTED` | — | — |
-| accessibility/keyboard | `NOT_STARTED` | — | — |
-| narrow screen | `NOT_STARTED` | — | — |
-| repository required gate | `NOT_STARTED` | — | — |
+| Suite                         | Status        | Command/run link                                                                                                                                                                                                                                                                                                                                                                                         | Notes                                                                                                                                                                |
+| ----------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| component/contract            | `PASSED`      | `apps/web/node_modules/.bin/tsc --noEmit`; `apps/web/node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism`                                                                                                                                                                                                                                                            | Typecheck passed; frozen RNI contract suite passed (11/11).                                                                                                          |
+| focused lint                  | `PASSED`      | `apps/web/node_modules/.bin/eslint fixtures/rni-ui/read-service.ts src/rni/ui/RetailRadar.tsx 'app/(rni)/rni/page.tsx' tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts`                                                                                                                                                                                                                   | All S02 implementation and test files passed lint.                                                                                                                   |
+| production build              | `PASSED`      | `apps/web/node_modules/.bin/next build`                                                                                                                                                                                                                                                                                                                                                                  | Build passed and emitted the static `/rni` route.                                                                                                                    |
+| e2e happy path                | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:3001 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts --project=chromium`                                                                                                                                                                                                                                        | Chromium passed 4/4: fixture service (2), Radar desktop, and Radar narrow/keyboard.                                                                                  |
+| e2e partial/divergent/failure | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:3001 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts --project=chromium`                                                                                                                                                                                                                                        | NVDA proves divergent Reddit/X inputs; AMD proves X unavailable and combined partial.                                                                                |
+| accessibility/keyboard        | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:3001 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts --project=chromium`                                                                                                                                                                                                                                        | Keyboard tab traversal reaches a visible citation link.                                                                                                              |
+| narrow screen                 | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:3001 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts --project=chromium`                                                                                                                                                                                                                                        | At 375px the Radar stacks as cards without horizontal overflow.                                                                                                      |
+| S03 component/contract        | `PASSED`      | `apps/web/node_modules/.bin/tsc --noEmit`; `apps/web/node_modules/.bin/eslint fixtures/rni-ui/read-service.ts src/rni/ui/SecurityDetail.tsx 'app/(rni)/rni/security/nvda/page.tsx' tests/e2e/rni/read-service.spec.ts tests/e2e/rni/security-detail.spec.ts`; `apps/web/node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism`                                         | Typecheck and focused lint passed; frozen RNI contract suite passed (13/13).                                                                                         |
+| S03 browser/accessibility     | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:3002 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts tests/e2e/rni/security-detail.spec.ts --project=chromium`                                                                                                                                                                                                  | Chromium passed 6/6: each platform has four dimensions, NVDA market-trading divergence, platform-labelled citations, 375px no overflow, and keyboard citation focus. |
+| S04 component/contract        | `PASSED`      | `apps/web/node_modules/.bin/tsc --noEmit`; `apps/web/node_modules/.bin/eslint src/rni/ui/EvidenceCitation.tsx src/rni/ui/evidence.ts src/rni/ui/RetailRadar.tsx src/rni/ui/SecurityDetail.tsx 'app/(rni)/rni/page.tsx' 'app/(rni)/rni/security/nvda/page.tsx' tests/e2e/rni/evidence-drawer.spec.ts`; `apps/web/node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism` | Typecheck and focused lint passed; frozen RNI contract suite passed (13/13).                                                                                         |
+| S04 browser/provenance        | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:3004 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts tests/e2e/rni/security-detail.spec.ts tests/e2e/rni/evidence-drawer.spec.ts --project=chromium`                                                                                                                                                            | Chromium passed 9/9: provenance plus unique repeated-citation controls, focus entry, Tab/Shift+Tab containment, Escape dismissal, and trigger-focus restoration.     |
+| S05 component/contract        | `PASSED`      | `apps/web/node_modules/.bin/tsc --noEmit`; `apps/web/node_modules/.bin/eslint src/rni/ui/RawDataExplorer.tsx 'app/(rni)/rni/explorer/nvda/page.tsx' tests/e2e/rni/raw-data-explorer.spec.ts`; `apps/web/node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism`                                                                                                         | Typecheck and focused lint passed; frozen RNI contract suite passed (13/13).                                                                                         |
+| S05 browser/lineage           | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:3005 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts tests/e2e/rni/security-detail.spec.ts tests/e2e/rni/evidence-drawer.spec.ts tests/e2e/rni/raw-data-explorer.spec.ts --project=chromium`                                                                                                                    | Chromium passed 10/10: the Reddit summary link reaches its bounded source record; unavailable X remains explicitly uncited.                                          |
+| S06 component/contract        | `PASSED`      | `apps/web/node_modules/.bin/tsc --noEmit`; `apps/web/node_modules/.bin/eslint src/rni/ui/RniStateMatrix.tsx 'app/(rni)/rni/status/page.tsx' tests/e2e/rni/state-matrix.spec.ts`; `apps/web/node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism`                                                                                                                      | Typecheck and focused lint passed; frozen RNI contract suite passed (13/13).                                                                                         |
+| S06 browser/state matrix      | `PASSED`      | `E2E_BASE_URL=http://127.0.0.1:3006 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/radar.spec.ts tests/e2e/rni/security-detail.spec.ts tests/e2e/rni/evidence-drawer.spec.ts tests/e2e/rni/raw-data-explorer.spec.ts tests/e2e/rni/state-matrix.spec.ts --project=chromium`                                                                                 | Chromium passed 11/11: per-platform freshness, partial/unavailable, refreshing/pending, stale, failed, and unpublished state coverage.                               |
+| S07 component/contract        | `PASSED`      | `apps/web/node_modules/.bin/tsc --noEmit`; `apps/web/node_modules/.bin/eslint fixtures/rni-ui/read-service.ts src/rni/ui/ManualRefreshControls.tsx src/rni/ui/ManualRefreshFixtureHarness.tsx src/rni/ui/renderFixtureOnly.ts 'app/(rni)/rni/refresh/page.tsx' 'app/(rni)/rni/refresh/fixture/page.tsx' tests/e2e/rni/read-service.spec.ts tests/e2e/rni/manual-refresh.spec.ts tests/e2e/rni/manual-refresh-fixture-guard.spec.ts`; `apps/web/node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism` | Typecheck and focused lint passed; frozen RNI contract suite passed (14/14). |
+| S07 build/browser             | `PASSED`      | `apps/web/node_modules/.bin/next build`; `E2E_BASE_URL=http://127.0.0.1:3008 apps/web/node_modules/.bin/playwright test tests/e2e/rni/manual-refresh-fixture-guard.spec.ts --project=chromium`; `E2E_BASE_URL=http://127.0.0.1:3008 apps/web/node_modules/.bin/playwright test tests/e2e/rni/read-service.spec.ts tests/e2e/rni/manual-refresh.spec.ts --project=chromium` (run twice) | The guarded fixture page is dynamic; fixture/live guard coverage passed, and both fixture-mode Chromium runs passed 4/4 with deferred pending-state release, pre-submit previews, exact replay, distinct later intent/run, 501 preview, native status semantics, and 375px no-overflow. |
+| S08 correction | `PASSED` | `tsc --noEmit`; scoped eslint; contracts; build; diff check; focused Chromium | Contracts 15/15; Chromium 3/3 includes keyboard search, staged impact, responsive fit, and legacy active presentation. |
+| S09 route/model settings | `PASSED` | `node_modules/.bin/tsc --noEmit`; focused eslint; `node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism`; `node_modules/.bin/next build`; `E2E_BASE_URL=http://127.0.0.1:3011 node_modules/.bin/playwright test tests/e2e/rni/ai-route-settings.spec.ts --project=chromium` | Typecheck and lint passed; frozen contract suite passed 17/17; production build passed; Chromium passed 3/3 including future-only successor, exact replay/crossed-key rejection, unavailable Gateway failure, accessible controls, and 375px fit. |
+| S10 full SURFACE audit | `PASSED` | `node_modules/.bin/tsc --noEmit`; focused eslint; `node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism`; `node_modules/.bin/next build`; `E2E_BASE_URL=http://127.0.0.1:3013 node_modules/.bin/playwright test tests/e2e/rni --project=chromium` | Typecheck and lint passed; frozen contract suite passed 17/17; production build passed; complete RNI Chromium suite passed 22/22. Seven SURFACE routes have one H1, no scoped axe violations, and no 375px overflow; guarded unavailable Gateway is disabled with its labelled reason. |
+| final merge-order rebase | `PASSED` | rebased on integration `01a088c`; `git diff --check`; ownership path review; `node_modules/.bin/tsc --noEmit`; focused eslint; `node_modules/.bin/vitest run tests/contract/rni/contracts.test.ts --no-file-parallelism`; `node_modules/.bin/next build`; `E2E_BASE_URL=http://127.0.0.1:3014 node_modules/.bin/playwright test tests/e2e/rni --project=chromium` | All lane paths remain SURFACE-owned; frozen contract suite passed 17/17; production build passed; complete RNI Chromium suite passed 22/22. |
+| repository required gate      | `NOT_STARTED` | —                                                                                                                                                                                                                                                                                                                                                                                                        | —                                                                                                                                                                    |
 
 ## Review findings
 
-| ID | Priority | Status | Finding | Resolution |
-|---|---|---|---|---|
-| — | — | — | — | — |
+| ID    | Priority | Status     | Finding                                                                                                                   | Resolution                                                                                                                                    |
+| ----- | -------- | ---------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| SR-01 | P1       | `RESOLVED` | Refreshing fixture returned a summary before both platform slices reached a terminal state.                               | Removed the summary; consumers derive the durable refresh state from run and platform-slice reads.                                            |
+| SR-02 | P2       | `RESOLVED` | Initial test parsed fixture objects directly instead of exercising each successful service method and state relationship. | Targeted Playwright test now reads through the service across every catalogue state and asserts partial/refresh isolation.                    |
+| SR-03 | P1       | `RESOLVED` | I02B added `getCitation`, making the pre-I02B fixture service structurally incomplete after rebase.                       | Fixture now resolves citation → source ID → bounded evidence and asserts platform, URL and evidence-text relationships.                       |
+| SR-04 | P1       | `RESOLVED` | Evidence dialogs reused a citation-ID-derived DOM ID and did not complete focus handling.                                 | Per-instance `useId` controls plus focus entry, Tab/Shift+Tab containment, Escape dismissal, and trigger restoration are covered in Chromium. |
+| SR-06 | P1       | `RESOLVED` | S07 showed scope only after submission and reused a fixed key for all later refreshes in the same scope. | Both resolved previews now appear before action and are attached to their controls; a new UUID is created per intentional submission, while fixture exact-key replay remains independently tested. |
+| SR-07 | P1       | `RESOLVED` | A 25ms fixture delay allowed the browser to miss the pending window while asserting its sibling control was disabled. | A browser-fixture harness injects a deferred frozen command service and explicitly releases each promise after both disabled controls are asserted; the exact suite passed twice. |
+| SR-08 | P1       | `RESOLVED` | The deferred browser harness was exposed by an unguarded production App Router page. | The fixture page is forced dynamic and checks validated `env.PROVIDER_MODE` at request time; the fixture-only renderer rejects live mode and the page maps that rejection to `notFound()` before the client harness renders. |
+| SR-09–SR-13 | P1/P2 | `RESOLVED` | S08 client fixture composition, non-generic search, incomplete staged impact, stale tracker, and no keyboard/live result status. | Server page composes frozen reads; UI is props-only; fixture search parses/bounds generic active members; staged identities/empty states, status, keyboard Chromium, and tracker evidence are complete. |
+| SR-14 | P2 | `RESOLVED` | Legacy active-universe presentation was untested. | `presentActiveUniverseVersion` drives rendered source/retrieval copy and direct test covers the legacy/null-retrieval branch. |
+| SR-15 | P1 | `RESOLVED` | The S10 axe audit found Security Detail jumped from the page H1 directly to platform H3 headings. | Platform headings are now H2 and their dimension headings H3; the complete seven-route scoped axe sweep passes. |
 
 ## Open risks/blockers
 
-| Since | Status | Blocker | Owner | Attempted mitigation | Next check |
-|---|---|---|---|---|---|
-| — | — | none | — | — | — |
+| Since      | Status     | Blocker                                                                                                        | Owner                          | Attempted mitigation                                                                               | Next check                               |
+| ---------- | ---------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| 2026-09-05 | `OPEN`     | Fixture-only `/rni` composition requires the integration read service before live-data use.                    | INTEGRATION / SURFACE          | S04 resolves every displayed citation through the frozen read service and bounded source evidence. | Integration composition review           |
+| 2026-09-05 | `RESOLVED` | S08 needed frozen reads for active-member search and a staged-universe preview. | INTEGRATION / SURFACE | D-RNI-18 provides additive read-only universe service; S08 uses it only. | Coordinator review of S08 |
+| 2026-09-05 | `RESOLVED` | S07 needed a typed idempotent refresh command, which frozen reads could not express.                            | INTEGRATION / SURFACE          | D-RNI-17 (`fec8c46`) froze the additive command boundary; S07 fixture tests cover exact replay and crossed-key rejection. | Coordinator review of S07 |
+| 2026-09-05 | `RESOLVED` | Static citation anchors did not provide citation → source → evidence provenance.                               | SURFACE                        | S04 renders platform-labelled evidence drawers from the frozen citation and evidence reads.        | Coordinator review of S04                |
+| 2026-09-05 | `RESOLVED` | S03 needed four per-platform dimension assignments, which the previous frozen `RniReadService` could not read. | DATA / ENGINE / INTEGRATION    | D-RNI-14 added `getSecurityDetail`; S03 uses it without direct repository access.                  | Coordinator review of S03                |
+| 2026-09-05 | `RESOLVED` | S09 needed a frozen AI route/model setting read and future-run mutation boundary. | ENGINE / INTEGRATION / SURFACE | D-RNI-20 supplies `RniAiRouteSettingsService`; fixture and browser tests prove future-only successor, availability and idempotency semantics. | Coordinator review of S09 |
 
 ## Commits
 
-| SHA | Summary | Tests |
-|---|---|---|
-| — | — | — |
+| SHA       | Summary                                        | Tests                                                       |
+| --------- | ---------------------------------------------- | ----------------------------------------------------------- |
+| `98a1064` | S01 fixture service rebased onto I02B          | typecheck; contract 7; fixture Playwright 2                 |
+| `903a9da` | S01 citation-read compatibility                | typecheck; contract 9; fixture Playwright 2                 |
+| `ec80ba1` | S02 source-separated Retail Radar              | typecheck; lint; contract 11; build; Chromium Playwright 4  |
+| `b85d9c7` | S03 platform-bound security detail             | typecheck; lint; contract 13; build; Chromium Playwright 6  |
+| `8bedac8` | S04 citation evidence drawer                   | typecheck; lint; contract 13; build; Chromium Playwright 8  |
+| `6c0df68` | S04 dialog accessibility correction            | typecheck; lint; contract 13; build; Chromium Playwright 9  |
+| `d4c1a09` | S05 raw-data and lineage explorer              | typecheck; lint; contract 13; build; Chromium Playwright 10 |
+| `ffd5119` | S06 run and source-state matrix                | typecheck; lint; contract 13; build; Chromium Playwright 11 |
+| `f7e481e` | S07 final refresh controls | typecheck; lint; contract 14; build; Chromium Playwright 4 |
+| `e12472d` | S08 universe settings feature | typecheck; lint; contract 15; build; Chromium 2 |
+| `CURRENT` | S08 universe settings correction | typecheck; lint; contract 15; build; Chromium 3 |
+| `CURRENT` | S09 future-run AI route settings | typecheck; lint; contract 17; build; Chromium 3 |
+| `CURRENT` | S10 full SURFACE accessibility/responsive audit | typecheck; lint; contract 17; build; Chromium 22 |
+
+## S01 delivery record
+
+- **Files changed:** `apps/web/fixtures/rni-ui/read-service.ts`, `apps/web/tests/e2e/rni/read-service.spec.ts`, and this lane tracker.
+- **Result:** fixture-only `RniReadService` covers complete, empty, partial, refreshing, stale, failed, and unpublished states; every state retains one Reddit and one X slice and returns defensive copies. The active refresh state deliberately has no combined summary.
+- **Contract compatibility:** after rebasing on I02B (`264ea9c`), `FixtureRniReadService` implements `getCitation`. Tests prove a citation resolves to a same-platform source record whose bounded evidence contains the cited text; citation IDs are not treated as source IDs.
+- **Risk:** S01 has no open contract blocker. S04 must consume the same citation flow when it adds UI navigation.
+- **Handoff:** coordinator-approved fixture-only slice; citation compatibility is committed at `f73a17a` and ready for merge.
+
+## S02 delivery record
+
+- **Files changed:** `apps/web/fixtures/rni-ui/read-service.ts`, `apps/web/app/(rni)/rni/page.tsx`, `apps/web/src/rni/ui/RetailRadar.tsx`, `apps/web/tests/e2e/rni/read-service.spec.ts`, `apps/web/tests/e2e/rni/radar.spec.ts`, and this lane tracker.
+- **Result:** `/rni` reads only frozen `getRadarPage` fixture data and renders ticker, company, exchange, individually labelled Reddit/X cells, and the derived combined cell. NVDA makes Reddit/X divergence explicit; AMD makes X unavailability and combined partial status explicit. No source counts are pooled or substituted.
+- **Verification:** typecheck, focused lint, frozen contract tests (11/11), and production build passed. Chromium passed the exact focused command above (4/4), including desktop identity/divergence and 375px keyboard/no-overflow checks.
+- **Risk:** the route remains fixture-composed until integration injects a live `RniReadService`; citation anchors provide source-labelled links but S04 must add citation → source → evidence navigation.
+- **Handoff:** coordinator accepted the pre-rebase S02 commit `c4899b8`; its rebased lane commit is `ec80ba1` and is ready for merge.
+
+## S03 delivery record
+
+- **Files changed:** `apps/web/fixtures/rni-ui/read-service.ts`, `apps/web/app/(rni)/rni/security/nvda/page.tsx`, `apps/web/src/rni/ui/SecurityDetail.tsx`, `apps/web/tests/e2e/rni/read-service.spec.ts`, `apps/web/tests/e2e/rni/security-detail.spec.ts`, and this lane tracker.
+- **Result:** `/rni/security/nvda` reads only frozen `getSecurityDetail` fixture data. Reddit and X each show their independently reported status, source count, freshness, confidence, coverage, platform summary, and exactly four fixed dimensions. The NVDA market-trading fixture is Reddit bullish versus X bearish; every publishable rationale keeps its platform-labelled citation link.
+- **Verification:** typecheck, focused lint, frozen contract tests (13/13), and production build passed. Chromium passed the exact S03 browser command above (6/6), including desktop divergence, narrow no-overflow, and keyboard citation focus.
+- **Risk:** the route remains fixture-composed until integration injects a live `RniReadService`; S04 must replace static citation anchors with citation → source → evidence navigation.
+- **Handoff:** coordinator accepted S03 at `b85d9c7`; S04 is ready for coordinator review.
+
+## S04 delivery record
+
+- **Files changed:** `apps/web/app/(rni)/rni/page.tsx`, `apps/web/app/(rni)/rni/security/nvda/page.tsx`, `apps/web/src/rni/ui/EvidenceCitation.tsx`, `apps/web/src/rni/ui/evidence.ts`, `apps/web/src/rni/ui/RetailRadar.tsx`, `apps/web/src/rni/ui/SecurityDetail.tsx`, `apps/web/tests/e2e/rni/evidence-drawer.spec.ts`, and this lane tracker.
+- **Result:** every Radar, combined-summary, platform-summary, and dimension citation opens a platform-labelled evidence drawer. Routes resolve `citationId → citation.sourceItemId → getEvidence(sourceItemId)` before rendering. The drawer presents only the frozen citation passage, canonical source URL, and bounded source evidence; it rejects a platform, URL, or bounded-text mismatch instead of treating a citation ID as a source ID.
+- **Verification:** typecheck, focused lint, frozen contract tests (13/13), and production build passed. Chromium passed the exact S04 browser command above (9/9), including X Radar and Reddit dimension provenance navigation plus unique dialog controls and complete keyboard focus behavior.
+- **Risk:** the route remains fixture-composed until integration injects a live `RniReadService`; no direct DATA repository access was added.
+- **Handoff:** coordinator accepted S04 at `6c0df68`; S05 is ready for coordinator review.
+
+## S05 delivery record
+
+- **Files changed:** `apps/web/app/(rni)/rni/explorer/nvda/page.tsx`, `apps/web/src/rni/ui/RawDataExplorer.tsx`, `apps/web/tests/e2e/rni/raw-data-explorer.spec.ts`, and this lane tracker.
+- **Result:** `/rni/explorer/nvda` reads the frozen Radar and summary boundaries, resolves only the summary’s persisted citation IDs through the frozen citation → source chain, and renders bounded source records with original URLs. A summary link traverses to its source record; an uncited, unavailable X summary is labelled as having no publishable source record.
+- **Verification:** typecheck, focused lint, frozen contract tests (13/13), and production build passed. Chromium passed the exact S05 browser command above (10/10), including summary-to-source traversal.
+- **Risk:** the explorer is fixture-composed until integration injects a live `RniReadService`; it intentionally exposes only the frozen bounded source content, not provider payloads or storage-private records.
+- **Handoff:** coordinator accepted S05 at `d4c1a09`; S06 is ready for coordinator review.
+
+## S06 delivery record
+
+- **Files changed:** `apps/web/app/(rni)/rni/status/page.tsx`, `apps/web/src/rni/ui/RniStateMatrix.tsx`, `apps/web/tests/e2e/rni/state-matrix.spec.ts`, and this lane tracker.
+- **Result:** `/rni/status` calls only frozen `getRun` and `getPlatformSlices` over the fixture state catalogue. Every state renders Reddit and X independently with source count, coverage, attempt/computed/data-through/last-success timestamps, and source-specific failure codes. A running state announces progress and withholds a derived combined result.
+- **Verification:** typecheck, focused lint, frozen contract tests (13/13), and production build passed. Chromium passed the exact S06 browser command above (11/11), including partial, refreshing, stale, failed, unpublished, and empty evidence coverage.
+- **Risk:** the state matrix is fixture-composed until integration injects a live `RniReadService`; displayed timestamps are raw frozen ISO timestamps pending a shared presentation-format decision.
+- **Handoff:** ready for coordinator review. S07 remains `NOT_STARTED`.
+
+## S07 delivery record
+
+- **Files changed:** `apps/web/fixtures/rni-ui/read-service.ts`, `apps/web/app/(rni)/rni/refresh/page.tsx`, `apps/web/app/(rni)/rni/refresh/fixture/page.tsx`, `apps/web/src/rni/ui/ManualRefreshControls.tsx`, `apps/web/src/rni/ui/ManualRefreshFixtureHarness.tsx`, `apps/web/src/rni/ui/renderFixtureOnly.ts`, `apps/web/tests/e2e/rni/read-service.spec.ts`, `apps/web/tests/e2e/rni/manual-refresh.spec.ts`, `apps/web/tests/e2e/rni/manual-refresh-fixture-guard.spec.ts`, and this lane tracker.
+- **Result:** `/rni/refresh` is fixture-backed through frozen `RniCommandService` only. Both resolved ticker and 501-member full-universe scope previews appear before their controls and are bound to them for assistive technology. Each intentional submission creates a new UUID key and returns a new durable run identity; the fixture atomically claims concurrent exact-key retries, which return one accepted and one duplicate result. Unsupported fixture tickers reject explicitly. No DATA repository, ENGINE workflow, route handler, or live service is accessed.
+- **Verification:** typecheck, focused lint, frozen contract tests (14/14), and production build passed. The runtime fixture/live guard test passed. The focused fixture-mode Chromium suite passed twice (4/4 each), including deferred exact-promise pending coverage for both disabled controls, pre-submit previews, concurrent same-key replay with one execution and identical run/preview, crossed-key failure closed at the fixture boundary, distinct later NVDA run identity, native status semantics, 501-member full-universe preview, and a 375px no-overflow check.
+- **Risk:** the harness is fixture-only and unavailable outside validated fixture mode. I09 must compose server-side authentication, CSRF, audit, durable queueing, and live `RniCommandService`; SURFACE must not add those cross-lane concerns.
+- **Handoff:** ready for coordinator review. S08–S10 remain `NOT_STARTED`.
+
+## S08 delivery record
+
+- **Files changed:** fixture universe read service, `/rni/settings/universe`, `UniverseSettings`, focused S08 browser tests, and this tracker.
+- **Result:** server composition uses only frozen `RniUniverseReadService`; the UI is presentation-only. Active NVDA default, parsed bounded case-insensitive search, source/retrieval, staged version impact identities, and explicit empty removals are displayed.
+- **Verification:** coordinator independently passed typecheck, scoped lint, contracts 15/15, build, diff check, and focused Chromium 3/3 including Tab → type → submit, live search status, MSFT, PLTR, 375px fit, and legacy active presentation.
+- **Risk:** fixture composition only; I08 owns live repository/FMP composition and activation remains outside SURFACE.
+- **Handoff:** coordinator accepted S08 and S09; both are ready for merge. S10 is accepted and ready for merge.
+
+## S09 delivery record
+
+- **Files changed:** `apps/web/fixtures/rni-ui/read-service.ts`, `apps/web/app/(rni)/rni/settings/ai-route/page.tsx`, `apps/web/src/rni/ui/AiRouteSettings.tsx`, `apps/web/src/rni/ui/AiRouteSettingsFixtureHarness.tsx`, `apps/web/tests/e2e/rni/ai-route-settings.spec.ts`, and this lane tracker.
+- **Result:** `/rni/settings/ai-route` server-reads only the frozen `RniAiRouteSettingsService`, displays the selected Direct/Gateway route, both availability states, active config/effective time, and server-resolved task provider/model/revision/prompt identities without credentials. Its fixture harness sends only a fresh idempotency key, selected route, and bounded reason; a successful update displays the successor config and makes clear that existing run/model lineage does not change.
+- **Verification:** typecheck, focused lint, frozen contract tests (17/17), production build, and focused Chromium (3/3) passed. The fixture test proves Direct → Gateway successor creation, resolved Gateway models, exact duplicate replay, crossed-key rejection, historical Direct run immutability, and unavailable Gateway rejection. The browser test verifies accessible radio/label/status semantics, the future-only confirmation, and 375px no-overflow.
+- **Risk:** fixture composition only. I08 owns authenticated Settings API composition and I10 owns capability checks, model mapping, and live execution; SURFACE does not expose credentials or client-selected models.
+- **Handoff:** coordinator accepted S09; it is ready for merge. S10 is accepted and ready for merge.
+
+## S10 delivery record
+
+- **Files changed:** `apps/web/src/rni/ui/SecurityDetail.tsx`, `apps/web/src/rni/ui/AiRouteSettingsFixtureHarness.tsx`, `apps/web/app/(rni)/rni/settings/ai-route/fixture/page.tsx`, `apps/web/tests/e2e/rni/surface-audit.spec.ts`, and this lane tracker.
+- **Result:** all seven SURFACE routes—Radar, Security Detail, Raw Data Explorer, State Matrix, Manual Refresh, Universe Settings, and AI Route Settings—have one primary heading, no scoped axe violations, and no document overflow at 375px. The audit corrected Security Detail’s H1 → H3 hierarchy to H1 → H2 → H3. A dynamic, runtime-guarded fixture route verifies that an unavailable Gateway radio is disabled and describes its unavailable reason; it cannot render outside fixture mode.
+- **Verification:** typecheck, focused lint, frozen contract tests (17/17), production build, and the complete RNI Chromium suite (22/22) passed. The browser audit covers scoped axe, headings, responsive fit, and the unavailable-Gateway label; existing focused flows continue to cover citations, source separation, state honesty, idempotency, and Settings mutation semantics.
+- **Risk:** UI remains fixture-composed until I08 supplies authenticated API/CSRF composition and I10 supplies live capability checks, all five task mappings, and budget enforcement. D-RNI-21 model mappings remain server-resolved; SURFACE displays only the frozen resolved identities.
+- **Handoff:** coordinator accepted S10 at `c68980b`; final merge-order rebase on `01a088c` reran all checks successfully. The SURFACE lane is ready for merge and remains unmerged. No S10 shared contract, API, migration, navigation, or deployment files changed.
 
 ## Handoff
 
 ```text
 RNI LANE     SURFACE
 BRANCH       feat/rni-surface-demo
-BASE SHA     —
-STATUS       NOT_STARTED
-TASKS        0/10
-TESTS        not run
-CONTRACT     none
-RISKS        none recorded
-FILES        none
-COMMITS      none
-DEMO PROOF   none
+BASE SHA     01a088c
+STATUS       READY_FOR_MERGE; S01–S10 accepted, unmerged
+TASKS        S01–S10 accepted; await DATA → ENGINE → SURFACE merge order
+TESTS        typecheck: pass; focused lint: pass; RNI contract: 17 pass; production build: pass; complete RNI Chromium: 22 pass
+CONTRACT     CR-SURFACE-01–06 accepted; CR-SURFACE-05 resolved by D-RNI-18; CR-SURFACE-06 resolved by D-RNI-20
+RISKS        Fixture-only composition; I08 owns live universe/API composition and I09 owns live refresh composition; I10 owns live AI route capability/model execution, all five mappings, and budget enforcement
+FILES        apps/web/fixtures/rni-ui/read-service.ts; apps/web/app/(rni)/rni/settings/ai-route/page.tsx; apps/web/app/(rni)/rni/settings/ai-route/fixture/page.tsx; apps/web/src/rni/ui/AiRouteSettings.tsx; apps/web/src/rni/ui/AiRouteSettingsFixtureHarness.tsx; apps/web/src/rni/ui/SecurityDetail.tsx; apps/web/tests/e2e/rni/ai-route-settings.spec.ts; apps/web/tests/e2e/rni/surface-audit.spec.ts; docs/rni/progress/SURFACE.md
+COMMITS      accepted S07 401d2f7, 63d42d8, fb58989, f7e481e; S08 e12472d; S09 8d1d943; S10 c68980b; final rebased code c224c78; tracker CURRENT
+DEMO PROOF   `/rni/settings/ai-route` shows Direct default and resolved models, then an accessible Gateway intent creates fixture-config-v2 for future runs while existing lineage remains immutable; fixture-only unavailable Gateway states why the radio is disabled
 ```

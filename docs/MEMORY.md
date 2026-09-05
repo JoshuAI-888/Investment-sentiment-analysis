@@ -809,6 +809,490 @@ status. The configured Reddit community list is versioned in Settings, including
 `r/Superstonk` + `r/GME` analytical cluster while retaining separate provenance. `joshuai` owns
 production approval and human intervention recorded in `rni/DEPLOY.md`.
 
+### D-RNI-08 — Source persistence is a frozen commit-returning cross-lane port
+
+**Accepts CR-DATA-001, 2026-09-05.** DATA implements the additive
+`RniSourcePersistencePort.commitSource` boundary; ENGINE depends only on that frozen interface.
+The promise resolves after the source, retrieval and content-version transaction commits and
+returns the durable source identity plus explicit per-record idempotency outcomes. ENGINE never
+enqueues interpretation from a caller-proposed ID. Duplicate delivery returns the existing
+committed ID with false insertion flags, preserving source-first ordering without importing a
+DATA-private repository or duplicating transaction semantics in ENGINE.
+
+### D-RNI-09 — pgvector remains deferred for the RNI vertical slice
+
+**Resolves CR-DATA-003, 2026-09-05.** The relational claim, citation, theme, narrative and
+membership schema is in scope; enabling the `vector` extension and persisting embeddings is not.
+This follows the explicit deployment and integration-plan deferral and avoids introducing an
+untested Neon prerequisite. A later embedding phase requires a separate migration, capability
+gate and decision; migration `0022` must not contain a placeholder vector representation.
+
+### D-RNI-10 — Storage-private semantic write shapes are composed only when consumed
+
+**Defers CR-DATA-002 to I07, 2026-09-05.** DATA may keep its relational claim/theme/narrative
+write inputs private while the storage slice is reviewed. The coordinator will freeze only the
+smallest port required by an implemented ENGINE consumer during I07, rather than making every
+table-shaped input a public cross-lane API in advance. Citation reads are handled separately by
+D-RNI-12.
+
+### D-RNI-11 — Universe candidate semantics are enforced by the synchronizer
+
+**Resolves CR-DATA-004, 2026-09-05.** `rniUniverseSnapshotCandidate` remains a structural 1–600
+member transport schema. The integration-owned FMP synchronizer is the authoritative fail-closed
+boundary for complete-count, duplicate symbol, NVDA, active-security resolution and ambiguity
+checks, and it stages only a validated candidate. DATA fixtures exercise those outcomes without
+expanding the frozen schema into a repository-specific resolution result.
+
+### D-RNI-12 — Citation IDs resolve through the frozen read service
+
+**Accepts CR-SURFACE-01, 2026-09-05.** `RniReadService` adds the narrow
+`getCitation(citationId)` method returning the already-frozen `RniCitation`. A surface resolves a
+summary citation to source identity, platform, URL and bounded supporting text, then calls
+`getEvidence(sourceItemId)`. It never treats citation and source IDs as interchangeable or joins
+DATA-private tables directly.
+
+### D-RNI-13 — Retail Radar reads are cursor-paginated and non-poolable
+
+**Accepts CR-SURFACE-02, 2026-09-05.** `RniReadService.getRadarPage` returns the immutable run
+lineage and a cursor page of canonical security identities paired with ticker, company name and
+exchange. Every row has fixed `reddit`, `x` and `combined` cells. Reddit and X each carry their
+own state, stance, sample count, coverage disclosure, confidence, freshness and citation IDs;
+the shape has no shared source-count field. Combined state is explicitly pending, aligned,
+divergent, partial or insufficient and cannot claim alignment/divergence while a platform is
+non-terminal, missing or insufficient. This additive read model unblocks SURFACE without
+exposing DATA repositories, inventing a second security catalogue or permitting one platform
+to stand in for the other.
+
+### D-RNI-14 — Security-detail dimensions remain complete, cited and platform-bound
+
+**Accepts CR-SURFACE-03, 2026-09-05.** `RniReadService.getSecurityDetail(runId, securityId)`
+returns canonical security identity plus fixed Reddit and X detail records. Each platform owns
+exactly one assignment for all four frozen RNI dimensions, its independent status, eligible
+source count, coverage, confidence, freshness, summary and citations. A publishable dimension
+requires at least one persisted citation ID; an insufficient dimension is unscored. Pending,
+running, failed or unavailable platforms may carry only insufficient dimension assignments.
+There is no pooled count or unlabeled dimension array. This additive read model lets SURFACE
+render the required comparison without joining DATA-private observations or inferring one
+platform from the other.
+
+### D-RNI-15 — FMP universe commands claim before dispatch and bootstrap from reviewed identities
+
+**Closes universe review IR-02 and IR-04, 2026-09-05.** An FMP universe synchronization command
+durably claims `(environment, idempotency_key)` before any provider request. One claimed key has
+one terminal expected outcome; an active concurrent delivery observes the same running command,
+and later delivery replays its terminal result without another provider call. The command record
+binds provider-call, payload-hash and staged-version lineage. A distinct key may observe the same
+provider payload and reuse the immutable staged universe, but receives its own command and
+provider-call audit trail.
+
+A clean environment is bootstrapped through a transactional, versioned import of a human-reviewed
+FMP profile export into the canonical security master. The exact ordered 501–600-security array is
+SHA-256-bound, must include NVDA and unique symbols, and fails closed on identity ambiguity. This
+bootstrap does not activate a universe: `joshuai` separately approves and activates the exact
+stored staged membership under D-RNI-06.
+
+### D-RNI-16 — Abandoned universe commands fail terminally and staging is atomic
+
+**Closes universe re-review IR-07 and IR-08, 2026-09-05.** A running FMP universe command has a
+bounded lease longer than the provider wrapper's complete retry window. A concurrent request does
+not poll, block or redispatch; it receives a retryable conflict with the lease expiry. When a
+later request observes an expired claim, it atomically records an audited terminal abandonment
+and returns that failed command. It never automatically repeats the external request; an operator
+must inspect the audit and intentionally choose a new idempotency key.
+
+Each completed provider attempt is persisted and bound to the still-running command in the same
+transaction before control returns from the adapter call-log callback. Abandonment preserves that
+binding, so a worker lost after dispatch cannot leave its already-recorded FMP attempt detached
+from the terminal command.
+
+For a valid candidate, immutable universe staging/reuse and successful command completion share
+one database transaction. Failure or process termination between those writes therefore leaves
+neither an orphaned staged version nor a falsely successful command. Expected provider and
+validation failures remain terminal replayable command results with their available lineage.
+
+### D-RNI-17 — Manual refresh exposes intent, durable identity and resolved scope
+
+**Resolves CR-SURFACE-04, 2026-09-05.** The shared command boundary accepts a required
+idempotency key plus either one ticker or `full_universe`; clients do not choose active
+configuration, universe, model route or analysis windows. Server composition resolves those
+versioned inputs, applies authz/audit, and returns one durable run ID with an `accepted` or
+`duplicate` disposition and a scope preview. Ticker previews include canonical security identity,
+company, exchange and universe version. Full previews include active universe version and a
+positive security count capped at 600.
+
+An exact same-key replay returns the original run and preview without a second execution. Reusing
+the key for a different scope fails closed. S07 may implement fixture-backed controls against this
+interface; I09 owns its durable job/queue and HTTP composition.
+
+### D-RNI-18 — Universe selection reads active membership and immutable staged impact
+
+**Resolves CR-SURFACE-05, 2026-09-05.** A separate read-only `RniUniverseReadService` exposes
+active universe metadata and canonical NVDA default, a case-insensitive ticker/company search
+bounded to 50 members of that exact active version, and a requested immutable staged preview.
+The active discriminated union preserves the actual 100-member legacy seed with null provider
+lineage during first deployment, while FMP active/staged variants require 501–600 members and
+complete retrieval/hash lineage. Search never reads the broader security catalogue or calls FMP.
+An empty query is only a bounded initial list, not an unbounded export.
+
+The staged response carries distinct active and staged version identities, retrieval times and
+payload hashes, requires the staged version to name the displayed active parent, and returns the
+complete unique, disjoint canonical additions and removals. Those changes must reconcile exactly
+from active to staged member count and cannot remove/add more identities than those populations
+contain. I08 additionally verifies set membership against stored versions. The service has no
+mutation, approval or activation method; existing D-RNI-06 human-governed activation is unchanged.
+
+### D-RNI-19 — Catalyst publication is claim-bound, point-in-time social corroboration
+
+**Accepts CR-ENGINE-001 and completes D-RNI-10 at I07, 2026-09-05.** The P0 source vocabulary
+remains Reddit and X. Separate persisted social evidence may `corroborate` or `challenge` a
+catalyst claim; it is not described as independent factual verification. Adding issuer,
+regulator, exchange, filing or news evidence is a later source-rights and source-kind decision,
+not an inference made by ENGINE.
+
+Before the integration branch merges, coordinator-owned migration `0024` will append the minimum
+durable representation for: separate verifier and challenger model invocations; a run/security/
+claim/policy/cutoff-bound catalyst assessment; claim-specific source, corroborating and
+counterevidence citation roles; exact platform-analytics citation lineage; challenger selection;
+and ordered publication statements with sentence-to-citation edges. The I07 composition port
+returns trusted persisted claim and invocation snapshots to ENGINE and stores the accepted
+assessment/publication trace. Caller-declared text, cutoff, role or model identity is never the
+authority.
+
+Point-in-time eligibility requires claim evidence to have been discovered and observed no later
+than the assessment cutoff. Corroborating and counterevidence sources additionally require a
+verified non-null `published_at` no later than that cutoff. Evidence outside that boundary never
+enters the affected model input. Publication revalidates the platform-canonical URL and active
+rights-policy version. Absence remains `unverified`, never false, and every non-coverage sentence
+retains at least one persisted citation edge.
+
+Migration `0024` realizes this decision as an additive, append-only graph. New combined summaries
+must commit in the same transaction as their cited synthesis artifact, complete ordered statement
+graph and exact section status/text/citation projection; historical summaries remain valid. The
+database also binds convergence to separate Reddit/X artifact identities, requires model
+invocations to be persisted before their single terminal transition, rejects non-canonical
+platform URLs at publication, and permits only a small numeric token-usage allowlist in terminal
+metadata. Application adapters remain responsible for canonical snapshot hashing and for
+rechecking the currently active route and rights configuration under the integration-owned lock.
+
+The SQL-free composition accepts only run/security/convergence/idempotency intent. Storage must
+return the complete trusted request and an opaque durable preparation identity, and the final
+atomic commit must carry that same identity. An already accepted command is replayed from its
+stored artifact without model calls, with the stored and replayed canonical hashes required to
+match exactly; inference failure never reaches publication.
+
+### D-RNI-20 — AI route settings create future config versions, never rewrite runs
+
+**Accepts CR-SURFACE-06, 2026-09-05.** `RniAiRouteSettingsService` exposes the active RNI config,
+selected Direct/Gateway route, server-resolved task-level model identities and the availability of
+both choices. It exposes no credential, endpoint token or client-selected model ID. OpenAI Direct
+is the default. Gateway model slugs remain configured data and are not hardcoded into the frozen
+contract; an unconfigured Gateway remains visible but unavailable.
+
+The update command accepts only an idempotency key, route intent and bounded reason. Auth, audit
+actor, route capability/credential checks, cloning the active configuration, resolving models and
+activating the successor are integration-owned. Success creates a new immutable config version
+used only by runs requested afterward. Exact same-key replay returns the committed result; a key
+reused for different intent fails. Historical `rni_run.ai_route`, config version and per-call model
+lineage are never updated. I10 composes live Direct/Gateway routing and I08 composes the
+authenticated Settings API; SURFACE S09 consumes only this service through a fixture.
+
+### D-RNI-21 — Balanced RNI model routing and initial AI spend limits are owner-approved
+
+**Owner decision, 2026-09-05.** OpenAI Direct remains the default RNI route. Reddit discovery,
+security relationship resolution and semantic classification use `gpt-5.6-terra` with low
+reasoning effort. Catalyst verification and challenger calls use `gpt-5.6-sol` with low reasoning
+effort. Vercel AI Gateway is an explicitly selected parity route to the same OpenAI model family;
+it must not silently fall back to another provider or an unevaluated model. I10 must capability-
+check configured Gateway model slugs rather than hardcode them into a frozen contract. If either
+approved model is unavailable, the affected route is unavailable until a separately evaluated
+successor configuration is approved.
+
+The initial RNI AI-spend policy is USD 2 hard maximum per manual ticker run, USD 25 hard maximum
+per full-universe run, USD 50 hard maximum in a rolling 24-hour period, a USD 300 calendar-month
+warning and a USD 500 calendar-month hard stop. Enforcement includes model-token and OpenAI Web
+Search tool charges routed through Direct or Gateway; X and FMP commercial charges remain separate
+provider controls. Pre-dispatch checks reserve the worst-case governed call cost, fail closed when
+a hard boundary would be exceeded and never rewrite historical usage. The limits are an initial
+demo baseline and may change only through a later owner-approved, versioned configuration after a
+measured full-universe run.
+
+### D-RNI-22 — Semantic persistence crosses lanes through one atomic E05 result
+
+**Accepts CR-DATA-002 for I07, 2026-09-05.** ENGINE classification remains SQL-free and DATA's
+relational row inputs remain private. The integration-owned `RniSemanticPersistencePort` accepts
+only a durable run ID, the already-persisted source identity and the complete validated E05
+classification result. Its implementation commits observations, claims, claim-source citations,
+themes and noise assessments atomically, then returns the durable identities selected by storage.
+It never exposes table-shaped write arguments back to ENGINE.
+
+The coordinator wrapper reads committed bounded evidence and completes every independent
+per-security classification before it invokes the port once. A failure for any security writes
+nothing; an exact redelivery returns `duplicate` with the original durable identities; reusing a
+semantic identity for different content fails closed. This port does not decide catalyst evidence
+roles, model routes, rights policy or publication. Those remain the separate D-RNI-19
+assessment/publication boundary and I10 server-owned routing/configuration work.
+
+Migration `0024` supplies the corresponding additive storage without rewriting historical rows:
+claim dimension, immutable run/observation membership and one exact semantic-quality sidecar per
+observation. Multi-ticker content therefore has separate run membership and quality lineage for
+each source/security observation. The DATA adapter owns the transaction over these additions and
+the existing observation/claim/citation/theme tables.
+
+Each run/observation membership also stores a required SHA-256 identity of the complete,
+unrounded canonical E05 result for that security. Relational NUMERIC columns remain useful query
+projections, but they are never the replay authority: two outputs that round to the same database
+precision still have different semantic identities and the later delivery must fail closed.
+
+### D-RNI-23 — Overall platform stance is a persisted-evidence projection, not caller input
+
+**Accepts CR-DATA-005 for D12, 2026-09-05.** E07's overall platform stance and score are derived
+from the exact committed E06 current-window weight trace and the matching persisted E05
+per-source, per-security overall stance scores. For each trace with positive weight and a non-null
+persisted overall score, deterministic code computes the unrounded weighted mean
+`sum(weight * stance_score) / sum(weight)`. No eligible score, zero eligible weight, or failure of
+the E06 methodology's minimum effective-attention or independent-source requirements produces
+`insufficient` with a null score. A positive result maps to `bullish`, a negative result to
+`bearish`, and exact zero to `neutral`; aggregate code does not manufacture `strong_*` labels.
+
+The projection must use exact run, security, platform and source-item membership, the committed
+E06 input/result hashes, its current-window trace weights and its methodology snapshot. DATA's D12
+adapter validates this projection before committing E07. Changing only the caller-supplied overall
+stance or score while the persisted E05/E06 lineage is unchanged therefore fails. This adds no
+frozen contract field and no second aggregate: E06 dimension results remain independent, E07 keeps
+its existing overall fact, and historical artifacts remain immutable.
+
+### D-RNI-24 — Model catalogue evidence is preflight; exact pricing units remain ledger authority
+
+**Coordinator decision for I10C2, 2026-09-05.** RNI capability refresh reads the public Vercel AI
+Gateway model catalogue for the exact configured Gateway slug, OpenAI ownership, Responses v4,
+reasoning effort, Web Search and price metadata, and separately confirms both approved canonical
+model IDs through authenticated OpenAI Direct model lookup. The raw response hashes, observation
+window and Direct/Gateway identities are stored append-only. Catalogue presence is capability
+preflight, not live quality or parity proof: I11 must still execute the governed structured
+Responses/Web Search probes and the human gate must pass before a staged successor is activated.
+
+The Gateway catalogue's `input` and `output` prices are USD per token. Its `web_search` value is
+displayed on the corresponding provider page as USD per 1,000 searches, so ingestion divides that
+field by 1,000 before storing this repository's USD-per-search unit. The price-book version records
+the catalogue URL and raw SHA-256 response hash, and all RNI price rows are append-only. Initial
+staging may use a catalogue base token price only while every route's maximum input stays below the
+catalogue's first tier boundary; crossing a tier requires an explicit tier-aware successor rather
+than silently applying the cheaper price. Discovery reservation includes all three tool calls
+permitted by the governed prompt. Missing, duplicated or conflicting model, capability, ownership,
+price or unit evidence fails closed.
+
+### D-RNI-25 — Admin task envelopes stage successors; global spend controls stay fixed
+
+**Owner-approved coordinator decision for I10C2B, 2026-09-05.** The initial balanced per-call
+envelopes are: discovery 16,000 serialized-input bytes/tokens, 2,000 output tokens, three governed
+Web Search calls and USD 0.15; relationship and classifier each 16,000 input bytes/tokens, 2,000
+output tokens, no tools and USD 0.10; verifier 64,000 input bytes/tokens, 2,000 output tokens, no
+tools and USD 0.20; challenger 64,000 input bytes/tokens, 1,000 output tokens, no tools and USD
+0.20. Every task starts with a 30-second timeout. Until a tokenizer-specific bound is frozen, the
+serialized byte ceiling is enforced before dispatch and the same number is conservatively
+reserved as input tokens.
+
+An authenticated admin may change these bounded per-task values in the Settings portal. Saving
+requires the complete five-task set and a reason, creates an audited staged successor, and never
+silently activates it or rewrites active, running or historical configuration. The contract caps
+input at 131,072 bytes/tokens, output at 8,000 tokens, timeout at 120 seconds and one call at USD
+2; only discovery may use one to three governed searches. A successor requires fresh approved
+model capability evidence and compatible current first-tier price evidence. The owner-approved
+global USD 2 manual-run, USD 25 full-universe, USD 50 rolling-day, USD 300 monthly warning and USD
+500 monthly stop remain fixed and are not editable in this portal.
+
+### D-RNI-26 — Cited publication records planned no-calls and selected evidence explicitly
+
+**Accepts CR-I07-001 through CR-I07-004, 2026-09-05.** The accepted E08 contract is the authority
+for migration `0024` cited-publication semantics. The verifier stage is `verification`, matching
+the frozen invocation descriptor and governed `rni_verification` task; the stray `verifier`
+comparison is corrected without adding another stage name.
+
+Verifier and challenger descriptors are durable invocation plans created before E08 evaluates its
+deterministic dispatch guards. A plan transitions exactly once from `prepared` to `succeeded`,
+`failed` or `skipped`. `skipped` is permitted only with no output hash, no provider response or
+usage, and one allowlisted reason: `no_eligible_claims` for the verifier and its dependent
+challenger, or `no_verified_assessments` for the challenger after a successful verifier call. A
+skipped plan never creates or settles an I10 AI-ledger invocation because no provider dispatch or
+spend reservation occurred. Publication must prove that the stored assessments, challenger
+selection and snapshots match the skip reason; it must never manufacture successful calls.
+
+Claim-specific corroborating and counterevidence role rows are the immutable, bounded candidate
+set supplied to verification. The verifier's assessment arrays are the selected same-claim,
+same-role subsets. They need not equal every candidate, but may not invent, cross claims, swap
+roles or overlap. `unverified` selects neither set. Challenger validation uses the verifier-
+selected contradicting set, not all candidate counterevidence. Existing cutoff, canonical URL,
+rights, source-separation, run/security, exact-manifest and sentence-edge protections remain.
+
+The P0 active source-rights authority is server-owned configuration pinned to the already frozen
+`rni-source-policy-v1`. The persistence reader receives that authority through dependency
+injection under the publication lock and compares it with the batch, claim, role and source rows;
+none of those rows can declare itself active. A future rights-policy successor or activation
+surface requires a separate owner-approved, versioned decision.
+
+### D-RNI-27 — Durable refresh orchestration extends the existing job ledger and fences every publishing stage
+
+**Accepts CR-I09-001, 2026-09-05.** Manual refresh, rerun and scheduled execution share one
+durable command/execution representation. A newly accepted command first creates the existing
+`job_run`, then links exactly one `rni_run` and its immutable resolved plan to that job identity.
+The plan binds scope, configuration, universe, prompt, AI route, windows, task envelopes, maximum
+attempts, runtime deadline and admitted cost. Exact-key replay returns the original identity;
+crossed intent fails before any write. Rerun creates a new identity linked to its predecessor and
+never mutates historical work.
+
+The execution owns separate Reddit, X and combined-publication stages. Every stage uses a durable
+attempt, not-before time, opaque lease token and lease expiry. Claim, heartbeat, retry, failure and
+finish must compare that token and the immutable run deadline. The token must reach every provider
+and commit boundary capable of causing an external or publishable effect; rejecting a stale worker
+only after it publishes is insufficient. The combined stage therefore has the same lifecycle as a
+platform stage and cannot publish after its deadline unless trusted storage proves the identical
+artifact was already committed by a valid earlier lease.
+
+Command, execution, schedule advancement, audit and transactional-outbox writes commit atomically;
+provider and QStash calls remain outside the database transaction. Ambiguous QStash delivery is
+retried with the same delivery identity. A due skip-policy schedule takes its job lock and either
+creates work or atomically records a busy skip and advances once, so a busy instant cannot remain
+perpetually due. Current and next QStash signing keys are server-only authority.
+
+I10 remains the only spend ledger. Run admission takes its global budget lock and counts actual,
+uncertain and outstanding admitted spend exactly once; every real model dispatch still performs
+the existing per-call reservation and settlement. Unknown provider outcomes retain their
+reservation. Migration `0024` may add the narrow orchestration, stage, command and outbox storage
+needed for this decision; no public RNI API shape, frozen source contract or existing job-ledger
+meaning changes.
+
+### D-RNI-28 — Challenger plans are durable before guards; their dependent input is hydrated exactly once
+
+**Accepts CR-I07-005, 2026-09-05.** D-RNI-26 requires verifier and challenger descriptors to
+exist before E08 evaluates either deterministic dispatch guard, but the challenger model input
+contains the verifier's selected assessment array. That array is not known when the batch and
+descriptors are created and, under D-RNI-26, may be a valid subset of the candidate evidence.
+Persisting an all-candidate placeholder as the challenger input would create false provider
+lineage and reject valid E08 output.
+
+The verification invocation is created with its complete immutable input snapshot and hash. The
+challenger invocation is created at the same time with its immutable descriptor, ordered claims
+and preparation lineage, but a null exact input snapshot/hash. After the verifier result is
+validated, the challenger input is hydrated exactly once while the plan remains `prepared`. A
+challenger transport must perform that hydration before I10 reservation and provider dispatch.
+When policy skips the challenger, the publication transaction hydrates the deterministic input
+before recording the reason-bound skip. Hydration cannot change the descriptor, claims, model,
+policy, batch or preparation identity; it cannot be repeated, reversed or occur after a terminal
+transition.
+
+An accepted synthesis artifact requires both exact input hashes and snapshots and binds them to
+the immutable artifact foreign keys. I10 still reserves the actual hydrated provider request hash,
+never a placeholder. No new public field or engine output exists; this is narrow persistence and
+composition semantics inside migration `0024`.
+
+### D-RNI-29 — Failed and unavailable sources retain a canonical zero-evidence analytics component
+
+**Accepts CR-I07-006, 2026-09-05.** E07 and D12 require one independently replayable E06
+component identity for each Reddit/X input, including when both source slices are terminal but one
+is `failed` or `unavailable`. E06 therefore accepts those two terminal statuses only as a
+canonical absence artifact: the current window contains no observations, comparison and baseline
+inputs are absent, every confidence component and penalty is zero, and the skipped narrative and
+catalyst prerequisites are terminal. The calculated result has zero attention, null confidence
+and four insufficient dimensions. Any evidence or publishable metric under either status fails
+closed.
+
+The exact artifact hash, truthful status and source-slice identity remain mandatory through E07
+and D12; there is no sentinel hash, fabricated partial slice or nullable component shortcut. This
+lets one-source failure reach deterministic partial cross-source synthesis while preserving the
+surviving platform's separate cited conclusion. Frozen portal and HTTP shapes, successful E06
+semantics and migration storage do not change.
+
+### D-RNI-30 — Aggregate RNI AI budgets are admin-editable downward for future runs
+
+**Accepts CR-I10-001 from the current coordinator brief, 2026-09-05, and supersedes only the
+fixed-global-limit sentence of D-RNI-25.** D-RNI-21's USD 2 manual ticker, USD 25 full-universe,
+USD 50 rolling-day, USD 300 monthly-warning and USD 500 monthly-stop values remain the initial
+defaults and owner-approved maximum safety ceilings. An authenticated administrator may lower
+one or more values in Settings, subject to positive decimal validation and the ordering
+`manual <= full universe <= rolling day <= monthly warning < monthly hard`. Raising any value
+above the D-RNI-21 ceiling still requires a separately
+approved decision backed by measured full-universe evidence.
+
+Saving is a same-origin, reason-bound and idempotent command that atomically activates a successor
+for future runs. It copies the current route, task envelopes and other configuration without
+rewriting accepted, running or historical runs, model invocations, admissions or settlements.
+Exact replay returns the original successor; crossed reuse fails closed. Later manual and
+scheduled admissions snapshot and enforce the successor values, while I10 remains the only spend
+ledger. Route changes and staged task-envelope successors must preserve the selected aggregate
+limits rather than restoring defaults. Credentials and provider secrets never enter this setting
+or its audit record.
+
+### D-RNI-31 — One environment-bound schedule advances forward without backfill
+
+**Accepts CR-I09-002 from the current coordinator brief, 2026-09-05.** Each environment has one
+trusted `rni-scheduled:<environment>` job for a full-universe refresh. The administrator may read
+and update only that existing definition through the RNI portal. The command is same-origin,
+reason-bound, idempotent and version-checked; exact replay returns the original receipt and crossed
+intent or a stale version fails closed. It may pause or resume the job and select either a bounded
+300–31,536,000 second interval or a five-field cron expression whose adjacent preview fires remain
+at least five minutes apart, with a valid IANA display timezone.
+
+The update takes the established budget, orchestration and job locks in that order, then atomically
+increments the job version, recalculates `next_due_at` strictly forward from the transaction time
+and records an audit. Existing runs, slices and their immutable due times are never rewritten.
+The scheduler uses the same stored definition and skip-concurrency policy: one heartbeat creates at
+most one due run, or records one busy skip, and advances the schedule once. Missed periods are not
+backfilled. The five displayed times are projections from the stored due instant and use the same
+timezone/DST rules as execution; pausing does not claim that those projections will execute.
+
+### D-RNI-32 — Every production worker run uses one immutable resolved manifest
+
+**Accepts CR-I09-003, 2026-09-05.** A new production-capable RNI execution must create one
+append-only canonical run manifest in the same transaction as its job, run, scope, slices,
+admission, execution, audit and outbox records. The manifest pins the exact accepted windows and
+cutoff; active config checksum; five ordered model routes with capability, prompt/schema/tool and
+price evidence; source configuration; ambiguity, taxonomy, classification, analytics and
+convergence policies; complete ordered 1–600 member snapshot; build identity; orchestration
+limits; and coverage disclosures. No worker may reconstruct these values from later mutable
+configuration, universe or security reads.
+
+The manifest and member set have canonical SHA-256 identities validated against their relational
+lineage. Retries retain the same run, plan, manifest and deterministic invocation slots. Historical
+`rni-execution-v1` rows remain readable but cannot authorize new production effects; new manual
+and full-universe executions use the v2 manifest. Missing X queries, source configuration, policy
+values, build identity, fresh capability or exact price evidence fail as `INVALID_PLAN` before
+any accepted-run write. This is additive internal Migration `0024` work and does not change the
+frozen public API.
+
+### D-RNI-33 — Full-universe results stage per member and publish through one atomic release
+
+**Accepts CR-I09-004, 2026-09-05.** Each full-universe member's complete I07 cited graph is
+committed with an immutable manifest-bound staging item under the exact combined lease. Those
+items are restart checkpoints, not user-visible publication. The final transaction verifies that
+both source slices are terminal and that the immutable run-manifest member set has exactly one
+matching cited result—no omissions, extras or crossed security—then inserts one canonical
+aggregate release manifest, the existing orchestration receipt, terminal run/job/execution state,
+budget release and audit atomically.
+
+The aggregate is only a completeness and visibility index. It preserves Reddit and X identities,
+convergence and citation hashes and per-member complete/partial/insufficient status; it never pools
+sentiment or invents an aggregate stance. Radar/detail reads for new full-universe runs remain
+gated until the matching release commits. Manual-ticker and historical reads keep their existing
+paths. Exact staged replay makes no new provider call; a missing/crossed member is validation
+failure, never a silently partial publication. This is additive internal Migration `0024` and
+read-composition work with no external response-shape change.
+
+### D-RNI-34 — Source interpretation checkpoints retain exact content and parent lease authority
+
+**Accepts CR-I09-005, 2026-09-05.** Production source interpretation uses a durable per-subject
+workflow checkpoint whose input identity includes the exact source, retrieval, content version
+and source-outbox event selected by the immutable run. Every claim, heartbeat, retry, terminal
+decision and output commit carries the parent I09 plan/platform/attempt/token authority and is
+rechecked under the established budget → orchestration → execution lock order. A changed-content
+replay cannot silently select newer bytes, and no subject mutation may outlive its parent platform
+lease or run deadline.
+
+The checkpoint records bounded attempts, not-before, lease, input/output hashes and explicit
+completed, permanent-failure and budget-stopped terminals. Exact completed replay returns the
+saved output without source/model effects; partial or crossed output fails closed. Existing v1
+fixtures remain readable for tests but cannot power production execution. This additive internal
+checkpoint/outbox contract leaves frozen public APIs and historical analytical rows unchanged.
+
 ### D-37 — F02 moves from OTP to email+password; the owner-decided cuts around it stay
 
 **Supersedes the "OTP sign-in is kept" clause of D-11/D-28.** The owner asked, directly, to

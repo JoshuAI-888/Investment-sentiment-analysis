@@ -370,7 +370,7 @@ test.describe('F02 — a real admin session reaches every gated route', () => {
       const response = await page.goto(route.path);
       expect(response?.status()).toBe(200);
       expect(new URL(page.url()).pathname).toBe(route.path);
-      await expect(page.locator('[data-state="fixture"]').first()).toBeVisible();
+      await expect(page.locator('[data-state="fixture"], [data-state="ready"]').first()).toBeVisible();
       await expect(page.getByText('Not authorized')).toHaveCount(0);
     });
   }

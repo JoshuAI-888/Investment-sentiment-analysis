@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const RNI_UNIVERSE_MAX_SYMBOLS = 600;
+export const RNI_FMP_UNIVERSE_MIN_SYMBOLS = 501;
 
 export const rniPlatform = z.enum(['reddit', 'x']);
 export type RniPlatform = z.infer<typeof rniPlatform>;
@@ -126,6 +127,26 @@ export const rniSourceItem = z
     }
   });
 export type RniSourceItem = z.infer<typeof rniSourceItem>;
+
+export const rniSourceCommitResult = z
+  .object({
+    sourceItemId: z.string().uuid(),
+    sourceInserted: z.boolean(),
+    retrievalInserted: z.boolean(),
+    contentVersionInserted: z.boolean(),
+  })
+  .strict();
+export type RniSourceCommitResult = z.infer<typeof rniSourceCommitResult>;
+
+/**
+ * The DATA implementation resolves only after its source/retrieval/content transaction commits.
+ * ENGINE must not enqueue interpretation from the caller-proposed `source.id`; it may use only
+ * the committed identity returned here. A duplicate returns the existing durable identity and
+ * explicit false flags rather than masquerading as a new write.
+ */
+export interface RniSourcePersistencePort {
+  commitSource(source: RniSourceItem): Promise<RniSourceCommitResult>;
+}
 
 export const rniSecurityMention = z
   .object({
@@ -254,6 +275,287 @@ export const rniRunRequest = z
   });
 export type RniRunRequest = z.infer<typeof rniRunRequest>;
 
+export const rniResolvedModelRoute = z
+  .object({
+    task: z.string().min(1),
+    provider: z.string().min(1),
+    modelId: z.string().min(1),
+    modelRevision: z.string().min(1),
+    promptVersion: z.string().min(1),
+  })
+  .strict();
+export type RniResolvedModelRoute = z.infer<typeof rniResolvedModelRoute>;
+
+export const rniAiRouteOption = z
+  .object({
+    aiRoute: rniAiRoute,
+    available: z.boolean(),
+    unavailableReason: z.string().min(1).nullable(),
+  })
+  .strict()
+  .superRefine((option, context) => {
+    if (option.available === (option.unavailableReason !== null)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['unavailableReason'],
+        message: 'Only an unavailable AI route carries an unavailable reason',
+      });
+    }
+  });
+export type RniAiRouteOption = z.infer<typeof rniAiRouteOption>;
+
+const rniAiBudgetAmount = (maximum: number) =>
+  z
+    .string()
+    .regex(/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/u)
+    .refine((value) => Number(value) > 0 && Number(value) <= maximum);
+
+/** D-RNI-30 future-run limits. D-RNI-21 values remain the maximum safety ceilings. */
+export const rniAiBudgetLimits = z
+  .object({
+    manualRunHardUsd: rniAiBudgetAmount(2),
+    fullUniverseHardUsd: rniAiBudgetAmount(25),
+    rolling24hHardUsd: rniAiBudgetAmount(50),
+    monthlyWarningUsd: rniAiBudgetAmount(300),
+    monthlyHardUsd: rniAiBudgetAmount(500),
+    currency: z.literal('USD'),
+  })
+  .strict()
+  .superRefine((limits, context) => {
+    const manual = Number(limits.manualRunHardUsd);
+    const full = Number(limits.fullUniverseHardUsd);
+    const rolling = Number(limits.rolling24hHardUsd);
+    const warning = Number(limits.monthlyWarningUsd);
+    const monthly = Number(limits.monthlyHardUsd);
+    if (manual > full || full > rolling || rolling > warning || warning >= monthly) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'RNI AI budget limits are not safely ordered',
+      });
+    }
+  });
+export type RniAiBudgetLimits = z.infer<typeof rniAiBudgetLimits>;
+
+export const rniAiRouteSetting = z
+  .object({
+    configVersion: z.string().min(1),
+    aiRoute: rniAiRoute,
+    resolvedModels: z.array(rniResolvedModelRoute).min(1),
+    options: z.array(rniAiRouteOption).length(rniAiRoute.options.length),
+    budgets: rniAiBudgetLimits,
+    effectiveAt: rniIsoTimestamp,
+  })
+  .strict()
+  .superRefine((setting, context) => {
+    const routeNames = setting.options.map(({ aiRoute }) => aiRoute);
+    if (
+      new Set(routeNames).size !== rniAiRoute.options.length ||
+      !rniAiRoute.options.every((route) => routeNames.includes(route))
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['options'],
+        message: 'AI route settings require exactly one Direct and one Gateway option',
+      });
+    }
+    if (
+      new Set(setting.resolvedModels.map(({ task }) => task)).size !== setting.resolvedModels.length
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['resolvedModels'],
+        message: 'Each RNI model task must resolve exactly once',
+      });
+    }
+    if (
+      !setting.options.some(({ aiRoute, available }) => aiRoute === setting.aiRoute && available)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['aiRoute'],
+        message: 'The selected AI route must be configured and available',
+      });
+    }
+  });
+export type RniAiRouteSetting = z.infer<typeof rniAiRouteSetting>;
+
+/** Intent only; the server owns auth, audit actor, route availability and model resolution. */
+export const rniAiRouteSettingUpdateRequest = z
+  .object({
+    idempotencyKey: z.string().min(1),
+    aiRoute: rniAiRoute,
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type RniAiRouteSettingUpdateRequest = z.infer<typeof rniAiRouteSettingUpdateRequest>;
+
+/** Intent only; actor, environment and predecessor configuration stay server-owned. */
+export const rniAiBudgetSettingUpdateRequest = z
+  .object({
+    idempotencyKey: z.string().min(1),
+    budgets: rniAiBudgetLimits,
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type RniAiBudgetSettingUpdateRequest = z.infer<typeof rniAiBudgetSettingUpdateRequest>;
+
+export const rniAiRouteSettingUpdateResult = z
+  .object({
+    disposition: z.enum(['accepted', 'duplicate']),
+    idempotencyKey: z.string().min(1),
+    previousConfigVersion: z.string().min(1),
+    setting: rniAiRouteSetting,
+  })
+  .strict()
+  .refine((result) => result.setting.configVersion !== result.previousConfigVersion, {
+    message: 'A route-setting command must return a new future config version',
+    path: ['setting', 'configVersion'],
+  });
+export type RniAiRouteSettingUpdateResult = z.infer<typeof rniAiRouteSettingUpdateResult>;
+
+export const rniAiBudgetSettingUpdateResult = rniAiRouteSettingUpdateResult;
+export type RniAiBudgetSettingUpdateResult = z.infer<typeof rniAiBudgetSettingUpdateResult>;
+
+export const rniModelTask = z.enum([
+  'rni_discovery',
+  'rni_relationship',
+  'rni_classifier',
+  'rni_verification',
+  'rni_challenger',
+]);
+export type RniModelTask = z.infer<typeof rniModelTask>;
+
+const rniRouteCostLimit = z
+  .string()
+  .regex(/^(?:(?:0|1)(?:\.\d+)?|2(?:\.0+)?)$/u)
+  .refine((value) => /[1-9]/u.test(value), 'Per-call cost limit must be positive');
+
+export const rniTaskEnvelope = z
+  .object({
+    task: rniModelTask,
+    maxInputBytes: z.number().int().min(1024).max(131072),
+    maxInputTokensReserved: z.number().int().min(1024).max(131072),
+    maxOutputTokens: z.number().int().min(256).max(8000),
+    maxToolCalls: z.number().int().min(0).max(3),
+    timeoutMs: z.number().int().min(5000).max(120000),
+    maxCostUsd: rniRouteCostLimit,
+  })
+  .strict()
+  .superRefine((envelope, context) => {
+    if (envelope.maxInputBytes !== envelope.maxInputTokensReserved) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['maxInputTokensReserved'],
+        message: 'Conservative token reservation must equal the serialized-input byte ceiling',
+      });
+    }
+    if (
+      (envelope.task === 'rni_discovery' && envelope.maxToolCalls < 1) ||
+      (envelope.task !== 'rni_discovery' && envelope.maxToolCalls !== 0)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['maxToolCalls'],
+        message: 'Only discovery may use one to three governed Web Search calls',
+      });
+    }
+  });
+export type RniTaskEnvelope = z.infer<typeof rniTaskEnvelope>;
+
+const rniTaskEnvelopeSet = z
+  .array(rniTaskEnvelope)
+  .length(rniModelTask.options.length)
+  .refine(
+    (envelopes) =>
+      new Set(envelopes.map(({ task }) => task)).size === rniModelTask.options.length &&
+      rniModelTask.options.every((task) => envelopes.some((envelope) => envelope.task === task)),
+    'Task envelope settings require every governed RNI task exactly once',
+  );
+
+export const rniTaskEnvelopeSetting = z
+  .object({
+    configVersion: z.string().min(1),
+    status: z.enum(['active', 'staged']),
+    effectiveAt: rniIsoTimestamp,
+    envelopes: rniTaskEnvelopeSet,
+  })
+  .strict();
+export type RniTaskEnvelopeSetting = z.infer<typeof rniTaskEnvelopeSetting>;
+
+export const rniTaskEnvelopeUpdateRequest = z
+  .object({
+    idempotencyKey: z.string().min(1),
+    reason: z.string().trim().min(1).max(500),
+    envelopes: rniTaskEnvelopeSet,
+  })
+  .strict();
+export type RniTaskEnvelopeUpdateRequest = z.infer<typeof rniTaskEnvelopeUpdateRequest>;
+
+export const rniTaskEnvelopeUpdateResult = z
+  .object({
+    disposition: z.enum(['accepted', 'duplicate']),
+    idempotencyKey: z.string().min(1),
+    previousConfigVersion: z.string().min(1),
+    setting: rniTaskEnvelopeSetting.extend({ status: z.literal('staged') }),
+  })
+  .strict()
+  .refine((result) => result.previousConfigVersion !== result.setting.configVersion, {
+    message: 'Envelope changes must stage a successor configuration',
+    path: ['setting', 'configVersion'],
+  });
+export type RniTaskEnvelopeUpdateResult = z.infer<typeof rniTaskEnvelopeUpdateResult>;
+
+export const rniManualRefreshScope = z.discriminatedUnion('kind', [
+  z
+    .object({
+      kind: z.literal('ticker'),
+      ticker: z.string().regex(/^[A-Z][A-Z0-9.-]{0,9}$/u),
+    })
+    .strict(),
+  z.object({ kind: z.literal('full_universe') }).strict(),
+]);
+export type RniManualRefreshScope = z.infer<typeof rniManualRefreshScope>;
+
+/** The client supplies intent only; active configuration, windows and universe stay server-owned. */
+export const rniManualRefreshRequest = z
+  .object({
+    idempotencyKey: z.string().min(1),
+    scope: rniManualRefreshScope,
+  })
+  .strict();
+export type RniManualRefreshRequest = z.infer<typeof rniManualRefreshRequest>;
+
+export const rniManualRefreshScopePreview = z.discriminatedUnion('kind', [
+  z
+    .object({
+      kind: z.literal('ticker'),
+      securityId: z.string().uuid(),
+      ticker: z.string().regex(/^[A-Z][A-Z0-9.-]{0,9}$/u),
+      companyName: z.string().min(1),
+      exchange: z.string().min(1),
+      universeVersion: z.string().min(1),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('full_universe'),
+      universeVersion: z.string().min(1),
+      securityCount: z.number().int().positive().max(RNI_UNIVERSE_MAX_SYMBOLS),
+    })
+    .strict(),
+]);
+export type RniManualRefreshScopePreview = z.infer<typeof rniManualRefreshScopePreview>;
+
+export const rniManualRefreshResult = z
+  .object({
+    disposition: z.enum(['accepted', 'duplicate']),
+    runId: z.string().uuid(),
+    idempotencyKey: z.string().min(1),
+    scopePreview: rniManualRefreshScopePreview,
+  })
+  .strict();
+export type RniManualRefreshResult = z.infer<typeof rniManualRefreshResult>;
+
 export const rniUniverseMemberCandidate = z
   .object({
     ticker: z.string().regex(/^[A-Z][A-Z0-9.-]{0,9}$/u),
@@ -332,9 +634,444 @@ export const rniCombinedSummary = z
   );
 export type RniCombinedSummary = z.infer<typeof rniCombinedSummary>;
 
+export const rniRadarQuery = z
+  .object({
+    runId: z.string().uuid(),
+    cursor: z.string().min(1).nullable().optional(),
+    limit: z.number().int().min(1).max(100).default(50),
+  })
+  .strict();
+export type RniRadarQuery = z.input<typeof rniRadarQuery>;
+
+export const rniRadarSecurity = z
+  .object({
+    id: z.string().uuid(),
+    ticker: z.string().regex(/^[A-Z][A-Z0-9.-]{0,9}$/u),
+    companyName: z.string().min(1),
+    exchange: z.string().min(1),
+  })
+  .strict();
+export type RniRadarSecurity = z.infer<typeof rniRadarSecurity>;
+
+const rniUniverseVersionReadFields = {
+  id: z.string().min(1),
+  createdAt: rniIsoTimestamp,
+};
+
+const rniLegacyActiveUniverseVersion = z
+  .object({
+    ...rniUniverseVersionReadFields,
+    status: z.literal('active'),
+    parentVersion: z.string().min(1).nullable(),
+    securityCount: z.literal(100),
+    source: z.literal('legacy_seed'),
+    retrievedAt: z.null(),
+    payloadSha256: z.null(),
+  })
+  .strict();
+
+const rniFmpActiveUniverseVersion = z
+  .object({
+    ...rniUniverseVersionReadFields,
+    status: z.literal('active'),
+    parentVersion: z.string().min(1).nullable(),
+    securityCount: z.number().int().min(RNI_FMP_UNIVERSE_MIN_SYMBOLS).max(RNI_UNIVERSE_MAX_SYMBOLS),
+    source: z.literal('fmp_sp500_constituent'),
+    retrievedAt: rniIsoTimestamp,
+    payloadSha256: rniSha256,
+  })
+  .strict();
+
+export const rniActiveUniverseVersion = z.discriminatedUnion('source', [
+  rniLegacyActiveUniverseVersion,
+  rniFmpActiveUniverseVersion,
+]);
+export type RniActiveUniverseVersion = z.infer<typeof rniActiveUniverseVersion>;
+
+export const rniStagedUniverseVersion = z
+  .object({
+    ...rniUniverseVersionReadFields,
+    status: z.literal('staged'),
+    parentVersion: z.string().min(1),
+    securityCount: z.number().int().min(RNI_FMP_UNIVERSE_MIN_SYMBOLS).max(RNI_UNIVERSE_MAX_SYMBOLS),
+    source: z.literal('fmp_sp500_constituent'),
+    retrievedAt: rniIsoTimestamp,
+    payloadSha256: rniSha256,
+  })
+  .strict();
+export type RniStagedUniverseVersion = z.infer<typeof rniStagedUniverseVersion>;
+
+export const rniActiveUniverse = z
+  .object({
+    version: rniActiveUniverseVersion,
+    defaultSecurity: rniRadarSecurity,
+  })
+  .strict()
+  .refine((universe) => universe.defaultSecurity.ticker === 'NVDA', {
+    message: 'The active RNI universe default security must be NVDA',
+    path: ['defaultSecurity', 'ticker'],
+  });
+export type RniActiveUniverse = z.infer<typeof rniActiveUniverse>;
+
+export const rniUniverseSearchQuery = z
+  .object({
+    query: z.string().trim().max(100).default(''),
+    limit: z.number().int().min(1).max(50).default(20),
+  })
+  .strict();
+export type RniUniverseSearchQuery = z.input<typeof rniUniverseSearchQuery>;
+
+export const rniUniverseSearchResult = z
+  .object({
+    version: rniActiveUniverseVersion,
+    query: z.string().trim().max(100),
+    members: z.array(rniRadarSecurity).max(50),
+    hasMore: z.boolean(),
+  })
+  .strict()
+  .superRefine((result, context) => {
+    const memberIds = result.members.map(({ id }) => id);
+    if (new Set(memberIds).size !== memberIds.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['members'],
+        message: 'An active-universe search cannot repeat a security',
+      });
+    }
+    if (result.members.length > result.version.securityCount) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['members'],
+        message: 'Search results cannot exceed active-universe membership',
+      });
+    }
+  });
+export type RniUniverseSearchResult = z.infer<typeof rniUniverseSearchResult>;
+
+export const rniStagedUniversePreview = z
+  .object({
+    activeVersion: rniActiveUniverseVersion,
+    stagedVersion: rniStagedUniverseVersion,
+    added: z.array(rniRadarSecurity).max(RNI_UNIVERSE_MAX_SYMBOLS),
+    removed: z.array(rniRadarSecurity).max(RNI_UNIVERSE_MAX_SYMBOLS),
+  })
+  .strict()
+  .superRefine((preview, context) => {
+    if (preview.activeVersion.id === preview.stagedVersion.id) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['stagedVersion', 'id'],
+        message: 'A staged universe must be distinct from the active universe',
+      });
+    }
+    if (preview.stagedVersion.parentVersion !== preview.activeVersion.id) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['stagedVersion', 'parentVersion'],
+        message: 'A staged preview must be based on the displayed active universe',
+      });
+    }
+    const addedIds = preview.added.map(({ id }) => id);
+    const removedIds = preview.removed.map(({ id }) => id);
+    if (
+      new Set(addedIds).size !== addedIds.length ||
+      new Set(removedIds).size !== removedIds.length ||
+      addedIds.some((id) => removedIds.includes(id))
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['added'],
+        message: 'Staged additions and removals must be unique and disjoint',
+      });
+    }
+    if (preview.removed.length > preview.activeVersion.securityCount) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['removed'],
+        message: 'A staged preview cannot remove more members than the active universe contains',
+      });
+    }
+    if (preview.added.length > preview.stagedVersion.securityCount) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['added'],
+        message: 'A staged preview cannot add more members than the staged universe contains',
+      });
+    }
+    if (
+      preview.activeVersion.securityCount + preview.added.length - preview.removed.length !==
+      preview.stagedVersion.securityCount
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['stagedVersion', 'securityCount'],
+        message: 'The staged count must equal active membership plus the complete impact',
+      });
+    }
+  });
+export type RniStagedUniversePreview = z.infer<typeof rniStagedUniversePreview>;
+
+export const rniRadarPlatformCell = z
+  .object({
+    platform: rniPlatform,
+    status: rniSliceStatus,
+    stance: rniStance,
+    summary: z.string().min(1),
+    eligibleSourceCount: z.number().int().nonnegative(),
+    coverageDisclosure: z.string().min(1),
+    confidence: rniUnitDecimal.nullable(),
+    lastSuccessfulRefreshAt: rniIsoTimestamp.nullable(),
+    dataThroughAt: rniIsoTimestamp.nullable(),
+    computedAt: rniIsoTimestamp.nullable(),
+    citationIds: z.array(z.string().uuid()),
+  })
+  .strict()
+  .superRefine((cell, context) => {
+    if (
+      ['pending', 'running', 'failed', 'unavailable'].includes(cell.status) &&
+      cell.stance !== 'insufficient'
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['stance'],
+        message: 'A non-publishable platform state must remain insufficient, never neutral',
+      });
+    }
+  });
+export type RniRadarPlatformCell = z.infer<typeof rniRadarPlatformCell>;
+
+export const rniRadarCombinedState = z.enum([
+  'pending',
+  'aligned',
+  'divergent',
+  'partial',
+  'insufficient',
+]);
+export type RniRadarCombinedState = z.infer<typeof rniRadarCombinedState>;
+
+export const rniRadarCombinedCell = z
+  .object({
+    state: rniRadarCombinedState,
+    summary: z.string().min(1),
+    citationIds: z.array(z.string().uuid()),
+  })
+  .strict();
+export type RniRadarCombinedCell = z.infer<typeof rniRadarCombinedCell>;
+
+export const rniRadarRow = z
+  .object({
+    security: rniRadarSecurity,
+    reddit: rniRadarPlatformCell,
+    x: rniRadarPlatformCell,
+    combined: rniRadarCombinedCell,
+  })
+  .strict()
+  .superRefine((row, context) => {
+    if (row.reddit.platform !== 'reddit') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['reddit', 'platform'],
+        message: 'The Reddit cell must contain only Reddit results',
+      });
+    }
+    if (row.x.platform !== 'x') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['x', 'platform'],
+        message: 'The X cell must contain only X results',
+      });
+    }
+
+    const nonTerminal = new Set<RniSliceStatus>(['pending', 'running']);
+    const missing = new Set<RniSliceStatus>(['failed', 'unavailable']);
+    const hasNonTerminal = nonTerminal.has(row.reddit.status) || nonTerminal.has(row.x.status);
+    const hasMissing = missing.has(row.reddit.status) || missing.has(row.x.status);
+    const hasInsufficientPlatform =
+      row.reddit.stance === 'insufficient' || row.x.stance === 'insufficient';
+    if (hasNonTerminal && row.combined.state !== 'pending') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['combined', 'state'],
+        message: 'Cross-source synthesis remains pending until both platform cells are terminal',
+      });
+    }
+    if (!hasNonTerminal && row.combined.state === 'pending') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['combined', 'state'],
+        message: 'A terminal pair cannot remain in the pending cross-source state',
+      });
+    }
+    if (hasMissing && (row.combined.state === 'aligned' || row.combined.state === 'divergent')) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['combined', 'state'],
+        message: 'A missing platform cannot produce aligned or divergent cross-source synthesis',
+      });
+    }
+    if (
+      hasInsufficientPlatform &&
+      (row.combined.state === 'aligned' || row.combined.state === 'divergent')
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['combined', 'state'],
+        message: 'An insufficient platform cannot produce aligned or divergent synthesis',
+      });
+    }
+  });
+export type RniRadarRow = z.infer<typeof rniRadarRow>;
+
+export const rniRadarPage = z
+  .object({
+    run: rniRun,
+    rows: z.array(rniRadarRow).max(100),
+    nextCursor: z.string().min(1).nullable(),
+  })
+  .strict()
+  .superRefine((page, context) => {
+    const securityIds = page.rows.map((row) => row.security.id);
+    if (new Set(securityIds).size !== securityIds.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['rows'],
+        message: 'A Radar page cannot repeat a security',
+      });
+    }
+  });
+export type RniRadarPage = z.infer<typeof rniRadarPage>;
+
+export const rniSecurityDetailDimension = rniDimensionAssignment
+  .extend({
+    citationIds: z.array(z.string().uuid()),
+  })
+  .strict()
+  .superRefine((assignment, context) => {
+    if (assignment.stance !== 'insufficient' && assignment.citationIds.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['citationIds'],
+        message: 'A publishable dimension assignment requires a citation',
+      });
+    }
+    if (assignment.stance === 'insufficient' && assignment.score !== null) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['score'],
+        message: 'An insufficient dimension cannot carry a score',
+      });
+    }
+  });
+export type RniSecurityDetailDimension = z.infer<typeof rniSecurityDetailDimension>;
+
+export const rniSecurityDetailPlatform = z
+  .object({
+    platform: rniPlatform,
+    status: rniSliceStatus,
+    summary: z.string().min(1),
+    citationIds: z.array(z.string().uuid()),
+    dimensions: z.array(rniSecurityDetailDimension).length(4),
+    eligibleSourceCount: z.number().int().nonnegative(),
+    coverageDisclosure: z.string().min(1),
+    confidence: rniUnitDecimal.nullable(),
+    lastSuccessfulRefreshAt: rniIsoTimestamp.nullable(),
+    dataThroughAt: rniIsoTimestamp.nullable(),
+    computedAt: rniIsoTimestamp.nullable(),
+  })
+  .strict()
+  .superRefine((result, context) => {
+    const dimensionKeys = result.dimensions.map((assignment) => assignment.dimension);
+    if (
+      new Set(dimensionKeys).size !== rniDimensionKey.options.length ||
+      !rniDimensionKey.options.every((dimension) => dimensionKeys.includes(dimension))
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dimensions'],
+        message: 'A platform detail requires each of the four RNI dimensions exactly once',
+      });
+    }
+
+    if (
+      ['pending', 'running', 'failed', 'unavailable'].includes(result.status) &&
+      result.dimensions.some((assignment) => assignment.stance !== 'insufficient')
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dimensions'],
+        message: 'A non-publishable platform cannot carry a publishable dimension assignment',
+      });
+    }
+  });
+export type RniSecurityDetailPlatform = z.infer<typeof rniSecurityDetailPlatform>;
+
+export const rniSecurityDetail = z
+  .object({
+    runId: z.string().uuid(),
+    security: rniRadarSecurity,
+    reddit: rniSecurityDetailPlatform,
+    x: rniSecurityDetailPlatform,
+  })
+  .strict()
+  .superRefine((detail, context) => {
+    if (detail.reddit.platform !== 'reddit') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['reddit', 'platform'],
+        message: 'The Reddit detail must contain only Reddit dimensions',
+      });
+    }
+    if (detail.x.platform !== 'x') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['x', 'platform'],
+        message: 'The X detail must contain only X dimensions',
+      });
+    }
+  });
+export type RniSecurityDetail = z.infer<typeof rniSecurityDetail>;
+
 export interface RniReadService {
+  getRadarPage(query: RniRadarQuery): Promise<RniRadarPage>;
   getRun(runId: string): Promise<RniRun>;
   getPlatformSlices(runId: string): Promise<readonly RniPlatformSlice[]>;
+  getSecurityDetail(runId: string, securityId: string): Promise<RniSecurityDetail>;
   getSecuritySummary(runId: string, securityId: string): Promise<RniCombinedSummary>;
+  getCitation(citationId: string): Promise<RniCitation>;
   getEvidence(sourceItemId: string): Promise<RniSourceItem>;
+}
+
+/** Read-only current membership and immutable staged impact; provider and activation stay private. */
+export interface RniUniverseReadService {
+  getActiveUniverse(): Promise<RniActiveUniverse>;
+  searchActiveUniverse(query: RniUniverseSearchQuery): Promise<RniUniverseSearchResult>;
+  getStagedUniversePreview(versionId: string): Promise<RniStagedUniversePreview>;
+}
+
+/**
+ * Authenticated command composition. Implementations must bind one idempotency key to one exact
+ * request scope; an exact replay returns `duplicate` with the original run and preview, while a
+ * crossed-key scope fails rather than starting different work.
+ */
+export interface RniCommandService {
+  requestManualRefresh(request: RniManualRefreshRequest): Promise<RniManualRefreshResult>;
+}
+
+/** Read current routing and create an audited config version for runs requested afterward. */
+export interface RniAiRouteSettingsService {
+  getCurrentAiRouteSetting(): Promise<RniAiRouteSetting>;
+  updateFutureAiRoute(
+    request: RniAiRouteSettingUpdateRequest,
+  ): Promise<RniAiRouteSettingUpdateResult>;
+  updateFutureAiBudgets(
+    request: RniAiBudgetSettingUpdateRequest,
+  ): Promise<RniAiBudgetSettingUpdateResult>;
+}
+
+/** Admin-only, audited per-task limits; writes stage successors and never rewrite active runs. */
+export interface RniTaskEnvelopeSettingsService {
+  getCurrentTaskEnvelopes(): Promise<RniTaskEnvelopeSetting>;
+  stageFutureTaskEnvelopes(
+    request: RniTaskEnvelopeUpdateRequest,
+  ): Promise<RniTaskEnvelopeUpdateResult>;
 }

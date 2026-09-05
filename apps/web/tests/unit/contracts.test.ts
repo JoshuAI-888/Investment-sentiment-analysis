@@ -4,7 +4,7 @@ import { attentionSnapshot, security } from '../../src/contracts/security';
 import { sentimentSnapshot } from '../../src/contracts/evidence';
 import { calculationSnapshot } from '../../src/contracts/calculation';
 import { claimLedgerEntry, researchRun } from '../../src/contracts/research';
-import { appSetting, universeVersion } from '../../src/contracts/config';
+import { appSetting, selectionSource, universeVersion } from '../../src/contracts/config';
 import { costEvent } from '../../src/contracts/cost';
 
 describe('decimalString', () => {
@@ -262,7 +262,7 @@ describe('appSetting', () => {
 });
 
 describe('universeVersion', () => {
-  it('caps selectedCount at the D-27 ceiling', () => {
+  it('caps selectedCount at the D-RNI-06 ceiling', () => {
     const base = {
       id: '1',
       environment: 'test',
@@ -271,13 +271,23 @@ describe('universeVersion', () => {
       parentVersion: null,
       selectionQuery: null,
       impactPreview: {},
+      sourceProvider: null,
+      sourceEndpoint: null,
+      sourceRetrievedAt: null,
+      sourcePayloadHash: null,
+      providerCallId: null,
       createdBy: 'owner',
       changeReason: 'seed',
       createdAt: new Date(),
       activatedAt: new Date(),
+      approvedBy: null,
     };
-    expect(universeVersion.safeParse({ ...base, selectedCount: 100 }).success).toBe(true);
-    expect(universeVersion.safeParse({ ...base, selectedCount: 101 }).success).toBe(false);
+    expect(universeVersion.safeParse({ ...base, selectedCount: 600 }).success).toBe(true);
+    expect(universeVersion.safeParse({ ...base, selectedCount: 601 }).success).toBe(false);
+  });
+
+  it('accepts the FMP S&P 500 membership source', () => {
+    expect(selectionSource.parse('fmp_sp500')).toBe('fmp_sp500');
   });
 });
 

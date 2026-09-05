@@ -89,6 +89,15 @@ The transaction that inserts the source item commits before enqueueing semantic 
 tables require `source_item_id` foreign keys. A classification request without a persisted source
 ID fails closed.
 
+### 4.3 Frozen source-persistence port
+
+DATA implements the frozen `RniSourcePersistencePort.commitSource(source)` interface. Its promise
+resolves only after the source, retrieval and content-version transaction commits, returning the
+durable `sourceItemId` plus explicit `sourceInserted`, `retrievalInserted` and
+`contentVersionInserted` idempotency flags. ENGINE may enqueue semantic work only from that
+returned identity, never from the caller-proposed `source.id`. Duplicate delivery returns the
+existing durable source identity and does not masquerade as a new write.
+
 ## 5. Security and observation contract
 
 Security resolution produces `rni_security_mention(source_item_id, security_id, mention_text,
@@ -151,6 +160,27 @@ structured output, explicit tool allowlist, token/tool budgets and a persisted m
 OpenAI Web Search citations are discovery candidates, not publication evidence until the bounded
 source item exists. Synthesis tools return only persisted evidence IDs and citation URLs.
 
+### 8.1 Catalyst corroboration and publication trace
+
+P0 does not add a third source kind: catalyst evidence remains bounded, rights-governed Reddit/X
+content. A distinct persisted social source may corroborate or challenge a catalyst claim, but the
+product must not describe social corroboration as independent factual verification. Issuer,
+regulator, exchange, filing or news verification requires a later explicit source-rights and
+source-kind decision.
+
+Every catalyst assessment is bound durably to the exact run, security, persisted claim, policy,
+verification cutoff and verifier model invocation. The challenger is a separate persisted model
+invocation. Supporting and contradicting citations carry claim-specific roles; platform
+conclusion citations additionally bind the exact analytics artifact. Published summary statements
+retain ordered sentence-to-citation trace rather than relying only on a section-level citation
+union.
+
+A source first discovered or observed after the assessment cutoff is hindsight evidence and cannot
+enter that assessment's model input or publication. Corroborating or contradicting evidence also
+requires a verified non-null publication time at or before the cutoff. Publication revalidates the
+canonical Reddit/X URL and active rights-policy version. Missing evidence remains `unverified`; it
+is never converted to `false`.
+
 ## 9. Universe contract
 
 FMP `/stable/sp500-constituent` is authoritative for the active S&P 500 snapshot when the plan is
@@ -180,6 +210,69 @@ Command routes require CSRF/authz, an idempotency key and audit entry. Read resp
 source-slice freshness and citation lineage. MCP v1 is read-only and invokes the same read
 service; it cannot bypass portal authentication, publication gates or evidence redaction.
 
+`RniReadService.getCitation(citationId)` resolves a summary citation ID to its persisted source
+identity, platform, preserved original citation URL and bounded supporting text; canonical source
+identity remains available on the source record. Consumers then call
+`getEvidence(sourceItemId)`; they must not guess that a citation ID is a source ID or bypass the
+read service to join storage-private tables.
+
+`RniReadService.getRadarPage(query)` is the cursor-paginated cross-lane boundary for the Retail
+Radar. Each row carries the canonical security ID together with ticker, company name and
+exchange, plus structurally separate `reddit`, `x` and `combined` cells. Platform cells own
+their sample count, coverage, confidence, freshness, stance, explanation and citation IDs;
+there is no row-level pooled source count. A combined cell may be aligned or divergent only
+when both independently labelled platform cells are terminal and publishable. Pending,
+unavailable, failed or insufficient platform states remain explicit and cannot be relabelled as
+cross-source agreement.
+
+`RniReadService.getSecurityDetail(runId, securityId)` is the bounded four-dimension read boundary.
+It returns canonical security identity and fixed, independently labelled `reddit` and `x`
+platform details. Each platform owns exactly one assignment for every frozen RNI dimension,
+along with its own status, source count, coverage, confidence, freshness, summary and citation
+IDs. Every non-insufficient dimension assignment has at least one persisted citation ID. The
+shape has no pooled count or unlabeled dimension collection, and a non-publishable platform may
+carry only insufficient, unscored dimensions.
+
+`RniCommandService.requestManualRefresh(request)` is the additive manual ticker/full-run command
+boundary. The client supplies only a required idempotency key and either a ticker or
+`full_universe` intent. Authz, audit, active configuration, universe, model route and time windows
+remain server-owned. An exact replay returns `duplicate` with the original durable run ID and
+resolved scope preview; reusing a key for different scope fails instead of starting different
+work. A ticker preview resolves canonical security/company/exchange identity, while a full preview
+binds the active universe version and a positive count no greater than the frozen 600 ceiling.
+
+`RniAiRouteSettingsService` is the additive future-run routing boundary. Its read returns the
+active config version, selected `openai_direct` or `vercel_ai_gateway` route, task-level resolved
+provider/model/revision/prompt identities, and both route availability states without credentials.
+OpenAI Direct is the clean/default selection. Its command accepts only an idempotency key, route
+intent and bounded change reason; auth, audit actor, credential/capability checks, model resolution,
+config cloning and activation remain server-owned. Selecting an unavailable route fails. A
+successful command creates and returns a new config version for runs requested afterward; exact
+same-key replay returns `duplicate`, crossed-key intent fails, and historical run/model-call
+lineage is never rewritten.
+
+`RniTaskEnvelopeSettingsService` is the admin-only future-run limit boundary. Its read returns
+exactly one bounded envelope for each governed task: serialized-input bytes, a conservative token
+reservation equal to that byte ceiling, output tokens, tool calls, timeout and per-call USD cap.
+Only discovery may allow one to three governed Web Search calls; all other tasks allow none.
+The command accepts the complete five-task set, an idempotency key and bounded reason. A successful
+save creates an audited staged successor for review and never activates it, mutates the active
+configuration or changes a running/historical call. Exact replay returns `duplicate`; crossed-key
+intent fails. The global USD 2/25/50/300/500 run, rolling-day and monthly controls are not editable
+through this boundary.
+
+`RniUniverseReadService` is the separate read-only boundary for universe Settings and security
+selection. `getActiveUniverse()` returns active version metadata and canonical NVDA default. The
+active shape can represent either the preserved 100-member legacy seed during first deployment or
+a valid 501–600-member FMP version; only FMP versions carry required retrieval/hash lineage.
+`searchActiveUniverse(query)` performs a case-insensitive ticker/company search only within that
+active version, returns at most 50 canonical identities, and reports whether more matches exist;
+an empty query is the bounded initial member list. `getStagedUniversePreview(id)` returns a
+distinct immutable 501–600-member FMP child together with its active parent and the complete,
+disjoint canonical additions/removals. The impact must reconcile exactly to the staged member
+count and cannot remove/add more identities than its active/staged population. This interface
+exposes no FMP call, sync, approval or activation operation.
+
 ## 11. Publication and test gates
 
 A claim publishes only when every claim citation resolves to a persisted source item, belongs to
@@ -190,6 +283,7 @@ Merge acceptance requires frozen tests for: multi-ticker opposing stance; compar
 URL-before-classification; duplicate delivery; excerpt-only capture; Reddit unavailable while X
 completes; X unavailable while Reddit completes; cross-source divergence; zero/short baseline;
 FMP >500 constituents and invalid payloads; manual double-click and scheduled redelivery; citation
-deletion/mismatch; authz; prompt injection; deterministic replay; and legacy regression.
+deletion/mismatch; per-platform four-dimension completeness and divergence; authz; prompt
+injection; deterministic replay; and legacy regression.
 
 Live source checks are recorded deployment gates, never deterministic CI dependencies.

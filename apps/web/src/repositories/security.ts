@@ -1,4 +1,7 @@
 /** The security master. SQL lives here and nowhere else (F03 DoD item 9). */
+import { createHash } from 'node:crypto';
+import type pg from 'pg';
+import { z } from 'zod';
 import {
   security,
   securityProfileSnapshot,
@@ -6,7 +9,7 @@ import {
   type SecurityProfileSnapshot,
 } from '../contracts/security';
 import { camelizeRow, insertClause, type Row } from './rows';
-import { getPool, type Queryable } from './client';
+import { getPool, withTransaction, type Queryable } from './client';
 import { asOf } from './as-of';
 
 const COLUMNS =
@@ -14,8 +17,21 @@ const COLUMNS =
 
 export type NewSecurity = Omit<Security, 'id' | 'createdAt' | 'updatedAt'> & { id?: string };
 
-export async function insertSecurity(input: NewSecurity, db: Queryable = getPool()): Promise<Security> {
-  const { columns, placeholders, values } = insertClause({ ...input });
+export async function insertSecurity(
+  input: NewSecurity,
+  db: Queryable = getPool(),
+): Promise<Security> {
+  // node-postgres serialises JavaScript arrays as PostgreSQL arrays (`{...}`), which JSONB
+  // accepts as an object-shaped value. Bind the canonical JSON text explicitly so aliases
+  // round-trip as the array required by the frozen security contract. Older internal fixtures
+  // passed pre-encoded JSON around the historical bug; decode that compatibility form once.
+  const aliases = z
+    .array(z.string())
+    .parse(typeof input.aliases === 'string' ? JSON.parse(input.aliases) : input.aliases);
+  const { columns, placeholders, values } = insertClause({
+    ...input,
+    aliases: JSON.stringify(aliases),
+  });
   const { rows } = await db.query(
     `insert into security (${columns}) values (${placeholders}) returning ${COLUMNS}`,
     values,
@@ -57,6 +73,232 @@ export async function listActiveSecurities(db: Queryable = getPool()): Promise<S
     `select ${COLUMNS} from security where active = true order by symbol`,
   );
   return rows.map((row) => security.parse(camelizeRow(row as Record<string, unknown>)));
+}
+
+export const fmpSecurityMasterSnapshot = z
+  .object({
+    source: z.literal('fmp_profile_export'),
+    sourceEndpoint: z.literal('/stable/profile'),
+    retrievedAt: z.string().datetime({ offset: true }),
+    payloadSha256: z.string().regex(/^[a-f0-9]{64}$/u),
+    securities: z
+      .array(
+        z
+          .object({
+            symbol: z.string().regex(/^[A-Z][A-Z0-9.-]{0,9}$/u),
+            name: z.string().min(1),
+            exchange: z.string().min(1),
+            sector: z.string().min(1).nullable(),
+            industry: z.string().min(1).nullable(),
+            cik: z.string().min(1).nullable(),
+            currency: z.string().length(3),
+          })
+          .strict(),
+      )
+      .min(501)
+      .max(600),
+  })
+  .strict()
+  .superRefine((snapshot, context) => {
+    const symbols = snapshot.securities.map(({ symbol }) => symbol);
+    if (new Set(symbols).size !== symbols.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['securities'],
+        message: 'FMP security-master import symbols must be unique',
+      });
+    }
+    if (!symbols.includes('NVDA')) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['securities'],
+        message: 'FMP security-master import must contain NVDA',
+      });
+    }
+    const computedHash = createHash('sha256')
+      .update(JSON.stringify(snapshot.securities), 'utf8')
+      .digest('hex');
+    if (computedHash !== snapshot.payloadSha256) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['payloadSha256'],
+        message: 'payloadSha256 must match the exact ordered securities export',
+      });
+    }
+  });
+export type FmpSecurityMasterSnapshot = z.infer<typeof fmpSecurityMasterSnapshot>;
+
+export type FmpSecurityMasterImportResult = {
+  readonly importId: string;
+  readonly importedCount: number;
+  readonly reusedCount: number;
+  readonly replayed: boolean;
+};
+
+/**
+ * Import a human-reviewed, hash-bound FMP profile export into the one canonical security master.
+ * Existing identities are reused only when symbol/exchange/CIK are compatible; conflicts abort
+ * the whole transaction instead of creating an ambiguous second catalogue.
+ */
+export async function importFmpSecurityMasterSnapshot(
+  input: {
+    readonly environment: string;
+    readonly actorId: string;
+    readonly idempotencyKey: string;
+    readonly correlationId: string;
+    readonly snapshot: FmpSecurityMasterSnapshot;
+  },
+  poolOverride?: pg.Pool,
+): Promise<FmpSecurityMasterImportResult> {
+  const snapshot = fmpSecurityMasterSnapshot.parse(input.snapshot);
+  return withTransaction(async (tx) => {
+    await tx.query('select pg_advisory_xact_lock(hashtext($1))', ['rni-security-master-import']);
+    const { rows: prior } = await tx.query<{
+      id: string;
+      imported_count: number;
+      reused_count: number;
+    }>(
+      `select id, imported_count, reused_count
+         from rni_security_master_import
+        where environment = $1 and source_payload_hash = $2`,
+      [input.environment, snapshot.payloadSha256],
+    );
+    const replay = prior[0];
+    if (replay !== undefined) {
+      await tx.query(
+        `insert into audit_event
+           (actor_id, actor_role, action, object_type, object_id, environment, reason,
+            result, request_id, correlation_id, after_value)
+         values ($1, 'admin', 'replay', 'rni_security_master_import', $2, $3,
+                 'Replay reviewed FMP security-master import by payload hash',
+                 'success', $4, $5, $6)`,
+        [
+          input.actorId,
+          replay.id,
+          input.environment,
+          input.idempotencyKey,
+          input.correlationId,
+          JSON.stringify({
+            importedCount: replay.imported_count,
+            reusedCount: replay.reused_count,
+            payloadSha256: snapshot.payloadSha256,
+          }),
+        ],
+      );
+      return {
+        importId: replay.id,
+        importedCount: replay.imported_count,
+        reusedCount: replay.reused_count,
+        replayed: true,
+      };
+    }
+
+    let importedCount = 0;
+    let reusedCount = 0;
+    const members: Array<{
+      readonly securityId: string;
+      readonly sourceOrdinal: number;
+      readonly candidate: FmpSecurityMasterSnapshot['securities'][number];
+    }> = [];
+    for (const [sourceOrdinal, candidate] of snapshot.securities.entries()) {
+      const { rows } = await tx.query(
+        `select ${COLUMNS} from security where symbol = $1 order by exchange`,
+        [candidate.symbol],
+      );
+      const matches = rows.map((row) => security.parse(camelizeRow(row as Row)));
+      const exact = matches.find(({ exchange }) => exchange === candidate.exchange);
+      if (exact !== undefined) {
+        if (!exact.active || exact.assetType !== 'equity') {
+          throw new Error(
+            `Security ${candidate.symbol}@${candidate.exchange} is not an active equity`,
+          );
+        }
+        if (exact.cik !== null && candidate.cik !== null && exact.cik !== candidate.cik) {
+          throw new Error(
+            `Security ${candidate.symbol}@${candidate.exchange} has conflicting CIK identity`,
+          );
+        }
+        reusedCount += 1;
+        members.push({ securityId: exact.id, sourceOrdinal, candidate });
+        continue;
+      }
+      if (matches.length > 0) {
+        throw new Error(
+          `Security ${candidate.symbol} already exists on a different exchange; import requires human resolution`,
+        );
+      }
+      const inserted = await insertSecurity(
+        {
+          symbol: candidate.symbol,
+          name: candidate.name,
+          exchange: candidate.exchange,
+          assetType: 'equity',
+          sector: candidate.sector,
+          industry: candidate.industry,
+          cik: candidate.cik,
+          currency: candidate.currency,
+          active: true,
+          aliases: [],
+        },
+        tx,
+      );
+      importedCount += 1;
+      members.push({ securityId: inserted.id, sourceOrdinal, candidate });
+    }
+
+    const { rows: imports } = await tx.query<{ id: string }>(
+      `insert into rni_security_master_import
+         (environment, source_endpoint, source_retrieved_at, source_payload_hash,
+          imported_count, reused_count, imported_by)
+       values ($1, $2, $3, $4, $5, $6, $7)
+       returning id`,
+      [
+        input.environment,
+        snapshot.sourceEndpoint,
+        snapshot.retrievedAt,
+        snapshot.payloadSha256,
+        importedCount,
+        reusedCount,
+        input.actorId,
+      ],
+    );
+    const importId = imports[0]?.id;
+    if (importId === undefined) throw new Error('Security-master import returned no identity');
+    for (const member of members) {
+      await tx.query(
+        `insert into rni_security_master_import_member
+           (import_id, security_id, source_ordinal, provider_symbol,
+            provider_company_name, provider_exchange, provider_cik)
+         values ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          importId,
+          member.securityId,
+          member.sourceOrdinal,
+          member.candidate.symbol,
+          member.candidate.name,
+          member.candidate.exchange,
+          member.candidate.cik,
+        ],
+      );
+    }
+    await tx.query(
+      `insert into audit_event
+         (actor_id, actor_role, action, object_type, object_id, environment, reason,
+          result, request_id, correlation_id, after_value)
+       values ($1, 'admin', 'import', 'rni_security_master_import', $2, $3,
+               'Import reviewed FMP profile export into canonical security master',
+               'success', $4, $5, $6)`,
+      [
+        input.actorId,
+        importId,
+        input.environment,
+        input.idempotencyKey,
+        input.correlationId,
+        JSON.stringify({ importedCount, reusedCount, payloadSha256: snapshot.payloadSha256 }),
+      ],
+    );
+    return { importId, importedCount, reusedCount, replayed: false };
+  }, poolOverride);
 }
 
 const PROFILE_COLUMNS =
@@ -165,7 +407,8 @@ export async function searchSecurities(
     exchange: match.exchange,
     assetType: match.assetType,
     eligibilityState:
-      (eligibilityBySecurityId.get(match.id) as SecurityProfileSnapshot['eligibilityState'] | undefined) ??
-      null,
+      (eligibilityBySecurityId.get(match.id) as
+        | SecurityProfileSnapshot['eligibilityState']
+        | undefined) ?? null,
   }));
 }

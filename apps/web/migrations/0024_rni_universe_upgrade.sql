@@ -1,0 +1,4242 @@
+-- 0024 — RNI S&P 500 universe upgrade (D-RNI-06).
+--
+-- The original governed universe was deliberately capped at 100 members. RNI uses a current,
+-- versioned FMP S&P 500 snapshot, so this forward-only migration raises the hard database
+-- ceiling to 600 and adds the lineage needed to stage that snapshot without rewriting any
+-- historical universe version or member.
+
+alter table universe_version
+  drop constraint universe_version_max_symbols_check;
+
+alter table universe_version
+  add constraint universe_version_max_symbols_check
+  check (selected_count between 0 and 600);
+
+alter table universe_version
+  add column source_provider text null,
+  add column source_endpoint text null,
+  add column source_retrieved_at timestamptz null,
+  add column source_payload_hash text null,
+  add column provider_call_id uuid null references provider_call_log (id),
+  add column approved_by text null,
+  add constraint universe_version_source_payload_hash_check check (
+    source_payload_hash is null or source_payload_hash ~ '^[0-9a-f]{64}$'
+  ),
+  add constraint universe_version_fmp_lineage_check check (
+    source_provider is distinct from 'fmp'
+    or (
+      source_endpoint = '/stable/sp500-constituent'
+      and source_retrieved_at is not null
+      and source_payload_hash is not null
+      and provider_call_id is not null
+    )
+  );
+
+comment on constraint universe_version_max_symbols_check on universe_version is
+  'D-RNI-06. 600 is a safety ceiling for a complete current S&P 500 snapshot, including ordinary constituent share classes and composition churn; configured limits may be lower, never higher.';
+
+comment on column universe_version.source_payload_hash is
+  'SHA-256 of the validated FMP constituent JSON payload used to derive this immutable candidate. Historical non-FMP versions remain null.';
+
+comment on column universe_version.approved_by is
+  'One-way approval recorded on a staged successor before activation. It cannot be replaced or added after activation.';
+
+-- FMP staging materialises membership before approval. Approval is a one-way lifecycle action;
+-- source lineage, parentage and staged membership remain immutable content. The legacy trigger
+-- intentionally did not know about approved_by, which 0024 introduces, so replace only this
+-- table's trigger with a stricter universe-specific variant.
+create or replace function reject_universe_version_mutation() returns trigger
+language plpgsql as $$
+declare
+  old_content jsonb := to_jsonb(old) - 'status' - 'activated_at' - 'selected_count' - 'approved_by';
+  new_content jsonb := to_jsonb(new) - 'status' - 'activated_at' - 'selected_count' - 'approved_by';
+begin
+  if tg_op = 'DELETE' then
+    raise exception
+      'Table universe_version is append-only. A version is superseded, never deleted.'
+      using errcode = 'restrict_violation';
+  end if;
+
+  if old_content is distinct from new_content then
+    raise exception
+      'Table universe_version is append-only except for lifecycle state, activation, count and one-way approval.'
+      using errcode = 'restrict_violation';
+  end if;
+
+  if old.approved_by is distinct from new.approved_by
+     and not (
+       old.approved_by is null
+       and new.approved_by is not null
+       and old.status = 'staged'
+       and new.status = 'staged'
+     ) then
+    raise exception
+      'universe_version approval is one-way and must be recorded while the version is staged.'
+      using errcode = 'restrict_violation';
+  end if;
+
+  if old.source_provider = 'fmp' and old.selected_count is distinct from new.selected_count then
+    raise exception
+      'An FMP universe selected_count is immutable because staged membership is already materialised.'
+      using errcode = 'restrict_violation';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger universe_version_append_only on universe_version;
+create trigger universe_version_append_only
+  before update or delete on universe_version
+  for each row execute function reject_universe_version_mutation();
+
+create unique index universe_version_fmp_snapshot_unique
+  on universe_version (environment, source_provider, source_payload_hash)
+  where source_provider = 'fmp' and source_payload_hash is not null;
+
+create table rni_universe_sync_command (
+  environment         text        not null,
+  idempotency_key     text        not null,
+  actor_id            text        not null,
+  correlation_id      text        not null,
+  status              text        not null default 'running',
+  result_payload      jsonb       null,
+  error_message       text        null,
+  provider_call_id    uuid        null references provider_call_log (id),
+  source_payload_hash text        null,
+  universe_version    bigint      null references universe_version (id),
+  lease_expires_at    timestamptz null default (now() + interval '2 minutes'),
+  created_at          timestamptz not null default now(),
+  completed_at        timestamptz null,
+
+  primary key (environment, idempotency_key),
+  constraint rni_universe_sync_command_status_check
+    check (status in ('running', 'completed', 'failed')),
+  constraint rni_universe_sync_command_payload_hash_check
+    check (source_payload_hash is null or source_payload_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_universe_sync_command_terminal_check check (
+    (status = 'running' and result_payload is null and error_message is null
+      and completed_at is null and lease_expires_at is not null)
+    or (status = 'completed' and result_payload is not null and error_message is null
+      and completed_at is not null and lease_expires_at is null)
+    or (status = 'failed' and result_payload is null and error_message is not null
+      and completed_at is not null and lease_expires_at is null)
+  )
+);
+
+comment on table rni_universe_sync_command is
+  'Durable pre-provider idempotency claim for the FMP universe command. One environment/key has one terminal outcome and every replay returns that outcome without another provider call.';
+
+create table rni_security_master_import (
+  id                uuid        primary key default gen_random_uuid(),
+  environment       text        not null,
+  source_provider   text        not null default 'fmp',
+  source_endpoint   text        not null,
+  source_retrieved_at timestamptz not null,
+  source_payload_hash text      not null,
+  imported_count    integer     not null,
+  reused_count      integer     not null,
+  imported_by       text        not null,
+  created_at        timestamptz not null default now(),
+
+  constraint rni_security_master_import_provider_check check (source_provider = 'fmp'),
+  constraint rni_security_master_import_hash_check check (source_payload_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_security_master_import_count_check check (
+    imported_count between 0 and 600 and reused_count between 0 and 600
+    and imported_count + reused_count between 501 and 600
+  ),
+  constraint rni_security_master_import_unique unique (environment, source_payload_hash)
+);
+
+comment on table rni_security_master_import is
+  'Versioned lineage for a human-reviewed FMP profile export used to bootstrap the canonical security master before current constituent synchronization.';
+
+create table rni_security_master_import_member (
+  import_id             uuid    not null references rni_security_master_import (id),
+  security_id           uuid    not null references security (id),
+  source_ordinal        integer not null,
+  provider_symbol       text    not null,
+  provider_company_name text    not null,
+  provider_exchange     text    not null,
+  provider_cik          text    null,
+
+  primary key (import_id, security_id),
+  constraint rni_security_master_import_member_ordinal_unique
+    unique (import_id, source_ordinal),
+  constraint rni_security_master_import_member_symbol_unique
+    unique (import_id, provider_symbol),
+  constraint rni_security_master_import_member_ordinal_check
+    check (source_ordinal between 0 and 599)
+);
+
+comment on table rni_security_master_import_member is
+  'Immutable mapping from each reviewed FMP profile-export row to the canonical security identity selected by that import.';
+
+create trigger rni_security_master_import_append_only
+  before update or delete on rni_security_master_import
+  for each row execute function reject_mutation();
+
+create trigger rni_security_master_import_member_append_only
+  before update or delete on rni_security_master_import_member
+  for each row execute function reject_mutation();
+
+alter table universe_member
+  drop constraint universe_member_source_check;
+
+alter table universe_member
+  add column provider_symbol text null,
+  add column provider_company_name text null,
+  add column constituent_first_added_at timestamptz null,
+  add constraint universe_member_source_check check (
+    selection_source in ('checkbox', 'bulk_filter', 'import', 'preset', 'seed', 'fmp_sp500')
+  ),
+  add constraint universe_member_fmp_lineage_check check (
+    selection_source <> 'fmp_sp500'
+    or (provider_symbol is not null and provider_company_name is not null)
+  );
+
+-- I07 / D-RNI-22 — atomic E05 semantic persistence.
+--
+-- `rni_evidence_claim` predates the four-dimension classifier. The nullable addition preserves
+-- historical/imported rows while every I07-created semantic claim carries its exact dimension.
+alter table rni_evidence_claim
+  add column dimension text null,
+  add constraint rni_evidence_claim_dimension_check check (
+    dimension is null or dimension in (
+      'company_fundamentals', 'market_trading', 'catalyst_event', 'retail_narrative'
+    )
+  );
+
+create table rni_run_observation (
+  run_id               uuid        not null references rni_run (id),
+  observation_id       uuid        not null,
+  source_item_id       uuid        not null,
+  security_id          uuid        not null,
+  semantic_output_hash text        not null,
+  created_at           timestamptz not null default now(),
+
+  primary key (run_id, observation_id),
+  constraint rni_run_observation_observation_fk
+    foreign key (observation_id, source_item_id, security_id)
+    references rni_security_observation (id, source_item_id, security_id),
+  constraint rni_run_observation_semantic_output_hash_check
+    check (semantic_output_hash ~ '^[a-f0-9]{64}$'),
+  constraint rni_run_observation_identity_unique
+    unique (run_id, source_item_id, security_id)
+);
+
+comment on table rni_run_observation is
+  'Immutable run membership and exact canonical E05 output identity for one independently classified source/security observation. One multi-ticker source therefore has one row per security and never shares semantic output.';
+
+create table rni_observation_semantic_quality (
+  observation_id       uuid         primary key,
+  source_item_id       uuid         not null,
+  security_id          uuid         not null,
+  support_start        integer      not null,
+  support_end          integer      not null,
+  evidence_text        text         not null,
+  is_sarcastic         boolean      not null,
+  sarcasm_probability  numeric(5,4) not null,
+  is_meme              boolean      not null,
+  meme_probability     numeric(5,4) not null,
+  is_spam              boolean      not null,
+  spam_probability     numeric(5,4) not null,
+  information_value    numeric(5,4) not null,
+  assertion_strength   numeric(5,4) not null,
+  evidence_quality     numeric(5,4) not null,
+  uncertainty          numeric(5,4) not null,
+  exclusion_reason     text         null,
+  created_at           timestamptz  not null default now(),
+
+  constraint rni_observation_semantic_quality_observation_fk
+    foreign key (observation_id, source_item_id, security_id)
+    references rni_security_observation (id, source_item_id, security_id),
+  constraint rni_observation_semantic_quality_support_check check (
+    support_start >= 0 and support_end > support_start
+  ),
+  constraint rni_observation_semantic_quality_evidence_check
+    check (length(evidence_text) between 1 and 2000),
+  constraint rni_observation_semantic_quality_probability_check check (
+    sarcasm_probability between 0 and 1
+    and meme_probability between 0 and 1
+    and spam_probability between 0 and 1
+    and information_value between 0 and 1
+    and assertion_strength between 0 and 1
+    and evidence_quality between 0 and 1
+    and uncertainty between 0 and 1
+  ),
+  constraint rni_observation_semantic_quality_exclusion_check check (
+    exclusion_reason is null or exclusion_reason in ('off_topic', 'spam', 'unresolved_context')
+  )
+);
+
+comment on table rni_observation_semantic_quality is
+  'Exact E05 source/security noise and evidence-quality sidecar. It is committed with the observation and remains independently replayable for E06.';
+
+create trigger rni_run_observation_append_only
+  before update or delete on rni_run_observation
+  for each row execute function reject_mutation();
+
+create trigger rni_observation_semantic_quality_append_only
+  before update or delete on rni_observation_semantic_quality
+  for each row execute function reject_mutation();
+
+-- I07 / D-RNI-19 — durable cited-synthesis lineage.
+--
+-- These tables persist the already-accepted E07/E08 artifacts without widening the P0 source
+-- vocabulary. Evidence remains a Reddit post/comment or X post. `corroborating` describes a
+-- second retained social source; it is deliberately not a factual-verification assertion.
+
+alter table rni_evidence_claim
+  add constraint rni_evidence_claim_full_identity_unique
+    unique (id, source_item_id, security_id, observation_id);
+
+alter table rni_claim_citation
+  add constraint rni_claim_citation_full_identity_unique
+    unique (id, claim_id, source_item_id);
+
+alter table rni_run_observation
+  add constraint rni_run_observation_full_identity_unique
+    unique (run_id, observation_id, source_item_id, security_id);
+
+alter table rni_combined_summary
+  add constraint rni_combined_summary_full_identity_unique
+    unique (id, run_id, security_id);
+
+create or replace function rni_uuid_array_valid(value jsonb) returns boolean
+language sql immutable strict as $$
+  select
+    jsonb_typeof(value) = 'array'
+    and coalesce((
+      select bool_and(
+        jsonb_typeof(item) = 'string'
+        and trim(both '"' from item::text) ~*
+          '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+      )
+      from jsonb_array_elements(value) as item
+    ), true)
+    and jsonb_array_length(value) = (
+      select count(distinct item)
+      from jsonb_array_elements_text(value) as item
+    )
+$$;
+
+create table rni_platform_analytics_artifact (
+  id                       uuid        primary key default gen_random_uuid(),
+  run_id                   uuid        not null references rni_run (id),
+  platform_slice_id        uuid        not null,
+  platform                 text        not null,
+  security_id              uuid        not null references security (id),
+  methodology_version      text        not null,
+  calculation_code_version text        not null,
+  input_hash               text        not null,
+  result_hash              text        not null,
+  artifact_hash            text        not null,
+  input_snapshot           jsonb       not null,
+  result_snapshot          jsonb       not null,
+  created_at               timestamptz not null,
+
+  constraint rni_platform_analytics_slice_fk
+    foreign key (platform_slice_id, run_id, platform)
+    references rni_platform_slice (id, run_id, platform),
+  constraint rni_platform_analytics_platform_check check (platform in ('reddit', 'x')),
+  constraint rni_platform_analytics_versions_check check (
+    length(methodology_version) > 0 and length(calculation_code_version) > 0
+  ),
+  constraint rni_platform_analytics_hashes_check check (
+    input_hash ~ '^[a-f0-9]{64}$'
+    and result_hash ~ '^[a-f0-9]{64}$'
+    and artifact_hash ~ '^[a-f0-9]{64}$'
+  ),
+  constraint rni_platform_analytics_snapshots_check check (
+    jsonb_typeof(input_snapshot) = 'object'
+    and jsonb_typeof(result_snapshot) = 'object'
+  ),
+  constraint rni_platform_analytics_identity_unique
+    unique (run_id, security_id, platform, artifact_hash),
+  constraint rni_platform_analytics_full_identity_unique
+    unique (id, run_id, security_id, platform, artifact_hash)
+);
+
+comment on table rni_platform_analytics_artifact is
+  'Immutable E06 platform analytics artifact. Reddit and X retain separate slices, snapshots and hashes; no pooled analytics row exists.';
+
+create table rni_convergence_artifact (
+  id                       uuid        primary key default gen_random_uuid(),
+  run_id                   uuid        not null references rni_run (id),
+  security_id              uuid        not null references security (id),
+  reddit_platform          text        not null default 'reddit',
+  reddit_analytics_id      uuid        not null,
+  reddit_artifact_hash     text        not null,
+  x_platform               text        not null default 'x',
+  x_analytics_id           uuid        not null,
+  x_artifact_hash          text        not null,
+  policy_version           text        not null,
+  calculation_code_version text        not null,
+  input_hash               text        not null,
+  result_hash              text        not null,
+  input_snapshot           jsonb       not null,
+  result_snapshot          jsonb       not null,
+  created_at               timestamptz not null,
+
+  constraint rni_convergence_reddit_platform_check check (reddit_platform = 'reddit'),
+  constraint rni_convergence_x_platform_check check (x_platform = 'x'),
+  constraint rni_convergence_distinct_analytics_check
+    check (reddit_analytics_id <> x_analytics_id),
+  constraint rni_convergence_reddit_analytics_fk
+    foreign key (
+      reddit_analytics_id, run_id, security_id, reddit_platform, reddit_artifact_hash
+    ) references rni_platform_analytics_artifact (
+      id, run_id, security_id, platform, artifact_hash
+    ),
+  constraint rni_convergence_x_analytics_fk
+    foreign key (x_analytics_id, run_id, security_id, x_platform, x_artifact_hash)
+    references rni_platform_analytics_artifact (
+      id, run_id, security_id, platform, artifact_hash
+    ),
+  constraint rni_convergence_versions_check check (
+    length(policy_version) > 0 and length(calculation_code_version) > 0
+  ),
+  constraint rni_convergence_hashes_check check (
+    input_hash ~ '^[a-f0-9]{64}$' and result_hash ~ '^[a-f0-9]{64}$'
+  ),
+  constraint rni_convergence_snapshots_check check (
+    jsonb_typeof(input_snapshot) = 'object' and jsonb_typeof(result_snapshot) = 'object'
+  ),
+  constraint rni_convergence_identity_unique unique (run_id, security_id, input_hash),
+  constraint rni_convergence_full_identity_unique unique (id, run_id, security_id)
+);
+
+comment on table rni_convergence_artifact is
+  'Immutable E07 artifact bound by composite foreign keys to the exact Reddit and X analytics artifact identities and hashes.';
+
+create table rni_synthesis_batch (
+  id                              uuid        primary key default gen_random_uuid(),
+  run_id                          uuid        not null references rni_run (id),
+  security_id                     uuid        not null references security (id),
+  assessment_cutoff_at            timestamptz not null,
+  policy_version                  text        not null,
+  rights_policy_version           text        not null,
+  ordered_citation_ids            jsonb       not null,
+  reddit_platform_citation_ids    jsonb       not null,
+  x_platform_citation_ids         jsonb       not null,
+  created_at                      timestamptz not null,
+
+  constraint rni_synthesis_batch_versions_check check (
+    length(policy_version) > 0 and length(rights_policy_version) > 0
+  ),
+  constraint rni_synthesis_batch_time_check check (created_at >= assessment_cutoff_at),
+  constraint rni_synthesis_batch_citation_arrays_check check (
+    rni_uuid_array_valid(ordered_citation_ids)
+    and rni_uuid_array_valid(reddit_platform_citation_ids)
+    and rni_uuid_array_valid(x_platform_citation_ids)
+  ),
+  constraint rni_synthesis_batch_identity_unique unique (
+    run_id, security_id, assessment_cutoff_at, policy_version, rights_policy_version
+  ),
+  constraint rni_synthesis_batch_full_identity_unique unique (
+    id, run_id, security_id, assessment_cutoff_at, policy_version, rights_policy_version
+  ),
+  constraint rni_synthesis_batch_artifact_identity_unique
+    unique (id, run_id, security_id, policy_version)
+);
+
+create table rni_synthesis_claim_input (
+  batch_id                  uuid        not null,
+  run_id                    uuid        not null,
+  security_id               uuid        not null,
+  assessment_cutoff_at      timestamptz not null,
+  policy_version            text        not null,
+  rights_policy_version     text        not null,
+  ordinal                   integer     not null,
+  claim_id                  uuid        not null,
+  source_item_id            uuid        not null,
+  observation_id            uuid        not null,
+  platform                  text        not null,
+  source_citation_ids       jsonb       not null,
+  created_at                timestamptz not null default now(),
+
+  primary key (batch_id, claim_id),
+  constraint rni_synthesis_claim_input_ordinal_unique unique (batch_id, ordinal),
+  constraint rni_synthesis_claim_input_batch_fk
+    foreign key (
+      batch_id, run_id, security_id, assessment_cutoff_at,
+      policy_version, rights_policy_version
+    ) references rni_synthesis_batch (
+      id, run_id, security_id, assessment_cutoff_at,
+      policy_version, rights_policy_version
+    ),
+  constraint rni_synthesis_claim_input_claim_fk
+    foreign key (claim_id, source_item_id, security_id, observation_id)
+    references rni_evidence_claim (id, source_item_id, security_id, observation_id),
+  constraint rni_synthesis_claim_input_run_observation_fk
+    foreign key (run_id, observation_id, source_item_id, security_id)
+    references rni_run_observation (run_id, observation_id, source_item_id, security_id),
+  constraint rni_synthesis_claim_input_source_platform_fk
+    foreign key (source_item_id, platform) references rni_source_item (id, platform),
+  constraint rni_synthesis_claim_input_ordinal_check check (ordinal >= 0),
+  constraint rni_synthesis_claim_input_platform_check check (platform in ('reddit', 'x')),
+  constraint rni_synthesis_claim_input_citations_check
+    check (jsonb_array_length(source_citation_ids) > 0 and rni_uuid_array_valid(source_citation_ids))
+);
+
+create or replace function rni_synthesis_claim_is_catalyst() returns trigger
+language plpgsql as $$
+declare
+  claim_dimension text;
+begin
+  select dimension into claim_dimension
+    from rni_evidence_claim
+   where id = new.claim_id;
+  if claim_dimension is distinct from 'catalyst_event' then
+    raise exception 'RNI synthesis accepts only persisted catalyst_event claims'
+      using errcode = 'check_violation',
+            constraint = 'rni_synthesis_claim_input_catalyst';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger rni_synthesis_claim_input_catalyst
+  before insert on rni_synthesis_claim_input
+  for each row execute function rni_synthesis_claim_is_catalyst();
+
+create or replace function rni_sanitized_model_usage_valid(value jsonb) returns boolean
+language plpgsql immutable strict as $$
+declare
+  usage_key text;
+  usage_value jsonb;
+  numeric_value numeric;
+begin
+  if jsonb_typeof(value) <> 'object' then return false; end if;
+  for usage_key in select jsonb_object_keys(value)
+  loop
+    if usage_key not in (
+      'inputTokens', 'outputTokens', 'totalTokens', 'cacheReadTokens', 'cacheWriteTokens'
+    ) then
+      return false;
+    end if;
+    usage_value := value -> usage_key;
+    if jsonb_typeof(usage_value) = 'null' then continue; end if;
+    if jsonb_typeof(usage_value) <> 'number' then return false; end if;
+    begin
+      numeric_value := (usage_value #>> '{}')::numeric;
+    exception when others then
+      return false;
+    end;
+    if numeric_value < 0 or trunc(numeric_value) <> numeric_value then return false; end if;
+  end loop;
+  return true;
+end;
+$$;
+
+create table rni_synthesis_model_invocation (
+  id                    uuid        primary key,
+  batch_id              uuid        not null references rni_synthesis_batch (id),
+  stage                 text        not null,
+  status                text        not null default 'prepared',
+  model_id              text        not null,
+  model_revision        text        not null,
+  prompt_version        text        not null,
+  ordered_claim_ids     jsonb       not null,
+  input_hash            text        null,
+  prepared_snapshot     jsonb       not null,
+  output_hash           text        null,
+  terminal_metadata     jsonb       null,
+  prepared_at           timestamptz not null,
+  completed_at          timestamptz null,
+
+  constraint rni_synthesis_model_invocation_stage_check
+    check (stage in ('verification', 'challenger')),
+  constraint rni_synthesis_model_invocation_status_check
+    check (status in ('prepared', 'succeeded', 'failed', 'skipped')),
+  constraint rni_synthesis_model_invocation_versions_check check (
+    length(model_id) > 0 and length(model_revision) > 0 and length(prompt_version) > 0
+  ),
+  constraint rni_synthesis_model_invocation_claims_check
+    check (rni_uuid_array_valid(ordered_claim_ids)),
+  constraint rni_synthesis_model_invocation_input_hash_check
+    check (input_hash is null or input_hash ~ '^[a-f0-9]{64}$'),
+  constraint rni_synthesis_model_invocation_prepared_snapshot_check
+    check (jsonb_typeof(prepared_snapshot) = 'object'),
+  constraint rni_synthesis_model_invocation_terminal_check check (coalesce((
+    (status = 'prepared' and output_hash is null and terminal_metadata is null
+      and completed_at is null)
+    or (
+      status = 'succeeded'
+      and input_hash is not null
+      and output_hash is not null
+      and output_hash ~ '^[a-f0-9]{64}$'
+      and completed_at is not null
+      and completed_at >= prepared_at
+      and terminal_metadata is not null
+      and jsonb_typeof(terminal_metadata) = 'object'
+      and terminal_metadata ? 'outcome'
+      and terminal_metadata ->> 'outcome' = 'succeeded'
+      and not (terminal_metadata ? 'errorCode')
+      and terminal_metadata - array[
+        'outcome', 'responseId', 'usage', 'latencyMs', 'costUsd'
+      ] = '{}'::jsonb
+      and (
+        not (terminal_metadata ? 'usage')
+        or rni_sanitized_model_usage_valid(terminal_metadata -> 'usage')
+      )
+    )
+    or (
+      status = 'failed'
+      and input_hash is not null
+      and output_hash is null
+      and completed_at is not null
+      and completed_at >= prepared_at
+      and terminal_metadata is not null
+      and jsonb_typeof(terminal_metadata) = 'object'
+      and terminal_metadata ? 'outcome'
+      and terminal_metadata ? 'errorCode'
+      and terminal_metadata ->> 'outcome' = 'failed'
+      and terminal_metadata ->> 'errorCode' in (
+        'provider_failure', 'response_envelope_invalid', 'model_identity_mismatch',
+        'forbidden_tool_call', 'structured_output_invalid', 'discovery_response_invalid'
+      )
+      and terminal_metadata - array[
+        'outcome', 'errorCode', 'responseId', 'usage', 'latencyMs', 'costUsd'
+      ] = '{}'::jsonb
+      and (
+        not (terminal_metadata ? 'usage')
+        or rni_sanitized_model_usage_valid(terminal_metadata -> 'usage')
+      )
+    )
+    or (
+      status = 'skipped'
+      and input_hash is not null
+      and output_hash is null
+      and completed_at is not null
+      and completed_at >= prepared_at
+      and terminal_metadata is not null
+      and jsonb_typeof(terminal_metadata) = 'object'
+      and terminal_metadata ? 'outcome'
+      and terminal_metadata ? 'reason'
+      and terminal_metadata ->> 'outcome' = 'skipped'
+      and terminal_metadata ->> 'reason' in (
+        'no_eligible_claims', 'no_verified_assessments'
+      )
+      and (
+        (stage = 'verification' and terminal_metadata ->> 'reason' = 'no_eligible_claims')
+        or stage = 'challenger'
+      )
+      and terminal_metadata - array['outcome', 'reason'] = '{}'::jsonb
+    )
+  ), false)),
+  constraint rni_synthesis_model_invocation_stage_unique unique (batch_id, stage),
+  constraint rni_synthesis_model_invocation_full_identity_unique
+    unique (id, batch_id, stage),
+  constraint rni_synthesis_model_invocation_input_identity_unique
+    unique (id, batch_id, stage, input_hash)
+);
+
+create or replace function rni_synthesis_invocation_starts_prepared() returns trigger
+language plpgsql as $$
+begin
+  if new.status <> 'prepared' then
+    raise exception 'RNI synthesis model invocation must be persisted before dispatch'
+      using errcode = 'check_violation',
+            constraint = 'rni_synthesis_model_invocation_starts_prepared';
+  end if;
+  if new.stage = 'verification'
+     and (new.input_hash is null or not (new.prepared_snapshot ? 'modelInput')) then
+    raise exception 'RNI verification invocation requires its exact input before dispatch'
+      using errcode = 'check_violation',
+            constraint = 'rni_synthesis_model_invocation_starts_prepared';
+  end if;
+  if new.stage = 'challenger'
+     and (new.input_hash is not null or new.prepared_snapshot ? 'modelInput') then
+    raise exception 'RNI challenger invocation must begin as an unhydrated durable plan'
+      using errcode = 'check_violation',
+            constraint = 'rni_synthesis_model_invocation_starts_prepared';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger rni_synthesis_model_invocation_starts_prepared
+  before insert on rni_synthesis_model_invocation
+  for each row execute function rni_synthesis_invocation_starts_prepared();
+
+create or replace function rni_synthesis_invocation_transition_valid() returns trigger
+language plpgsql as $$
+declare
+  input_changed boolean;
+  valid_hydration boolean;
+begin
+  input_changed := old.input_hash is distinct from new.input_hash
+    or old.prepared_snapshot is distinct from new.prepared_snapshot;
+  valid_hydration := old.stage = 'challenger'
+    and old.status = 'prepared'
+    and old.input_hash is null
+    and not (old.prepared_snapshot ? 'modelInput')
+    and new.input_hash is not null
+    and new.input_hash ~ '^[a-f0-9]{64}$'
+    and new.prepared_snapshot ? 'modelInput'
+    and jsonb_typeof(new.prepared_snapshot -> 'modelInput') = 'object'
+    and old.prepared_snapshot = new.prepared_snapshot - 'modelInput';
+
+  if input_changed and not valid_hydration then
+    raise exception 'RNI challenger input permits one fill-only hydration'
+      using errcode = 'restrict_violation';
+  end if;
+  if old.status <> 'prepared'
+     or new.status not in ('prepared', 'succeeded', 'failed', 'skipped')
+     or (new.status = 'prepared' and not valid_hydration) then
+    raise exception 'RNI synthesis model invocation permits one prepared-to-terminal transition'
+      using errcode = 'restrict_violation';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger rni_synthesis_model_invocation_transition
+  before update on rni_synthesis_model_invocation
+  for each row execute function rni_synthesis_invocation_transition_valid();
+
+create trigger rni_synthesis_model_invocation_content_immutable
+  before update or delete on rni_synthesis_model_invocation
+  for each row execute function reject_content_mutation(
+    'status', 'input_hash', 'prepared_snapshot', 'output_hash', 'terminal_metadata', 'completed_at'
+  );
+
+create table rni_synthesis_citation_role (
+  id                       uuid        primary key default gen_random_uuid(),
+  batch_id                 uuid        not null,
+  run_id                   uuid        not null,
+  security_id              uuid        not null,
+  assessment_cutoff_at     timestamptz not null,
+  policy_version           text        not null,
+  rights_policy_version    text        not null,
+  target_claim_id          uuid        null,
+  citation_id              uuid        not null,
+  evidence_claim_id        uuid        not null,
+  source_item_id           uuid        not null,
+  observation_id           uuid        not null,
+  platform                 text        not null,
+  evidence_role            text        not null,
+  analytics_artifact_id    uuid        null,
+  analytics_artifact_hash  text        null,
+  created_at               timestamptz not null default now(),
+
+  constraint rni_synthesis_citation_role_batch_fk
+    foreign key (
+      batch_id, run_id, security_id, assessment_cutoff_at,
+      policy_version, rights_policy_version
+    ) references rni_synthesis_batch (
+      id, run_id, security_id, assessment_cutoff_at,
+      policy_version, rights_policy_version
+    ),
+  constraint rni_synthesis_citation_role_target_fk
+    foreign key (batch_id, target_claim_id)
+    references rni_synthesis_claim_input (batch_id, claim_id),
+  constraint rni_synthesis_citation_role_citation_fk
+    foreign key (citation_id, evidence_claim_id, source_item_id)
+    references rni_claim_citation (id, claim_id, source_item_id),
+  constraint rni_synthesis_citation_role_evidence_claim_fk
+    foreign key (evidence_claim_id, source_item_id, security_id, observation_id)
+    references rni_evidence_claim (id, source_item_id, security_id, observation_id),
+  constraint rni_synthesis_citation_role_run_observation_fk
+    foreign key (run_id, observation_id, source_item_id, security_id)
+    references rni_run_observation (run_id, observation_id, source_item_id, security_id),
+  constraint rni_synthesis_citation_role_source_platform_fk
+    foreign key (source_item_id, platform) references rni_source_item (id, platform),
+  constraint rni_synthesis_citation_role_analytics_fk
+    foreign key (
+      analytics_artifact_id, run_id, security_id, platform, analytics_artifact_hash
+    ) references rni_platform_analytics_artifact (
+      id, run_id, security_id, platform, artifact_hash
+    ),
+  constraint rni_synthesis_citation_role_platform_check check (platform in ('reddit', 'x')),
+  constraint rni_synthesis_citation_role_value_check check (
+    evidence_role in ('social_claim', 'corroborating', 'counterevidence')
+  ),
+  constraint rni_synthesis_citation_role_shape_check check (
+    (
+      target_claim_id is null and evidence_role = 'social_claim'
+      and analytics_artifact_id is not null and analytics_artifact_hash is not null
+    )
+    or (
+      target_claim_id is not null
+      and analytics_artifact_id is null and analytics_artifact_hash is null
+    )
+  ),
+  constraint rni_synthesis_citation_role_full_identity_unique
+    unique (id, batch_id, citation_id)
+);
+
+create unique index rni_synthesis_citation_role_identity_unique
+  on rni_synthesis_citation_role (
+    batch_id,
+    coalesce(target_claim_id, '00000000-0000-0000-0000-000000000000'::uuid),
+    citation_id
+  );
+
+create or replace function rni_publication_canonical_url_valid(
+  value_platform text,
+  value_source_kind text,
+  value_external_id text,
+  value_canonical_url text
+) returns boolean language plpgsql immutable as $$
+declare
+  url_parts text[];
+begin
+  if value_external_id is null then return false; end if;
+  if value_platform = 'reddit' and value_source_kind = 'post' then
+    url_parts := regexp_match(
+      value_canonical_url,
+      '^https://www[.]reddit[.]com/r/([a-z0-9_]+)/comments/([a-z0-9]+)/$'
+    );
+    return url_parts is not null and 't3_' || url_parts[2] = value_external_id;
+  elsif value_platform = 'reddit' and value_source_kind = 'comment' then
+    url_parts := regexp_match(
+      value_canonical_url,
+      '^https://www[.]reddit[.]com/r/([a-z0-9_]+)/comments/([a-z0-9]+)/_/([a-z0-9]+)/$'
+    );
+    return url_parts is not null and 't1_' || url_parts[3] = value_external_id;
+  elsif value_platform = 'x' and value_source_kind = 'x_post' then
+    url_parts := regexp_match(
+      value_canonical_url,
+      '^https://x[.]com/i/web/status/([0-9]+)$'
+    );
+    return url_parts is not null and url_parts[1] = value_external_id;
+  end if;
+  return false;
+end;
+$$;
+
+create or replace function rni_synthesis_citation_role_valid() returns trigger
+language plpgsql as $$
+declare
+  source_row rni_source_item%rowtype;
+  target_row record;
+begin
+  select * into source_row from rni_source_item where id = new.source_item_id;
+  if source_row.id is null
+     or source_row.rights_policy_version <> new.rights_policy_version
+     or source_row.source_status <> 'active' then
+    raise exception 'RNI publication evidence requires active source rights matching the synthesis batch'
+      using errcode = 'check_violation',
+            constraint = 'rni_synthesis_citation_role_source_rights';
+  end if;
+  if not rni_publication_canonical_url_valid(
+    source_row.platform,
+    source_row.source_kind,
+    source_row.external_id,
+    source_row.canonical_url
+  ) then
+    raise exception 'RNI publication evidence requires a strict canonical Reddit or X URL'
+      using errcode = 'check_violation',
+            constraint = 'rni_synthesis_citation_role_canonical_url';
+  end if;
+  if source_row.discovered_at > new.assessment_cutoff_at
+     or source_row.observed_at > new.assessment_cutoff_at then
+    raise exception 'RNI publication evidence cannot follow the point-in-time cutoff'
+      using errcode = 'check_violation',
+            constraint = 'rni_synthesis_citation_role_point_in_time';
+  end if;
+
+  if new.target_claim_id is not null then
+    select source_item_id, platform into target_row
+      from rni_synthesis_claim_input
+     where batch_id = new.batch_id and claim_id = new.target_claim_id;
+    if new.evidence_role = 'social_claim' then
+      if new.evidence_claim_id <> new.target_claim_id
+         or new.source_item_id <> target_row.source_item_id
+         or new.platform <> target_row.platform then
+        raise exception 'RNI social_claim role must cite the exact persisted catalyst claim source'
+          using errcode = 'check_violation',
+                constraint = 'rni_synthesis_citation_role_claim_source';
+      end if;
+    else
+      if new.source_item_id = target_row.source_item_id then
+        raise exception 'RNI corroboration and counterevidence cannot self-cite the catalyst source'
+          using errcode = 'check_violation',
+                constraint = 'rni_synthesis_citation_role_no_self_citation';
+      end if;
+      if source_row.published_at is null
+         or source_row.published_at > new.assessment_cutoff_at then
+        raise exception 'RNI corroboration and counterevidence require known publication by the cutoff'
+          using errcode = 'check_violation',
+                constraint = 'rni_synthesis_citation_role_published_point_in_time';
+      end if;
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger rni_synthesis_citation_role_valid
+  before insert on rni_synthesis_citation_role
+  for each row execute function rni_synthesis_citation_role_valid();
+
+create or replace function rni_validate_synthesis_batch_manifests(value_batch_id uuid)
+returns void language plpgsql as $$
+declare
+  batch_row rni_synthesis_batch%rowtype;
+  expected jsonb;
+  claim_row record;
+begin
+  select * into batch_row from rni_synthesis_batch where id = value_batch_id;
+  if batch_row.id is null then return; end if;
+
+  select coalesce(jsonb_agg(to_jsonb(citation_id::text) order by citation_id::text), '[]'::jsonb)
+    into expected
+    from (
+      select distinct citation_id
+      from rni_synthesis_citation_role
+      where batch_id = value_batch_id
+    ) as citations;
+  if expected <> batch_row.ordered_citation_ids then
+    raise exception 'RNI synthesis citation manifest must equal the exact persisted role set'
+      using errcode = 'check_violation',
+            constraint = 'rni_synthesis_batch_exact_citation_manifest';
+  end if;
+
+  select coalesce(jsonb_agg(to_jsonb(citation_id::text) order by citation_id::text), '[]'::jsonb)
+    into expected
+    from rni_synthesis_citation_role
+   where batch_id = value_batch_id and target_claim_id is null and platform = 'reddit';
+  if expected <> batch_row.reddit_platform_citation_ids then
+    raise exception 'RNI Reddit platform citation manifest does not match its analytics roles'
+      using errcode = 'check_violation',
+            constraint = 'rni_synthesis_batch_exact_reddit_manifest';
+  end if;
+
+  select coalesce(jsonb_agg(to_jsonb(citation_id::text) order by citation_id::text), '[]'::jsonb)
+    into expected
+    from rni_synthesis_citation_role
+   where batch_id = value_batch_id and target_claim_id is null and platform = 'x';
+  if expected <> batch_row.x_platform_citation_ids then
+    raise exception 'RNI X platform citation manifest does not match its analytics roles'
+      using errcode = 'check_violation',
+            constraint = 'rni_synthesis_batch_exact_x_manifest';
+  end if;
+
+  for claim_row in
+    select claim_id, source_citation_ids
+      from rni_synthesis_claim_input
+     where batch_id = value_batch_id
+  loop
+    select coalesce(jsonb_agg(to_jsonb(citation_id::text) order by citation_id::text), '[]'::jsonb)
+      into expected
+      from rni_synthesis_citation_role
+     where batch_id = value_batch_id
+       and target_claim_id = claim_row.claim_id
+       and evidence_role = 'social_claim';
+    if expected <> claim_row.source_citation_ids then
+      raise exception 'RNI catalyst source-citation manifest must equal its exact social_claim roles'
+        using errcode = 'check_violation',
+              constraint = 'rni_synthesis_claim_exact_source_manifest';
+    end if;
+  end loop;
+end;
+$$;
+
+create or replace function rni_validate_synthesis_invocation() returns trigger
+language plpgsql as $$
+declare
+  expected jsonb;
+begin
+  select coalesce(jsonb_agg(to_jsonb(claim_id::text) order by ordinal), '[]'::jsonb)
+    into expected
+    from rni_synthesis_claim_input
+   where batch_id = new.batch_id;
+  if expected <> new.ordered_claim_ids then
+    raise exception 'RNI verifier and challenger must use the exact ordered persisted claim set'
+      using errcode = 'check_violation',
+            constraint = 'rni_synthesis_model_invocation_exact_claims';
+  end if;
+  perform rni_validate_synthesis_batch_manifests(new.batch_id);
+  return null;
+end;
+$$;
+
+create constraint trigger rni_synthesis_model_invocation_exact_inputs
+  after insert or update on rni_synthesis_model_invocation
+  deferrable initially deferred
+  for each row execute function rni_validate_synthesis_invocation();
+
+create or replace function rni_revalidate_synthesis_claim_input() returns trigger
+language plpgsql as $$
+declare
+  invocation_row rni_synthesis_model_invocation%rowtype;
+begin
+  for invocation_row in
+    select * from rni_synthesis_model_invocation where batch_id = new.batch_id
+  loop
+    perform rni_validate_synthesis_batch_manifests(new.batch_id);
+    if invocation_row.ordered_claim_ids <> (
+      select coalesce(jsonb_agg(to_jsonb(claim_id::text) order by ordinal), '[]'::jsonb)
+      from rni_synthesis_claim_input where batch_id = new.batch_id
+    ) then
+      raise exception 'RNI claim input cannot alter a prepared invocation claim set'
+        using errcode = 'check_violation',
+              constraint = 'rni_synthesis_claim_input_prepared_exactness';
+    end if;
+  end loop;
+  return null;
+end;
+$$;
+
+create constraint trigger rni_synthesis_claim_input_revalidate
+  after insert on rni_synthesis_claim_input
+  deferrable initially deferred
+  for each row execute function rni_revalidate_synthesis_claim_input();
+
+create or replace function rni_revalidate_synthesis_citation_role() returns trigger
+language plpgsql as $$
+begin
+  if exists (
+    select 1 from rni_synthesis_model_invocation where batch_id = new.batch_id
+  ) then
+    perform rni_validate_synthesis_batch_manifests(new.batch_id);
+  end if;
+  return null;
+end;
+$$;
+
+create constraint trigger rni_synthesis_citation_role_revalidate
+  after insert on rni_synthesis_citation_role
+  deferrable initially deferred
+  for each row execute function rni_revalidate_synthesis_citation_role();
+
+create table rni_catalyst_assessment (
+  batch_id                   uuid        not null,
+  run_id                     uuid        not null,
+  security_id                uuid        not null,
+  assessment_cutoff_at       timestamptz not null,
+  policy_version             text        not null,
+  rights_policy_version      text        not null,
+  claim_id                   uuid        not null,
+  verifier_invocation_id     uuid        not null,
+  verifier_stage             text        not null default 'verification',
+  verdict                    text        not null,
+  supporting_citation_ids    jsonb       not null,
+  contradicting_citation_ids jsonb       not null,
+  assessment_hash            text        not null,
+  created_at                 timestamptz not null default now(),
+
+  primary key (batch_id, claim_id),
+  constraint rni_catalyst_assessment_batch_fk
+    foreign key (
+      batch_id, run_id, security_id, assessment_cutoff_at,
+      policy_version, rights_policy_version
+    ) references rni_synthesis_batch (
+      id, run_id, security_id, assessment_cutoff_at,
+      policy_version, rights_policy_version
+    ),
+  constraint rni_catalyst_assessment_claim_fk
+    foreign key (batch_id, claim_id)
+    references rni_synthesis_claim_input (batch_id, claim_id),
+  constraint rni_catalyst_assessment_invocation_fk
+    foreign key (verifier_invocation_id, batch_id, verifier_stage)
+    references rni_synthesis_model_invocation (id, batch_id, stage),
+  constraint rni_catalyst_assessment_verifier_stage_check
+    check (verifier_stage = 'verification'),
+  constraint rni_catalyst_assessment_verdict_check
+    check (verdict in ('supported', 'contradicted', 'contested', 'unverified')),
+  constraint rni_catalyst_assessment_citations_check check (
+    rni_uuid_array_valid(supporting_citation_ids)
+    and rni_uuid_array_valid(contradicting_citation_ids)
+  ),
+  constraint rni_catalyst_assessment_hash_check
+    check (assessment_hash ~ '^[a-f0-9]{64}$')
+);
+
+create or replace function rni_validate_catalyst_assessment(
+  value_batch_id uuid,
+  value_claim_id uuid
+) returns void language plpgsql as $$
+declare
+  assessment_row rni_catalyst_assessment%rowtype;
+  invocation_status text;
+  invocation_reason text;
+begin
+  select * into assessment_row
+    from rni_catalyst_assessment
+   where batch_id = value_batch_id and claim_id = value_claim_id;
+  if assessment_row.batch_id is null then return; end if;
+
+  select status, terminal_metadata ->> 'reason' into invocation_status, invocation_reason
+    from rni_synthesis_model_invocation
+   where id = assessment_row.verifier_invocation_id;
+  if invocation_status not in ('succeeded', 'skipped') then
+    raise exception 'RNI catalyst assessment requires a terminal verifier invocation plan'
+      using errcode = 'check_violation',
+            constraint = 'rni_catalyst_assessment_terminal_verifier';
+  end if;
+
+  if exists (
+    select 1
+      from jsonb_array_elements_text(assessment_row.supporting_citation_ids) as selected(value)
+     where not exists (
+       select 1 from rni_synthesis_citation_role as role
+        where role.batch_id = value_batch_id
+          and role.target_claim_id = value_claim_id
+          and role.evidence_role = 'corroborating'
+          and role.citation_id = selected.value::uuid
+     )
+  ) or exists (
+    select 1
+      from jsonb_array_elements_text(assessment_row.contradicting_citation_ids) as selected(value)
+     where not exists (
+       select 1 from rni_synthesis_citation_role as role
+        where role.batch_id = value_batch_id
+          and role.target_claim_id = value_claim_id
+          and role.evidence_role = 'counterevidence'
+          and role.citation_id = selected.value::uuid
+     )
+  ) or exists (
+    select 1
+      from jsonb_array_elements_text(assessment_row.supporting_citation_ids) as supporting(value)
+      join jsonb_array_elements_text(assessment_row.contradicting_citation_ids) as contradicting(value)
+        on supporting.value = contradicting.value
+  ) then
+    raise exception 'RNI catalyst assessment citations must be selected from exact same-claim role candidates'
+      using errcode = 'check_violation',
+            constraint = 'rni_catalyst_assessment_exact_citations';
+  end if;
+  if not (
+    (assessment_row.verdict = 'supported'
+      and jsonb_array_length(assessment_row.supporting_citation_ids) > 0
+      and jsonb_array_length(assessment_row.contradicting_citation_ids) = 0)
+    or (assessment_row.verdict = 'contradicted'
+      and jsonb_array_length(assessment_row.supporting_citation_ids) = 0
+      and jsonb_array_length(assessment_row.contradicting_citation_ids) > 0)
+    or (assessment_row.verdict = 'contested'
+      and jsonb_array_length(assessment_row.supporting_citation_ids) > 0
+      and jsonb_array_length(assessment_row.contradicting_citation_ids) > 0)
+    or (assessment_row.verdict = 'unverified'
+      and jsonb_array_length(assessment_row.supporting_citation_ids) = 0
+      and jsonb_array_length(assessment_row.contradicting_citation_ids) = 0)
+  ) then
+    raise exception 'RNI catalyst assessment verdict does not match its social evidence roles'
+      using errcode = 'check_violation',
+            constraint = 'rni_catalyst_assessment_verdict_shape';
+  end if;
+  if invocation_status = 'skipped'
+     and (invocation_reason <> 'no_eligible_claims' or assessment_row.verdict <> 'unverified') then
+    raise exception 'RNI skipped verification permits only unverified catalyst assessments'
+      using errcode = 'check_violation',
+            constraint = 'rni_catalyst_assessment_skipped_verifier';
+  end if;
+end;
+$$;
+
+create or replace function rni_catalyst_assessment_constraint() returns trigger
+language plpgsql as $$
+begin
+  perform rni_validate_catalyst_assessment(new.batch_id, new.claim_id);
+  return null;
+end;
+$$;
+
+create constraint trigger rni_catalyst_assessment_valid
+  after insert on rni_catalyst_assessment
+  deferrable initially deferred
+  for each row execute function rni_catalyst_assessment_constraint();
+
+create table rni_challenger_selection (
+  batch_id                 uuid        primary key references rni_synthesis_batch (id),
+  challenger_invocation_id uuid        not null,
+  challenger_stage         text        not null default 'challenger',
+  verdict                  text        not null,
+  challenged_claim_id      uuid        null,
+  citation_ids             jsonb       not null,
+  selection_hash           text        not null,
+  created_at               timestamptz not null default now(),
+
+  constraint rni_challenger_selection_invocation_fk
+    foreign key (challenger_invocation_id, batch_id, challenger_stage)
+    references rni_synthesis_model_invocation (id, batch_id, stage),
+  constraint rni_challenger_selection_claim_fk
+    foreign key (batch_id, challenged_claim_id)
+    references rni_synthesis_claim_input (batch_id, claim_id),
+  constraint rni_challenger_selection_stage_check check (challenger_stage = 'challenger'),
+  constraint rni_challenger_selection_verdict_check check (
+    verdict in ('no_supported_challenge_found', 'material_challenge', 'insufficient')
+  ),
+  constraint rni_challenger_selection_citations_check check (rni_uuid_array_valid(citation_ids)),
+  constraint rni_challenger_selection_hash_check check (selection_hash ~ '^[a-f0-9]{64}$')
+);
+
+create or replace function rni_validate_challenger_selection(value_batch_id uuid)
+returns void language plpgsql as $$
+declare
+  selection_row rni_challenger_selection%rowtype;
+  invocation_status text;
+  invocation_reason text;
+  expected jsonb;
+  support_count integer;
+  counter_count integer;
+begin
+  select * into selection_row from rni_challenger_selection where batch_id = value_batch_id;
+  if selection_row.batch_id is null then return; end if;
+  select status, terminal_metadata ->> 'reason' into invocation_status, invocation_reason
+    from rni_synthesis_model_invocation where id = selection_row.challenger_invocation_id;
+  if invocation_status not in ('succeeded', 'skipped') then
+    raise exception 'RNI challenger selection requires a terminal challenger invocation plan'
+      using errcode = 'check_violation',
+            constraint = 'rni_challenger_selection_terminal_invocation';
+  end if;
+
+  select coalesce(sum(jsonb_array_length(supporting_citation_ids)), 0),
+         coalesce(sum(jsonb_array_length(contradicting_citation_ids)), 0)
+    into support_count, counter_count
+    from rni_catalyst_assessment
+   where batch_id = value_batch_id;
+  if selection_row.verdict = 'material_challenge' then
+    if selection_row.challenged_claim_id is null then
+      raise exception 'RNI material challenge must select one persisted catalyst claim'
+        using errcode = 'check_violation',
+              constraint = 'rni_challenger_selection_shape';
+    end if;
+    select contradicting_citation_ids
+      into expected
+      from rni_catalyst_assessment
+     where batch_id = value_batch_id
+       and claim_id = selection_row.challenged_claim_id;
+    if selection_row.citation_ids <> expected or jsonb_array_length(expected) = 0 then
+      raise exception 'RNI material challenge must select the exact verifier-selected counterevidence set'
+        using errcode = 'check_violation',
+              constraint = 'rni_challenger_selection_exact_citations';
+    end if;
+  elsif selection_row.verdict = 'no_supported_challenge_found' then
+    if selection_row.challenged_claim_id is not null
+       or jsonb_array_length(selection_row.citation_ids) <> 0
+       or counter_count <> 0 or support_count = 0 then
+      raise exception 'RNI no-challenge selection requires support and no persisted counterevidence'
+        using errcode = 'check_violation',
+              constraint = 'rni_challenger_selection_shape';
+    end if;
+  elsif selection_row.challenged_claim_id is not null
+     or jsonb_array_length(selection_row.citation_ids) <> 0
+     or counter_count <> 0 or support_count <> 0 then
+    raise exception 'RNI insufficient challenger selection requires no corroborating or counter evidence'
+      using errcode = 'check_violation',
+            constraint = 'rni_challenger_selection_shape';
+  end if;
+  if invocation_status = 'skipped'
+     and (
+       invocation_reason not in ('no_eligible_claims', 'no_verified_assessments')
+       or selection_row.verdict <> 'insufficient'
+     ) then
+    raise exception 'RNI skipped challenger permits only an insufficient selection'
+      using errcode = 'check_violation',
+            constraint = 'rni_challenger_selection_skipped_invocation';
+  end if;
+end;
+$$;
+
+create or replace function rni_challenger_selection_constraint() returns trigger
+language plpgsql as $$
+begin
+  perform rni_validate_challenger_selection(new.batch_id);
+  return null;
+end;
+$$;
+
+create constraint trigger rni_challenger_selection_valid
+  after insert on rni_challenger_selection
+  deferrable initially deferred
+  for each row execute function rni_challenger_selection_constraint();
+
+-- Once assessments or a challenger selection exist, a later role insert must revalidate those
+-- exact sets as well as the original request manifest. This keeps child INSERTs from becoming a
+-- back door around append-only parent artifacts.
+create or replace function rni_revalidate_synthesis_citation_role() returns trigger
+language plpgsql as $$
+begin
+  if exists (
+    select 1 from rni_synthesis_model_invocation where batch_id = new.batch_id
+  ) then
+    perform rni_validate_synthesis_batch_manifests(new.batch_id);
+  end if;
+  if new.target_claim_id is not null then
+    perform rni_validate_catalyst_assessment(new.batch_id, new.target_claim_id);
+  end if;
+  perform rni_validate_challenger_selection(new.batch_id);
+  return null;
+end;
+$$;
+
+create table rni_cited_synthesis_artifact (
+  id                           uuid        primary key,
+  run_id                       uuid        not null,
+  security_id                  uuid        not null,
+  batch_id                     uuid        not null references rni_synthesis_batch (id),
+  convergence_artifact_id      uuid        not null,
+  verifier_invocation_id       uuid        not null,
+  verifier_stage               text        not null default 'verification',
+  verification_input_hash      text        not null,
+  challenger_invocation_id     uuid        not null,
+  challenger_stage             text        not null default 'challenger',
+  challenger_input_hash        text        not null,
+  calculation_code_version     text        not null,
+  policy_version               text        not null,
+  input_hash                   text        not null,
+  result_hash                  text        not null,
+  request_snapshot             jsonb       not null,
+  model_input_snapshot         jsonb       not null,
+  verification_output_snapshot jsonb       not null,
+  challenger_output_snapshot   jsonb       not null,
+  result_snapshot              jsonb       not null,
+  statement_count              integer     not null,
+  created_at                   timestamptz not null,
+
+  constraint rni_cited_synthesis_summary_fk
+    foreign key (id, run_id, security_id)
+    references rni_combined_summary (id, run_id, security_id),
+  constraint rni_cited_synthesis_convergence_fk
+    foreign key (convergence_artifact_id, run_id, security_id)
+    references rni_convergence_artifact (id, run_id, security_id),
+  constraint rni_cited_synthesis_batch_fk
+    foreign key (batch_id, run_id, security_id, policy_version)
+    references rni_synthesis_batch (id, run_id, security_id, policy_version),
+  constraint rni_cited_synthesis_verifier_fk
+    foreign key (
+      verifier_invocation_id, batch_id, verifier_stage, verification_input_hash
+    ) references rni_synthesis_model_invocation (id, batch_id, stage, input_hash),
+  constraint rni_cited_synthesis_challenger_fk
+    foreign key (
+      challenger_invocation_id, batch_id, challenger_stage, challenger_input_hash
+    ) references rni_synthesis_model_invocation (id, batch_id, stage, input_hash),
+  constraint rni_cited_synthesis_stages_check
+    check (verifier_stage = 'verification' and challenger_stage = 'challenger'),
+  constraint rni_cited_synthesis_distinct_invocations_check
+    check (verifier_invocation_id <> challenger_invocation_id),
+  constraint rni_cited_synthesis_versions_check check (
+    length(calculation_code_version) > 0 and length(policy_version) > 0
+  ),
+  constraint rni_cited_synthesis_hashes_check check (
+    verification_input_hash ~ '^[a-f0-9]{64}$'
+    and challenger_input_hash ~ '^[a-f0-9]{64}$'
+    and input_hash ~ '^[a-f0-9]{64}$'
+    and result_hash ~ '^[a-f0-9]{64}$'
+  ),
+  constraint rni_cited_synthesis_snapshots_check check (
+    jsonb_typeof(request_snapshot) = 'object'
+    and jsonb_typeof(model_input_snapshot) = 'object'
+    and jsonb_typeof(verification_output_snapshot) = 'array'
+    and jsonb_typeof(challenger_output_snapshot) = 'object'
+    and jsonb_typeof(result_snapshot) = 'object'
+  ),
+  constraint rni_cited_synthesis_statement_count_check check (statement_count >= 3),
+  constraint rni_cited_synthesis_statement_identity_unique unique (id, batch_id)
+);
+
+create table rni_publication_statement (
+  id              uuid        primary key default gen_random_uuid(),
+  synthesis_id    uuid        not null references rni_cited_synthesis_artifact (id),
+  batch_id        uuid        not null references rni_synthesis_batch (id),
+  ordinal         integer     not null,
+  heading         text        not null,
+  section_status  text        not null,
+  origin          text        not null,
+  statement_text  text        not null,
+  citation_ids    jsonb       not null,
+  created_at      timestamptz not null default now(),
+
+  constraint rni_publication_statement_ordinal_unique unique (synthesis_id, ordinal),
+  constraint rni_publication_statement_synthesis_batch_fk
+    foreign key (synthesis_id, batch_id)
+    references rni_cited_synthesis_artifact (id, batch_id),
+  constraint rni_publication_statement_full_identity_unique
+    unique (id, synthesis_id, batch_id),
+  constraint rni_publication_statement_ordinal_check check (ordinal >= 0),
+  constraint rni_publication_statement_heading_check check (
+    heading in ('Reddit sentiment', 'X sentiment', 'Combined summary')
+  ),
+  constraint rni_publication_statement_section_status_check
+    check (section_status in ('complete', 'partial', 'insufficient')),
+  constraint rni_publication_statement_origin_check check (
+    origin in (
+      'platform_conclusion', 'corroborated_catalyst', 'challenged_catalyst',
+      'cross_source_fact', 'coverage_disclosure'
+    )
+  ),
+  constraint rni_publication_statement_heading_origin_check check (
+    (origin = 'platform_conclusion' and heading in ('Reddit sentiment', 'X sentiment'))
+    or (origin in ('corroborated_catalyst', 'challenged_catalyst', 'cross_source_fact')
+      and heading = 'Combined summary')
+    or origin = 'coverage_disclosure'
+  ),
+  constraint rni_publication_statement_text_check
+    check (length(statement_text) between 1 and 4000),
+  constraint rni_publication_statement_citations_check check (
+    rni_uuid_array_valid(citation_ids)
+    and (origin = 'coverage_disclosure' or jsonb_array_length(citation_ids) > 0)
+  )
+);
+
+create table rni_publication_statement_citation (
+  statement_id      uuid        not null,
+  synthesis_id      uuid        not null,
+  batch_id          uuid        not null,
+  citation_ordinal  integer     not null,
+  citation_role_id  uuid        not null,
+  citation_id       uuid        not null,
+  created_at        timestamptz not null default now(),
+
+  primary key (statement_id, citation_id),
+  constraint rni_publication_statement_citation_ordinal_unique
+    unique (statement_id, citation_ordinal),
+  constraint rni_publication_statement_citation_statement_fk
+    foreign key (statement_id, synthesis_id, batch_id)
+    references rni_publication_statement (id, synthesis_id, batch_id),
+  constraint rni_publication_statement_citation_role_fk
+    foreign key (citation_role_id, batch_id, citation_id)
+    references rni_synthesis_citation_role (id, batch_id, citation_id),
+  constraint rni_publication_statement_citation_ordinal_check
+    check (citation_ordinal >= 0)
+);
+
+create or replace function rni_expected_summary_sections(value_synthesis_id uuid)
+returns jsonb language sql stable as $$
+  with headings(heading, heading_ordinal) as (
+    values ('Reddit sentiment'::text, 0), ('X sentiment'::text, 1),
+           ('Combined summary'::text, 2)
+  ), statement_groups as (
+    select
+      heading,
+      count(distinct section_status) as status_count,
+      min(section_status) as section_status,
+      string_agg(statement_text, ' ' order by ordinal) as section_text
+    from rni_publication_statement
+    where synthesis_id = value_synthesis_id
+    group by heading
+  ), citation_groups as (
+    select heading, coalesce(
+      (
+        select jsonb_agg(to_jsonb(citation_id::text) order by citation_id::text)
+        from (
+          select distinct edge.citation_id
+          from rni_publication_statement as statement
+          join rni_publication_statement_citation as edge
+            on edge.statement_id = statement.id
+          where statement.synthesis_id = value_synthesis_id
+            and statement.heading = headings.heading
+        ) as citations
+      ),
+      '[]'::jsonb
+    ) as citation_ids
+    from headings
+  )
+  select case
+    when count(statement_groups.heading) = 3
+      and bool_and(statement_groups.status_count = 1)
+    then jsonb_agg(
+      jsonb_build_object(
+        'heading', headings.heading,
+        'status', statement_groups.section_status,
+        'text', statement_groups.section_text,
+        'citationIds', citation_groups.citation_ids
+      ) order by headings.heading_ordinal
+    )
+    else null
+  end
+  from headings
+  left join statement_groups using (heading)
+  join citation_groups using (heading)
+$$;
+
+create or replace function rni_validate_publication_graph(value_synthesis_id uuid)
+returns void language plpgsql as $$
+declare
+  artifact_row rni_cited_synthesis_artifact%rowtype;
+  statement_row rni_publication_statement%rowtype;
+  statement_total integer;
+  heading_total integer;
+  expected jsonb;
+  expected_sections jsonb;
+  persisted_sections jsonb;
+begin
+  select * into artifact_row
+    from rni_cited_synthesis_artifact where id = value_synthesis_id;
+  if artifact_row.id is null then return; end if;
+
+  select count(*), count(distinct heading)
+    into statement_total, heading_total
+    from rni_publication_statement where synthesis_id = value_synthesis_id;
+  if statement_total <> artifact_row.statement_count or heading_total <> 3
+     or exists (
+       select 1
+       from generate_series(0, artifact_row.statement_count - 1) as expected_ordinal
+       where not exists (
+         select 1 from rni_publication_statement
+         where synthesis_id = value_synthesis_id and ordinal = expected_ordinal
+       )
+     ) then
+    raise exception 'RNI publication statements must be complete, contiguous and cover all three headings'
+      using errcode = 'check_violation',
+            constraint = 'rni_publication_statement_complete_order';
+  end if;
+
+  for statement_row in
+    select * from rni_publication_statement
+     where synthesis_id = value_synthesis_id
+  loop
+    select coalesce(
+        jsonb_agg(to_jsonb(citation_id::text) order by citation_ordinal),
+        '[]'::jsonb
+      ) into expected
+      from rni_publication_statement_citation
+     where statement_id = statement_row.id;
+    if expected <> statement_row.citation_ids then
+      raise exception 'RNI publication statement citation edges must equal its ordered citation manifest'
+        using errcode = 'check_violation',
+              constraint = 'rni_publication_statement_exact_citations';
+    end if;
+    if statement_row.origin <> 'coverage_disclosure' and jsonb_array_length(expected) = 0 then
+      raise exception 'Every non-coverage RNI publication statement requires a citation'
+        using errcode = 'check_violation',
+              constraint = 'rni_publication_statement_requires_citation';
+    end if;
+  end loop;
+
+  select rni_expected_summary_sections(value_synthesis_id) into expected_sections;
+  select sections into persisted_sections
+    from rni_combined_summary where id = value_synthesis_id;
+  if expected_sections is null or persisted_sections is distinct from expected_sections then
+    raise exception 'RNI combined summary sections must exactly project ordered publication statements and citation edges'
+      using errcode = 'check_violation',
+            constraint = 'rni_combined_summary_exact_statement_projection';
+  end if;
+end;
+$$;
+
+create or replace function rni_validate_cited_synthesis_artifact() returns trigger
+language plpgsql as $$
+declare
+  verifier_status text;
+  challenger_status text;
+  verifier_reason text;
+  challenger_reason text;
+  input_count integer;
+  assessment_count integer;
+  verified_assessment_count integer;
+  expected_verification jsonb;
+  expected_challenger jsonb;
+begin
+  select status, terminal_metadata ->> 'reason' into verifier_status, verifier_reason
+    from rni_synthesis_model_invocation where id = new.verifier_invocation_id;
+  select status, terminal_metadata ->> 'reason' into challenger_status, challenger_reason
+    from rni_synthesis_model_invocation where id = new.challenger_invocation_id;
+  select count(*) into input_count
+    from rni_synthesis_claim_input where batch_id = new.batch_id;
+  select count(*), count(*) filter (where verdict <> 'unverified')
+    into assessment_count, verified_assessment_count
+    from rni_catalyst_assessment where batch_id = new.batch_id;
+  if input_count <> assessment_count then
+    raise exception 'RNI cited synthesis requires exactly one assessment for every catalyst input'
+      using errcode = 'check_violation',
+            constraint = 'rni_cited_synthesis_complete_assessments';
+  end if;
+  if not exists (select 1 from rni_challenger_selection where batch_id = new.batch_id) then
+    raise exception 'RNI cited synthesis requires one persisted challenger selection'
+      using errcode = 'check_violation',
+            constraint = 'rni_cited_synthesis_challenger_selection';
+  end if;
+  if verifier_status = 'skipped' then
+    if verifier_reason <> 'no_eligible_claims'
+       or challenger_status <> 'skipped'
+       or challenger_reason <> 'no_eligible_claims'
+       or verified_assessment_count <> 0 then
+      raise exception 'RNI no-eligible-claim publication requires both invocation plans skipped and every assessment unverified'
+        using errcode = 'check_violation',
+              constraint = 'rni_cited_synthesis_skipped_invocations';
+    end if;
+  elsif verifier_status = 'succeeded' then
+    if verified_assessment_count = 0 then
+      if challenger_status <> 'skipped'
+         or challenger_reason <> 'no_verified_assessments' then
+        raise exception 'RNI all-unverified publication requires the challenger plan to be skipped'
+          using errcode = 'check_violation',
+                constraint = 'rni_cited_synthesis_skipped_invocations';
+      end if;
+    elsif challenger_status <> 'succeeded' then
+      raise exception 'RNI verified catalyst publication requires a successful challenger invocation'
+        using errcode = 'check_violation',
+              constraint = 'rni_cited_synthesis_terminal_invocations';
+    end if;
+  else
+    raise exception 'RNI cited synthesis requires terminal successful or policy-skipped invocation plans'
+      using errcode = 'check_violation',
+            constraint = 'rni_cited_synthesis_terminal_invocations';
+  end if;
+
+  select coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'claimId', claim_id::text,
+          'verdict', verdict,
+          'supportingCitationIds', supporting_citation_ids,
+          'contradictingCitationIds', contradicting_citation_ids
+        ) order by claim_id::text
+      ),
+      '[]'::jsonb
+    ) into expected_verification
+    from rni_catalyst_assessment
+   where batch_id = new.batch_id;
+  select jsonb_build_object(
+      'verdict', verdict,
+      'challengedClaimId', case when challenged_claim_id is null then null else to_jsonb(challenged_claim_id::text) end,
+      'citationIds', citation_ids
+    ) into expected_challenger
+    from rni_challenger_selection
+   where batch_id = new.batch_id;
+  if new.verification_output_snapshot <> expected_verification
+     or new.challenger_output_snapshot <> expected_challenger then
+    raise exception 'RNI cited synthesis snapshots must equal persisted assessment and challenger selections'
+      using errcode = 'check_violation',
+            constraint = 'rni_cited_synthesis_exact_model_outputs';
+  end if;
+  perform rni_validate_synthesis_batch_manifests(new.batch_id);
+  perform rni_validate_publication_graph(new.id);
+  return null;
+end;
+$$;
+
+create constraint trigger rni_cited_synthesis_artifact_valid
+  after insert on rni_cited_synthesis_artifact
+  deferrable initially deferred
+  for each row execute function rni_validate_cited_synthesis_artifact();
+
+create or replace function rni_validate_future_combined_summary() returns trigger
+language plpgsql as $$
+declare
+  artifact_count integer;
+begin
+  select count(*) into artifact_count
+    from rni_cited_synthesis_artifact
+   where id = new.id and run_id = new.run_id and security_id = new.security_id;
+  if artifact_count <> 1 then
+    raise exception 'A new RNI combined summary requires one complete cited synthesis artifact in the same transaction'
+      using errcode = 'check_violation',
+            constraint = 'rni_combined_summary_requires_cited_artifact';
+  end if;
+  perform rni_validate_publication_graph(new.id);
+  return null;
+end;
+$$;
+
+-- Installed after historical rows already exist, so compatibility is preserved. Every future
+-- summary insert is checked only at transaction commit, after its artifact/statements/edges can
+-- be written atomically.
+create constraint trigger rni_combined_summary_requires_cited_artifact
+  after insert on rni_combined_summary
+  deferrable initially deferred
+  for each row execute function rni_validate_future_combined_summary();
+
+create or replace function rni_revalidate_publication_graph() returns trigger
+language plpgsql as $$
+begin
+  perform rni_validate_publication_graph(new.synthesis_id);
+  return null;
+end;
+$$;
+
+create constraint trigger rni_publication_statement_valid
+  after insert on rni_publication_statement
+  deferrable initially deferred
+  for each row execute function rni_revalidate_publication_graph();
+
+create or replace function rni_revalidate_publication_edge() returns trigger
+language plpgsql as $$
+begin
+  perform rni_validate_publication_graph(new.synthesis_id);
+  return null;
+end;
+$$;
+
+create constraint trigger rni_publication_statement_citation_valid
+  after insert on rni_publication_statement_citation
+  deferrable initially deferred
+  for each row execute function rni_revalidate_publication_edge();
+
+do $$
+declare
+  table_name text;
+begin
+  foreach table_name in array array[
+    'rni_platform_analytics_artifact',
+    'rni_convergence_artifact',
+    'rni_synthesis_batch',
+    'rni_synthesis_claim_input',
+    'rni_synthesis_citation_role',
+    'rni_catalyst_assessment',
+    'rni_challenger_selection',
+    'rni_cited_synthesis_artifact',
+    'rni_publication_statement',
+    'rni_publication_statement_citation'
+  ]
+  loop
+    execute format(
+      'create trigger %I_append_only before update or delete on %I
+         for each row execute function reject_mutation()',
+      table_name, table_name
+    );
+  end loop;
+end;
+$$;
+
+comment on table rni_synthesis_batch is
+  'Trusted run/security/cutoff/policy boundary for one E08 request and its exact evidence manifest.';
+comment on table rni_synthesis_model_invocation is
+  'Verifier and challenger calls are prepared before dispatch, use the same ordered claim set, store only allowlisted terminal metadata, and permit one lifecycle transition.';
+comment on table rni_synthesis_citation_role is
+  'Claim-specific Reddit/X evidence role with point-in-time, rights, run, security, self-citation and exact analytics protections.';
+comment on table rni_cited_synthesis_artifact is
+  'Immutable hash-addressed E08 replay snapshots linked to exact E07 facts, verifier/challenger lineage, assessments, challenger selection and ordered publication trace.';
+
+-- D-RNI-21 — immutable RNI model capability/configuration lineage and atomic AI spend control.
+-- Capability discovery is live integration work; this migration stores its evidence without
+-- manufacturing provider slugs or credentials. Historical non-RNI model routes remain nullable.
+create table rni_model_capability_snapshot (
+  id                          text        primary key,
+  ai_route                    text        not null,
+  configured_model_id         text        not null,
+  provider                    text        not null,
+  canonical_provider_model_id text        not null,
+  model_revision              text        not null,
+  response_hash               text        not null,
+  observed_at                 timestamptz not null,
+  expires_at                  timestamptz not null,
+  available                   boolean     not null,
+  supports_responses          boolean     not null,
+  supports_structured_outputs boolean     not null,
+  supports_web_search         boolean     not null,
+  reasoning_efforts           jsonb       not null,
+  created_at                  timestamptz not null default now(),
+
+  constraint rni_model_capability_route_check
+    check (ai_route in ('openai_direct', 'vercel_ai_gateway')),
+  constraint rni_model_capability_identity_check check (
+    length(id) > 0 and length(configured_model_id) > 0 and provider = 'openai'
+    and length(canonical_provider_model_id) > 0 and length(model_revision) > 0
+  ),
+  constraint rni_model_capability_hash_check check (response_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_model_capability_window_check check (expires_at > observed_at),
+  constraint rni_model_capability_reasoning_check check (
+    jsonb_typeof(reasoning_efforts) = 'array'
+    and reasoning_efforts <@ '["none", "low", "medium", "high", "xhigh", "max"]'::jsonb
+  ),
+  constraint rni_model_capability_direct_identity_check check (
+    ai_route <> 'openai_direct' or configured_model_id = canonical_provider_model_id
+  ),
+  constraint rni_model_capability_full_identity_unique unique (
+    id, ai_route, configured_model_id, provider, canonical_provider_model_id, model_revision
+  )
+);
+
+create trigger rni_model_capability_snapshot_append_only
+  before update or delete on rni_model_capability_snapshot
+  for each row execute function reject_mutation();
+
+create or replace function rni_reject_price_book_mutation() returns trigger
+language plpgsql as $$
+begin
+  if old.price_book_version like 'rni-%' then
+    raise exception 'RNI price-book evidence is append-only'
+      using errcode = 'restrict_violation';
+  end if;
+  return case when tg_op = 'DELETE' then old else new end;
+end;
+$$;
+
+create trigger unit_price_book_rni_append_only
+  before update or delete on unit_price_book
+  for each row execute function rni_reject_price_book_mutation();
+
+create table rni_price_book_evidence (
+  price_book_version        text        primary key,
+  source_url                text        not null,
+  response_hash             text        not null,
+  observed_at               timestamptz not null,
+  first_tier_input_ceiling  integer     not null,
+  created_at                timestamptz not null default now(),
+
+  constraint rni_price_book_evidence_version_check check (price_book_version like 'rni-%'),
+  constraint rni_price_book_evidence_url_check check (source_url like 'https://%'),
+  constraint rni_price_book_evidence_hash_check check (response_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_price_book_evidence_ceiling_check check (first_tier_input_ceiling > 0)
+);
+
+create trigger rni_price_book_evidence_append_only
+  before update or delete on rni_price_book_evidence
+  for each row execute function reject_mutation();
+
+create table rni_ai_config (
+  config_version             bigint      primary key references config_version (id),
+  ai_route                   text        not null,
+  model_policy_version       text        not null,
+  budget_policy_version      text        not null,
+  manual_run_hard_usd        numeric     not null,
+  full_universe_hard_usd     numeric     not null,
+  rolling_24h_hard_usd       numeric     not null,
+  monthly_warning_usd        numeric     not null,
+  monthly_hard_usd           numeric     not null,
+  currency                   text        not null default 'USD',
+  created_at                 timestamptz not null default now(),
+
+  constraint rni_ai_config_route_check
+    check (ai_route in ('openai_direct', 'vercel_ai_gateway')),
+  constraint rni_ai_config_versions_check
+    check (length(model_policy_version) > 0 and length(budget_policy_version) > 0),
+  constraint rni_ai_config_limits_check check (
+    manual_run_hard_usd > 0
+    and manual_run_hard_usd <= full_universe_hard_usd
+    and full_universe_hard_usd <= rolling_24h_hard_usd
+    and rolling_24h_hard_usd <= monthly_warning_usd
+    and monthly_warning_usd <= monthly_hard_usd
+  ),
+  constraint rni_ai_config_currency_check check (currency = 'USD'),
+  constraint rni_ai_config_route_unique unique (config_version, ai_route)
+);
+
+create or replace function rni_validate_ai_config() returns trigger
+language plpgsql as $$
+declare
+  config_status text;
+begin
+  select status into config_status from config_version where id = new.config_version;
+  if config_status is distinct from 'draft' then
+    raise exception 'RNI AI configuration can only be attached to a draft successor config'
+      using errcode = 'check_violation', constraint = 'rni_ai_config_requires_draft';
+  end if;
+  if new.model_policy_version <> 'rni-balanced-model-policy-v1'
+     or new.budget_policy_version <> 'rni-ai-budget-policy-v1' then
+    raise exception 'RNI AI configuration uses an unapproved policy version'
+      using errcode = 'check_violation', constraint = 'rni_ai_config_approved_policy';
+  end if;
+  if new.manual_run_hard_usd > 2
+       or new.full_universe_hard_usd > 25
+       or new.rolling_24h_hard_usd > 50
+       or new.monthly_warning_usd > 300
+       or new.monthly_hard_usd > 500
+       or new.monthly_warning_usd >= new.monthly_hard_usd then
+    raise exception 'D-RNI-30 limits must stay within the owner-approved 2/25/50/300/500 USD ceilings'
+      using errcode = 'check_violation', constraint = 'rni_ai_config_policy_v1_limits';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger rni_ai_config_valid
+  before insert on rni_ai_config
+  for each row execute function rni_validate_ai_config();
+create trigger rni_ai_config_append_only
+  before update or delete on rni_ai_config
+  for each row execute function reject_mutation();
+
+alter table model_route
+  add column ai_route text null,
+  add column canonical_provider_model_id text null,
+  add column reasoning_effort text null,
+  add column capability_snapshot_id text null,
+  add column policy_version text null,
+  add column max_input_bytes integer null,
+  add column max_tool_calls integer null,
+  add constraint model_route_rni_lineage_complete_check check (
+    task not in (
+      'rni_discovery', 'rni_relationship', 'rni_classifier', 'rni_verification', 'rni_challenger'
+    )
+    or (
+      ai_route is not null and canonical_provider_model_id is not null
+      and reasoning_effort is not null and capability_snapshot_id is not null
+      and policy_version is not null and max_input_bytes is not null and max_tool_calls is not null
+    )
+  ) not valid,
+  add constraint model_route_rni_ai_route_check check (
+    ai_route is null or ai_route in ('openai_direct', 'vercel_ai_gateway')
+  ),
+  add constraint model_route_rni_reasoning_check check (
+    reasoning_effort is null or reasoning_effort in ('none', 'low', 'medium', 'high', 'xhigh', 'max')
+  ),
+  add constraint model_route_rni_envelope_check check (
+    task not in (
+      'rni_discovery', 'rni_relationship', 'rni_classifier', 'rni_verification', 'rni_challenger'
+    ) or (
+      max_input_bytes between 1024 and 131072
+      and max_input_tokens = max_input_bytes
+      and max_output_tokens between 256 and 8000
+      and timeout_ms between 5000 and 120000
+      and max_cost_usd > 0 and max_cost_usd <= 2
+      and (
+        (task = 'rni_discovery' and max_tool_calls between 1 and 3)
+        or (task <> 'rni_discovery' and max_tool_calls = 0)
+      )
+    )
+  ),
+  add constraint model_route_rni_config_fk foreign key (config_version, ai_route)
+    references rni_ai_config (config_version, ai_route) not valid,
+  add constraint model_route_rni_capability_fk foreign key (
+    capability_snapshot_id, ai_route, primary_model, primary_provider,
+    canonical_provider_model_id, model_revision
+  ) references rni_model_capability_snapshot (
+    id, ai_route, configured_model_id, provider, canonical_provider_model_id, model_revision
+  ) not valid,
+  add constraint model_route_rni_invocation_identity_unique unique (
+    config_version, task, ai_route, capability_snapshot_id
+  ),
+  add constraint model_route_rni_task_route_unique unique (config_version, task, ai_route);
+
+create or replace function rni_validate_model_route() returns trigger
+language plpgsql as $$
+declare
+  config_row rni_ai_config%rowtype;
+  capability_row rni_model_capability_snapshot%rowtype;
+  config_status text;
+  expected_model text;
+begin
+  if new.task not in (
+    'rni_discovery', 'rni_relationship', 'rni_classifier', 'rni_verification', 'rni_challenger'
+  ) then
+    return new;
+  end if;
+
+  select * into config_row from rni_ai_config where config_version = new.config_version;
+  select status into config_status from config_version where id = new.config_version;
+  select * into capability_row from rni_model_capability_snapshot where id = new.capability_snapshot_id;
+  if config_row.config_version is null or capability_row.id is null then
+    raise exception 'RNI model routes require durable configuration and capability lineage'
+      using errcode = 'check_violation', constraint = 'model_route_rni_lineage';
+  end if;
+  if config_status is distinct from 'draft' then
+    raise exception 'RNI model routes can only be added to a draft successor config'
+      using errcode = 'check_violation', constraint = 'model_route_rni_requires_draft';
+  end if;
+  if new.ai_route is distinct from config_row.ai_route
+     or new.policy_version is distinct from config_row.model_policy_version
+     or new.primary_provider <> 'openai'
+     or new.fallback_chain <> '[]'::jsonb
+     or new.reasoning_effort <> 'low'
+     or new.max_input_tokens <> new.max_input_bytes
+     or new.max_input_bytes < 1024 or new.max_input_bytes > 131072
+     or new.max_output_tokens < 256 or new.max_output_tokens > 8000
+     or new.timeout_ms < 5000 or new.timeout_ms > 120000
+     or new.max_cost_usd <= 0 or new.max_cost_usd > 2
+     or (new.task = 'rni_discovery' and new.max_tool_calls not between 1 and 3)
+     or (new.task <> 'rni_discovery' and new.max_tool_calls <> 0)
+     or not capability_row.available
+     or not capability_row.supports_responses
+     or not capability_row.supports_structured_outputs
+     or not (capability_row.reasoning_efforts ? 'low') then
+    raise exception 'RNI model route is not an available OpenAI low-reasoning no-fallback route'
+      using errcode = 'check_violation', constraint = 'model_route_rni_policy';
+  end if;
+  if new.task = 'rni_discovery' and not capability_row.supports_web_search then
+    raise exception 'RNI discovery requires a Web Search-capable model snapshot'
+      using errcode = 'check_violation', constraint = 'model_route_rni_discovery_capability';
+  end if;
+  if new.policy_version = 'rni-balanced-model-policy-v1' then
+    expected_model := case
+      when new.task in ('rni_discovery', 'rni_relationship', 'rni_classifier') then 'gpt-5.6-terra'
+      else 'gpt-5.6-sol'
+    end;
+    if new.canonical_provider_model_id <> expected_model then
+      raise exception 'RNI balanced policy task/model mapping is invalid'
+        using errcode = 'check_violation', constraint = 'model_route_rni_balanced_mapping';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger model_route_rni_valid
+  before insert or update on model_route
+  for each row execute function rni_validate_model_route();
+
+create or replace function rni_reject_locked_model_route_mutation() returns trigger
+language plpgsql as $$
+declare
+  route_task text := case when tg_op = 'DELETE' then old.task else new.task end;
+  route_config bigint := case when tg_op = 'DELETE' then old.config_version else new.config_version end;
+  config_status text;
+begin
+  if route_task in (
+    'rni_discovery', 'rni_relationship', 'rni_classifier', 'rni_verification', 'rni_challenger'
+  ) then
+    select status into config_status from config_version where id = route_config;
+    if config_status is distinct from 'draft' then
+      raise exception 'Activated RNI model routes are immutable; create a successor config'
+        using errcode = 'restrict_violation';
+    end if;
+  end if;
+  return case when tg_op = 'DELETE' then old else new end;
+end;
+$$;
+
+create trigger model_route_rni_locked
+  before update or delete on model_route
+  for each row execute function rni_reject_locked_model_route_mutation();
+
+create or replace function rni_validate_ai_config_activation() returns trigger
+language plpgsql as $$
+declare
+  route_count integer;
+  task_count integer;
+  stale_count integer;
+begin
+  if new.status = 'active' and old.status is distinct from 'active'
+     and exists (select 1 from rni_ai_config where config_version = new.id) then
+    select count(*), count(distinct task), count(*) filter (where c.expires_at <= clock_timestamp())
+      into route_count, task_count, stale_count
+      from model_route mr
+      join rni_model_capability_snapshot c on c.id = mr.capability_snapshot_id
+     where mr.config_version = new.id
+       and mr.task in (
+         'rni_discovery', 'rni_relationship', 'rni_classifier',
+         'rni_verification', 'rni_challenger'
+       );
+    if route_count <> 5 or task_count <> 5 then
+      raise exception 'Active RNI configuration requires exactly five governed task routes'
+        using errcode = 'check_violation', constraint = 'rni_ai_config_exact_routes';
+    end if;
+    if stale_count <> 0 then
+      raise exception 'Active RNI configuration requires fresh capability snapshots'
+        using errcode = 'check_violation', constraint = 'rni_ai_config_fresh_capabilities';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger rni_ai_config_activation_valid
+  before update on config_version
+  for each row execute function rni_validate_ai_config_activation();
+
+alter table rni_run
+  add constraint rni_run_config_route_unique unique (id, config_version, ai_route);
+
+create table rni_run_execution_scope (
+  run_id       uuid        primary key references rni_run (id),
+  scope_kind   text        not null,
+  security_id  uuid        null references security (id),
+  created_at   timestamptz not null default now(),
+
+  constraint rni_run_execution_scope_kind_check
+    check (scope_kind in ('manual_ticker', 'full_universe')),
+  constraint rni_run_execution_scope_security_check check (
+    (scope_kind = 'manual_ticker' and security_id is not null)
+    or (scope_kind = 'full_universe' and security_id is null)
+  ),
+  constraint rni_run_execution_scope_identity_unique unique (run_id, scope_kind)
+);
+
+create or replace function rni_validate_run_execution_scope() returns trigger
+language plpgsql as $$
+declare
+  run_row rni_run%rowtype;
+begin
+  select * into run_row from rni_run where id = new.run_id;
+  if new.scope_kind = 'manual_ticker' then
+    if run_row.trigger <> 'manual' then
+      raise exception 'Manual ticker budget scope requires a manual run'
+        using errcode = 'check_violation', constraint = 'rni_run_scope_manual_trigger';
+    end if;
+    if not exists (
+      select 1 from universe_member
+       where universe_version = run_row.universe_version
+         and security_id = new.security_id and enabled
+    ) then
+      raise exception 'Manual ticker budget scope must name an enabled run-universe member'
+        using errcode = 'check_violation', constraint = 'rni_run_scope_universe_member';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger rni_run_execution_scope_valid
+  before insert on rni_run_execution_scope
+  for each row execute function rni_validate_run_execution_scope();
+create trigger rni_run_execution_scope_append_only
+  before update or delete on rni_run_execution_scope
+  for each row execute function reject_mutation();
+
+create table rni_ai_model_invocation (
+  id                        uuid        primary key,
+  run_id                    uuid        not null,
+  config_version            bigint      not null,
+  task                      text        not null,
+  ai_route                  text        not null,
+  capability_snapshot_id    text        not null,
+  request_hash              text        not null,
+  decision                  text        not null,
+  estimated_cost_usd        numeric     null,
+  denial_code               text        null,
+  price_book_version        text        not null,
+  reservation_cost_event_id uuid        null references cost_event (id),
+  synthesis_invocation_id   uuid        null references rni_synthesis_model_invocation (id),
+  created_at                timestamptz not null default now(),
+
+  constraint rni_ai_invocation_task_check check (task in (
+    'rni_discovery', 'rni_relationship', 'rni_classifier', 'rni_verification', 'rni_challenger'
+  )),
+  constraint rni_ai_invocation_hash_check check (request_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_ai_invocation_decision_check check (decision in ('reserved', 'denied')),
+  constraint rni_ai_invocation_decision_shape_check check (
+    (decision = 'reserved' and estimated_cost_usd is not null and estimated_cost_usd >= 0
+      and denial_code is null and reservation_cost_event_id is not null)
+    or
+    (decision = 'denied' and estimated_cost_usd is null
+      and denial_code is not null and reservation_cost_event_id is null)
+  ),
+  constraint rni_ai_invocation_synthesis_identity_check check (
+    (task in ('rni_verification', 'rni_challenger') and synthesis_invocation_id = id)
+    or (task not in ('rni_verification', 'rni_challenger') and synthesis_invocation_id is null)
+  ),
+  constraint rni_ai_invocation_run_fk foreign key (run_id, config_version, ai_route)
+    references rni_run (id, config_version, ai_route),
+  constraint rni_ai_invocation_config_fk foreign key (config_version, ai_route)
+    references rni_ai_config (config_version, ai_route),
+  constraint rni_ai_invocation_scope_fk foreign key (run_id)
+    references rni_run_execution_scope (run_id),
+  constraint rni_ai_invocation_route_fk foreign key (config_version, task, ai_route)
+    references model_route (config_version, task, ai_route),
+  constraint rni_ai_invocation_capability_fk foreign key (capability_snapshot_id)
+    references rni_model_capability_snapshot (id)
+);
+
+create or replace function rni_validate_ai_invocation_capability() returns trigger
+language plpgsql as $$
+declare
+  route_row model_route%rowtype;
+  capability_row rni_model_capability_snapshot%rowtype;
+  synthesis_stage text;
+begin
+  select * into route_row from model_route
+   where config_version = new.config_version and task = new.task and ai_route = new.ai_route;
+  select * into capability_row from rni_model_capability_snapshot
+   where id = new.capability_snapshot_id;
+  if capability_row.id is null
+     or capability_row.ai_route <> route_row.ai_route
+     or capability_row.configured_model_id <> route_row.primary_model
+     or capability_row.provider <> route_row.primary_provider
+     or capability_row.canonical_provider_model_id <> route_row.canonical_provider_model_id
+     or capability_row.model_revision <> route_row.model_revision
+     or not capability_row.available
+     or not capability_row.supports_responses
+     or not capability_row.supports_structured_outputs
+     or not (capability_row.reasoning_efforts ? route_row.reasoning_effort)
+     or (new.task = 'rni_discovery' and not capability_row.supports_web_search)
+     or capability_row.observed_at > new.created_at
+     or capability_row.expires_at <= new.created_at then
+    raise exception 'RNI invocation requires a fresh exact capability snapshot for its immutable route'
+      using errcode = 'check_violation', constraint = 'rni_ai_invocation_fresh_capability';
+  end if;
+  if new.task in ('rni_verification', 'rni_challenger') then
+    select stage into synthesis_stage from rni_synthesis_model_invocation where id = new.id;
+    if synthesis_stage is distinct from (
+      case when new.task = 'rni_verification' then 'verification' else 'challenger' end
+    ) then
+      raise exception 'RNI synthesis invocation stage does not match its governed model task'
+        using errcode = 'check_violation', constraint = 'rni_ai_invocation_synthesis_stage';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger rni_ai_model_invocation_capability_valid
+  before insert on rni_ai_model_invocation
+  for each row execute function rni_validate_ai_invocation_capability();
+
+create table rni_ai_model_settlement (
+  invocation_id        uuid        primary key references rni_ai_model_invocation (id),
+  request_hash         text        not null,
+  provider_request_id  text        not null,
+  outcome              text        not null,
+  input_tokens         integer     not null,
+  cached_input_tokens  integer     not null,
+  output_tokens        integer     not null,
+  web_search_calls     integer     not null,
+  actual_cost_usd      numeric     not null,
+  actual_cost_event_id uuid        not null references cost_event (id),
+  completed_at         timestamptz not null default now(),
+
+  constraint rni_ai_settlement_hash_check check (request_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_ai_settlement_outcome_check check (outcome in ('succeeded', 'failed')),
+  constraint rni_ai_settlement_usage_check check (
+    input_tokens >= 0 and cached_input_tokens >= 0 and cached_input_tokens <= input_tokens
+    and output_tokens >= 0 and web_search_calls >= 0 and actual_cost_usd >= 0
+  )
+);
+
+create table rni_ai_budget_warning (
+  config_version   bigint      not null references rni_ai_config (config_version),
+  environment      text        not null,
+  period_start     timestamptz not null,
+  warning_code     text        not null,
+  effective_usd    numeric     not null,
+  emitted_at       timestamptz not null default now(),
+  primary key (environment, period_start, warning_code),
+  constraint rni_ai_budget_warning_code_check check (warning_code = 'monthly_warning'),
+  constraint rni_ai_budget_warning_amount_check check (effective_usd >= 0)
+);
+
+create index rni_ai_model_invocation_run_idx on rni_ai_model_invocation (run_id, created_at);
+create index rni_ai_model_invocation_window_idx on rni_ai_model_invocation (created_at);
+
+-- I09 durable orchestration state. These are mutable operational records: immutable analytical
+-- facts still live in the RNI run, slice, source and synthesis tables. Commands are insert-only;
+-- execution rows project the current fenced state; outbox rows retain the exact queue payload
+-- until an acknowledged QStash publication.
+create table rni_orchestration_command (
+  partition    text        not null,
+  command_key  text        not null,
+  intent_hash  text        not null,
+  record       jsonb       not null,
+  created_at   timestamptz not null default now(),
+
+  primary key (partition, command_key),
+  constraint rni_orchestration_command_partition_check check (length(partition) > 0),
+  constraint rni_orchestration_command_key_check check (length(command_key) > 0),
+  constraint rni_orchestration_command_hash_check check (intent_hash ~ '^[0-9a-f]{64}$')
+);
+
+create table rni_orchestration_execution (
+  run_id                  uuid        primary key references rni_run (id),
+  partition               text        not null,
+  job_run_id              uuid        not null unique references job_run (id),
+  plan_hash               text        not null,
+  coalesce_key            text        not null,
+  coalesce_until          timestamptz not null,
+  deadline                timestamptz not null,
+  rerun_of                uuid        null references rni_run (id),
+  admitted_cost_usd       numeric     not null,
+  remaining_admission_usd numeric     not null,
+  admitted_at             timestamptz not null,
+  released_at             timestamptz null,
+  record                   jsonb       not null,
+  updated_at               timestamptz not null default now(),
+
+  constraint rni_orchestration_execution_partition_check check (length(partition) > 0),
+  constraint rni_orchestration_execution_plan_hash_check check (plan_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_orchestration_execution_coalesce_key_check
+    check (coalesce_key ~ '^[0-9a-f]{64}$'),
+  constraint rni_orchestration_execution_window_check check (
+    coalesce_until >= admitted_at and deadline > admitted_at
+  ),
+  constraint rni_orchestration_execution_admission_check check (
+    admitted_cost_usd >= 0 and remaining_admission_usd >= 0
+    and remaining_admission_usd <= admitted_cost_usd
+    and ((remaining_admission_usd = 0) = (released_at is not null))
+  )
+);
+
+create index rni_orchestration_execution_coalesce_idx
+  on rni_orchestration_execution (partition, coalesce_key, coalesce_until desc)
+  where released_at is null;
+create index rni_orchestration_execution_admission_idx
+  on rni_orchestration_execution (admitted_at)
+  where released_at is null;
+
+create table rni_orchestration_outbox (
+  delivery_key  text        primary key,
+  partition     text        not null,
+  kind          text        not null,
+  run_id        uuid        not null references rni_run (id),
+  payload_hash  text        not null,
+  payload       jsonb       not null,
+  not_before    timestamptz not null,
+  published_at  timestamptz null,
+  message_id    text        null,
+  created_at    timestamptz not null default now(),
+
+  constraint rni_orchestration_outbox_key_check check (length(delivery_key) > 0),
+  constraint rni_orchestration_outbox_partition_check check (length(partition) > 0),
+  constraint rni_orchestration_outbox_kind_check check (kind in ('platform', 'combined')),
+  constraint rni_orchestration_outbox_hash_check check (payload_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_orchestration_outbox_publication_check check (
+    (published_at is null and message_id is null)
+    or (published_at is not null and message_id is not null and length(message_id) > 0)
+  )
+);
+
+create index rni_orchestration_outbox_pending_idx
+  on rni_orchestration_outbox (partition, kind, not_before, created_at)
+  where published_at is null;
+
+create table rni_orchestration_invocation_binding (
+  invocation_id  uuid        primary key references rni_ai_model_invocation (id),
+  run_id         uuid        not null references rni_orchestration_execution (run_id),
+  execution_stage text       not null,
+  execution_attempt integer  not null,
+  execution_token uuid       not null,
+  task           text        not null,
+  call_ordinal   integer     not null,
+  created_at     timestamptz not null default now(),
+
+  constraint rni_orchestration_invocation_task_check check (task in (
+    'rni_discovery', 'rni_relationship', 'rni_classifier', 'rni_verification', 'rni_challenger'
+  )),
+  constraint rni_orchestration_invocation_stage_check
+    check (execution_stage in ('reddit', 'x', 'combined')),
+  constraint rni_orchestration_invocation_attempt_check check (execution_attempt > 0),
+  constraint rni_orchestration_invocation_ordinal_check check (call_ordinal > 0),
+  constraint rni_orchestration_invocation_slot_unique
+    unique (run_id, execution_stage, task, call_ordinal)
+);
+
+create table rni_orchestration_publication_receipt (
+  run_id         uuid        primary key references rni_orchestration_execution (run_id),
+  plan_hash      text        not null,
+  artifact_hash  text        not null,
+  status         text        not null,
+  token          uuid        not null,
+  attempt        integer     not null,
+  acquired_at    timestamptz not null,
+  expires_at     timestamptz not null,
+  committed_at   timestamptz not null,
+  artifact       jsonb       not null,
+  created_at     timestamptz not null default now(),
+
+  constraint rni_orchestration_receipt_plan_hash_check check (plan_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_orchestration_receipt_artifact_hash_check
+    check (artifact_hash ~ '^[0-9a-f]{64}$'),
+  constraint rni_orchestration_receipt_status_check
+    check (status in ('complete', 'partial', 'insufficient')),
+  constraint rni_orchestration_receipt_attempt_check check (attempt between 1 and 3),
+  constraint rni_orchestration_receipt_window_check check (
+    expires_at > acquired_at and committed_at >= acquired_at and committed_at < expires_at
+  )
+);
+
+create or replace function rni_validate_orchestration_publication_receipt() returns trigger
+language plpgsql as $$
+declare
+  execution_row rni_orchestration_execution%rowtype;
+begin
+  select * into execution_row from rni_orchestration_execution
+   where run_id = new.run_id for update;
+  if execution_row.run_id is null
+     or execution_row.plan_hash is distinct from new.plan_hash
+     or execution_row.deadline <= clock_timestamp()
+     or new.expires_at <= clock_timestamp()
+     or new.expires_at > execution_row.deadline
+     or execution_row.record #>> '{combined,status}' is distinct from 'running'
+     or execution_row.record #>> '{combined,lease,token}' is distinct from new.token::text
+     or (execution_row.record #>> '{combined,attempt}')::integer is distinct from new.attempt
+     or (execution_row.record #>> '{combined,lastAttemptAt}')::timestamptz
+       is distinct from new.acquired_at
+     or (execution_row.record #>> '{combined,lease,expiresAt}')::timestamptz
+       is distinct from new.expires_at
+     or execution_row.record #>> '{combined,publication,token}' is distinct from new.token::text
+     or (execution_row.record #>> '{combined,publication,attempt}')::integer
+       is distinct from new.attempt
+     or (execution_row.record #>> '{combined,publication,acquiredAt}')::timestamptz
+       is distinct from new.acquired_at
+     or (execution_row.record #>> '{combined,publication,expiresAt}')::timestamptz
+       is distinct from new.expires_at
+     or (execution_row.record #>> '{combined,publication,committedAt}')::timestamptz
+       is distinct from new.committed_at
+     or execution_row.record #>> '{combined,publication,artifact,runId}'
+       is distinct from new.run_id::text
+     or execution_row.record #>> '{combined,publication,artifact,planHash}'
+       is distinct from new.plan_hash
+     or execution_row.record #>> '{combined,publication,artifact,status}'
+       is distinct from new.status
+     or execution_row.record #>> '{combined,publication,artifact,artifactHash}'
+       is distinct from new.artifact_hash
+     or execution_row.record #> '{combined,publication,artifact}' is distinct from new.artifact then
+    raise exception 'RNI publication receipt is outside its exact execution fence'
+      using errcode = 'check_violation', constraint = 'rni_orchestration_publication_fence';
+  end if;
+  return null;
+end;
+$$;
+
+create constraint trigger rni_orchestration_publication_fence
+  after insert on rni_orchestration_publication_receipt
+  deferrable initially deferred
+  for each row execute function rni_validate_orchestration_publication_receipt();
+
+create trigger rni_orchestration_command_append_only
+  before update or delete on rni_orchestration_command
+  for each row execute function reject_mutation();
+create trigger rni_orchestration_invocation_binding_append_only
+  before update or delete on rni_orchestration_invocation_binding
+  for each row execute function reject_mutation();
+create trigger rni_orchestration_publication_receipt_append_only
+  before update or delete on rni_orchestration_publication_receipt
+  for each row execute function reject_mutation();
+create trigger rni_orchestration_outbox_content_immutable
+  before update or delete on rni_orchestration_outbox
+  for each row execute function reject_content_mutation('published_at', 'message_id');
+
+comment on table rni_orchestration_execution is
+  'Mutable fenced I09 execution state. remaining_admission_usd is held aggregate headroom and converts atomically into I10 per-call reservations.';
+comment on table rni_orchestration_outbox is
+  'Transactional queue intent. Only publication acknowledgement fields may change after insert.';
+
+do $$
+declare
+  table_name text;
+begin
+  foreach table_name in array array[
+    'rni_ai_model_invocation', 'rni_ai_model_settlement', 'rni_ai_budget_warning'
+  ]
+  loop
+    execute format(
+      'create trigger %I_append_only before update or delete on %I
+         for each row execute function reject_mutation()',
+      table_name, table_name
+    );
+  end loop;
+end;
+$$;
+
+create or replace function rni_ai_effective_spend(
+  p_environment text,
+  p_from timestamptz,
+  p_to timestamptz,
+  p_run_id uuid default null
+) returns numeric
+language sql stable as $$
+  select coalesce(sum(coalesce(s.actual_cost_usd, i.estimated_cost_usd)), 0)
+    from rni_ai_model_invocation i
+    join rni_run r on r.id = i.run_id
+    join config_version cv on cv.id = i.config_version
+    left join rni_ai_model_settlement s on s.invocation_id = i.id
+   where i.decision = 'reserved'
+     and cv.environment = p_environment
+     and i.created_at >= p_from and i.created_at < p_to
+     and (p_run_id is null or i.run_id = p_run_id)
+$$;
+
+create or replace function rni_reserve_ai_invocation(
+  p_invocation_id uuid,
+  p_run_id uuid,
+  p_task text,
+  p_request_hash text,
+  p_capability_snapshot_id text,
+  p_price_book_version text,
+  p_execution_stage text default null,
+  p_execution_attempt integer default null,
+  p_execution_token uuid default null
+) returns table (
+  invocation_id uuid,
+  decision text,
+  estimated_cost_usd numeric,
+  denial_code text,
+  warning_emitted boolean,
+  dispatch_authorized boolean
+)
+language plpgsql as $$
+declare
+  existing rni_ai_model_invocation%rowtype;
+  existing_binding rni_orchestration_invocation_binding%rowtype;
+  run_row rni_run%rowtype;
+  scope_row rni_run_execution_scope%rowtype;
+  config_row rni_ai_config%rowtype;
+  route_row model_route%rowtype;
+  now_at timestamptz;
+  input_price numeric;
+  output_price numeric;
+  search_price numeric := 0;
+  estimate numeric;
+  run_spend numeric;
+  rolling_spend numeric;
+  month_spend numeric;
+  rolling_admissions numeric;
+  month_admissions numeric;
+  admission_remaining numeric := 0;
+  admission_exists boolean := false;
+  task_call_limit integer := 0;
+  task_call_count integer := 0;
+  execution_deadline timestamptz;
+  exact_lease_count integer := 0;
+  run_limit numeric;
+  deny text;
+  reservation_event uuid;
+  warning_inserted boolean := false;
+  warning_rows integer := 0;
+  run_environment text;
+  config_status text;
+  month_start timestamptz;
+begin
+  if p_request_hash !~ '^[0-9a-f]{64}$' then
+    raise exception 'RNI invocation request hash must be lowercase SHA-256'
+      using errcode = 'check_violation';
+  end if;
+
+  select cv.environment into strict run_environment
+    from rni_run r join config_version cv on cv.id = r.config_version
+   where r.id = p_run_id;
+  perform pg_advisory_xact_lock(hashtextextended('rni-ai-budget:' || run_environment, 0));
+  now_at := clock_timestamp();
+  select * into run_row from rni_run where id = p_run_id for share;
+  if run_row.id is null then raise exception 'RNI run % not found', p_run_id; end if;
+  select * into config_row from rni_ai_config where config_version = run_row.config_version;
+  select * into scope_row from rni_run_execution_scope where run_id = p_run_id;
+  select * into route_row from model_route
+   where config_version = run_row.config_version and task = p_task and ai_route = run_row.ai_route;
+  if config_row.config_version is null or scope_row.run_id is null or route_row.task is null then
+    raise exception 'RNI invocation requires exact run scope, route and configuration lineage'
+      using errcode = 'check_violation';
+  end if;
+  select status, environment into strict config_status, run_environment
+    from config_version where id = run_row.config_version for share;
+
+  select * into existing from rni_ai_model_invocation where id = p_invocation_id;
+  if existing.id is not null then
+    if existing.run_id <> p_run_id or existing.task <> p_task
+       or existing.request_hash <> p_request_hash
+       or existing.capability_snapshot_id <> p_capability_snapshot_id
+       or existing.price_book_version <> p_price_book_version then
+      raise exception 'RNI invocation idempotency key was reused with different intent'
+        using errcode = 'unique_violation';
+    end if;
+    if exists (select 1 from rni_orchestration_execution where run_id = p_run_id) then
+      select * into existing_binding from rni_orchestration_invocation_binding binding
+       where binding.invocation_id = p_invocation_id;
+      if existing_binding.invocation_id is null
+         or existing_binding.execution_stage is distinct from p_execution_stage
+         or existing_binding.execution_attempt is distinct from p_execution_attempt
+         or existing_binding.execution_token is distinct from p_execution_token then
+        raise exception 'RNI invocation replay crossed its execution lease authority'
+          using errcode = 'unique_violation';
+      end if;
+    end if;
+    return query select existing.id, existing.decision, existing.estimated_cost_usd,
+      existing.denial_code, false, false;
+    return;
+  end if;
+  if config_status not in ('active', 'superseded')
+     or run_row.status not in ('requested', 'running') then
+    raise exception 'RNI invocation requires a dispatchable immutable config and a non-terminal run'
+      using errcode = 'check_violation';
+  end if;
+
+  -- Resolve and fence I09 authority before pricing or any invocation/audit write. Invalid,
+  -- expired, or crossed leases are observations only: they must not append durable model work.
+  select remaining_admission_usd,
+         case
+           when p_execution_stage = 'combined' then
+             coalesce((record #>> array['plan','calls','reddit',p_task])::integer, 0)
+               + coalesce((record #>> array['plan','calls','x',p_task])::integer, 0)
+           when p_execution_stage in ('reddit', 'x') then
+             coalesce((record #>> array['plan','calls',p_execution_stage,p_task])::integer, 0)
+           else 0
+         end,
+         deadline,
+         case
+           when p_execution_stage = 'combined'
+             and p_task in ('rni_verification', 'rni_challenger')
+             and record #>> '{run,status}' = 'running'
+             and record #>> '{combined,status}' = 'running'
+             and (record #>> '{combined,attempt}')::integer = p_execution_attempt
+             and (record #>> '{combined,lease,token}')::uuid = p_execution_token
+             and (record #>> '{combined,lease,expiresAt}')::timestamptz > now_at then 1
+           when p_execution_stage = 'reddit'
+             and p_task in ('rni_discovery', 'rni_relationship', 'rni_classifier')
+             and record #>> '{run,status}' = 'running'
+             and record #>> '{platforms,reddit,slice,status}' = 'running'
+             and (record #>> '{platforms,reddit,attempt}')::integer = p_execution_attempt
+             and (record #>> '{platforms,reddit,lease,token}')::uuid = p_execution_token
+             and (record #>> '{platforms,reddit,lease,expiresAt}')::timestamptz > now_at then 1
+           when p_execution_stage = 'x'
+             and p_task in ('rni_relationship', 'rni_classifier')
+             and record #>> '{run,status}' = 'running'
+             and record #>> '{platforms,x,slice,status}' = 'running'
+             and (record #>> '{platforms,x,attempt}')::integer = p_execution_attempt
+             and (record #>> '{platforms,x,lease,token}')::uuid = p_execution_token
+             and (record #>> '{platforms,x,lease,expiresAt}')::timestamptz > now_at then 1
+           else 0
+         end
+    into admission_remaining, task_call_limit, execution_deadline, exact_lease_count
+    from rni_orchestration_execution execution
+   where execution.run_id = p_run_id
+   for update;
+  admission_exists := found;
+  admission_remaining := coalesce(admission_remaining, 0);
+  if admission_exists and (execution_deadline <= now_at or exact_lease_count = 0) then
+    return query select p_invocation_id, 'denied'::text, null::numeric,
+      'execution_fence_expired'::text, false, false;
+    return;
+  end if;
+  if admission_exists then
+    select count(*) into task_call_count
+      from rni_orchestration_invocation_binding binding
+     where binding.run_id = p_run_id
+       and binding.execution_stage = p_execution_stage
+       and binding.task = p_task;
+  end if;
+
+  select unit_price into input_price from unit_price_book
+   where price_book_version = p_price_book_version and provider = 'openai'
+     and service = 'openai_responses'
+     and operation_or_model = route_row.canonical_provider_model_id
+     and unit_type = 'input_token' and currency = 'USD'
+     and effective_from <= now_at and (effective_until is null or effective_until > now_at);
+  select unit_price into output_price from unit_price_book
+   where price_book_version = p_price_book_version and provider = 'openai'
+     and service = 'openai_responses'
+     and operation_or_model = route_row.canonical_provider_model_id
+     and unit_type = 'output_token' and currency = 'USD'
+     and effective_from <= now_at and (effective_until is null or effective_until > now_at);
+  if p_task = 'rni_discovery' then
+    select unit_price into search_price from unit_price_book
+     where price_book_version = p_price_book_version and provider = 'openai'
+       and service = 'openai_web_search' and operation_or_model = 'web_search'
+       and unit_type = 'search' and currency = 'USD'
+       and effective_from <= now_at and (effective_until is null or effective_until > now_at);
+  end if;
+
+  if input_price is null or output_price is null or search_price is null then
+    insert into rni_ai_model_invocation (
+      id, run_id, config_version, task, ai_route, capability_snapshot_id, request_hash,
+      decision, denial_code, price_book_version, synthesis_invocation_id, created_at
+    ) values (
+      p_invocation_id, p_run_id, run_row.config_version, p_task, run_row.ai_route,
+      p_capability_snapshot_id, p_request_hash, 'denied', 'unpriced_component',
+      p_price_book_version,
+      case when p_task in ('rni_verification', 'rni_challenger') then p_invocation_id else null end,
+      now_at
+    );
+    if admission_exists then
+      insert into rni_orchestration_invocation_binding (
+        invocation_id, run_id, execution_stage, execution_attempt, execution_token,
+        task, call_ordinal, created_at
+      ) values (
+        p_invocation_id, p_run_id, p_execution_stage, p_execution_attempt, p_execution_token,
+        p_task, task_call_count + 1, now_at
+      );
+    end if;
+    return query select p_invocation_id, 'denied'::text, null::numeric,
+      'unpriced_component'::text, false, false;
+    return;
+  end if;
+
+  estimate := route_row.max_input_tokens * input_price
+    + route_row.max_output_tokens * output_price
+    + case when p_task = 'rni_discovery' then 3 * search_price else 0 end;
+  month_start := date_trunc('month', now_at at time zone 'UTC') at time zone 'UTC';
+  run_limit := case when scope_row.scope_kind = 'manual_ticker'
+    then config_row.manual_run_hard_usd else config_row.full_universe_hard_usd end;
+  run_spend := rni_ai_effective_spend(
+    run_environment,
+    '-infinity'::timestamptz, 'infinity'::timestamptz, p_run_id
+  );
+  rolling_spend := rni_ai_effective_spend(
+    run_environment,
+    now_at - interval '24 hours', now_at + interval '1 microsecond'
+  );
+  month_spend := rni_ai_effective_spend(
+    run_environment,
+    month_start, now_at + interval '1 microsecond'
+  );
+  select coalesce(sum(e.remaining_admission_usd), 0)
+    into rolling_admissions
+    from rni_orchestration_execution e
+    join rni_run r on r.id = e.run_id
+    join config_version cv on cv.id = r.config_version
+   where cv.environment = run_environment and e.released_at is null;
+  select coalesce(sum(e.remaining_admission_usd), 0)
+    into month_admissions
+    from rni_orchestration_execution e
+    join rni_run r on r.id = e.run_id
+    join config_version cv on cv.id = r.config_version
+   where cv.environment = run_environment and e.released_at is null;
+
+  deny := case
+    when estimate > route_row.max_cost_usd then 'route_hard_limit'
+    when run_spend + estimate > run_limit then 'run_hard_limit'
+    when admission_exists and estimate > admission_remaining then 'admission_exhausted'
+    when admission_exists and task_call_count >= task_call_limit then 'call_limit_exhausted'
+    when rolling_spend + rolling_admissions + estimate
+      - (case when admission_exists then estimate else 0 end)
+      > config_row.rolling_24h_hard_usd then 'rolling_24h_hard_limit'
+    when month_spend + month_admissions + estimate
+      - (case when admission_exists then estimate else 0 end)
+      > config_row.monthly_hard_usd then 'monthly_hard_limit'
+    else null
+  end;
+  if deny is not null then
+    insert into rni_ai_model_invocation (
+      id, run_id, config_version, task, ai_route, capability_snapshot_id, request_hash,
+      decision, denial_code, price_book_version, synthesis_invocation_id, created_at
+    ) values (
+      p_invocation_id, p_run_id, run_row.config_version, p_task, run_row.ai_route,
+      p_capability_snapshot_id, p_request_hash, 'denied', deny,
+      p_price_book_version,
+      case when p_task in ('rni_verification', 'rni_challenger') then p_invocation_id else null end,
+      now_at
+    );
+    if admission_exists then
+      insert into rni_orchestration_invocation_binding (
+        invocation_id, run_id, execution_stage, execution_attempt, execution_token,
+        task, call_ordinal, created_at
+      ) values (
+        p_invocation_id, p_run_id, p_execution_stage, p_execution_attempt, p_execution_token,
+        p_task, task_call_count + 1, now_at
+      );
+    end if;
+    return query select p_invocation_id, 'denied'::text, null::numeric, deny, false, false;
+    return;
+  end if;
+
+  insert into cost_event (
+    occurred_at, provider, service, operation_or_model, feature, request_id, unit_type,
+    request_units, billable_units, unit_price, currency, price_book_version, cost_usd,
+    cost_status, cache_status, metadata
+  ) values (
+    now_at, 'openai', 'rni_ai_reservation', route_row.canonical_provider_model_id, 'rni',
+    p_invocation_id::text, 'call', 1, 1, estimate, 'USD', p_price_book_version, estimate,
+    'estimated', 'miss', jsonb_build_object(
+      'run_id', p_run_id, 'task', p_task, 'ai_route', run_row.ai_route,
+      'capability_snapshot_id', p_capability_snapshot_id
+    )
+  ) returning id into reservation_event;
+  insert into rni_ai_model_invocation (
+    id, run_id, config_version, task, ai_route, capability_snapshot_id, request_hash,
+    decision, estimated_cost_usd, price_book_version, reservation_cost_event_id,
+    synthesis_invocation_id, created_at
+  ) values (
+    p_invocation_id, p_run_id, run_row.config_version, p_task, run_row.ai_route,
+    p_capability_snapshot_id, p_request_hash, 'reserved', estimate,
+    p_price_book_version, reservation_event,
+    case when p_task in ('rni_verification', 'rni_challenger') then p_invocation_id else null end,
+    now_at
+  );
+
+  if admission_exists then
+    insert into rni_orchestration_invocation_binding (
+      invocation_id, run_id, execution_stage, execution_attempt, execution_token,
+      task, call_ordinal, created_at
+    ) values (
+      p_invocation_id, p_run_id, p_execution_stage, p_execution_attempt, p_execution_token,
+      p_task, task_call_count + 1, now_at
+    );
+    update rni_orchestration_execution
+       set remaining_admission_usd = remaining_admission_usd - estimate,
+           released_at = case
+             when remaining_admission_usd = estimate then now_at else null
+           end,
+           updated_at = now_at
+     where run_id = p_run_id;
+  end if;
+
+  if month_spend + month_admissions + estimate
+       - (case when admission_exists then estimate else 0 end)
+     >= config_row.monthly_warning_usd then
+    insert into rni_ai_budget_warning (
+      config_version, environment, period_start, warning_code, effective_usd, emitted_at
+    ) values (
+      config_row.config_version,
+      run_environment,
+      month_start, 'monthly_warning',
+      month_spend + month_admissions + estimate
+        - (case when admission_exists then estimate else 0 end), now_at
+    ) on conflict do nothing;
+    get diagnostics warning_rows = row_count;
+    warning_inserted := warning_rows = 1;
+  end if;
+  return query select p_invocation_id, 'reserved'::text, estimate, null::text, warning_inserted,
+    true;
+end;
+$$;
+
+create or replace function rni_assert_ai_invocation_effect(
+  p_invocation_id uuid,
+  p_run_id uuid,
+  p_execution_stage text,
+  p_execution_attempt integer,
+  p_execution_token uuid
+) returns timestamptz
+language plpgsql volatile as $$
+declare
+  now_at timestamptz;
+  effect_expires_at timestamptz;
+  run_partition text;
+begin
+  select execution.partition into run_partition
+    from rni_orchestration_execution execution
+   where execution.run_id = p_run_id;
+  if run_partition is null then
+    raise exception 'RNI provider effect requires an orchestration execution'
+      using errcode = 'check_violation';
+  end if;
+  -- Linearize against every lifecycle transition in the same mandatory order used by
+  -- PostgresRniOrchestrationStore, then lock/recheck the execution row below.
+  perform pg_advisory_xact_lock(hashtextextended('rni-ai-budget:' || run_partition, 0));
+  perform pg_advisory_xact_lock(hashtextextended('rni-orchestration:' || run_partition, 0));
+  now_at := clock_timestamp();
+  select least(
+           execution.deadline,
+           capability.expires_at,
+           case binding.execution_stage
+             when 'combined' then
+               (execution.record #>> '{combined,lease,expiresAt}')::timestamptz
+             when 'reddit' then
+               (execution.record #>> '{platforms,reddit,lease,expiresAt}')::timestamptz
+             when 'x' then
+               (execution.record #>> '{platforms,x,lease,expiresAt}')::timestamptz
+           end
+         )
+    into effect_expires_at
+    from rni_ai_model_invocation invocation
+    join rni_orchestration_invocation_binding binding
+      on binding.invocation_id = invocation.id
+    join rni_orchestration_execution execution
+      on execution.run_id = binding.run_id
+    join rni_model_capability_snapshot capability
+      on capability.id = invocation.capability_snapshot_id
+     and capability.ai_route = invocation.ai_route
+   where invocation.id = p_invocation_id
+     and invocation.run_id = p_run_id
+     and invocation.decision = 'reserved'
+     and capability.available
+     and capability.expires_at > now_at
+     and binding.run_id = p_run_id
+     and binding.execution_stage = p_execution_stage
+     and binding.execution_attempt = p_execution_attempt
+     and binding.execution_token = p_execution_token
+     and execution.record #>> '{run,status}' = 'running'
+     and case binding.execution_stage
+       when 'combined' then
+         binding.task in ('rni_verification', 'rni_challenger')
+         and execution.record #>> '{combined,status}' = 'running'
+         and (execution.record #>> '{combined,attempt}')::integer = binding.execution_attempt
+         and (execution.record #>> '{combined,lease,token}')::uuid = binding.execution_token
+       when 'reddit' then
+         binding.task in ('rni_discovery', 'rni_relationship', 'rni_classifier')
+         and execution.record #>> '{platforms,reddit,slice,status}' = 'running'
+         and (execution.record #>> '{platforms,reddit,attempt}')::integer = binding.execution_attempt
+         and (execution.record #>> '{platforms,reddit,lease,token}')::uuid = binding.execution_token
+       when 'x' then
+         binding.task in ('rni_relationship', 'rni_classifier')
+         and execution.record #>> '{platforms,x,slice,status}' = 'running'
+         and (execution.record #>> '{platforms,x,attempt}')::integer = binding.execution_attempt
+         and (execution.record #>> '{platforms,x,lease,token}')::uuid = binding.execution_token
+       else false
+     end
+   for update of execution;
+  if effect_expires_at is null or effect_expires_at <= now_at then
+    raise exception 'RNI provider effect requires the exact live execution lease authority'
+      using errcode = 'check_violation';
+  end if;
+  return effect_expires_at;
+end;
+$$;
+
+create or replace function rni_settle_ai_invocation(
+  p_invocation_id uuid,
+  p_request_hash text,
+  p_provider_request_id text,
+  p_outcome text,
+  p_input_tokens integer,
+  p_cached_input_tokens integer,
+  p_output_tokens integer,
+  p_web_search_calls integer
+) returns numeric
+language plpgsql as $$
+declare
+  invocation_row rni_ai_model_invocation%rowtype;
+  settlement_row rni_ai_model_settlement%rowtype;
+  route_row model_route%rowtype;
+  input_price numeric;
+  output_price numeric;
+  search_price numeric := 0;
+  actual numeric;
+  actual_event uuid;
+begin
+  -- Serialize exact replays before either transaction can create its cost event. The
+  -- settlement's unique key alone is too late: without this lock concurrent callers can
+  -- both insert reconciled cost events before one loses the settlement insert race.
+  select * into invocation_row from rni_ai_model_invocation
+   where id = p_invocation_id for update;
+  if invocation_row.id is null or invocation_row.decision <> 'reserved' then
+    raise exception 'Only a reserved RNI invocation can be settled'
+      using errcode = 'check_violation';
+  end if;
+  if invocation_row.request_hash <> p_request_hash then
+    raise exception 'RNI settlement request hash does not match its reservation'
+      using errcode = 'check_violation';
+  end if;
+  select * into settlement_row from rni_ai_model_settlement where invocation_id = p_invocation_id;
+  if settlement_row.invocation_id is not null then
+    if settlement_row.request_hash <> p_request_hash
+       or settlement_row.provider_request_id <> p_provider_request_id
+       or settlement_row.outcome <> p_outcome
+       or settlement_row.input_tokens <> p_input_tokens
+       or settlement_row.cached_input_tokens <> p_cached_input_tokens
+       or settlement_row.output_tokens <> p_output_tokens
+       or settlement_row.web_search_calls <> p_web_search_calls then
+      raise exception 'RNI settlement replay differs from the committed result'
+        using errcode = 'unique_violation';
+    end if;
+    return settlement_row.actual_cost_usd;
+  end if;
+  select * into route_row from model_route
+   where config_version = invocation_row.config_version and task = invocation_row.task
+     and ai_route = invocation_row.ai_route
+     and capability_snapshot_id = invocation_row.capability_snapshot_id;
+  if p_outcome not in ('succeeded', 'failed')
+     or p_input_tokens < 0 or p_cached_input_tokens < 0
+     or p_cached_input_tokens > p_input_tokens or p_output_tokens < 0
+     or p_input_tokens > route_row.max_input_tokens
+     or p_output_tokens > route_row.max_output_tokens
+     or p_web_search_calls < 0
+     or (invocation_row.task = 'rni_discovery' and p_web_search_calls > 3)
+     or (invocation_row.task <> 'rni_discovery' and p_web_search_calls <> 0) then
+    raise exception 'RNI settlement usage exceeds the reserved invocation envelope'
+      using errcode = 'check_violation';
+  end if;
+  select unit_price into input_price from unit_price_book
+   where price_book_version = invocation_row.price_book_version and provider = 'openai'
+     and service = 'openai_responses'
+     and operation_or_model = route_row.canonical_provider_model_id
+     and unit_type = 'input_token' and currency = 'USD';
+  select unit_price into output_price from unit_price_book
+   where price_book_version = invocation_row.price_book_version and provider = 'openai'
+     and service = 'openai_responses'
+     and operation_or_model = route_row.canonical_provider_model_id
+     and unit_type = 'output_token' and currency = 'USD';
+  if invocation_row.task = 'rni_discovery' then
+    select unit_price into search_price from unit_price_book
+     where price_book_version = invocation_row.price_book_version and provider = 'openai'
+       and service = 'openai_web_search' and operation_or_model = 'web_search'
+       and unit_type = 'search' and currency = 'USD';
+  end if;
+  if input_price is null or output_price is null or search_price is null then
+    raise exception 'RNI settlement price components are unavailable'
+      using errcode = 'check_violation';
+  end if;
+  actual := p_input_tokens * input_price + p_output_tokens * output_price
+    + p_web_search_calls * search_price;
+  if actual > invocation_row.estimated_cost_usd then
+    raise exception 'RNI actual cost exceeds its worst-case reservation'
+      using errcode = 'check_violation';
+  end if;
+  insert into cost_event (
+    occurred_at, provider, service, operation_or_model, feature, request_id, unit_type,
+    request_units, billable_units, unit_price, currency, price_book_version, cost_usd,
+    cost_status, cache_status, metadata, supersedes_cost_event_id
+  ) values (
+    clock_timestamp(), 'openai', 'rni_ai_actual', route_row.canonical_provider_model_id,
+    'rni', p_invocation_id::text, 'call', 1, 1, actual, 'USD',
+    invocation_row.price_book_version, actual, 'reconciled', 'miss',
+    jsonb_build_object('provider_request_id', p_provider_request_id, 'outcome', p_outcome),
+    invocation_row.reservation_cost_event_id
+  ) returning id into actual_event;
+  insert into rni_ai_model_settlement (
+    invocation_id, request_hash, provider_request_id, outcome, input_tokens,
+    cached_input_tokens, output_tokens, web_search_calls, actual_cost_usd,
+    actual_cost_event_id
+  ) values (
+    p_invocation_id, p_request_hash, p_provider_request_id, p_outcome, p_input_tokens,
+    p_cached_input_tokens, p_output_tokens, p_web_search_calls, actual, actual_event
+  );
+  return actual;
+end;
+$$;
+
+comment on table rni_ai_config is
+  'Versioned D-RNI-21 route selection and AI spend ceilings. Secrets and provider credentials never enter this table.';
+comment on table rni_ai_model_invocation is
+  'One immutable pre-dispatch decision. Reserved calls retain worst-case exposure until an exact settlement exists; denied calls never dispatch.';
+comment on table rni_ai_budget_warning is
+  'Once-only calendar-month warning evidence, serialized with reservation decisions.';
+
+-- D-RNI-32/33/34 -- effect-eligible worker manifests, exact-content interpretation
+-- checkpoints, and atomic full-universe visibility. Historical orchestration-v1 rows remain
+-- readable, but none of the relations below can be populated without the v2 manifest identity.
+
+-- The E07 repository originally retained the complete replay snapshots but not the canonical
+-- artifact hash as a relational value. New publication staging needs that exact identity as an
+-- FK target. Existing fixture rows may remain null; production-created rows are always populated.
+alter table rni_convergence_artifact
+  add column artifact_hash text null,
+  add constraint rni_convergence_artifact_hash_check
+    check (artifact_hash is null or artifact_hash ~ '^[a-f0-9]{64}$'),
+  add constraint rni_convergence_release_identity_unique
+    unique (id, run_id, security_id, artifact_hash);
+
+alter table rni_cited_synthesis_artifact
+  add constraint rni_cited_synthesis_release_identity_unique
+    unique (id, run_id, security_id, result_hash, convergence_artifact_id);
+
+-- Mirrors src/rni/orchestration/worker-manifest.ts. JSON objects are already represented by
+-- jsonb with unique keys; arrays retain order. Scalars are tagged so their domains cannot collide.
+create or replace function rni_worker_manifest_canonical(value jsonb) returns text
+language plpgsql immutable strict as $$
+declare
+  kind text := jsonb_typeof(value);
+  raw text;
+  result text;
+begin
+  if kind = 'null' then return 'null'; end if;
+  if kind = 'boolean' then
+    return case when value::text = 'true' then 'b:true' else 'b:false' end;
+  end if;
+  if kind = 'number' then
+    raw := value::text;
+    if raw !~ '^-?(0|[1-9][0-9]*)$' or raw::numeric < -9007199254740991
+       or raw::numeric > 9007199254740991 then
+      raise exception 'RNI worker manifest contains a non-safe integer'
+        using errcode = 'check_violation';
+    end if;
+    return 'i:' || raw;
+  end if;
+  if kind = 'string' then
+    raw := value #>> '{}';
+    if raw ~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d+)?$' then
+      raise exception 'RNI worker manifest contains a datetime without an offset'
+        using errcode = 'check_violation';
+    end if;
+    if raw ~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:\d{2})$' then
+      if raw ~ '\.\d{6}\d*[1-9]\d*(Z|[+-]\d{2}:\d{2})$' then
+        raise exception 'RNI worker manifest instant exceeds PostgreSQL microsecond precision'
+          using errcode = 'check_violation';
+      end if;
+      return 't:' || to_char(raw::timestamptz at time zone 'UTC',
+        'YYYY-MM-DD"T"HH24:MI:SS.US"Z"');
+    end if;
+    return 's:' || to_jsonb(raw)::text;
+  end if;
+  if kind = 'array' then
+    select '[' || coalesce(string_agg(rni_worker_manifest_canonical(item), ',' order by ordinal), '') || ']'
+      into result from jsonb_array_elements(value) with ordinality entries(item, ordinal);
+    return result;
+  end if;
+  if kind = 'object' then
+    if exists (select 1 from jsonb_each(value) where key !~ '^[\x20-\x7e]+$') then
+      raise exception 'RNI worker manifest snapshot keys must use printable ASCII'
+        using errcode = 'check_violation';
+    end if;
+    select '{' || coalesce(string_agg(to_jsonb(key)::text || ':' ||
+      rni_worker_manifest_canonical(item), ',' order by key collate "C"), '') || '}'
+      into result from jsonb_each(value) entries(key, item);
+    return result;
+  end if;
+  raise exception 'RNI worker manifest contains unsupported JSON'
+    using errcode = 'check_violation';
+end;
+$$;
+
+create table rni_worker_manifest_authority (
+  authority_kind  text        not null,
+  authority_key   text        not null,
+  version         text        not null,
+  snapshot_hash   text        not null,
+  value           jsonb       not null,
+  created_at      timestamptz not null default now(),
+
+  primary key (authority_kind, authority_key, version),
+  constraint rni_worker_manifest_authority_kind_check check (authority_kind in (
+    'source_configuration', 'reddit_queries', 'x_queries', 'rights_policy', 'ambiguity',
+    'taxonomy', 'classification', 'analytics', 'convergence', 'budget', 'prompt', 'build'
+  )),
+  constraint rni_worker_manifest_authority_text_check check (
+    length(authority_key) between 1 and 200 and length(version) between 1 and 200
+  ),
+  constraint rni_worker_manifest_authority_hash_check check (
+    snapshot_hash ~ '^[a-f0-9]{64}$'
+    and snapshot_hash = encode(sha256(convert_to(rni_worker_manifest_canonical(value), 'UTF8')), 'hex')
+  ),
+  constraint rni_worker_manifest_authority_value_check check (jsonb_typeof(value) = 'object'),
+  constraint rni_worker_manifest_authority_identity_unique
+    unique (authority_kind, authority_key, version, snapshot_hash),
+  constraint rni_worker_manifest_authority_hash_unique
+    unique (authority_kind, authority_key, snapshot_hash)
+);
+
+-- Source/policy snapshots are approved as part of one immutable configuration. Prompt and build
+-- evidence are globally reusable authorities and are intentionally not copied into every config.
+create table rni_worker_config_authority (
+  config_version  bigint not null references config_version (id),
+  authority_kind  text   not null,
+  authority_key   text   not null,
+  version         text   not null,
+  snapshot_hash   text   not null,
+
+  primary key (config_version, authority_kind, authority_key),
+  constraint rni_worker_config_authority_kind_check check (authority_kind in (
+    'source_configuration', 'reddit_queries', 'x_queries', 'rights_policy', 'ambiguity',
+    'taxonomy', 'classification', 'analytics', 'convergence', 'budget'
+  )),
+  constraint rni_worker_config_authority_fk foreign key (
+    authority_kind, authority_key, version, snapshot_hash
+  ) references rni_worker_manifest_authority (
+    authority_kind, authority_key, version, snapshot_hash
+  )
+);
+
+create or replace function rni_validate_worker_config_authority() returns trigger
+language plpgsql as $$
+declare
+  config_status text;
+begin
+  select status into config_status from config_version where id = new.config_version;
+  if config_status is distinct from 'draft' then
+    raise exception 'RNI worker authorities can only be bound to a draft configuration'
+      using errcode = 'check_violation', constraint = 'rni_worker_config_authority_requires_draft';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger rni_worker_config_authority_valid
+  before insert on rni_worker_config_authority
+  for each row execute function rni_validate_worker_config_authority();
+
+create or replace function rni_require_worker_authorities_for_activation() returns trigger
+language plpgsql as $$
+declare
+  authority_count integer;
+  expected_count integer;
+begin
+  if new.status = 'active' and old.status is distinct from 'active'
+     and exists (select 1 from rni_ai_config where config_version = new.id) then
+    select count(*)::integer into authority_count
+      from rni_worker_config_authority where config_version = new.id;
+    select count(*)::integer into expected_count
+      from (values
+        ('source_configuration'), ('reddit_queries'), ('x_queries'), ('rights_policy'),
+        ('ambiguity'), ('taxonomy'), ('classification'), ('analytics'), ('convergence'), ('budget')
+      ) expected(authority_kind)
+      join rni_worker_config_authority authority
+        on authority.config_version = new.id
+       and authority.authority_kind = expected.authority_kind
+       and authority.authority_key = 'default';
+    if authority_count <> 10 or expected_count <> 10 then
+      raise exception 'Active RNI configuration requires ten approved worker authorities'
+        using errcode = 'check_violation', constraint = 'rni_worker_config_authority_complete';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger rni_worker_config_authority_activation_valid
+  before update on config_version
+  for each row execute function rni_require_worker_authorities_for_activation();
+
+create table rni_worker_run_manifest (
+  run_id               uuid        primary key references rni_orchestration_execution (run_id),
+  manifest_version     text        not null,
+  environment          text        not null,
+  partition            text        not null,
+  job_run_id           uuid        not null unique references job_run (id),
+  plan_hash            text        not null,
+  run_manifest_hash    text        not null,
+  member_set_version   text        not null,
+  member_set_hash      text        not null,
+  member_count         integer     not null,
+  config_version       bigint      not null references config_version (id),
+  universe_version     bigint      not null references universe_version (id),
+  scope_kind           text        not null,
+  selected_security_id uuid        null references security (id),
+  accepted_at          timestamptz not null,
+  deadline             timestamptz not null,
+  manifest             jsonb       not null,
+  created_at           timestamptz not null default now(),
+
+  constraint rni_worker_run_manifest_version_check
+    check (manifest_version = 'rni-worker-manifest-v2'),
+  constraint rni_worker_run_manifest_member_version_check
+    check (member_set_version = 'rni-worker-member-set-v1'),
+  constraint rni_worker_run_manifest_hash_check check (
+    plan_hash ~ '^[a-f0-9]{64}$' and run_manifest_hash ~ '^[a-f0-9]{64}$'
+    and member_set_hash ~ '^[a-f0-9]{64}$'
+  ),
+  constraint rni_worker_run_manifest_scope_check check (
+    (scope_kind = 'manual_ticker' and selected_security_id is not null and member_count = 1)
+    or (scope_kind = 'full_universe' and selected_security_id is null and member_count between 501 and 600)
+  ),
+  constraint rni_worker_run_manifest_window_check check (deadline > accepted_at),
+  constraint rni_worker_run_manifest_text_check check (
+    length(environment) between 1 and 200 and length(partition) between 1 and 200
+  ),
+  constraint rni_worker_run_manifest_json_check check (jsonb_typeof(manifest) = 'object'),
+  constraint rni_worker_run_manifest_hash_unique unique (run_id, run_manifest_hash),
+  constraint rni_worker_run_manifest_universe_unique unique (run_id, universe_version)
+);
+
+create table rni_worker_run_manifest_authority (
+  run_id          uuid not null references rni_worker_run_manifest (run_id),
+  authority_kind  text not null,
+  authority_key   text not null,
+  version         text not null,
+  snapshot_hash   text not null,
+  primary key (run_id, authority_kind, authority_key),
+  constraint rni_worker_run_manifest_authority_fk foreign key (
+    authority_kind, authority_key, version, snapshot_hash
+  ) references rni_worker_manifest_authority (
+    authority_kind, authority_key, version, snapshot_hash
+  )
+);
+
+create table rni_worker_run_manifest_member (
+  run_id                     uuid        not null,
+  universe_version           bigint      not null,
+  ordinal                    integer     not null,
+  security_id                uuid        not null,
+  ticker                     text        not null,
+  company_name               text        not null,
+  exchange                   text        not null,
+  asset_type                 text        not null,
+  currency                   text        not null,
+  aliases                    jsonb       not null,
+  selection_source           text        not null,
+  provider_symbol            text        not null,
+  provider_company_name      text        not null,
+  constituent_first_added_at timestamptz null,
+  created_at                 timestamptz not null default now(),
+
+  primary key (run_id, ordinal),
+  constraint rni_worker_run_manifest_member_security_unique unique (run_id, security_id),
+  constraint rni_worker_run_manifest_member_manifest_fk foreign key (run_id, universe_version)
+    references rni_worker_run_manifest (run_id, universe_version),
+  constraint rni_worker_run_manifest_member_universe_fk foreign key (universe_version, security_id)
+    references universe_member (universe_version, security_id),
+  constraint rni_worker_run_manifest_member_ordinal_check check (ordinal between 1 and 600),
+  constraint rni_worker_run_manifest_member_aliases_check check (jsonb_typeof(aliases) = 'array'),
+  constraint rni_worker_run_manifest_member_identity_unique unique (run_id, ordinal, security_id)
+);
+
+create or replace function rni_validate_worker_run_manifest(value_run_id uuid) returns void
+language plpgsql as $$
+declare
+  header rni_worker_run_manifest%rowtype;
+  execution_row rni_orchestration_execution%rowtype;
+  run_row rni_run%rowtype;
+  scope_row rni_run_execution_scope%rowtype;
+  config_row config_version%rowtype;
+  ai_config_row rni_ai_config%rowtype;
+  universe_row universe_version%rowtype;
+  calculated_hash text;
+  calculated_plan_hash text;
+  calculated_member_hash text;
+  actual_envelopes jsonb;
+  actual_members jsonb;
+  actual_count integer;
+  authority_count integer;
+  linked_authority_count integer;
+  invalid_route_count integer;
+  valid_price_unit_count integer;
+  distinct_price_unit_count integer;
+  invalid_price_unit_count integer;
+  price_book jsonb;
+begin
+  select * into header from rni_worker_run_manifest where run_id = value_run_id;
+  if header.run_id is null then
+    raise exception 'RNI worker manifest header is missing' using errcode = 'check_violation';
+  end if;
+  select * into execution_row from rni_orchestration_execution
+   where run_id = value_run_id for update;
+  select * into run_row from rni_run where id = value_run_id;
+  select * into scope_row from rni_run_execution_scope where run_id = value_run_id;
+  select * into config_row from config_version where id = header.config_version;
+  select * into ai_config_row from rni_ai_config where config_version = header.config_version;
+  select * into universe_row from universe_version where id = header.universe_version;
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'ordinal', member.ordinal, 'securityId', member.security_id, 'ticker', member.ticker,
+      'companyName', member.company_name, 'exchange', member.exchange,
+      'assetType', member.asset_type, 'currency', member.currency, 'aliases', member.aliases,
+      'selectionSource', member.selection_source, 'providerSymbol', member.provider_symbol,
+      'providerCompanyName', member.provider_company_name,
+      'constituentFirstAddedAt', case when member.constituent_first_added_at is null then null
+        else to_jsonb(to_char(member.constituent_first_added_at at time zone 'UTC',
+          'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')) end
+    ) order by member.ordinal), '[]'::jsonb), count(*)::integer
+    into actual_members, actual_count from rni_worker_run_manifest_member member
+   where member.run_id = value_run_id;
+  with expected(authority_kind, authority_key, version, snapshot_hash, value) as (
+    select 'source_configuration', 'default', snapshot ->> 'version',
+      snapshot ->> 'snapshotHash', snapshot -> 'value'
+      from (select header.manifest #> '{source,configuration}' as snapshot) value
+    union all select 'reddit_queries', 'default', snapshot ->> 'version',
+      snapshot ->> 'snapshotHash', snapshot -> 'value'
+      from (select header.manifest #> '{source,redditQueries}' as snapshot) value
+    union all select 'x_queries', 'default', snapshot ->> 'version',
+      snapshot ->> 'snapshotHash', snapshot -> 'value'
+      from (select header.manifest #> '{source,xQueries}' as snapshot) value
+    union all select 'rights_policy', 'default', snapshot ->> 'version',
+      snapshot ->> 'snapshotHash', snapshot -> 'value'
+      from (select header.manifest #> '{source,rightsPolicy}' as snapshot) value
+    union all select policy_kind, 'default', snapshot ->> 'version',
+      snapshot ->> 'snapshotHash', snapshot -> 'value'
+      from (values
+        ('ambiguity', header.manifest #> '{policies,ambiguity}'),
+        ('taxonomy', header.manifest #> '{policies,taxonomy}'),
+        ('classification', header.manifest #> '{policies,classification}'),
+        ('analytics', header.manifest #> '{policies,analytics}'),
+        ('convergence', header.manifest #> '{policies,convergence}'),
+        ('budget', header.manifest #> '{policies,budget}')
+      ) policies(policy_kind, snapshot)
+    union all select 'prompt', route ->> 'task', route #>> '{prompt,version}',
+      encode(sha256(convert_to(rni_worker_manifest_canonical(route -> 'prompt'), 'UTF8')), 'hex'),
+      route -> 'prompt'
+      from jsonb_array_elements(header.manifest -> 'modelRoutes') route
+    union all select 'build', 'default', header.manifest #>> '{build,deploymentId}',
+      encode(sha256(convert_to(rni_worker_manifest_canonical(header.manifest -> 'build'), 'UTF8')), 'hex'),
+      header.manifest -> 'build'
+  )
+  select count(*)::integer into authority_count
+    from expected e
+    join rni_worker_run_manifest_authority link
+      on link.run_id = value_run_id and link.authority_kind = e.authority_kind
+     and link.authority_key = e.authority_key and link.version = e.version
+     and link.snapshot_hash = e.snapshot_hash
+    join rni_worker_manifest_authority authority
+      on authority.authority_kind = link.authority_kind
+     and authority.authority_key = link.authority_key and authority.version = link.version
+     and authority.snapshot_hash = link.snapshot_hash and authority.value = e.value
+    left join rni_worker_config_authority config_authority
+      on config_authority.config_version = header.config_version
+     and config_authority.authority_kind = link.authority_kind
+     and config_authority.authority_key = link.authority_key
+     and config_authority.version = link.version
+     and config_authority.snapshot_hash = link.snapshot_hash
+    where authority.authority_kind in ('prompt', 'build')
+       or config_authority.config_version is not null;
+  calculated_hash := encode(sha256(convert_to(rni_worker_manifest_canonical(header.manifest), 'UTF8')), 'hex');
+  calculated_plan_hash := encode(sha256(convert_to(rni_model_input_canonical(
+    execution_row.record -> 'plan'), 'UTF8')), 'hex');
+  calculated_member_hash := encode(sha256(convert_to(rni_worker_manifest_canonical(
+    jsonb_build_object('version', header.member_set_version, 'members', header.manifest -> 'members')
+  ), 'UTF8')), 'hex');
+  select count(*)::integer into linked_authority_count
+    from rni_worker_run_manifest_authority where run_id = value_run_id;
+  select coalesce(jsonb_agg(route -> 'envelope' order by ordinal), '[]'::jsonb)
+    into actual_envelopes
+    from jsonb_array_elements(header.manifest -> 'modelRoutes')
+      with ordinality routes(route, ordinal);
+  select count(*)::integer into invalid_route_count
+    from jsonb_array_elements(header.manifest -> 'modelRoutes') with ordinality routes(route, ordinal)
+    left join model_route mr on mr.config_version = header.config_version
+      and mr.task = route ->> 'task'
+    left join rni_model_capability_snapshot capability
+      on capability.id = route #>> '{capability,snapshotId}'
+    where route ->> 'task' is distinct from (array[
+      'rni_discovery', 'rni_relationship', 'rni_classifier',
+      'rni_verification', 'rni_challenger'
+    ])[ordinal::integer]
+      or mr.task is null
+      or route #>> '{envelope,task}' is distinct from route ->> 'task'
+      or route ->> 'aiRoute' is distinct from header.manifest #>> '{configuration,aiRoute}'
+      or route ->> 'aiRoute' is distinct from mr.ai_route
+      or route ->> 'transport' is distinct from mr.transport
+      or route ->> 'provider' is distinct from mr.primary_provider
+      or route ->> 'configuredModelId' is distinct from mr.primary_model
+      or route ->> 'canonicalProviderModelId' is distinct from mr.canonical_provider_model_id
+      or route ->> 'modelRevision' is distinct from mr.model_revision
+      or route ->> 'reasoningEffort' is distinct from mr.reasoning_effort
+      or route ->> 'policyVersion' is distinct from mr.policy_version
+      or route ->> 'calibrationVersion' is distinct from mr.calibration_version
+      or route #>> '{prompt,version}' is distinct from mr.prompt_version
+      or (route ->> 'temperature')::numeric is distinct from mr.temperature
+      or route -> 'fallbackChain' is distinct from mr.fallback_chain
+      or route -> 'allowedDataClasses' is distinct from mr.allowed_data_classes
+      or (route #>> '{envelope,maxInputBytes}')::integer is distinct from mr.max_input_bytes
+      or (route #>> '{envelope,maxInputTokensReserved}')::integer is distinct from mr.max_input_tokens
+      or (route #>> '{envelope,maxOutputTokens}')::integer is distinct from mr.max_output_tokens
+      or (route #>> '{envelope,maxToolCalls}')::integer is distinct from mr.max_tool_calls
+      or (route #>> '{envelope,timeoutMs}')::integer is distinct from mr.timeout_ms
+      or (route #>> '{envelope,maxCostUsd}')::numeric is distinct from mr.max_cost_usd
+      or capability.id is null or capability.id is distinct from mr.capability_snapshot_id
+      or route #>> '{capability,responseHash}' is distinct from capability.response_hash
+      or (route #>> '{capability,observedAt}')::timestamptz is distinct from capability.observed_at
+      or (route #>> '{capability,expiresAt}')::timestamptz is distinct from capability.expires_at
+      or (route #>> '{capability,available}')::boolean is distinct from capability.available
+      or (route #>> '{capability,supportsResponses}')::boolean is distinct from capability.supports_responses
+      or (route #>> '{capability,supportsStructuredOutputs}')::boolean is distinct from capability.supports_structured_outputs
+      or (route #>> '{capability,supportsWebSearch}')::boolean is distinct from capability.supports_web_search
+      or route #> '{capability,reasoningEfforts}' is distinct from capability.reasoning_efforts
+      or not capability.available or not capability.supports_responses
+      or not capability.supports_structured_outputs
+      or (route ->> 'task' = 'rni_discovery' and not capability.supports_web_search)
+      or (route #>> '{capability,requiresResponses}')::boolean is distinct from true
+      or (route #>> '{capability,requiresStructuredOutputs}')::boolean is distinct from true
+      or (route #>> '{capability,requiresWebSearch}')::boolean is distinct from
+         (route ->> 'task' = 'rni_discovery')
+      or not (capability.reasoning_efforts ? (route ->> 'reasoningEffort'))
+      or capability.observed_at > header.accepted_at
+      or capability.expires_at <= header.accepted_at;
+  price_book := header.manifest #> '{modelRoutes,0,priceBook}';
+  select count(*)::integer into valid_price_unit_count
+    from jsonb_array_elements(price_book -> 'units') unit
+    join unit_price_book stored
+      on stored.price_book_version = price_book ->> 'version'
+     and stored.provider = unit ->> 'provider'
+     and stored.service = unit ->> 'service'
+     and stored.operation_or_model = unit ->> 'operationOrModel'
+     and stored.unit_type = unit ->> 'unitType'
+     and stored.unit_price = (unit ->> 'unitPrice')::numeric
+     and stored.currency = unit ->> 'currency'
+     and stored.effective_from = (unit ->> 'effectiveFrom')::timestamptz
+     and stored.effective_until is not distinct from (unit ->> 'effectiveUntil')::timestamptz
+     and stored.source_reference = unit ->> 'sourceReference';
+  select count(distinct jsonb_build_array(
+      unit ->> 'provider', unit ->> 'service', unit ->> 'operationOrModel', unit ->> 'unitType'
+    ))::integer,
+    count(*) filter (where
+      (unit ->> 'effectiveFrom')::timestamptz > header.accepted_at
+      or ((unit ->> 'effectiveUntil') is not null and
+          (unit ->> 'effectiveUntil')::timestamptz <= header.accepted_at)
+    )::integer
+    into distinct_price_unit_count, invalid_price_unit_count
+    from jsonb_array_elements(price_book -> 'units') unit;
+  if execution_row.run_id is null
+     or execution_row.partition is distinct from header.partition
+     or execution_row.job_run_id is distinct from header.job_run_id
+     or execution_row.plan_hash is distinct from header.plan_hash
+     or calculated_plan_hash is distinct from header.plan_hash
+     or execution_row.admitted_at is distinct from header.accepted_at
+     or execution_row.deadline is distinct from header.deadline
+     or execution_row.record ->> 'version' is distinct from 'rni-execution-v2'
+     or execution_row.record ->> 'runManifestHash' is distinct from header.run_manifest_hash
+     or calculated_hash is distinct from header.run_manifest_hash
+     or calculated_member_hash is distinct from header.member_set_hash
+     or actual_count is distinct from header.member_count
+     or rni_worker_manifest_canonical(header.manifest -> 'members') is distinct from
+        rni_worker_manifest_canonical(actual_members)
+     or header.manifest ->> 'version' is distinct from header.manifest_version
+     or header.manifest ->> 'environment' is distinct from header.environment
+     or header.manifest ->> 'runId' is distinct from header.run_id::text
+     or header.manifest ->> 'jobRunId' is distinct from header.job_run_id::text
+     or header.manifest ->> 'planHash' is distinct from header.plan_hash
+     or header.manifest ->> 'partition' is distinct from header.partition
+     or header.manifest ->> 'trigger' is distinct from run_row.trigger
+     or header.manifest #>> '{configuration,version}' is distinct from header.config_version::text
+     or header.manifest #>> '{configuration,checksum}' is distinct from config_row.checksum
+     or header.manifest #>> '{configuration,aiRoute}' is distinct from ai_config_row.ai_route
+     or header.manifest #>> '{configuration,modelPolicyVersion}' is distinct from
+        ai_config_row.model_policy_version
+     or header.manifest #>> '{configuration,budgetPolicyVersion}' is distinct from
+        ai_config_row.budget_policy_version
+     or header.manifest #>> '{configuration,promptSetVersion}' is distinct from run_row.prompt_version
+     or (header.manifest #>> '{configuration,aggregateBudgets,manualRunHardUsd}')::numeric is distinct from
+        ai_config_row.manual_run_hard_usd
+     or (header.manifest #>> '{configuration,aggregateBudgets,fullUniverseHardUsd}')::numeric is distinct from
+        ai_config_row.full_universe_hard_usd
+     or (header.manifest #>> '{configuration,aggregateBudgets,rolling24hHardUsd}')::numeric is distinct from
+        ai_config_row.rolling_24h_hard_usd
+     or (header.manifest #>> '{configuration,aggregateBudgets,monthlyWarningUsd}')::numeric is distinct from
+        ai_config_row.monthly_warning_usd
+     or (header.manifest #>> '{configuration,aggregateBudgets,monthlyHardUsd}')::numeric is distinct from
+        ai_config_row.monthly_hard_usd
+     or header.manifest #>> '{configuration,aggregateBudgets,currency}' is distinct from ai_config_row.currency
+     or header.manifest #>> '{universe,version}' is distinct from header.universe_version::text
+     or header.manifest #>> '{universe,snapshotHash}' is distinct from universe_row.source_payload_hash
+     or (header.manifest ->> 'acceptedAt')::timestamptz is distinct from header.accepted_at
+     or (header.manifest ->> 'deadline')::timestamptz is distinct from header.deadline
+     or (header.manifest #>> '{windows,windowStart}')::timestamptz is distinct from run_row.window_start
+     or (header.manifest #>> '{windows,windowEnd}')::timestamptz is distinct from run_row.window_end
+     or (header.manifest #>> '{windows,comparisonStart}')::timestamptz is distinct from
+        run_row.comparison_start
+     or (header.manifest #>> '{windows,comparisonEnd}')::timestamptz is distinct from
+        run_row.comparison_end
+     or (header.manifest #>> '{windows,assessmentCutoffAt}')::timestamptz is distinct from run_row.window_end
+     or header.manifest #>> '{windows,timezone}' is distinct from execution_row.record #>> '{plan,timezone}'
+     or header.manifest #>> '{scope,kind}' is distinct from header.scope_kind
+     or scope_row.run_id is null or scope_row.scope_kind is distinct from header.scope_kind
+     or scope_row.security_id is distinct from header.selected_security_id
+     or (header.selected_security_id is not null and
+         header.manifest #>> '{scope,selectedSecurityId}' is distinct from header.selected_security_id::text)
+     or (header.scope_kind = 'manual_ticker' and (
+       execution_row.record #>> '{plan,scopePreview,kind}' is distinct from 'ticker'
+       or execution_row.record #>> '{plan,scopePreview,securityId}' is distinct from
+          header.selected_security_id::text
+       or execution_row.record #>> '{plan,scopePreview,universeVersion}' is distinct from
+          header.universe_version::text
+     ))
+     or (header.scope_kind = 'full_universe' and (
+       execution_row.record #>> '{plan,scopePreview,kind}' is distinct from 'full_universe'
+       or execution_row.record #>> '{plan,scopePreview,universeVersion}' is distinct from
+          header.universe_version::text
+       or (execution_row.record #>> '{plan,scopePreview,securityCount}')::integer is distinct from
+          header.member_count
+     ))
+     or (header.manifest ->> 'memberCount')::integer is distinct from header.member_count
+     or header.manifest ->> 'memberSetHash' is distinct from header.member_set_hash
+     or header.manifest #> '{configuration,aggregateBudgets}' is distinct from
+        execution_row.record #> '{plan,budgets}'
+     or actual_envelopes is distinct from execution_row.record #> '{plan,envelopes}'
+     or header.manifest #> '{orchestration,calls}' is distinct from
+        execution_row.record #> '{plan,calls}'
+     or (header.manifest #>> '{orchestration,maxAttempts}')::integer is distinct from
+        (execution_row.record #>> '{plan,maxAttempts}')::integer
+     or (header.manifest #>> '{orchestration,maxRuntimeMs}')::integer is distinct from
+        (execution_row.record #>> '{plan,maxRuntimeMs}')::integer
+     or (header.manifest #>> '{orchestration,leaseMs}')::integer is distinct from
+        (execution_row.record #>> '{plan,leaseMs}')::integer
+     or (header.manifest #>> '{orchestration,baseBackoffMs}')::integer is distinct from
+        (execution_row.record #>> '{plan,baseBackoffMs}')::integer
+     or (header.manifest #>> '{orchestration,maxBackoffMs}')::integer is distinct from
+        (execution_row.record #>> '{plan,maxBackoffMs}')::integer
+     or (header.manifest #>> '{orchestration,coalesceMs}')::integer is distinct from
+        (execution_row.record #>> '{plan,coalesceMs}')::integer
+     or (header.manifest #>> '{orchestration,maxCostUsd}')::numeric is distinct from
+        (execution_row.record #>> '{plan,maxCostUsd}')::numeric
+     or header.manifest -> 'coverage' is distinct from execution_row.record #> '{plan,coverage}'
+     or run_row.id is null or ai_config_row.config_version is null
+     or config_row.id is null or config_row.environment <> header.environment
+     or config_row.status is distinct from 'active'
+     or universe_row.id is null or universe_row.environment <> header.environment
+     or run_row.config_version <> header.config_version
+     or run_row.universe_version <> header.universe_version
+     or run_row.ai_route <> ai_config_row.ai_route
+     or universe_row.status <> 'active' or universe_row.source_provider <> 'fmp'
+     or universe_row.source_endpoint <> '/stable/sp500-constituent'
+     or universe_row.source_payload_hash is null
+     or (header.scope_kind = 'full_universe' and universe_row.selected_count <> header.member_count)
+     or authority_count <> 16
+     or linked_authority_count <> 16 then
+    raise exception 'RNI worker manifest is not the exact admitted relational snapshot'
+      using errcode = 'check_violation', constraint = 'rni_worker_run_manifest_exact';
+  end if;
+  if jsonb_array_length(header.manifest -> 'modelRoutes') <> 5
+     or invalid_route_count <> 0
+     or exists (select 1 from jsonb_array_elements(header.manifest -> 'modelRoutes') route
+       where route -> 'priceBook' is distinct from price_book)
+     or exists (select 1 from jsonb_array_elements(header.manifest -> 'modelRoutes') route
+       where (route #>> '{envelope,maxInputTokensReserved}')::integer >=
+             (price_book ->> 'firstTierInputCeiling')::integer)
+     or price_book ->> 'snapshotHash' is distinct from encode(sha256(convert_to(
+       rni_worker_manifest_canonical(price_book - 'snapshotHash'), 'UTF8')), 'hex')
+     or not exists (
+       select 1 from rni_price_book_evidence evidence
+        where evidence.price_book_version = price_book ->> 'version'
+          and evidence.source_url = price_book ->> 'sourceUrl'
+          and evidence.response_hash = price_book ->> 'responseHash'
+          and evidence.observed_at = (price_book ->> 'observedAt')::timestamptz
+          and evidence.observed_at <= header.accepted_at
+          and evidence.first_tier_input_ceiling =
+            (price_book ->> 'firstTierInputCeiling')::integer
+     )
+     or jsonb_array_length(price_book -> 'units') <> 5
+     or valid_price_unit_count <> 5 or distinct_price_unit_count <> 5
+     or invalid_price_unit_count <> 0
+     or not exists (select 1 from jsonb_array_elements(price_book -> 'units') unit
+       where unit ->> 'provider' = 'openai' and unit ->> 'service' = 'openai_responses'
+         and unit ->> 'operationOrModel' = 'gpt-5.6-terra' and unit ->> 'unitType' = 'input_token')
+     or not exists (select 1 from jsonb_array_elements(price_book -> 'units') unit
+       where unit ->> 'provider' = 'openai' and unit ->> 'service' = 'openai_responses'
+         and unit ->> 'operationOrModel' = 'gpt-5.6-terra' and unit ->> 'unitType' = 'output_token')
+     or not exists (select 1 from jsonb_array_elements(price_book -> 'units') unit
+       where unit ->> 'provider' = 'openai' and unit ->> 'service' = 'openai_responses'
+         and unit ->> 'operationOrModel' = 'gpt-5.6-sol' and unit ->> 'unitType' = 'input_token')
+     or not exists (select 1 from jsonb_array_elements(price_book -> 'units') unit
+       where unit ->> 'provider' = 'openai' and unit ->> 'service' = 'openai_responses'
+         and unit ->> 'operationOrModel' = 'gpt-5.6-sol' and unit ->> 'unitType' = 'output_token')
+     or not exists (select 1 from jsonb_array_elements(price_book -> 'units') unit
+       where unit ->> 'provider' = 'openai' and unit ->> 'service' = 'openai_web_search'
+         and unit ->> 'operationOrModel' = 'web_search' and unit ->> 'unitType' = 'search') then
+    raise exception 'RNI worker manifest route, capability, prompt or price authority differs'
+      using errcode = 'check_violation', constraint = 'rni_worker_run_manifest_route_exact';
+  end if;
+  if exists (
+    select 1 from rni_worker_run_manifest_member member
+    join security s on s.id = member.security_id
+    join universe_member um on um.universe_version = member.universe_version
+      and um.security_id = member.security_id
+    where member.run_id = value_run_id and (
+      not um.enabled or member.ticker <> s.symbol or member.company_name <> s.name
+      or member.exchange <> s.exchange or member.asset_type <> s.asset_type
+      or member.currency <> s.currency or member.aliases <> s.aliases
+      or member.selection_source <> um.selection_source
+      or member.provider_symbol is distinct from um.provider_symbol
+      or member.provider_company_name is distinct from um.provider_company_name
+      or member.constituent_first_added_at is distinct from um.constituent_first_added_at
+    )
+  ) then
+    raise exception 'RNI worker manifest member differs from its exact universe/security lineage'
+      using errcode = 'check_violation', constraint = 'rni_worker_run_manifest_member_exact';
+  end if;
+end;
+$$;
+
+create or replace function rni_validate_worker_run_manifest_trigger() returns trigger
+language plpgsql as $$
+begin
+  perform rni_validate_worker_run_manifest(new.run_id);
+  return null;
+end;
+$$;
+
+create constraint trigger rni_worker_run_manifest_valid
+  after insert on rni_worker_run_manifest deferrable initially deferred
+  for each row execute function rni_validate_worker_run_manifest_trigger();
+create constraint trigger rni_worker_run_manifest_member_valid
+  after insert on rni_worker_run_manifest_member deferrable initially deferred
+  for each row execute function rni_validate_worker_run_manifest_trigger();
+create constraint trigger rni_worker_run_manifest_authority_valid
+  after insert on rni_worker_run_manifest_authority deferrable initially deferred
+  for each row execute function rni_validate_worker_run_manifest_trigger();
+
+create or replace function rni_require_worker_manifest_for_v2_execution() returns trigger
+language plpgsql as $$
+begin
+  if tg_op = 'UPDATE' and old.record ->> 'version' is distinct from new.record ->> 'version' then
+    raise exception 'RNI execution manifest generation is immutable'
+      using errcode = 'check_violation', constraint = 'rni_execution_manifest_generation_immutable';
+  end if;
+  if tg_op = 'UPDATE' and (
+       old.partition is distinct from new.partition
+       or old.job_run_id is distinct from new.job_run_id
+       or old.plan_hash is distinct from new.plan_hash
+       or old.coalesce_key is distinct from new.coalesce_key
+       or old.coalesce_until is distinct from new.coalesce_until
+       or old.deadline is distinct from new.deadline
+       or old.rerun_of is distinct from new.rerun_of
+       or old.admitted_cost_usd is distinct from new.admitted_cost_usd
+       or old.admitted_at is distinct from new.admitted_at
+       or old.record -> 'plan' is distinct from new.record -> 'plan'
+       or old.record ->> 'runManifestHash' is distinct from new.record ->> 'runManifestHash'
+     ) then
+    raise exception 'RNI execution admission and manifest identity are immutable'
+      using errcode = 'check_violation', constraint = 'rni_execution_admission_immutable';
+  end if;
+  if new.record ->> 'version' = 'rni-execution-v2' and not exists (
+      select 1 from rni_worker_run_manifest manifest
+       where manifest.run_id = new.run_id
+         and manifest.run_manifest_hash = new.record ->> 'runManifestHash'
+    ) then
+    raise exception 'RNI v2 execution requires its exact immutable worker manifest'
+      using errcode = 'check_violation', constraint = 'rni_execution_v2_manifest_required';
+  end if;
+  if tg_op = 'INSERT' and new.record ->> 'version' = 'rni-execution-v2' then
+    perform rni_validate_worker_run_manifest(new.run_id);
+  end if;
+  return null;
+end;
+$$;
+
+create constraint trigger rni_execution_v2_manifest_required
+  after insert or update on rni_orchestration_execution deferrable initially deferred
+  for each row execute function rni_require_worker_manifest_for_v2_execution();
+
+do $$
+declare table_name text;
+begin
+  foreach table_name in array array[
+    'rni_worker_manifest_authority', 'rni_worker_config_authority', 'rni_worker_run_manifest',
+    'rni_worker_run_manifest_authority', 'rni_worker_run_manifest_member'
+  ] loop
+    execute format('create trigger %I_append_only before update or delete on %I '
+      'for each row execute function reject_mutation()', table_name, table_name);
+  end loop;
+end;
+$$;
+
+comment on table rni_worker_run_manifest is
+  'D-RNI-32 immutable v2 effect authority. Workers load these exact bytes and never reconstruct active configuration or membership.';
+
+-- D-RNI-34 exact source/retrieval/content/outbox binding. The additional composite key prevents
+-- one event from pairing a content version created by retrieval A with retrieval B.
+alter table rni_source_content_version
+  add constraint rni_source_content_exact_retrieval_unique
+    unique (id, source_item_id, source_retrieval_id);
+alter table rni_event_outbox
+  add constraint rni_event_outbox_exact_content_fk foreign key (
+    content_version_id, source_item_id, source_retrieval_id
+  ) references rni_source_content_version (id, source_item_id, source_retrieval_id),
+  add constraint rni_event_outbox_exact_identity_unique
+    unique (id, source_item_id, source_retrieval_id, content_version_id);
+alter table rni_orchestration_execution
+  add constraint rni_orchestration_execution_source_authority_unique
+    unique (run_id, partition, plan_hash, deadline);
+
+create table rni_source_workflow_delivery (
+  id                       uuid        primary key,
+  partition                text        not null,
+  run_id                   uuid        not null,
+  plan_hash                text        not null,
+  run_manifest_hash        text        not null,
+  platform                 text        not null,
+  outer_attempt            integer     not null,
+  outer_token              uuid        not null,
+  deadline                 timestamptz not null,
+  source_item_id           uuid        not null,
+  retrieval_id             uuid        not null,
+  content_version_id       uuid        not null,
+  source_outbox_event_id   uuid        not null,
+  stage                    text        not null,
+  stage_version            text        not null,
+  lease_ms                 integer     not null,
+  base_backoff_ms          integer     not null,
+  max_backoff_ms           integer     not null,
+  input_hash               text        not null,
+  created_at               timestamptz not null default date_trunc('milliseconds', clock_timestamp()),
+
+  constraint rni_source_workflow_delivery_execution_fk foreign key (
+    run_id, partition, plan_hash, deadline
+  ) references rni_orchestration_execution (run_id, partition, plan_hash, deadline),
+  constraint rni_source_workflow_delivery_manifest_fk foreign key (run_id, run_manifest_hash)
+    references rni_worker_run_manifest (run_id, run_manifest_hash),
+  constraint rni_source_workflow_delivery_slice_fk foreign key (run_id, platform)
+    references rni_platform_slice (run_id, platform),
+  constraint rni_source_workflow_delivery_source_fk foreign key (source_item_id, platform)
+    references rni_source_item (id, platform),
+  constraint rni_source_workflow_delivery_event_fk foreign key (
+    source_outbox_event_id, source_item_id, retrieval_id, content_version_id
+  ) references rni_event_outbox (id, source_item_id, source_retrieval_id, content_version_id),
+  constraint rni_source_workflow_delivery_platform_check check (platform in ('reddit', 'x')),
+  constraint rni_source_workflow_delivery_stage_check check (stage = 'interpret_source'),
+  constraint rni_source_workflow_delivery_text_check check (
+    length(partition) between 1 and 200 and length(stage_version) between 1 and 200
+  ),
+  constraint rni_source_workflow_delivery_hash_check check (
+    plan_hash ~ '^[a-f0-9]{64}$' and run_manifest_hash ~ '^[a-f0-9]{64}$'
+    and input_hash ~ '^[a-f0-9]{64}$'
+  ),
+  constraint rni_source_workflow_delivery_attempt_check check (outer_attempt between 1 and 3),
+  constraint rni_source_workflow_delivery_policy_check check (
+    lease_ms between 1 and 120000 and base_backoff_ms between 1 and 3600000
+    and max_backoff_ms between base_backoff_ms and 86400000
+  ),
+  constraint rni_source_workflow_delivery_slot_unique
+    unique (run_id, platform, source_item_id, stage)
+);
+
+create table rni_source_workflow_checkpoint (
+  delivery_id          uuid        primary key references rni_source_workflow_delivery (id),
+  status               text        not null,
+  attempt              integer     not null,
+  started_at           timestamptz not null,
+  updated_at           timestamptz not null,
+  revision             integer     not null default 1,
+  lease_owner          text        null,
+  lease_token          uuid        null,
+  lease_acquired_at    timestamptz null,
+  lease_expires_at     timestamptz null,
+  not_before           timestamptz null,
+  retry_error_code     text        null,
+  retry_failed_at      timestamptz null,
+  retry_delay_ms       integer     null,
+  output_manifest      jsonb       null,
+  output_hash          text        null,
+  completed_at         timestamptz null,
+  terminal_kind        text        null,
+  terminal_error_code  text        null,
+  terminal_cause_code  text        null,
+  terminal_budget_reason text      null,
+  terminal_at          timestamptz null,
+  created_at           timestamptz not null default date_trunc('milliseconds', clock_timestamp()),
+
+  constraint rni_source_workflow_checkpoint_status_check check (
+    status in ('running', 'retry_wait', 'completed', 'permanent_failure', 'budget_stopped')
+  ),
+  constraint rni_source_workflow_checkpoint_attempt_check check (attempt between 1 and 3),
+  constraint rni_source_workflow_checkpoint_revision_check check (revision > 0),
+  constraint rni_source_workflow_checkpoint_time_check check (updated_at >= started_at),
+  constraint rni_source_workflow_checkpoint_code_check check (
+    (retry_error_code is null or retry_error_code ~ '^[A-Z][A-Z0-9_]{0,99}$')
+    and (terminal_error_code is null or terminal_error_code ~ '^[A-Z][A-Z0-9_]{0,99}$')
+    and (terminal_cause_code is null or terminal_cause_code ~ '^[A-Z][A-Z0-9_]{0,99}$')
+  ),
+  constraint rni_source_workflow_checkpoint_output_check check (
+    output_hash is null or output_hash ~ '^[a-f0-9]{64}$'
+  ),
+  constraint rni_source_workflow_checkpoint_output_manifest_check check (
+    output_manifest is null or (jsonb_typeof(output_manifest) = 'object'
+      and octet_length(output_manifest::text) <= 65536)
+  ),
+  constraint rni_source_workflow_checkpoint_budget_reason_check check (
+    terminal_budget_reason is null or terminal_budget_reason in (
+      'attempts', 'wall_time', 'sources', 'input_tokens', 'output_tokens', 'cost', 'cancelled'
+    )
+  ),
+  constraint rni_source_workflow_checkpoint_state_check check (
+    (status = 'running' and lease_owner is not null and length(lease_owner) between 1 and 200
+      and lease_token is not null and lease_acquired_at is not null and lease_expires_at is not null
+      and lease_expires_at > lease_acquired_at and updated_at >= lease_acquired_at
+      and updated_at < lease_expires_at and not_before is null and retry_error_code is null
+      and retry_failed_at is null and retry_delay_ms is null and output_manifest is null
+      and output_hash is null and completed_at is null and terminal_kind is null
+      and terminal_error_code is null and terminal_cause_code is null
+      and terminal_budget_reason is null and terminal_at is null)
+    or (status = 'retry_wait' and lease_owner is null and lease_token is null
+      and lease_acquired_at is null and lease_expires_at is null and not_before is not null
+      and retry_error_code is not null and retry_failed_at = updated_at and retry_delay_ms > 0
+      and not_before = retry_failed_at + retry_delay_ms * interval '1 millisecond'
+      and output_manifest is null and output_hash is null and completed_at is null
+      and terminal_kind is null and terminal_error_code is null and terminal_cause_code is null
+      and terminal_budget_reason is null and terminal_at is null)
+    or (status = 'completed' and lease_owner is null and lease_token is null
+      and lease_acquired_at is null and lease_expires_at is null and not_before is null
+      and retry_error_code is null and retry_failed_at is null and retry_delay_ms is null
+      and output_manifest is not null and output_hash is not null and completed_at = updated_at
+      and terminal_kind is null and terminal_error_code is null and terminal_cause_code is null
+      and terminal_budget_reason is null and terminal_at is null)
+    or (status = 'permanent_failure' and lease_owner is null and lease_token is null
+      and lease_acquired_at is null and lease_expires_at is null and not_before is null
+      and retry_error_code is null and retry_failed_at is null and retry_delay_ms is null
+      and output_manifest is null and output_hash is null and completed_at is null
+      and terminal_kind = 'permanent_failure' and terminal_error_code is not null
+      and terminal_budget_reason is null and terminal_at = updated_at)
+    or (status = 'budget_stopped' and lease_owner is null and lease_token is null
+      and lease_acquired_at is null and lease_expires_at is null and not_before is null
+      and retry_error_code is null and retry_failed_at is null and retry_delay_ms is null
+      and output_manifest is null and output_hash is null and completed_at is null
+      and terminal_kind = 'budget_stopped' and terminal_error_code is null
+      and terminal_cause_code is null and terminal_budget_reason is not null
+      and terminal_at = updated_at)
+  )
+);
+
+create or replace function rni_guard_source_workflow_checkpoint_transition() returns trigger
+language plpgsql as $$
+begin
+  if tg_op = 'DELETE' then
+    raise exception 'RNI source workflow checkpoint is not deletable'
+      using errcode = 'restrict_violation';
+  end if;
+  if new.delivery_id <> old.delivery_id or new.started_at <> old.started_at
+     or new.created_at <> old.created_at or new.revision <> old.revision + 1
+     or new.updated_at < old.updated_at then
+    raise exception 'RNI source workflow checkpoint changed immutable or monotonic identity'
+      using errcode = 'check_violation';
+  end if;
+  if old.status in ('completed', 'permanent_failure', 'budget_stopped') then
+    raise exception 'RNI source workflow terminal checkpoint is immutable'
+      using errcode = 'restrict_violation';
+  end if;
+  if not (
+    (old.status = 'running' and new.status in (
+      'running', 'retry_wait', 'completed', 'permanent_failure', 'budget_stopped'
+    )) or (old.status = 'retry_wait' and new.status in (
+      'running', 'permanent_failure', 'budget_stopped'
+    ))
+  ) then
+    raise exception 'Illegal RNI source workflow checkpoint transition'
+      using errcode = 'check_violation';
+  end if;
+  if old.status = 'running' and new.status = 'running' and (
+    new.attempt <> old.attempt or new.lease_owner <> old.lease_owner
+    or new.lease_token <> old.lease_token or new.lease_acquired_at <> old.lease_acquired_at
+    or new.lease_expires_at <= old.lease_expires_at
+  ) then
+    raise exception 'RNI source workflow heartbeat changed lease identity'
+      using errcode = 'check_violation';
+  end if;
+  if old.status = 'retry_wait' and new.status = 'running' and new.attempt <> old.attempt + 1 then
+    raise exception 'RNI source workflow recovery did not advance exactly one attempt'
+      using errcode = 'check_violation';
+  end if;
+  if old.status = 'running' and new.status <> 'running' and new.attempt <> old.attempt then
+    raise exception 'RNI source workflow terminal/retry transition changed attempt'
+      using errcode = 'check_violation';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger rni_source_workflow_checkpoint_transition
+  before update or delete on rni_source_workflow_checkpoint
+  for each row execute function rni_guard_source_workflow_checkpoint_transition();
+create trigger rni_source_workflow_delivery_append_only
+  before update or delete on rni_source_workflow_delivery
+  for each row execute function reject_mutation();
+
+create or replace function rni_source_workflow_authority_expiry(value_delivery_id uuid)
+returns timestamptz language plpgsql as $$
+declare
+  delivery_row rni_source_workflow_delivery%rowtype;
+  execution_row rni_orchestration_execution%rowtype;
+  lease_expiry timestamptz;
+begin
+  select * into delivery_row from rni_source_workflow_delivery where id = value_delivery_id;
+  if delivery_row.id is null then
+    raise exception 'RNI source workflow delivery is missing' using errcode = 'check_violation';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('rni-ai-budget:' || delivery_row.partition, 0));
+  perform pg_advisory_xact_lock(hashtextextended('rni-orchestration:' || delivery_row.partition, 0));
+  select * into execution_row from rni_orchestration_execution
+   where run_id = delivery_row.run_id and partition = delivery_row.partition for update;
+  lease_expiry := (execution_row.record #>> array[
+    'platforms', delivery_row.platform, 'lease', 'expiresAt'
+  ])::timestamptz;
+  if execution_row.run_id is null or execution_row.record ->> 'version' <> 'rni-execution-v2'
+     or execution_row.record ->> 'runManifestHash' <> delivery_row.run_manifest_hash
+     or execution_row.plan_hash <> delivery_row.plan_hash
+     or execution_row.deadline <> delivery_row.deadline
+     or execution_row.record #>> '{run,status}' <> 'running'
+     or execution_row.record #>> array['platforms', delivery_row.platform, 'slice', 'status'] <> 'running'
+     or (execution_row.record #>> array['platforms', delivery_row.platform, 'attempt'])::integer
+       <> delivery_row.outer_attempt
+     or (execution_row.record #>> array['platforms', delivery_row.platform, 'lease', 'token'])::uuid
+       <> delivery_row.outer_token
+     or lease_expiry is null then
+    raise exception 'RNI source workflow lacks exact live parent authority'
+      using errcode = 'check_violation', constraint = 'rni_source_workflow_parent_authority';
+  end if;
+  return least(delivery_row.deadline, lease_expiry);
+end;
+$$;
+
+create or replace function rni_validate_source_workflow_checkpoint() returns trigger
+language plpgsql as $$
+declare
+  authority_expiry timestamptz;
+  checkpoint_row rni_source_workflow_checkpoint%rowtype;
+  value_delivery_id uuid;
+begin
+  -- This validator is shared by the delivery and checkpoint constraint triggers. The delivery
+  -- table names its key `id`; the checkpoint table names the same identity `delivery_id`.
+  if tg_table_name = 'rni_source_workflow_delivery' then
+    value_delivery_id := new.id;
+  else
+    value_delivery_id := new.delivery_id;
+  end if;
+  select * into checkpoint_row from rni_source_workflow_checkpoint where delivery_id = value_delivery_id;
+  if checkpoint_row.delivery_id is null then
+    raise exception 'RNI source workflow delivery requires its checkpoint'
+      using errcode = 'check_violation';
+  end if;
+  authority_expiry := rni_source_workflow_authority_expiry(value_delivery_id);
+  if clock_timestamp() >= authority_expiry or checkpoint_row.updated_at >= authority_expiry
+     or (checkpoint_row.lease_expires_at is not null and checkpoint_row.lease_expires_at > authority_expiry)
+     or (checkpoint_row.not_before is not null and checkpoint_row.not_before >= authority_expiry) then
+    raise exception 'RNI source workflow checkpoint outlived parent authority'
+      using errcode = 'check_violation', constraint = 'rni_source_workflow_commit_fence';
+  end if;
+  return null;
+end;
+$$;
+
+create constraint trigger rni_source_workflow_delivery_checkpoint_valid
+  after insert on rni_source_workflow_delivery deferrable initially deferred
+  for each row execute function rni_validate_source_workflow_checkpoint();
+create constraint trigger rni_source_workflow_checkpoint_authority_valid
+  after insert or update on rni_source_workflow_checkpoint deferrable initially deferred
+  for each row execute function rni_validate_source_workflow_checkpoint();
+
+comment on table rni_source_workflow_delivery is
+  'D-RNI-34 immutable binding to one exact source retrieval, content version and source outbox event under a v2 platform lease.';
+comment on table rni_source_workflow_checkpoint is
+  'D-RNI-34 bounded interpretation lifecycle. Every write is deferred-fenced against the exact parent platform lease at commit.';
+
+-- Canonical JSON used by hashRniModelInput: code-unit-sorted object keys, array order retained,
+-- and ordinary JSON scalar spellings without insignificant whitespace.
+create or replace function rni_model_input_canonical(value jsonb) returns text
+language plpgsql immutable strict as $$
+declare
+  kind text := jsonb_typeof(value);
+  result text;
+begin
+  if kind in ('null', 'boolean', 'number') then return value::text; end if;
+  if kind = 'string' then return to_jsonb(value #>> '{}')::text; end if;
+  if kind = 'array' then
+    select '[' || coalesce(string_agg(rni_model_input_canonical(item), ',' order by ordinal), '') || ']'
+      into result from jsonb_array_elements(value) with ordinality entries(item, ordinal);
+    return result;
+  end if;
+  if kind = 'object' then
+    select '{' || coalesce(string_agg(to_jsonb(key)::text || ':' ||
+      rni_model_input_canonical(item), ',' order by key collate "C"), '') || '}'
+      into result from jsonb_each(value) entries(key, item);
+    return result;
+  end if;
+  raise exception 'RNI model input contains unsupported JSON' using errcode = 'check_violation';
+end;
+$$;
+
+create table rni_full_universe_publication_item (
+  run_id                        uuid        not null,
+  ordinal                       integer     not null,
+  security_id                   uuid        not null,
+  plan_hash                     text        not null,
+  run_manifest_hash             text        not null,
+  universe_version              bigint      not null,
+  assessment_cutoff_at          timestamptz not null,
+  member_set_hash               text        not null,
+  cited_synthesis_id            uuid        not null,
+  cited_synthesis_result_hash   text        not null,
+  convergence_artifact_id       uuid        not null,
+  convergence_artifact_hash     text        not null,
+  status                        text        not null,
+  stage_attempt                 integer     not null,
+  stage_token                   uuid        not null,
+  stage_acquired_at             timestamptz not null,
+  stage_expires_at              timestamptz not null,
+  staged_at                     timestamptz not null default clock_timestamp(),
+
+  primary key (run_id, security_id),
+  constraint rni_full_universe_item_ordinal_unique unique (run_id, ordinal),
+  constraint rni_full_universe_item_synthesis_unique unique (run_id, cited_synthesis_id),
+  constraint rni_full_universe_item_convergence_unique unique (run_id, convergence_artifact_id),
+  constraint rni_full_universe_item_manifest_member_fk foreign key (run_id, ordinal, security_id)
+    references rni_worker_run_manifest_member (run_id, ordinal, security_id),
+  constraint rni_full_universe_item_manifest_fk foreign key (run_id, run_manifest_hash)
+    references rni_worker_run_manifest (run_id, run_manifest_hash),
+  constraint rni_full_universe_item_cited_fk foreign key (
+    cited_synthesis_id, run_id, security_id, cited_synthesis_result_hash,
+    convergence_artifact_id
+  ) references rni_cited_synthesis_artifact (
+    id, run_id, security_id, result_hash, convergence_artifact_id
+  ),
+  constraint rni_full_universe_item_convergence_fk foreign key (
+    convergence_artifact_id, run_id, security_id, convergence_artifact_hash
+  ) references rni_convergence_artifact (id, run_id, security_id, artifact_hash),
+  constraint rni_full_universe_item_hash_check check (
+    plan_hash ~ '^[a-f0-9]{64}$' and run_manifest_hash ~ '^[a-f0-9]{64}$'
+    and member_set_hash ~ '^[a-f0-9]{64}$'
+    and cited_synthesis_result_hash ~ '^[a-f0-9]{64}$'
+    and convergence_artifact_hash ~ '^[a-f0-9]{64}$'
+  ),
+  constraint rni_full_universe_item_status_check
+    check (status in ('complete', 'partial', 'insufficient')),
+  constraint rni_full_universe_item_attempt_check check (stage_attempt between 1 and 3),
+  constraint rni_full_universe_item_window_check check (
+    stage_expires_at > stage_acquired_at and staged_at >= stage_acquired_at
+    and staged_at < stage_expires_at
+  )
+);
+
+create table rni_full_universe_publication_release (
+  run_id                 uuid        primary key,
+  plan_hash              text        not null,
+  run_manifest_hash      text        not null,
+  universe_version       bigint      not null,
+  assessment_cutoff_at   timestamptz not null,
+  expected_member_count  integer     not null,
+  member_set_hash        text        not null,
+  member_index_hash      text        not null,
+  reddit_slice_id        uuid        not null,
+  reddit_status          text        not null,
+  reddit_outcome_hash    text        not null,
+  x_slice_id             uuid        not null,
+  x_status               text        not null,
+  x_outcome_hash         text        not null,
+  complete_count         integer     not null,
+  partial_count          integer     not null,
+  insufficient_count     integer     not null,
+  status                 text        not null,
+  aggregate_hash         text        not null,
+  aggregate_json         jsonb       not null,
+  combined_attempt       integer     not null,
+  combined_token         uuid        not null,
+  combined_acquired_at   timestamptz not null,
+  combined_expires_at    timestamptz not null,
+  released_at            timestamptz not null,
+
+  constraint rni_full_universe_release_manifest_fk foreign key (run_id, run_manifest_hash)
+    references rni_worker_run_manifest (run_id, run_manifest_hash),
+  constraint rni_full_universe_release_reddit_slice_fk foreign key (reddit_slice_id)
+    references rni_platform_slice (id),
+  constraint rni_full_universe_release_x_slice_fk foreign key (x_slice_id)
+    references rni_platform_slice (id),
+  constraint rni_full_universe_release_hash_check check (
+    plan_hash ~ '^[a-f0-9]{64}$' and run_manifest_hash ~ '^[a-f0-9]{64}$'
+    and member_set_hash ~ '^[a-f0-9]{64}$' and member_index_hash ~ '^[a-f0-9]{64}$'
+    and reddit_outcome_hash ~ '^[a-f0-9]{64}$' and x_outcome_hash ~ '^[a-f0-9]{64}$'
+    and aggregate_hash ~ '^[a-f0-9]{64}$'
+  ),
+  constraint rni_full_universe_release_member_check check (
+    expected_member_count between 501 and 600 and complete_count >= 0 and partial_count >= 0
+    and insufficient_count >= 0
+    and complete_count + partial_count + insufficient_count = expected_member_count
+  ),
+  constraint rni_full_universe_release_status_check
+    check (status in ('complete', 'partial', 'insufficient')),
+  constraint rni_full_universe_release_slice_status_check check (
+    reddit_status in ('complete', 'partial', 'failed', 'unavailable')
+    and x_status in ('complete', 'partial', 'failed', 'unavailable')
+  ),
+  constraint rni_full_universe_release_slice_distinct check (reddit_slice_id <> x_slice_id),
+  constraint rni_full_universe_release_attempt_check check (combined_attempt between 1 and 3),
+  constraint rni_full_universe_release_window_check check (
+    combined_expires_at > combined_acquired_at and released_at >= combined_acquired_at
+    and released_at < combined_expires_at
+  ),
+  constraint rni_full_universe_release_json_check check (jsonb_typeof(aggregate_json) = 'object')
+);
+
+-- The historical/manual path commits its receipt while the combined lease is still running.
+-- A v2 full-universe run instead inserts the receipt, terminal execution projection, and release
+-- in one transaction; its deferred fence therefore validates the accepted terminal identity.
+create or replace function rni_validate_orchestration_publication_receipt() returns trigger
+language plpgsql as $$
+declare
+  execution_row rni_orchestration_execution%rowtype;
+  release_row rni_full_universe_publication_release%rowtype;
+begin
+  select * into execution_row from rni_orchestration_execution
+   where run_id = new.run_id for update;
+  select * into release_row from rni_full_universe_publication_release where run_id = new.run_id;
+  if execution_row.run_id is null
+     or execution_row.plan_hash is distinct from new.plan_hash
+     or execution_row.deadline <= clock_timestamp()
+     or new.expires_at <= clock_timestamp()
+     or new.expires_at > execution_row.deadline
+     or execution_row.record #>> '{combined,publication,token}' is distinct from new.token::text
+     or (execution_row.record #>> '{combined,publication,attempt}')::integer
+       is distinct from new.attempt
+     or (execution_row.record #>> '{combined,publication,acquiredAt}')::timestamptz
+       is distinct from new.acquired_at
+     or (execution_row.record #>> '{combined,publication,expiresAt}')::timestamptz
+       is distinct from new.expires_at
+     or (execution_row.record #>> '{combined,publication,committedAt}')::timestamptz
+       is distinct from new.committed_at
+     or execution_row.record #>> '{combined,publication,artifact,runId}'
+       is distinct from new.run_id::text
+     or execution_row.record #>> '{combined,publication,artifact,planHash}'
+       is distinct from new.plan_hash
+     or execution_row.record #>> '{combined,publication,artifact,status}'
+       is distinct from new.status
+     or execution_row.record #>> '{combined,publication,artifact,artifactHash}'
+       is distinct from new.artifact_hash
+     or execution_row.record #> '{combined,publication,artifact}' is distinct from new.artifact
+     or (
+       release_row.run_id is null and (
+         execution_row.record #>> '{combined,status}' is distinct from 'running'
+         or execution_row.record #>> '{combined,lease,token}' is distinct from new.token::text
+         or (execution_row.record #>> '{combined,attempt}')::integer is distinct from new.attempt
+         or (execution_row.record #>> '{combined,lastAttemptAt}')::timestamptz
+           is distinct from new.acquired_at
+         or (execution_row.record #>> '{combined,lease,expiresAt}')::timestamptz
+           is distinct from new.expires_at
+       )
+     )
+     or (
+       release_row.run_id is not null and (
+         execution_row.record ->> 'version' is distinct from 'rni-execution-v2'
+         or execution_row.record #>> '{combined,status}' is distinct from 'complete'
+         or execution_row.record #> '{combined,lease}' is distinct from 'null'::jsonb
+         or execution_row.record #>> '{combined,outcomeToken}' is distinct from new.token::text
+         or release_row.plan_hash is distinct from new.plan_hash
+         or release_row.aggregate_hash is distinct from new.artifact_hash
+         or release_row.status is distinct from new.status
+         or release_row.combined_token is distinct from new.token
+         or release_row.combined_attempt is distinct from new.attempt
+         or release_row.combined_acquired_at is distinct from new.acquired_at
+         or release_row.combined_expires_at is distinct from new.expires_at
+         or release_row.released_at is distinct from new.committed_at
+       )
+     ) then
+    raise exception 'RNI publication receipt is outside its exact execution fence'
+      using errcode = 'check_violation', constraint = 'rni_orchestration_publication_fence';
+  end if;
+  return null;
+end;
+$$;
+
+create or replace function rni_validate_full_universe_publication_item() returns trigger
+language plpgsql as $$
+declare
+  execution_row rni_orchestration_execution%rowtype;
+  manifest_row rni_worker_run_manifest%rowtype;
+  summary_status text;
+  value_partition text;
+begin
+  select partition into value_partition from rni_orchestration_execution where run_id = new.run_id;
+  perform pg_advisory_xact_lock(hashtextextended('rni-ai-budget:' || value_partition, 0));
+  perform pg_advisory_xact_lock(hashtextextended('rni-orchestration:' || value_partition, 0));
+  select * into execution_row from rni_orchestration_execution where run_id = new.run_id for update;
+  select * into manifest_row from rni_worker_run_manifest where run_id = new.run_id;
+  select status into summary_status from rni_combined_summary where id = new.cited_synthesis_id;
+  if execution_row.run_id is null or manifest_row.run_id is null
+     or manifest_row.scope_kind is distinct from 'full_universe'
+     or execution_row.record ->> 'version' is distinct from 'rni-execution-v2'
+     or execution_row.plan_hash is distinct from new.plan_hash
+     or execution_row.record ->> 'runManifestHash' is distinct from new.run_manifest_hash
+     or manifest_row.universe_version is distinct from new.universe_version
+     or manifest_row.member_set_hash is distinct from new.member_set_hash
+     or (manifest_row.manifest #>> '{windows,assessmentCutoffAt}')::timestamptz
+       is distinct from new.assessment_cutoff_at
+     or execution_row.record #>> '{run,status}' is distinct from 'running'
+     or execution_row.record #>> '{combined,status}' is distinct from 'running'
+     or (execution_row.record #>> '{combined,attempt}')::integer is distinct from new.stage_attempt
+     or (execution_row.record #>> '{combined,lease,token}')::uuid is distinct from new.stage_token
+     or (execution_row.record #>> '{combined,lastAttemptAt}')::timestamptz is distinct from new.stage_acquired_at
+     or (execution_row.record #>> '{combined,lease,expiresAt}')::timestamptz is distinct from new.stage_expires_at
+     or clock_timestamp() >= least(execution_row.deadline, new.stage_expires_at)
+     or summary_status is distinct from new.status then
+    raise exception 'RNI full-universe item is outside its exact manifest or combined lease'
+      using errcode = 'check_violation', constraint = 'rni_full_universe_item_fence';
+  end if;
+  return null;
+end;
+$$;
+
+create constraint trigger rni_full_universe_publication_item_valid
+  after insert on rni_full_universe_publication_item deferrable initially deferred
+  for each row execute function rni_validate_full_universe_publication_item();
+
+create or replace function rni_validate_full_universe_publication_release() returns trigger
+language plpgsql as $$
+declare
+  execution_row rni_orchestration_execution%rowtype;
+  manifest_row rni_worker_run_manifest%rowtype;
+  receipt_row rni_orchestration_publication_receipt%rowtype;
+  run_status text;
+  job_status text;
+  staged_count integer;
+  complete_count integer;
+  partial_count integer;
+  insufficient_count integer;
+begin
+  select * into execution_row from rni_orchestration_execution where run_id = new.run_id for update;
+  select * into manifest_row from rni_worker_run_manifest where run_id = new.run_id;
+  select * into receipt_row from rni_orchestration_publication_receipt where run_id = new.run_id;
+  select status into run_status from rni_run where id = new.run_id;
+  select status into job_status from job_run where id = execution_row.job_run_id;
+  select count(*)::integer,
+         count(*) filter (where status = 'complete')::integer,
+         count(*) filter (where status = 'partial')::integer,
+         count(*) filter (where status = 'insufficient')::integer
+    into staged_count, complete_count, partial_count, insufficient_count
+    from rni_full_universe_publication_item where run_id = new.run_id;
+  if execution_row.run_id is null or manifest_row.run_id is null or receipt_row.run_id is null
+     or manifest_row.scope_kind <> 'full_universe'
+     or execution_row.plan_hash <> new.plan_hash
+     or execution_row.record ->> 'runManifestHash' <> new.run_manifest_hash
+     or manifest_row.universe_version <> new.universe_version
+     or manifest_row.member_set_hash <> new.member_set_hash
+     or manifest_row.member_count <> new.expected_member_count
+     or staged_count <> new.expected_member_count
+     or complete_count <> new.complete_count or partial_count <> new.partial_count
+     or insufficient_count <> new.insufficient_count
+     or exists (
+       select 1 from rni_worker_run_manifest_member member
+        left join rni_full_universe_publication_item item
+          on item.run_id = member.run_id and item.ordinal = member.ordinal
+         and item.security_id = member.security_id
+       where member.run_id = new.run_id and item.run_id is null
+     )
+     or execution_row.record #>> '{combined,status}' <> 'complete'
+     or execution_row.record #> '{combined,lease}' is distinct from 'null'::jsonb
+     or execution_row.record #>> '{combined,outcomeToken}' <> new.combined_token::text
+     or execution_row.remaining_admission_usd <> 0 or execution_row.released_at is null
+     or receipt_row.plan_hash <> new.plan_hash or receipt_row.artifact_hash <> new.aggregate_hash
+     or receipt_row.status <> new.status or receipt_row.token <> new.combined_token
+     or receipt_row.attempt <> new.combined_attempt
+     or receipt_row.committed_at <> new.released_at
+     or run_status <> (case when new.status = 'insufficient' then 'failed' else new.status end)
+     or job_status <> (case when new.status = 'complete' then 'succeeded'
+          when new.status = 'partial' then 'degraded' else 'failed' end)
+     or new.aggregate_json ->> 'aggregateHash' <> new.aggregate_hash
+     or new.aggregate_hash <> encode(sha256(convert_to(rni_model_input_canonical(
+       new.aggregate_json - 'aggregateHash'), 'UTF8')), 'hex') then
+    raise exception 'RNI full-universe release is not one exact atomic visible set'
+      using errcode = 'check_violation', constraint = 'rni_full_universe_release_exact';
+  end if;
+  return null;
+end;
+$$;
+
+create constraint trigger rni_full_universe_publication_release_valid
+  after insert on rni_full_universe_publication_release deferrable initially deferred
+  for each row execute function rni_validate_full_universe_publication_release();
+
+create trigger rni_full_universe_publication_item_append_only
+  before update or delete on rni_full_universe_publication_item
+  for each row execute function reject_mutation();
+create trigger rni_full_universe_publication_release_append_only
+  before update or delete on rni_full_universe_publication_release
+  for each row execute function reject_mutation();
+
+comment on table rni_full_universe_publication_item is
+  'D-RNI-33 invisible per-member staging checkpoint under the exact combined lease.';
+comment on table rni_full_universe_publication_release is
+  'D-RNI-33 atomic completeness/visibility index. It contains no aggregate stance.';

@@ -86,6 +86,7 @@ const shape = {
   // Model access (D-06: absent today, which is why Wave 3 is blocked)
   MODEL_TRANSPORT_DEFAULT: modelTransport.default('vercel_gateway'),
   AI_GATEWAY_API_KEY: z.string().min(1).optional(),
+  AI_GATEWAY_BASE_URL: z.string().url().default('https://ai-gateway.vercel.sh/v1'),
   OPENAI_API_KEY: z.string().min(1).optional(),
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
@@ -184,6 +185,18 @@ export const envSchema = z.object(shape).superRefine((value, ctx) => {
       code: z.ZodIssueCode.custom,
       path: ['AZURE_OPENAI_ENDPOINT'],
       message: 'is required when MODEL_TRANSPORT_DEFAULT=azure_foundry',
+    });
+  }
+
+  // D-RNI-21 is deliberately independent from the legacy/global model transport. RNI defaults
+  // to OpenAI Direct even when the rest of the application uses Gateway, so a live RNI process
+  // must always be able to construct the Direct adapter. Gateway remains an optional future-run
+  // selection and is validated when that immutable route is loaded.
+  if (value.OPENAI_API_KEY === undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['OPENAI_API_KEY'],
+      message: 'is required for the RNI OpenAI Direct default when PROVIDER_MODE=live',
     });
   }
 });

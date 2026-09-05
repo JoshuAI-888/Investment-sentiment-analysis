@@ -5,6 +5,45 @@ This runbook contains the actions that cannot safely be inferred or automated. I
 **Production approver:** `joshuai`  
 **Confirmed scope:** isolated RNI vertical slice; Reddit through OpenAI Web Search; X independent; current FMP S&P 500 universe; read-only MCP skeleton.
 
+## Current G6 closeout status
+
+The local integration is not an RNI 1.0 release candidate yet. New manual ticker and full-universe
+executions are admitted only with an immutable v2 worker manifest. Typed compiled-authority
+verification, manifest-bound source checkpoints, exact full-universe artifact selection, atomic
+release/receipt/read visibility and the safe production-executor shell pass locally, including a
+501-member PostgreSQL closeout. Crossed full-universe slice authority and v2 citation/evidence
+visibility bypasses are closed: source registration and analytics bind the exact manifest rights,
+evidence loading requires live child and parent execution authority, and the final full-universe
+commit reselects/exact-compares every member inside the same transaction before any release write.
+A rights withdrawal after preparation therefore fails closed.
+`getProductionRniWorkerExecutor()` still returns unavailable because the real
+acquisition/analysis/publication pipeline has not been composed.
+
+Do not request G7 or G8, enable the production heartbeat, or describe RNI 1.0 as complete until:
+
+- `joshuai` approves the D-RNI-34 repeated/changed-content identity semantics and the resulting
+  Migration `0024` correction passes clean/forward PostgreSQL and ephemeral Neon gates;
+- `joshuai` explicitly approves the D-RNI-33 self-verifying database-validator rewrite and the
+  database independently reconstructs member slices/status/hashes rather than trusting release
+  JSON supplied by the caller;
+- `joshuai` approves one semantic-completion identity for a source that resolves to multiple
+  securities, including whether comparative relationships participate in checkpoint completion;
+- `joshuai` approves a manifest-bound acquisition policy for query/chunk allocation, candidate
+  ranking/deduplication and complete/partial/failed coverage aggregation across the 501 members;
+- owner authority values and an immutable build identity are seeded through a reviewed command,
+  and the non-fixture executor is fully composed;
+- `joshuai` approves exact deterministic formulas and normalization for all seven confidence
+  components and four penalties, plus manifest-bound eval, narrative-readiness and
+  catalyst-readiness lineage; until then production confidence must remain unavailable;
+- production-equivalent credentials and environment values are present and the live Reddit Web
+  Search, X, FMP, Direct/Gateway, QStash and preview evidence completes G7; and
+- `joshuai` gives the separate G8 production approval.
+
+The latest local evidence is RNI unit 708/708 across 45 files, contract 38/38, eval 18 passed with one
+credential-gated live skip, and all tracked RNI PostgreSQL 362/362 across 32 files. The narrow `delivery.id`
+trigger typo is fixed; the release tests explicitly verify normal PostgreSQL origin mode before
+the D-RNI-33 path. The provisional workflow adapter is not part of the accepted production path.
+
 ## 1. Human-owned decisions before deployment
 
 Record owner, reviewer, date, and evidence for:
@@ -17,6 +56,29 @@ Record owner, reviewer, date, and evidence for:
 - theme taxonomy and confidence/guardrail thresholds;
 - user roles, identity provider, data-retention periods, and incident owners;
 - demo disclaimers and confirmation that trading/execution is out of scope.
+
+Owner-approved RNI baseline, 2026-09-05:
+
+- OpenAI Direct is the default route.
+- Reddit discovery, security relationship resolution and semantic classification use
+  `gpt-5.6-terra` with low reasoning effort.
+- Catalyst verification and challenger calls use `gpt-5.6-sol` with low reasoning effort.
+- Gateway is an explicit parity route to the same OpenAI model family. It has no silent
+  cross-provider or unevaluated-model fallback; I10 must validate the configured Gateway slugs.
+- RNI AI-spend hard limits are USD 2 per manual ticker run, USD 25 per full-universe run and USD 50
+  per rolling 24 hours. Warn at USD 300 per calendar month and stop at USD 500.
+- The RNI AI ledger includes model-token and OpenAI Web Search tool charges. X and FMP commercial
+  charges are governed separately. Revisit these limits after the first measured full-universe
+  run; any change creates a later versioned configuration and does not rewrite historical runs.
+- Initial per-call limits are 16,000 input bytes/tokens and 2,000 output tokens for discovery,
+  relationship and classifier; 64,000 input bytes/tokens and 2,000 output tokens for verifier;
+  and 64,000 input bytes/tokens and 1,000 output tokens for challenger. Discovery allows three
+  Web Search calls. Per-call caps are USD 0.15, 0.10, 0.10, 0.20 and 0.20 respectively; every
+  timeout starts at 30 seconds.
+- An admin may edit those bounded task envelopes at `/admin/settings/rni-ai`. Saving only stages
+  an audited successor. `joshuai` must review the exact staged version, capability/price evidence,
+  eval results and impact before separately activating it. The portal does not edit the global
+  run/day/month controls and never changes running or historical calls.
 
 Prohibited for the Milford constrained demo: Bloomberg, FactSet, LSEG/Refinitiv, broker research, institutional feeds, or any source a normal private retail user could not obtain. A convenient API does not make its terms suitable; approve use and redistribution separately.
 
@@ -44,7 +106,7 @@ OPENAI_API_KEY
 OPENAI_PROJECT_ID
 AI_ROUTE_DEFAULT=openai_direct
 AI_GATEWAY_API_KEY                 # optional
-AI_GATEWAY_BASE_URL                # optional
+AI_GATEWAY_BASE_URL                # optional; defaults to https://ai-gateway.vercel.sh/v1
 FMP_API_KEY
 X_BEARER_TOKEN
 QSTASH_TOKEN
@@ -75,6 +137,48 @@ Human/reviewer steps:
 7. Seed versioned default configuration, security master, themes, policies, prompts, and evaluation set.
 8. Verify a publication-to-source lineage query and cross-tenant denial.
 
+Before applying Migration `0024` outside a disposable branch, confirm that both pending schema
+decisions in the G6 status above have explicit owner approval. A passing local suite does not
+authorize the D-RNI-34 content-identity or D-RNI-33 release-validator semantic changes.
+
+### Reviewed RNI worker authority pack
+
+Before activating an RNI configuration, export the owner-reviewed worker authorities to a secure
+JSON file that is not committed to Git. The file must name one existing **draft** `configVersion`,
+all ten config-bound snapshots under `authorities`, all five compiled prompt snapshots under
+`prompts`, and the exact deployment build snapshot under `build`. Every snapshot has exactly
+`version`, `snapshotHash`, and the complete object `value`; no field is defaulted by the command.
+
+The required keys are:
+
+```text
+authorities: source_configuration, reddit_queries, x_queries, rights_policy, ambiguity,
+             taxonomy, classification, analytics, convergence, budget
+prompts:     rni_discovery, rni_relationship, rni_classifier, rni_verification, rni_challenger
+build:       one snapshot whose version equals value.deploymentId
+```
+
+Set `RNI_DEPLOYMENT_ID`, `RNI_COMMIT_SHA`, and `RNI_ARTIFACT_SHA256` to the immutable deployment
+being reviewed. Then run from the repository root:
+
+```bash
+pnpm --dir apps/web rni:seed-worker-authorities /secure/path/reviewed-worker-authorities.json
+```
+
+The command validates every strict source/policy authority, recomputes every snapshot hash,
+recomputes prompt/content/input/output/tool hashes from the compiled application, and matches the
+build to the deployment environment before connecting to PostgreSQL. It then locks the explicit
+draft configuration and writes all sixteen append-only authorities plus ten config bindings in one
+transaction. An active/missing target or a crossed same-version replay aborts the complete
+transaction. Output contains only authority kinds/keys, versions, hashes and inserted/duplicate
+states; inspect it before separately activating the unchanged draft.
+
+The prompt input authority is compiled mechanically from the actual five Zod task schemas; custom
+refinements are stable declarative rule data and function source is never hashed. The completed
+authority correction intentionally changed prompt input hashes. Regenerate the complete authority
+pack with the current build, review every changed prompt/input hash, and obtain fresh approval;
+never reuse a pack or approval created against the earlier hashes.
+
 Neon supports branching for isolated development/testing and pgvector for vector search; validate current operational guidance in [Neon branching](https://neon.com/docs/guides/branching-intro) and [vector search optimisation](https://neon.com/docs/ai/ai-vector-search-optimization).
 
 ## 5. OpenAI configuration
@@ -86,6 +190,26 @@ Neon supports branching for isolated development/testing and pgvector for vector
 5. Run the frozen eval set against exact model/prompt/schema versions.
 6. Run prompt-cache probe and record eligible/cached tokens, latency, cost, and quality.
 7. Do not enable fallback to an unevaluated model.
+8. Verify pre-dispatch worst-case reservation rejects calls that would cross the D-RNI-21 per-run,
+   rolling-day or calendar-month hard limits, and that the monthly warning is observable.
+9. Set `OPENAI_API_KEY` for every live RNI deployment even when the legacy application transport
+   uses Gateway: D-RNI-21 keeps RNI Direct as the independent default route.
+10. If Gateway is selected for a successor configuration, keep the request provider filter pinned
+    to OpenAI, configure no fallback model, and require returned routing metadata to match the exact
+    evaluated OpenAI model. Do not activate a staged successor until I11 live parity evidence and
+    the explicit human approval gate pass.
+11. Seed or discover a complete effective RNI price book before dispatch. Missing model-token or
+    Web Search prices fail closed; Gateway-reported cost is observability evidence, not ledger
+    settlement authority.
+12. Retain the exact Gateway catalogue URL and response hash used for the price book. Catalogue
+    token prices are per token; its OpenAI `web_search` field is normalized from the provider
+    page's USD-per-1,000-search display to USD per search (D-RNI-24). Keep staged route input limits
+    below the recorded first pricing-tier boundary or create a tier-aware successor. Reserve all
+    three discovery searches allowed by the governed prompt.
+13. Use the RNI Settings portal to review the active five aggregate limits. An administrator may
+    lower them only within the D-RNI-21 ceilings and required order; saving activates an audited
+    future-run successor. Confirm a subsequently admitted run snapshots the new limits while an
+    already accepted run and its spend ledger remain unchanged.
 
 ## 6. Sources and discovery
 
@@ -103,7 +227,56 @@ Minimum preferred verification sources are public issuer investor-relations page
 
 For the demo, OpenAI Web Search is the Reddit acquisition path and has no Reddit Data API dependency. Store canonical URL, returned post/body/excerpt and relevant metadata only; never full page HTML. Label excerpt-only captures and sampled coverage. Configure and verify the existing X adapter separately; record its credentials, permitted watch/query scope, rate limits and freshness. X is never a Reddit fallback.
 
-Run an authenticated FMP capability probe against [`/stable/sp500-constituent`](https://site.financialmodelingprep.com/developer/docs/stable/sp-500). Record HTTP status, response schema/count/hash, retrieval time and entitlement result without logging the key. Resolve all members against the canonical security master and stage—but do not activate—the new universe. Activation is blocked on empty, partial, duplicate, ambiguous, unresolved or over-600 membership. `joshuai` reviews the impact preview and activates production. NVDA must be present and is the default UI selection.
+Run an authenticated FMP capability probe against [`/stable/sp500-constituent`](https://site.financialmodelingprep.com/developer/docs/stable/sp-500). Record HTTP status, response schema/count/hash, retrieval time and entitlement result without logging the key.
+
+Before the first current-constituent sync in a clean environment, a human must obtain and review
+an FMP `/stable/profile` export for every candidate constituent. Store the reviewed file in an
+approved secure location, not Git. Its JSON envelope is:
+
+```json
+{
+  "source": "fmp_profile_export",
+  "sourceEndpoint": "/stable/profile",
+  "retrievedAt": "2026-09-05T00:00:00.000Z",
+  "payloadSha256": "sha256-of-the-exact-ordered-securities-array",
+  "securities": [
+    {
+      "symbol": "NVDA",
+      "name": "NVIDIA Corporation",
+      "exchange": "NASDAQ",
+      "sector": "Technology",
+      "industry": "Semiconductors",
+      "cik": "0001045810",
+      "currency": "USD"
+    }
+  ]
+}
+```
+
+The export must contain 501–600 unique symbols including NVDA. Compute `payloadSha256` over the
+exact JSON serialization of the ordered `securities` array, then run from the repository root:
+
+```bash
+pnpm --dir apps/web rni:bootstrap-security-master /secure/path/fmp-profile-export.json production joshuai
+```
+
+The importer is transactional and idempotent by environment plus payload hash. It aborts on a
+hash/count/NVDA/duplicate failure or an ambiguous existing symbol, and emits the import identity,
+inserted count, reused count and replay state. Review that output and its `audit_event` before
+running the constituent sync.
+
+The sync durably claims its environment/idempotency key before dispatching FMP. A concurrent
+request for the same active key receives a retryable conflict with `retryAt`; it does not wait or
+call FMP again. A later request replays the terminal provider, validation or staged outcome. If a
+worker terminates and the claim expires, the next observation records a terminal abandoned-command
+failure without redispatching. Review its command/provider audit before intentionally retrying
+with a new idempotency key. Any provider attempt logged before abandonment remains bound to the
+failed command. Staging and successful command completion commit atomically.
+Resolve all members against the canonical security master and stage—but do not activate—the new
+universe. Activation is blocked on empty, partial, duplicate, ambiguous, unresolved or over-600
+membership. `joshuai` must first approve the exact staged version, then activate that unchanged
+stored membership after reviewing its impact preview. NVDA must be present and is the default UI
+selection.
 
 ## 7. Vercel deployment
 
@@ -111,10 +284,29 @@ Run an authenticated FMP capability probe against [`/stable/sp500-constituent`](
 2. Configure Preview variables with non-production Neon branch and restricted keys.
 3. Deploy Preview; run migration compatibility, health, auth, pipeline fixture, UI, MCP, and accessibility smoke tests.
 4. Configure function regions/timeouts within current plan limits.
-5. Configure the repository's QStash signing keys, heartbeat destination and production job definitions. Do not add Vercel Cron.
-6. Use the existing durable job/queue mechanisms for multi-stage processing. Queue consumers must be idempotent because delivery is at least once; Reddit and X jobs retain independent states.
-7. Add custom domain/TLS and security headers.
-8. Promote exact reviewed deployment to Production.
+5. Configure `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY` and
+   `QSTASH_NEXT_SIGNING_KEY` as server-only values. Set `APP_BASE_URL` to the exact public origin;
+   QStash signs the exact `${APP_BASE_URL}/api/internal/rni/worker` destination. Rotate by placing
+   the incoming key in `NEXT`, deploying, then promoting it to `CURRENT` only after both-key
+   verification passes. Never print either key or return it from an API.
+6. Configure a separate random `INTERNAL_DISPATCH_SECRET` of at least 16 characters. The external
+   heartbeat calls `POST /api/internal/rni/dispatch` with `Authorization: Bearer <secret>`. Keep
+   this secret out of QStash message bodies, portal settings and logs. Do not add Vercel Cron.
+7. Provision the environment's trusted `rni-manual:<environment>` and
+   `rni-scheduled:<environment>` job definitions through the application helper. Confirm the
+   scheduled job remains full-universe, skip-concurrency, zero-jitter and free of caller-supplied
+   dependencies or active windows.
+8. Do not enable the heartbeat until the reviewed production worker executor is fully composed.
+   The current safe shell verifies the immutable v2 manifest, compiled authorities, parent lease
+   and exact platform slice, but `getProductionRniWorkerExecutor()` intentionally returns
+   unavailable while the real acquisition/analysis/publication dependencies are absent. Live
+   entry points must continue to fail closed before provider effects.
+9. Use the existing durable job/queue mechanisms for multi-stage processing. Queue consumers must
+   be idempotent because delivery is at least once; Reddit and X jobs retain independent states.
+   A 503 from a busy/deferred worker is retryable; terminal duplicate, stale or expired deliveries
+   are acknowledged without rerunning effects.
+10. Add custom domain/TLS and security headers.
+11. Promote exact reviewed deployment to Production.
 
 ## 8. Initial schedules
 
@@ -127,7 +319,11 @@ Recommended demo default:
 - explicit maximum sources, search calls, tokens, runtime, and cost;
 - notifications only for failure, staleness, budget breach, or required human action.
 
-Use the portal schedule preview to verify next five local and UTC times, including daylight-saving boundaries. Trigger `Run now` once and confirm coalescing against the next scheduled run.
+Use the portal schedule preview to verify next five local and UTC times, including daylight-saving
+boundaries. Intervals must be 300–31,536,000 seconds; cron is five-field and must not produce
+adjacent preview fires less than five minutes apart. Saving or resuming advances the next due time
+from the save transaction; missed periods are not backfilled. Trigger `Run now` once and confirm
+coalescing against the next scheduled run.
 
 ## 9. MCP deployment
 
@@ -142,6 +338,12 @@ Use the portal schedule preview to verify next five local and UTC times, includi
 ## 10. Release verification
 
 Run the full story in Production or a production-equivalent environment:
+
+Precondition: G6 is complete, both approved schema corrections have passed clean/forward and
+ephemeral-Neon verification, exact owner authority/build identities are recorded, and the
+production executor factory is non-null. The approved confidence formula/readiness lineage and
+current regenerated prompt-authority pack must also be present. Do not substitute the provisional
+workflow adapter or caller-declared release JSON for those checks.
 
 1. Search a named ticker/company.
 2. Start a bounded full run using OpenAI Direct.
