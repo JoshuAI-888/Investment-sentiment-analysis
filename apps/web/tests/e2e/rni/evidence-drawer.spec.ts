@@ -5,7 +5,7 @@ test.describe('RNI evidence drawer', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto('/rni');
+    await page.goto('/rni/fixture');
 
     const controls = await page
       .locator('[data-rni-citation-id="00000000-0000-4000-8000-000000000014"]')
@@ -36,7 +36,7 @@ test.describe('RNI evidence drawer', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto('/rni');
+    await page.goto('/rni/fixture');
     await page
       .locator('[data-rni-radar-card="NVDA"] [data-rni-platform="x"] [data-rni-citation-id]')
       .first()
@@ -59,7 +59,7 @@ test.describe('RNI evidence drawer', () => {
   test('opens a Reddit dimension citation without using the citation ID as a source ID', async ({
     page,
   }) => {
-    await page.goto('/rni/security/nvda');
+    await page.goto('/rni/fixture/security/nvda');
     await page
       .locator(
         '[data-rni-detail-platform="reddit"] [data-rni-dimension="company_fundamentals"] [data-rni-citation-id]',

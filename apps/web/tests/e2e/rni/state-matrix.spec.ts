@@ -4,7 +4,7 @@ test.describe('RNI run and source-state matrix', () => {
   test('shows independent platform freshness and honest partial, refreshing, stale, and failed states', async ({
     page,
   }) => {
-    await page.goto('/rni/status');
+    await page.goto('/rni/fixture/status');
     await expect(page.locator('[data-rni-state-matrix]')).toContainText(
       'Run and source-state matrix',
     );

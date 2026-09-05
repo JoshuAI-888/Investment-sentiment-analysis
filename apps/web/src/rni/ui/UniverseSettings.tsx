@@ -26,7 +26,7 @@ export function UniverseSettings({
   searchResult,
 }: {
   active: RniActiveUniverse;
-  staged: RniStagedUniversePreview;
+  staged: RniStagedUniversePreview | null;
   searchResult: RniUniverseSearchResult;
 }) {
   const activePresentation = presentActiveUniverseVersion(active.version);
@@ -93,48 +93,55 @@ export function UniverseSettings({
         )}
       </section>
 
-      <section>
-        <h2>Staged preview {staged.stagedVersion.id}</h2>
-        <p>
-          Active version {staged.activeVersion.id} → staged version {staged.stagedVersion.id}
-        </p>
-        <p>
-          {staged.added.length} added · {staged.removed.length} removed ·{' '}
-          {staged.stagedVersion.securityCount} members
-        </p>
-        <p>
-          Staged source: FMP S&amp;P 500 constituent · Retrieved at:{' '}
-          {staged.stagedVersion.retrievedAt}
-        </p>
-        <div>
-          <h3>Added members</h3>
-          {staged.added.length > 0 ? (
-            <ul>
-              {staged.added.map((member) => (
-                <li key={member.id}>
-                  {member.ticker} — {member.companyName} · {member.exchange}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No members added.</p>
-          )}
-        </div>
-        <div>
-          <h3>Removed members</h3>
-          {staged.removed.length > 0 ? (
-            <ul>
-              {staged.removed.map((member) => (
-                <li key={member.id}>
-                  {member.ticker} — {member.companyName} · {member.exchange}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No members removed.</p>
-          )}
-        </div>
-      </section>
+      {staged ? (
+        <section>
+          <h2>Staged preview {staged.stagedVersion.id}</h2>
+          <p>
+            Active version {staged.activeVersion.id} → staged version {staged.stagedVersion.id}
+          </p>
+          <p>
+            {staged.added.length} added · {staged.removed.length} removed ·{' '}
+            {staged.stagedVersion.securityCount} members
+          </p>
+          <p>
+            Staged source: FMP S&amp;P 500 constituent · Retrieved at:{' '}
+            {staged.stagedVersion.retrievedAt}
+          </p>
+          <div>
+            <h3>Added members</h3>
+            {staged.added.length > 0 ? (
+              <ul>
+                {staged.added.map((member) => (
+                  <li key={member.id}>
+                    {member.ticker} — {member.companyName} · {member.exchange}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No members added.</p>
+            )}
+          </div>
+          <div>
+            <h3>Removed members</h3>
+            {staged.removed.length > 0 ? (
+              <ul>
+                {staged.removed.map((member) => (
+                  <li key={member.id}>
+                    {member.ticker} — {member.companyName} · {member.exchange}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No members removed.</p>
+            )}
+          </div>
+        </section>
+      ) : (
+        <section>
+          <h2>Staged preview</h2>
+          <p>No staged universe is awaiting review.</p>
+        </section>
+      )}
     </main>
   );
 }

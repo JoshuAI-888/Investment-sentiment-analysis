@@ -5,7 +5,7 @@ test.describe('RNI Retail Radar', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/rni');
+    await page.goto('/rni/fixture');
     await expect(page.locator('[data-rni-radar-row="NVDA"]')).toContainText(
       'NVDA — NVIDIA Corporation',
     );
@@ -27,7 +27,7 @@ test.describe('RNI Retail Radar', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto('/rni');
+    await page.goto('/rni/fixture');
     await expect(page.locator('[data-rni-radar-card="NVDA"]')).toContainText('NVIDIA Corporation');
     expect(await page.locator('table').isVisible()).toBe(false);
     const [scrollWidth, clientWidth] = await page.evaluate(() => [
@@ -40,7 +40,7 @@ test.describe('RNI Retail Radar', () => {
       .first();
     for (
       let index = 0;
-      index < 8 && !(await citation.evaluate((element) => document.activeElement === element));
+      index < 24 && !(await citation.evaluate((element) => document.activeElement === element));
       index += 1
     ) {
       await page.keyboard.press('Tab');

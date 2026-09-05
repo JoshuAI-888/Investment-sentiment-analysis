@@ -2,13 +2,13 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
 const surfaceRoutes = [
-  '/rni',
-  '/rni/security/nvda',
-  '/rni/explorer/nvda',
-  '/rni/status',
-  '/rni/refresh',
-  '/rni/settings/universe',
-  '/rni/settings/ai-route',
+  '/rni/fixture',
+  '/rni/fixture/security/nvda',
+  '/rni/fixture/explorer/nvda',
+  '/rni/fixture/status',
+  '/rni/refresh/fixture',
+  '/rni/fixture/settings/universe',
+  '/rni/fixture/settings/ai-route',
 ] as const;
 
 test('every SURFACE route has one primary heading, no scoped axe violations, and no narrow overflow', async ({
@@ -18,6 +18,7 @@ test('every SURFACE route has one primary heading, no scoped axe violations, and
 
   for (const route of surfaceRoutes) {
     await page.goto(route);
+    await expect(page.locator('[data-rni-read-state="loading"]')).toHaveCount(0);
     await expect(page.locator('main')).toBeVisible();
     await expect(page.locator('main h1')).toHaveCount(1);
 

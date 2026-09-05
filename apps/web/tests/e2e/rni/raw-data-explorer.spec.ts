@@ -4,7 +4,7 @@ test.describe('RNI raw-data explorer', () => {
   test('traverses a summary section through its citation to a bounded source record', async ({
     page,
   }) => {
-    await page.goto('/rni/explorer/nvda');
+    await page.goto('/rni/fixture/explorer/nvda');
     await expect(page.locator('[data-rni-raw-explorer]')).toContainText(
       'NVDA — NVIDIA Corporation',
     );

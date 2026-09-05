@@ -5,7 +5,7 @@ test.describe('RNI security detail', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/rni/security/nvda');
+    await page.goto('/rni/fixture/security/nvda');
 
     await expect(page.locator('[data-rni-security-detail]')).toContainText(
       'NVDA — NVIDIA Corporation',
@@ -24,7 +24,7 @@ test.describe('RNI security detail', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto('/rni/security/nvda');
+    await page.goto('/rni/fixture/security/nvda');
 
     const [scrollWidth, clientWidth] = await page.evaluate(() => [
       document.documentElement.scrollWidth,

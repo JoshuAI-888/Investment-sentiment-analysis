@@ -1,16 +1,52 @@
 'use client';
 
 import { useState } from 'react';
-import { createFixtureRniCommandService } from '../../../fixtures/rni-ui/read-service';
-import type { RniCommandService, RniManualRefreshResult } from '@/rni/contracts';
+import {
+  rniManualRefreshResult,
+  type RniCommandService,
+  type RniManualRefreshRequest,
+  type RniManualRefreshResult,
+} from '@/rni/contracts';
+
+type RefreshScopeContext = Readonly<{
+  universeVersion: string;
+  securityCount: number;
+  defaultSecurity: Readonly<{
+    ticker: string;
+    companyName: string;
+    exchange: string;
+  }>;
+}>;
+
+class HttpRniCommandService implements RniCommandService {
+  async requestManualRefresh(request: RniManualRefreshRequest) {
+    const response = await fetch('/api/rni/runs', {
+      body: JSON.stringify({ scope: request.scope }),
+      headers: {
+        'content-type': 'application/json',
+        'idempotency-key': request.idempotencyKey,
+      },
+      method: 'POST',
+    });
+    if (!response.ok) throw new Error('RNI refresh request failed');
+    const payload: unknown = await response.json();
+    return rniManualRefreshResult.parse(
+      typeof payload === 'object' && payload !== null && 'data' in payload
+        ? (payload as { data: unknown }).data
+        : payload,
+    );
+  }
+}
 
 export function ManualRefreshControls({
   service: injectedService,
+  scopeContext,
 }: {
   service?: RniCommandService;
+  scopeContext: RefreshScopeContext;
 }) {
-  const [fixtureService] = useState(createFixtureRniCommandService);
-  const service = injectedService ?? fixtureService;
+  const [httpService] = useState(() => new HttpRniCommandService());
+  const service = injectedService ?? httpService;
   const [pending, setPending] = useState<string | null>(null);
   const [result, setResult] = useState<RniManualRefreshResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,12 +69,16 @@ export function ManualRefreshControls({
     <main data-rni-refresh-controls className="mx-auto max-w-3xl space-y-4 p-4 sm:p-8">
       <h1 className="text-3xl font-semibold">Manual refresh</h1>
       <p>
-        NVDA — NVIDIA Corporation · NASDAQ. Refreshes use one idempotency key per requested scope.
+        {scopeContext.defaultSecurity.ticker} — {scopeContext.defaultSecurity.companyName} ·{' '}
+        {scopeContext.defaultSecurity.exchange}. Refreshes use one idempotency key per requested
+        scope.
       </p>
       <section aria-labelledby="rni-nvda-refresh">
         <h2 id="rni-nvda-refresh">NVDA refresh</h2>
         <p id="rni-nvda-scope-preview">
-          Scope preview: NVDA — NVIDIA Corporation · NASDAQ · rni-universe-fixture-v1
+          Scope preview: {scopeContext.defaultSecurity.ticker} —{' '}
+          {scopeContext.defaultSecurity.companyName} · {scopeContext.defaultSecurity.exchange} ·{' '}
+          {scopeContext.universeVersion}
         </p>
         <button
           type="button"
@@ -52,7 +92,8 @@ export function ManualRefreshControls({
       <section aria-labelledby="rni-full-universe-refresh">
         <h2 id="rni-full-universe-refresh">Full-universe refresh</h2>
         <p id="rni-full-universe-scope-preview">
-          Scope preview: 501 active securities · rni-universe-fixture-v1
+          Scope preview: {scopeContext.securityCount} active securities ·{' '}
+          {scopeContext.universeVersion}
         </p>
         <button
           type="button"

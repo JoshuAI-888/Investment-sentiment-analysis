@@ -1,32 +1,54 @@
+import { redirect } from 'next/navigation';
 import {
-  createFixtureRniReadService,
-  type RniUiFixtureState,
-} from '../../../../fixtures/rni-ui/read-service';
-import { rniFixtureIds } from '@/rni/testing/reference-fixtures';
-import { RniStateMatrix, type RniStateMatrixEntry } from '@/rni/ui/RniStateMatrix';
+  PasswordChangeRequiredError,
+  requireUser,
+  UnauthenticatedError,
+} from '@/services/auth';
+import {
+  createLiveRniReadService,
+  findLatestRniRunId,
+  rniEnvironment,
+} from '@/rni/read-model';
+import { ReadSurfaceState } from '@/rni/ui/ReadSurfaceState';
+import { RniStateMatrix } from '@/rni/ui/RniStateMatrix';
 
-const stateLabels: Readonly<Record<RniUiFixtureState, string>> = {
-  complete: 'Complete run',
-  empty: 'Empty evidence',
-  failed: 'Source failures',
-  partial: 'Partial source coverage',
-  refreshing: 'Refreshing sources',
-  stale: 'Stale data',
-  unpublished: 'Unpublished result',
-};
+export const dynamic = 'force-dynamic';
 
-export default async function RniStateMatrixPage() {
-  const entries = await Promise.all(
-    (Object.keys(stateLabels) as RniUiFixtureState[]).map(
-      async (id): Promise<RniStateMatrixEntry> => {
-        const service = createFixtureRniReadService(id);
-        const [run, platformSlices] = await Promise.all([
-          service.getRun(rniFixtureIds.run),
-          service.getPlatformSlices(rniFixtureIds.run),
-        ]);
-        return { id, label: stateLabels[id], run, platformSlices };
-      },
-    ),
-  );
-  return <RniStateMatrix entries={entries} />;
+export default async function RniRunStatusPage() {
+  try {
+    await requireUser();
+  } catch (error) {
+    if (error instanceof UnauthenticatedError) redirect('/sign-in');
+    if (error instanceof PasswordChangeRequiredError) redirect('/change-password');
+    throw error;
+  }
+
+  try {
+    const runId = await findLatestRniRunId(rniEnvironment());
+    if (!runId) {
+      return (
+        <ReadSurfaceState
+          message="No RNI run exists in this environment yet."
+          state="empty"
+          title="Run status"
+        />
+      );
+    }
+    const service = createLiveRniReadService();
+    const [run, platformSlices] = await Promise.all([
+      service.getRun(runId),
+      service.getPlatformSlices(runId),
+    ]);
+    return (
+      <RniStateMatrix entries={[{ id: run.id, label: 'Latest run', run, platformSlices }]} />
+    );
+  } catch {
+    return (
+      <ReadSurfaceState
+        message="Run status could not load a verified database snapshot. Retry after the service recovers."
+        state="unavailable"
+        title="Run status"
+      />
+    );
+  }
 }

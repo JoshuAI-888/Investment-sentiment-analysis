@@ -31,7 +31,7 @@
 | I07 | Compose DATA repositories and ENGINE services | `PASSED` | Atomic intent-scoped cited persistence, exact E05/E06/E07 replay, fill-once challenger input, selected evidence and D-RNI-26 skips; independent final review accepted; coordinator PostgreSQL 123/123 plus E08 54/54 |
 | I07D | Close DATA D10 exact semantic-identity review findings | `PASSED` | Migration 0024 requires one exact SHA-256 E05 output identity per run/security observation; PostgreSQL schema/universe 23/23 |
 | I07E | Compose trusted cited-synthesis persistence boundary | `PASSED` | SQL-free trusted prepare, zero-model accepted replay and opaque-preparation atomic commit; composition 13/13, independent re-review PASS |
-| I08 | Compose SURFACE routes/nav/API with auth | `IN_PROGRESS` | Isolated live-surface builder starts from the coordinator checkpoint; authenticated preview e2e remains the gate |
+| I08 | Compose SURFACE routes/nav/API with auth | `PASSED` | Accepted PostgreSQL read model plus authenticated production pages/APIs, guarded fixture demos, live route settings, shared nav and honest states; PostgreSQL 48/48, focused unit 28/28, build/bundle/type/lint pass; expanded Chromium 17/18 then corrected audit 2/2 |
 | I09 | Wire QStash jobs/manual idempotent refresh | `IN_PROGRESS` | Isolated orchestration builder starts from the coordinator checkpoint; signed redelivery/double-click tests remain the gate |
 | I10 | Seed RNI Direct routes and optional Gateway selection | `PASSED` | Direct-default/Gateway-parity routing, append-only capability/price evidence, budgets and admin-staged task envelopes pass; live parity remains I11 |
 | I10A | Enforce balanced runtime model policy and exact route lineage | `PASSED` | Direct default, five-task Terra/Sol low mapping, fresh capabilities, Gateway provider/canonical identity and stable cache semantics; unit/contract/eval regression and independent review pass |
@@ -329,6 +329,36 @@
 - **Remaining composition:** I09 must call the transaction-bound writer seam under its combined
   lease and I10 remains the only provider/spend recorder. Live credential proof remains I11.
 
+## I08 final integration handoff
+
+- **Integrated commits:** live PostgreSQL reads `9e8625a`, replay/scope correction `edfb2ba`,
+  fixture hydration regression `e60ecf2`, and atomic AI-route successor settings `fbd0697`;
+  coordinator page/API/navigation composition is recorded with this handoff.
+- **Behaviour:** every production RNI page calls its own member or administrator authorization
+  gate and reads the environment-bound PostgreSQL snapshot service. Radar, security detail and
+  evidence explorer retain independent Reddit/X results, per-source freshness and exact
+  citation-to-source traversal. Run status is live; manual refresh, universe and AI-route controls
+  are admin-only. Read APIs return the frozen error envelope and never expose storage-private
+  provider metadata. Route changes lock the active configuration, validate fresh route
+  capabilities and deployment credential presence, clone and activate one audited successor for
+  future runs, and replay exact idempotency keys without changing historical runs.
+- **Fixture isolation:** deterministic browser demonstrations moved beneath guarded fixture-only
+  routes. Production pages and the default manual-refresh client contain no fixture import or
+  fallback; the production bundle secret scan passes.
+- **Review:** independent xhigh review accepted the read model after its accepted-artifact replay
+  and cross-scope corrections. Coordinator review accepted the settings transaction after
+  PostgreSQL replay/concurrency/current-route-recovery/audit-rollback coverage.
+- **Coordinator verification:** disposable PostgreSQL read/settings **48/48**; focused live
+  composition, selection and settings-route unit **28/28**; production build, bundle scan,
+  typecheck, scoped lint and diff checks pass. The first moved-route Chromium run exposed only
+  four stale test URLs/focus-count/fixture-count expectations; the corrected affected set passes
+  **6/6**. The rebuilt expanded run passed **17/18** before a transient loading boundary made the
+  strict audit locator see both loading and final content; waiting for loading completion makes the
+  complete accessibility/narrow audit pass **2/2**.
+- **Remaining composition:** I09 must back `POST /api/rni/runs`, rerun and schedule commands with
+  durable jobs/outbox/QStash. Credential-backed live Direct/Gateway and production authorization
+  proof remain I11/deployment gates.
+
 ### CR-SURFACE-06 decision
 
 - **Current behaviour:** `RniAiRoute` existed only on immutable run records. SURFACE could neither
@@ -550,6 +580,7 @@
 | `CURRENT` | Complete I10C2A catalogue and price evidence | D-RNI-24; Direct lookup plus Gateway catalogue yield four append-only capability snapshots and five exact hashed price components; discovery reserves all three governed Web Search calls; focused 42/42 and PostgreSQL 14/14 |
 | `CURRENT` | Start I10C2B versioned task-envelope settings | Owner approved the recommended five per-task envelopes and required admin portal configurability; freeze a bounded intent contract, enforce serialized-input and cost limits before dispatch, and stage a successor without rewriting active/historical runs |
 | `CURRENT` | Start I07–I09 parallel integration lanes | Refreshed from current `origin/main`; no open PRs or pushed RNI branches; I07 cited persistence, I08 live surface and I09 durable orchestration begin from one coordinator checkpoint and integrate strictly I07 → I08 → I09 |
+| `CURRENT` | Accept and integrate I08 live consumption | PostgreSQL read/settings 48/48; live-composition unit 28/28; production build, bundle scan, typecheck, scoped lint and diff pass; expanded Chromium 17/18 then corrected audit 2/2; production pages and APIs are authenticated and fixture-free |
 
 ## I10A handoff
 

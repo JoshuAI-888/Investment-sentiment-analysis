@@ -40,7 +40,7 @@ test('fixture universe search validates and binds generic active-member results'
 
 test('RNI universe settings defaults to NVDA and finds any active member', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 720 });
-  await page.goto('/rni/settings/universe');
+  await page.goto('/rni/fixture/settings/universe');
   await expect(page.getByText('Default: NVDA — NVIDIA Corporation · NASDAQ')).toBeVisible();
   await expect(
     page.getByText('Source: FMP S&P 500 constituent', { exact: true }),

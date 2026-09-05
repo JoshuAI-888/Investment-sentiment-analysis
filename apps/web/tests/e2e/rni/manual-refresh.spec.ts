@@ -9,7 +9,7 @@ test('RNI manual refresh previews scope and accepts each intentional submission'
   const fullUniverse = page.getByRole('button', { name: 'Refresh full universe' });
   const release = page.getByRole('button', { name: 'Complete fixture request' });
   await expect(page.getByText('Scope preview: NVDA — NVIDIA Corporation · NASDAQ')).toBeVisible();
-  await expect(page.getByText('Scope preview: 501 active securities')).toBeVisible();
+  await expect(page.getByText('Scope preview: 503 active securities')).toBeVisible();
   await ticker.click();
   await expect(ticker).toBeDisabled();
   await expect(fullUniverse).toBeDisabled();

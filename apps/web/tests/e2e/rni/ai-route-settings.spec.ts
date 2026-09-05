@@ -61,7 +61,7 @@ test('fixture route settings reject unavailable Gateway selection', async () => 
 
 test('RNI AI route settings show task models and switch only future configuration', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 720 });
-  await page.goto('/rni/settings/ai-route');
+  await page.goto('/rni/fixture/settings/ai-route');
 
   await expect(page.getByText('Current future-run configuration: fixture-config-v1')).toBeVisible();
   await expect(page.getByText('OpenAI Direct is selected for future RNI runs.')).toBeVisible();
