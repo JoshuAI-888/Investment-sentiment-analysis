@@ -20,6 +20,7 @@
     "check:copy": "tsx scripts/check-copy.ts",
     "migrate": "tsx scripts/migrate.ts",
     "seed:universe": "tsx scripts/seed-universe.ts",
+    "seed:jobs": "tsx scripts/seed-job-definitions.ts",
     "check:storage": "tsx scripts/check-storage-projection.ts",
     "measure:storage": "tsx scripts/measure-storage.ts",
     "calibration-report": "tsx scripts/calibration-report.ts"
