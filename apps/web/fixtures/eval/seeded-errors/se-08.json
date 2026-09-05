@@ -1,0 +1,8 @@
+{
+  "id": "se-08",
+  "packId": "conflicting-01",
+  "faultClass": "unrelated_citation",
+  "baseAnswer": "Two sampling frames disagree this window. The Reddit-observed sample leans bullish on AAPL (shrunk score 0.41, n=3), while the curated Substack publication set leans bearish over the same window (shrunk score -0.39, n=3). The two are reported separately rather than blended, and no single confident direction is asserted from combining them.",
+  "answer": "Two sampling frames disagree this window. The Reddit-observed sample leans bullish on AAPL (shrunk score 0.41, n=3), while the curated Substack publication set leans bearish over the same window (shrunk score -0.39, n=3). The two are reported separately rather than blended, and no single confident direction is asserted from combining them. This is also consistent with the Ford dealer-margin commentary cited above.",
+  "faultDescription": "Cites Ford dealer-margin commentary that belongs to a different pack entirely, not this run's evidence."
+}

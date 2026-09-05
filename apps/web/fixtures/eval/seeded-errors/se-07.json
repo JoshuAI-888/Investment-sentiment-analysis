@@ -1,0 +1,8 @@
+{
+  "id": "se-07",
+  "packId": "clear-02",
+  "faultClass": "price_target",
+  "baseAnswer": "Reddit-observed sample of comments from the subreddits polled: over the 2026-08-01 to 2026-08-08 window, the sampled stance for TSLA runs bearish (shrunk score -0.58, n=5). The recurring themes are delivery misses and rising Chinese EV competition. What to monitor next: the next delivery print relative to guidance.",
+  "answer": "Reddit-observed sample of comments from the subreddits polled: over the 2026-08-01 to 2026-08-08 window, the sampled stance for TSLA runs bearish (shrunk score -0.58, n=5). The recurring themes are delivery misses and rising Chinese EV competition. What to monitor next: the next delivery print relative to guidance. A reasonable price target here is $180 within six months.",
+  "faultDescription": "Adds a price target, banned unconditionally under product invariant §6.4."
+}

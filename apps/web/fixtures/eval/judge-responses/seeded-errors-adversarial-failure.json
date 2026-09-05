@@ -1,0 +1,10 @@
+{
+  "Reddit-observed sample of comments from the subreddits polled: over the 2026-08-01 to 2026-08-08 window, the sampled stance for NVDA runs bullish (shrunk score 0.91, n=5). Most comments point to continued datacenter demand and the recent guidance raise as the reason sentiment stayed positive. What to monitor next: whether the next earnings call sustains the same demand commentary.": {
+    "c1": 5,
+    "c2": 5,
+    "c3": 4,
+    "c4": 4,
+    "violations": [],
+    "rationale": "Fluent, well-cited prose; every number appears grounded in the evidence text."
+  }
+}

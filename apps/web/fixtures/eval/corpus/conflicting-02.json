@@ -1,0 +1,291 @@
+{
+  "id": "conflicting-02",
+  "bucket": "conflicting_source",
+  "pack": {
+    "id": "ff71e20c-bac0-4822-a981-564156b04479",
+    "securityId": "9626b2e2-56a9-4328-aa6b-503bbfa65d48",
+    "retrievalQuery": "security_id = 9626b2e2-56a9-4328-aa6b-503bbfa65d48, axes = [reddit, substack]",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-08T00:00:00.000Z"
+    },
+    "items": [
+      {
+        "item": {
+          "id": "d4227388-861e-48b7-adfc-f7dfc531261a",
+          "securityId": "9626b2e2-56a9-4328-aa6b-503bbfa65d48",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "PYPL Venmo monetization ramping",
+          "snippet": "Venmo debit card usage keeps growing, which is finally monetizing it properly.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.62",
+          "relevanceScore": "0.81",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "333697422cfb4cceb48bc684274055ed00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.55",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "22043a3b-8e97-44ac-91e3-d9899b6d64c7",
+          "securityId": "9626b2e2-56a9-4328-aa6b-503bbfa65d48",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "PYPL buyback pace",
+          "snippet": "Management is buying back a serious chunk of the float again this year.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.58",
+          "relevanceScore": "0.78",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "80f8cfafba22474a92272481ac5f38c400000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.55",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "e5947056-a435-4752-b8a2-6f87c719ff3c",
+          "securityId": "9626b2e2-56a9-4328-aa6b-503bbfa65d48",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "PYPL checkout wins",
+          "snippet": "Picked up a couple of large enterprise branded-checkout wins this quarter.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.55",
+          "relevanceScore": "0.76",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "e35bf88f1a9248a5bd10640ac1893d3400000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.55",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "7f346709-0d91-47ee-bafe-67b058c0de30",
+          "securityId": "9626b2e2-56a9-4328-aa6b-503bbfa65d48",
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "Apple Pay keeps taking share",
+          "snippet": "Apple Pay's in-store growth is eating into PayPal's branded checkout share.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bearish",
+          "stanceScore": "0.60",
+          "relevanceScore": "0.80",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "799c613b674b409287d58637225bfa4600000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "9dc92e1e-59a2-46f5-a212-4df61c3a06d3",
+          "securityId": "9626b2e2-56a9-4328-aa6b-503bbfa65d48",
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "Cash App competitive pressure",
+          "snippet": "Cash App's peer-to-peer momentum is pressuring PayPal's take rate.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bearish",
+          "stanceScore": "0.57",
+          "relevanceScore": "0.77",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "a6bee9f834d8473e99865e36dcd4ccc200000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "6d323c7d-43d6-44d4-9b3d-5a3432e7b0e5",
+          "securityId": "9626b2e2-56a9-4328-aa6b-503bbfa65d48",
+          "evidenceType": "social_result",
+          "provider": "substack",
+          "title": "Take-rate compression note",
+          "snippet": "Transaction margin dollars grew slower than volume again this quarter.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bearish",
+          "stanceScore": "0.54",
+          "relevanceScore": "0.75",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "45add747db794a6ca74de848ca69080d00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "substack",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      }
+    ],
+    "frames": [
+      {
+        "axis": "reddit",
+        "frameStatement": "observed sample of comments from the subreddits polled — not a sample of retail investors.",
+        "window": {
+          "from": "2026-08-01T00:00:00.000Z",
+          "to": "2026-08-08T00:00:00.000Z"
+        },
+        "retrievedCount": 5,
+        "usedCount": 3,
+        "subredditsPolled": [
+          "stocks"
+        ],
+        "treeComplete": true,
+        "truncated": false
+      },
+      {
+        "axis": "substack",
+        "frameStatement": "curated publication set, selected on the basis recorded in config version substack-publications-v1.",
+        "window": {
+          "from": "2026-08-01T00:00:00.000Z",
+          "to": "2026-08-08T00:00:00.000Z"
+        },
+        "retrievedCount": 4,
+        "usedCount": 3,
+        "publicationSetVersion": "substack-publications-v1",
+        "selectionBasis": "sector coverage (D-29)",
+        "truncated": false
+      }
+    ],
+    "createdAt": "2026-08-08T00:00:00.000Z"
+  },
+  "labels": [
+    {
+      "itemId": "d4227388-861e-48b7-adfc-f7dfc531261a",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuine bullish reddit stance on Venmo monetization/buybacks"
+    },
+    {
+      "itemId": "22043a3b-8e97-44ac-91e3-d9899b6d64c7",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuine bullish reddit stance on Venmo monetization/buybacks"
+    },
+    {
+      "itemId": "e5947056-a435-4752-b8a2-6f87c719ff3c",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuine bullish reddit stance on Venmo monetization/buybacks"
+    },
+    {
+      "itemId": "7f346709-0d91-47ee-bafe-67b058c0de30",
+      "expectedStance": "bearish",
+      "expectedRelevant": true,
+      "note": "genuine bearish substack stance on Apple Pay/Cash App competition"
+    },
+    {
+      "itemId": "9dc92e1e-59a2-46f5-a212-4df61c3a06d3",
+      "expectedStance": "bearish",
+      "expectedRelevant": true,
+      "note": "genuine bearish substack stance on Apple Pay/Cash App competition"
+    },
+    {
+      "itemId": "6d323c7d-43d6-44d4-9b3d-5a3432e7b0e5",
+      "expectedStance": "bearish",
+      "expectedRelevant": true,
+      "note": "genuine bearish substack stance on Apple Pay/Cash App competition"
+    }
+  ],
+  "expectedOutcome": "mixed_no_confident_direction",
+  "acceptableClaims": [
+    "Reddit-observed sample leans bullish on PYPL, citing Venmo monetization and buybacks, while the curated Substack publication set leans bearish, citing Apple Pay and Cash App competitive pressure — the two frames disagree and are reported separately."
+  ],
+  "requiredAbstentions": [
+    "stance.pypl.blended_composite"
+  ],
+  "storedMetrics": [
+    {
+      "metricId": "sentiment.reddit.shrunkScore",
+      "display": "0.36"
+    },
+    {
+      "metricId": "sentiment.substack.shrunkScore",
+      "display": "-0.33"
+    }
+  ],
+  "referenceAnswer": "Two sampling frames disagree this window. The Reddit-observed sample leans bullish on PYPL (shrunk score 0.36, n=3), citing Venmo monetization and buyback pace, while the curated Substack publication set leans bearish over the same window (shrunk score -0.33, n=3), citing Apple Pay and Cash App competitive pressure on take rate. The two are reported separately rather than blended, and no single confident direction is asserted from combining them.",
+  "labelledBy": "F12 lane-build starter corpus (hand-authored fixture for harness machinery, 04-BUILD-LOOP.md scoping note) — NOT the D-35 ≥30-pack production corpus",
+  "labelledAt": "2026-09-04T00:00:00.000Z",
+  "frozen": true
+}

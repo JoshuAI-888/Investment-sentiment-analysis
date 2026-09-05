@@ -119,11 +119,19 @@ export type ApiRoute = { readonly path: string; readonly method: 'GET' | 'POST';
  * `401` — the dedicated unauthenticated-`401` coverage for both actually lives in
  * `tests/e2e/auth.spec.ts`'s "F02 — sign-in" describe block, mirroring `GET /api/dashboard`'s
  * precedent immediately above.
+ *
+ * **F11 removes the three research routes.** `POST /api/research`, `GET /api/research/[runId]`
+ * and `GET /api/research/[runId]/stream` all now genuinely enforce `requireUser()` (each checks
+ * it before doing anything else — a run lookup only happens after auth succeeds) and the two
+ * `GET` routes additionally enforce a per-run ownership check (404, not just 401, on a run that
+ * exists but is not the caller's own — lane-review finding 1). None answers `{ state: 'fixture'
+ * }` any more, so this file's generic loop is the wrong tool for them, same reasoning as every
+ * entry above. Dedicated unauthenticated-`401` coverage for all three lives in
+ * `tests/e2e/auth.spec.ts`'s "F02 — sign-in" describe block, mirroring the two precedents
+ * immediately above — this needs no `DATABASE_URL` since the auth check runs before any repository
+ * read.
  */
 export const API_ROUTES: readonly ApiRoute[] = [
-  { path: '/api/research', method: 'POST', source: 'api/research' },
-  { path: '/api/research/run_fixture', method: 'GET', source: 'api/research/[runId]' },
-  { path: '/api/research/run_fixture/stream', method: 'GET', source: 'api/research/[runId]/stream' },
   { path: '/api/cron/dispatch', method: 'POST', source: 'api/cron/dispatch' },
   { path: '/api/health/providers', method: 'GET', source: 'api/health/providers' },
   { path: '/api/architecture', method: 'GET', source: 'api/architecture' },

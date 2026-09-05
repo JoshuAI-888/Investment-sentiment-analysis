@@ -908,6 +908,262 @@ create.before` does — `live`-mode only — so in fixture/e2e mode any address 
 auto-provisions, matching self-service sign-up's own fixture behavior and needing no separate
 test seam.
 
+### D-39 — MT-06 confirmed: LLM access is provisioned in Vercel
+
+**Closes MT-06.** The owner confirmed 2026-09-04 that `AI_GATEWAY_API_KEY`,
+`MODEL_TRANSPORT_DEFAULT=vercel_gateway` and the three D-34 task routes (`AI_MODEL_FAST`,
+`AI_MODEL_SYNTHESIS`, `AI_MODEL_VERIFY`, the last on a different vendor from synthesis) are set
+in Vercel. This was **the largest single remaining blocker** — it gated F10, F11 and F12 in full.
+
+**What this session could and could not verify, and why the distinction is recorded rather than
+smoothed over.** Vercel's project API (checked via the Vercel MCP tools) confirmed the project
+exists, its latest deployment built and deployed cleanly, and no runtime errors have fired in the
+trailing 7 days — but that API does not expose environment-variable *values*, so none of that is
+evidence the keys are correct, only that nothing has crashed on their absence yet. **The real
+check is F01 §4.2's boot assertion** (`env.ts`, commit `09ad439`, "require the three AI model
+routes when `PROVIDER_MODE=live`"), which already exists and will fail loudly the first time a
+live LLM call is attempted against a misconfigured route. Recorded this way, deliberately, so
+that a future boot failure reads as *this task reopening* rather than as a fresh, unexplained
+defect.
+
+**F10, F11, F12 are unblocked** for lane allocation at the Wave 2 gate. **RNI's ENGINE workstream
+was never gated on this** — D-RNI-05 defaults RNI's own routes to OpenAI Direct, not the Gateway,
+so its blockers are unaffected by this decision either way.
+
+---
+
+### D-40 — MT-15's confirmed Substack list wired into F04's config
+
+**Closes the wiring half of MT-15.** The owner-confirmed 13-publication, 10/11-GICS-sector set
+(`DEPLOY.md` MT-15) is now a committed, validated artifact: `migrations/seed/substack-publications-v1.json`
+plus a loader, `src/adapters/substack-publications.ts` (`getSubstackPublications`,
+`getSubstackDisclosureBasis`), mirroring `repositories/universe-seed.ts`'s own pattern for the
+symbol list — a git-committed JSON seed a loader validates with zod and refuses to fabricate if
+missing (`SubstackPublicationListMissing`, parallel to `SeedListMissing`).
+
+**Deliberately not a `config_version`/`app_setting` row yet.** `contracts/config.ts`'s versioned
+config tables (0006 migration) are where F10's disclosure line (*"selected on the basis recorded
+in config version {v}"*) ultimately points, but writing that row needs F15's not-yet-built
+governance machinery and a live `DATABASE_URL` — the same blocker `universe-seed.ts` has for
+`pnpm seed:universe`. Until then `getSubstackDisclosureBasis()` returns the basis string directly
+from the JSON artifact, which is the only version that currently exists.
+
+**Scope, and what is still not done.** This is the adapters-layer half only — `src/adapters/` is
+COLLECT-owned, so nothing here touches `src/repositories/` (SPINE) or issues a database write.
+**F16a (the dispatcher) still does not exist**, so nothing polls these feeds yet; wiring the list
+is preparatory, not the start of collection. MT-08 ("start the collector") remains gated on F16a
+being built and MT-04 (the QStash schedule), unchanged by this entry. 7 new unit tests added
+(`tests/unit/adapters/substack-publications.test.ts`); full unit suite (101 files, 1178 tests),
+typecheck and lint all verified green against this change.
+
+---
+
+### D-41 — Wave 2 exit gate certified, with A2/A3 named as a disclosed exception
+
+**Certified 2026-09-04**, against `03-ROADMAP.md`'s five Wave 2 exit criteria (dashboard/
+leaderboard/ticker live-data render; Inspector on every number; `NEW`/`THIN_SAMPLE`/stale/
+`insufficient_data` states; the golden-fixture suite; Tier A A2–A6):
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| 1. Live-data render with source/coverage/freshness | **Pass** | `tests/e2e/dashboard.spec.ts`, `attention.spec.ts` assert `data-freshness`, `data-source-link`, `data-coverage-*` directly |
+| 2. Every number opens an Inspector | **Pass** | `dashboard.spec.ts`, `attention.spec.ts`, `ticker.spec.ts` each assert a real Inspector link with a `calculationId` |
+| 3. `NEW`/`THIN_SAMPLE`/stale/insufficient states render | **Pass** | `attention.spec.ts` ("NEW and thin-sample rows render distinctly"), stale-state e2e, `insufficient_data` at ticker level; `contracts/primitives.ts`'s `insufficiencyReason` enum covers `new_to_board`/`dropped_from_board` |
+| 4. Golden-fixture suite, exact tolerance | **Pass** | 20 golden JSON files under `analytics/goldens/`; `golden-helpers.ts` asserts exact strings, throws on any mismatch; F06 merged 627+22+105 tests |
+| 5. Tier A A2–A6 | **Partial — A4/A5/A6 pass, A2/A3 unverifiable** | A4: `check:calc-coverage` passes. A5: `tests/unit/calc/replay.test.ts` (`F05 §4.6`) proves `match`/`result_mismatch` outcomes. A6: same golden suite as criterion 4. **A2 (perf) and A3 (≥20-ticker smoke) have no measuring instrument** — both are named as "F19 perf suite"/"F19 smoke" in `01-PRODUCT-SPEC.md`, and F19 (Release Hardening, Wave 4–5) is `not started`. `package.json` has no `test:perf` script; nothing asserts a 20-ticker count anywhere in the suite |
+
+**Ruling: the gate is certified, not deferred, with A2/A3 recorded as a disclosed exception
+rather than either a silent pass or a blocking failure.** Two reasons this is the right call and
+not a weakened gate:
+
+1. A2/A3's own measuring instrument (F19) does not exist by design — it is a Wave 4–5 feature.
+   Blocking Wave 3 lane allocation on a Wave 4 feature would invert the roadmap's own wave order
+   for no safety gained: nothing about F10/F11/F12's correctness depends on dashboard p95 latency
+   or a 20-ticker smoke count.
+2. This is the same pattern already used for the 300 MB storage gate (`MEMORY.md` B-13) and the
+   MB/month growth measurement (`PROGRESS.md` Wave gates note) — a criterion whose instrument
+   doesn't exist yet is named as a gap with a trigger, never quietly marked passed.
+
+**Named trigger:** A2 and A3 move from "unverified" to "measured" the moment F19 lands its perf
+and smoke suites. Until then, any claim that Tier A is fully satisfied is false, and this entry
+is the record that stops that claim from being made by omission.
+
+**Consequence:** `06-PARALLEL-LANES.md` §1b's "full three-lane parallelism begins at the Wave 2
+gate" condition is met. F10/F11/F12 lane allocation (D-42) proceeds.
+
+---
+
+### D-42 — F10/F11/F12 contract freeze; three temporary Wave-3 lanes allocated
+
+**Why a freeze, and why now.** `03-ROADMAP.md`'s dependency graph is a strict chain — F10 → F11
+→ F12 — and each spec's own Contracts section confirms it: F11 "Consumes: `EvidencePack`,
+`ClassifiedItem` (F10)"; F12 "Consumes: `EvidencePack` (F10), research output and the claim
+ledger (F11)". Three independent builders each guessing the others' output shape is exactly the
+failure this package's culture already rejects elsewhere ("this lane has declined to guess
+against an unverified schema" — `progress/collect.md`, on FMP fundamentals). RNI's own
+DATA/ENGINE/SURFACE split solved the same problem the same way (`rni/RNI_BUILD_LOOP.md`); this
+mirrors it for legacy Wave 3.
+
+**What was already there, found before writing anything new** (material — it changed the plan):
+
+- `contracts/research.ts`'s `researchRun`, `researchEvent`, `claimLedgerEntry` **already exist**,
+  already tested, already backed by merged migration `0005`. F11 must consume these as-is, not
+  redefine them.
+- `contracts/evidence.ts`'s `evidenceItem` **already exists** (migration `0003`) and **F09
+  already renders against it** on the merged ticker page. F10 must produce evidence compatible
+  with this exact shape — not the older sketch in `02-ARCHITECTURE-CONTRACTS.md` §4.4, which
+  predates it and is superseded by what actually shipped.
+- **A real gap, not cosmetic:** `researchRunStatus` (code, tested, backing a merged migration)
+  had no `abstained` state, even though both F11's own spec and architecture §4.5 name one. The
+  `gathering`/`analyzing`/`synthesizing`/`verifying` sub-stages the same state machine names were
+  never in the DB enum either. **Resolved this session:** migration `0014` adds `abstained` only.
+  The sub-stages are *not* added as `status` values — they are represented in `research_event`
+  while `status = 'running'`, since F11's own spec already makes events, not status, the source
+  of truth for progress ("a run survives reload because the events are the source of truth, not
+  the stream"). Splitting `status` further would create a second place that fact could live and
+  drift from the first.
+- `SocialAxis` (`reddit`/`x`/`substack`) already exists in `primitives.ts`. `ScoreResult`/
+  `ScorerIdentity`/`ScorerId` already exist in `adapters/scorer.ts` (that file's own docstring
+  flags they belong in `contracts/scoring.ts` once SPINE lands it — not moved this session; F10
+  imports them from their current path, which is a known, named, low-risk future cleanup, not a
+  blocker).
+- No Reddit adapter is merged (MT-13 still unfiled) and no Substack/X polling has started (F16a
+  doesn't exist) — so **none of F10's three axes have real collected data yet regardless.** This
+  turned out not to matter: F10's own test plan is fixture-driven for all three axes already
+  ("Reddit/Substack/X fixtures → normalized items"), because F10 reads `evidence_item` rows, not
+  the adapters that wrote them. A fixture-shaped row with `provider: 'reddit'` is exactly as
+  usable to this feature as a real one.
+
+**Frozen this session (`src/contracts/evidence-pack.ts`, new file):** `EvidencePack`,
+`ClassifiedItem`, `FrameDisclosure`, `ClassificationFlag`. `ClassifiedItem` wraps the existing
+`evidenceItem` rather than replacing it; stance stays on `evidenceItem`'s existing nullable
+`stanceLabel` (`bullish | bearish | neutral`, never widened to add `'unclear'` — an unclear item
+carries `stanceLabel: null` plus a flag instead, so `sentimentSnapshot` and F20's `ScoreResult`
+are untouched). `evidencePack.frames` is refined to forbid two disclosure entries for the same
+axis. `repositories/evidence.ts`'s `EvidenceItemQuery` gained an optional `providers` filter
+(additive; F09's existing calls are unaffected) since nothing let F10 scope a read to one axis
+before this. No new migration was needed for `evidence_pack` itself — a pack is a query-time
+construct (`EvidencePack` is `zod`-only), not a new table; only `research_run`'s status enum
+needed a schema change.
+
+**Not frozen, and deliberately left to the owning lane:** `EvalResult` and the corpus format
+(F12's own contracts — nothing outside F12 consumes them); fixtures (each lane records its own
+real payloads per `04-BUILD-LOOP.md` §2.3, "fixtures before live calls").
+
+**Lane allocation — three temporary lanes, scoped like RNI's, not the legacy SPINE/COLLECT/
+SURFACE split** (F10/F11/F12 don't fit that partition; forcing them into it would require every
+lane to touch `src/contracts/` or `src/repositories/`, which is exactly what the freeze exists to
+avoid):
+
+| Lane | Owns | Feature | Consumes (frozen) |
+|---|---|---|---|
+| F10-lane | `src/services/evidence/`, `fixtures/evidence-pack/` (new dirs), its own tests | F10 | `contracts/evidence.ts`, `contracts/evidence-pack.ts`, `contracts/primitives.ts`, `adapters/scorer.ts`, `repositories/evidence.ts` (read-only — reports any needed repository change) |
+| F11-lane | `src/services/research/` (new dir), `app/api/research/**` (F01 §4.6's own placeholder names F11 as the owner), its own tests | F11 | `contracts/evidence-pack.ts`, `contracts/research.ts` |
+| F12-lane | `src/services/eval/` (new dir), `tests/eval/` (currently vacuous), its own contracts (`EvalResult`, corpus format) | F12 | `contracts/evidence-pack.ts`, `contracts/research.ts`, F11-lane's service output |
+
+None of the three touches `src/contracts/`, `src/repositories/`, or `migrations/` — those stay
+coordinator-owned for this stint, same rule as legacy lanes. A needed change to any of them is
+reported, not made, per `06-PARALLEL-LANES.md` §8.
+
+**Verification of the freeze itself:** full unit suite (102 files, 1188 tests, up from 101/1178),
+contract suite (77 passed / 22 DB-skipped, unchanged), typecheck, lint and `next build` all green
+against the frozen state.
+
+---
+
+### D-43 — F10, F11, F12 merged: evidence pipeline, research agent, evaluation harness
+
+**Merged 2026-09-04**, all three built in parallel worktrees against D-42's frozen contracts,
+each through one full adversarial `lane-review` round with every finding fixed and
+regression-tested before merge. DoD: F10 9/11, F11 9/13, F12 5/10 — the unchecked items in each
+are named with a trigger, not silently dropped; see `progress/f10-lane.md`, `f11-lane.md`,
+`f12-lane.md` for the itemized lists. Merge order was F10 → F11 → F12, matching the dependency
+chain each spec's own Contracts section names.
+
+**`frameDisclosure.truncated` added to the frozen contract at merge time.** F10's build surfaced
+a real gap: `evidenceForSecurity`'s own `truncated` flag (a scan-window lower-bound signal
+`repositories/evidence.ts` is explicit must never be silently undisclosed) had nowhere to go on
+`FrameDisclosure`, since the freeze didn't anticipate it. Added as a required field, wired through
+`frames.ts`, and threaded through every fixture pack that predated it (F10's own tests, F11's
+inline test fixtures, F12's ten frozen corpus packs) — mechanical follow-up commits, no other
+content changed in any of them.
+
+**Three lanes independently built three different `ModelClient`-shaped abstractions**, because
+none existed in `src/contracts/` and the architecture doc's own version (§4.6) predates D-21 and
+is missing the `relevance`/`entity_collision_guard` tasks entirely. This was found independently
+by both the F10 and F11 lane-reviews, and the F10 reviewer compared all three directly:
+
+| | F10 (`services/evidence/model-client.ts`) | F11 (`services/research/model-client.ts`) | F12 (`services/eval/judge.ts`) |
+|---|---|---|---|
+| Layer | Transport (`generate({system,user,model,…}) → {raw, usage}`) | Validated (`classify`/`synthesize`/`verify`, zod schema in, typed out) | Judge-specific port, injectable |
+| Usage/cost | Captured (`ModelGenerateResult.usage`) | Was dropped, now estimates from token counts (own fix, D-20 budget wiring) | N/A (judge is a rubric call, not priced the same way) |
+| Outage vs. bad shape | Distinguished (`ModelBackendUnavailable` → abstain, D-13) | Both collapse to a generic `Error` | N/A |
+| Vendor-split (D-34) | Not enforced (caller supplies model per call) | Enforced at construction | N/A — judge is definitionally a separate route already |
+
+**Ruling: not consolidated now.** They sit at different layers and don't collide in practice — no
+shared code path requires them to be identical, and each lane stayed inside its own paths. Forcing
+convergence at this merge would mean reopening two already-reviewed lanes for a refactor with no
+behavioral bug behind it. **Recorded as named technical debt with a direction, not left open-ended**:
+a future `src/contracts/model-client.ts` (SPINE-owned) should take F10's `ModelBackend` as the
+transport port (it already has the usage/cost and outage-vs-bad-shape distinctions the others
+lack) with F11's schema-validating `ModelClient` implemented over it. Trigger: the next feature
+that needs a fourth model-calling abstraction, or a dedicated SPINE pass — whichever comes first.
+This is the same pattern already accepted for `ScoreResult`/`ScorerIdentity` living in
+`adapters/scorer.ts` instead of `src/contracts/scoring.ts`.
+
+**F12's two DoD-required MEMORY.md entries** (its own DoD item 10 says the judge's known
+limitation must be recorded here, not only in the spec):
+
+- **The LLM judge is systematically forgiving of fluent, well-cited, subtly-wrong prose**
+  (`05-TEST-STRATEGY.md` §5.3). Its output is a gate, not evidence of quality — kept honest only
+  by seeded-error adversarial validation (a judge scoring a seeded-error answer ≥4 on C2 is itself
+  a defect, and F12's harness tests for exactly this) and the one-time human calibration
+  (`DEPLOY.md` MT-11, Spearman ≥0.7 or the thresholds are raised, still pending — no hand-scores
+  exist yet).
+- **F12's eval-run storage is a file-based, append-only JSON-lines store**
+  (`services/eval/result-store.ts`), not a database table — `src/repositories/` and `migrations/`
+  are SPINE's and out of this temporary lane's scope. A durable `eval_run` table is a drop-in
+  future replacement behind the same `EvalResultStore` port.
+
+**CI widened separately** (outside any lane's owned paths, handled directly): the `eval` job's PR
+path filter matched none of F10/F11/F12's actual paths — meaning a PR that weakened the Tier C
+gate or a corpus label would have passed CI green, which is exactly what F12 §7.4's own review
+step asks a human to catch by hand. Widened the filter and added the nightly trigger F12 §4.6
+already specified but that never existed.
+
+**What is still genuinely outstanding, not silently dropped** — the real work `F10`/`F11`/`F12`'s
+partial status leaves for a future pass:
+
+- **Persistence.** No `src/repositories/research.ts` exists; F11's research runs, events and
+  claims live in an in-memory `Map` today (a real deploy loses every run on restart — disclosed
+  loudly in `composition.ts`, and the "runs survive reload" DoD item is correctly left unchecked
+  because of it). `repositories/evidence.ts` likewise has no `updateEvidenceAvailability`-shaped
+  write, so F10's availability-checker logic has nowhere to persist its decisions yet.
+- **Real integration.** F11's evidence-gathering and per-subject-metrics reads are dev-fixture
+  placeholders, clearly named as such — swapping in F10's real pack builder and a real metrics
+  query (also missing from `repositories/calculations.ts`) needs no orchestrator change, since
+  the ports are already the contract.
+- **F12's real corpus.** The 10-pack starter corpus (2 per bucket, one X-axis pack added this
+  round) and 9-answer seeded-error set prove the harness mechanics; the real ≥30-pack / ≥40-answer
+  production sets (D-35 methodology) need real human labelling and are not attempted here. Tier
+  D1 (per-axis stance macro-F1) is now computed for real but its current numbers are artifacts of
+  a hand-authored starter corpus, not a measurement.
+- **Live-model verification.** No live call was made against the Vercel AI Gateway in any lane
+  (per `04-BUILD-LOOP.md` §2.3 — fixtures before live calls). `GatewayModelBackend`/
+  `createGatewayModelClient` compile and pass their own unit tests against a fake transport, but
+  are unproven against a real endpoint.
+- **D-18/Tier-D4's backtest harness** (PIT correctness, cross-sectional IC, Newey–West t, decay
+  curve, momentum-residualised IC, horizon-normalised P&L) is confirmed **not** part of F12's own
+  ten-item DoD — `01-PRODUCT-SPEC.md` Tier D already dates it "~2027, runnable ~12 months after
+  the collector starts," matching `PROGRESS.md`'s Wave-gates table. `CLAUDE.md`'s "must be built
+  from scratch when F12 is picked up" line refers to this same eventual, separate deliverable —
+  not a gap in this merge.
+
+**Verification of the merged state:** full unit suite (129 files, 1434 tests), contract suite (115
+passed / 22 DB-skipped), integration suite (21 passed / 341 DB-skipped), `test:eval` (6/6, real
+gate-breaking cases included), typecheck, lint and `next build` all green on `main`'s lineage
+(`claude/remaining-work-analysis-z6uecn`).
+
 ---
 
 ## 2. Rulings made during review

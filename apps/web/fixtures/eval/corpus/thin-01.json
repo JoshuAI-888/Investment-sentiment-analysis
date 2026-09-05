@@ -1,0 +1,165 @@
+{
+  "id": "thin-01",
+  "bucket": "thin_evidence",
+  "pack": {
+    "id": "7d1dd9bc-45e5-496e-9446-6f0825974ff1",
+    "securityId": "9a0ef028-ed12-4317-b3c3-c601da478b8f",
+    "retrievalQuery": "security_id = 9a0ef028-ed12-4317-b3c3-c601da478b8f, axes = [reddit]",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-08T00:00:00.000Z"
+    },
+    "items": [
+      {
+        "item": {
+          "id": "397ab638-d2ab-4d66-b178-c27c1c43879c",
+          "securityId": "9a0ef028-ed12-4317-b3c3-c601da478b8f",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "ZVIA mention 1",
+          "snippet": "One of the very few comments mentioning ZVIA this window.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "neutral",
+          "stanceScore": "0.05",
+          "relevanceScore": "0.70",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "02bf5adeae6c43e3bfb59cf6f239352300000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.3",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "26855d34-ec7f-4f4f-a6aa-a8a4f8cc9562",
+          "securityId": "9a0ef028-ed12-4317-b3c3-c601da478b8f",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "ZVIA mention 2",
+          "snippet": "One of the very few comments mentioning ZVIA this window.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "neutral",
+          "stanceScore": "0.05",
+          "relevanceScore": "0.70",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "c9dd75b47ee04a6abffe9333e4769ef000000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.3",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "91575266-35ba-4179-86b4-e32635071ac6",
+          "securityId": "9a0ef028-ed12-4317-b3c3-c601da478b8f",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "unrelated market chatter",
+          "snippet": "Nothing here is actually about ZVIA.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.10",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "ad9a977fd2ac4f96b75f2c29cbde6edc00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": false,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": null,
+        "flags": [
+          "off_topic"
+        ],
+        "excludedReason": "no company-specific content"
+      }
+    ],
+    "frames": [
+      {
+        "axis": "reddit",
+        "frameStatement": "observed sample of comments from the subreddits polled — not a sample of retail investors.",
+        "window": {
+          "from": "2026-08-01T00:00:00.000Z",
+          "to": "2026-08-08T00:00:00.000Z"
+        },
+        "retrievedCount": 3,
+        "usedCount": 2,
+        "subredditsPolled": [
+          "smallcaps"
+        ],
+        "treeComplete": true,
+        "truncated": false
+      }
+    ],
+    "createdAt": "2026-08-08T00:00:00.000Z"
+  },
+  "labels": [
+    {
+      "itemId": "397ab638-d2ab-4d66-b178-c27c1c43879c",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "genuinely about the ticker, but the sample is too small to score"
+    },
+    {
+      "itemId": "26855d34-ec7f-4f4f-a6aa-a8a4f8cc9562",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "genuinely about the ticker, but the sample is too small to score"
+    },
+    {
+      "itemId": "91575266-35ba-4179-86b4-e32635071ac6",
+      "expectedStance": null,
+      "expectedRelevant": false,
+      "note": "not about the ticker at all"
+    }
+  ],
+  "expectedOutcome": "abstained",
+  "acceptableClaims": [
+    "Only 2 relevant item(s) were found for ZVIA this window — below the n<5 threshold, so no stance score is reported (product invariant §6.3)."
+  ],
+  "requiredAbstentions": [
+    "stance.zvia.formal_score"
+  ],
+  "storedMetrics": [
+    {
+      "metricId": "sentiment.reddit.sampleAdequacy",
+      "display": "0.00"
+    }
+  ],
+  "referenceAnswer": "Only 2 relevant Reddit-observed comment(s) were found for ZVIA over the 2026-08-01 to 2026-08-08 window. That is below the five-item threshold, so no stance score is reported for this window — this is a stated abstention, not a smaller number.",
+  "labelledBy": "F12 lane-build starter corpus (hand-authored fixture for harness machinery, 04-BUILD-LOOP.md scoping note) — NOT the D-35 ≥30-pack production corpus",
+  "labelledAt": "2026-09-04T00:00:00.000Z",
+  "frozen": true
+}

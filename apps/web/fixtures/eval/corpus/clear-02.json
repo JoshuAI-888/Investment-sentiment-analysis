@@ -1,0 +1,236 @@
+{
+  "id": "clear-02",
+  "bucket": "clear_stance",
+  "pack": {
+    "id": "62cd2348-c9f8-4253-b5e1-71b543e6d9aa",
+    "securityId": "59d4a597-b2a4-44a3-a138-56f3b6a1790b",
+    "retrievalQuery": "security_id = 59d4a597-b2a4-44a3-a138-56f3b6a1790b, axes = [reddit]",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-08T00:00:00.000Z"
+    },
+    "items": [
+      {
+        "item": {
+          "id": "2eb48ac5-7615-44b0-bc9a-e4b8ff660977",
+          "securityId": "59d4a597-b2a4-44a3-a138-56f3b6a1790b",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "TSLA deliveries miss again",
+          "snippet": "Another quarter of disappointing delivery numbers.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bearish",
+          "stanceScore": "0.80",
+          "relevanceScore": "0.90",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "ccd16436e6af48979fe6598e391d965f00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.68",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "ac3f6ca5-9a29-4c82-b118-ca9c2ae2cbad",
+          "securityId": "59d4a597-b2a4-44a3-a138-56f3b6a1790b",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Sold my TSLA today",
+          "snippet": "Margins keep compressing and price cuts are not working.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bearish",
+          "stanceScore": "0.75",
+          "relevanceScore": "0.87",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "a25151a138cd4f83a6733f4b8c255fc600000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.68",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "4762cdf7-d08c-43e8-876f-6ea39dc3865f",
+          "securityId": "59d4a597-b2a4-44a3-a138-56f3b6a1790b",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "TSLA competition heating up",
+          "snippet": "Chinese EV makers are eating into market share fast.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bearish",
+          "stanceScore": "0.70",
+          "relevanceScore": "0.84",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "aded4d0c074f431faf0a1a04489a20ae00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.68",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "d77738a0-d8a9-4433-a043-3d20ca58546e",
+          "securityId": "59d4a597-b2a4-44a3-a138-56f3b6a1790b",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Bearish thread on TSLA guidance",
+          "snippet": "Management guidance keeps getting walked back.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bearish",
+          "stanceScore": "0.68",
+          "relevanceScore": "0.81",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "2c8dd72ed0cf45c28abbeba1ac4334cb00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.68",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "d5eda83d-6873-4d2f-bd10-1e8852981793",
+          "securityId": "59d4a597-b2a4-44a3-a138-56f3b6a1790b",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "TSLA: still some believers here",
+          "snippet": "Robotaxi story keeps some of us around, no strong view either way this week.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "neutral",
+          "stanceScore": "0.05",
+          "relevanceScore": "0.78",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "a096342d4f0e4fe3aab7512d0f83403c00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.68",
+        "flags": [],
+        "excludedReason": null
+      }
+    ],
+    "frames": [
+      {
+        "axis": "reddit",
+        "frameStatement": "observed sample of comments from the subreddits polled — not a sample of retail investors.",
+        "window": {
+          "from": "2026-08-01T00:00:00.000Z",
+          "to": "2026-08-08T00:00:00.000Z"
+        },
+        "retrievedCount": 6,
+        "usedCount": 5,
+        "subredditsPolled": [
+          "wallstreetbets",
+          "stocks"
+        ],
+        "treeComplete": true,
+        "truncated": false
+      }
+    ],
+    "createdAt": "2026-08-08T00:00:00.000Z"
+  },
+  "labels": [
+    {
+      "itemId": "2eb48ac5-7615-44b0-bc9a-e4b8ff660977",
+      "expectedStance": "bearish",
+      "expectedRelevant": true,
+      "note": "unambiguous bearish stance on TSLA"
+    },
+    {
+      "itemId": "ac3f6ca5-9a29-4c82-b118-ca9c2ae2cbad",
+      "expectedStance": "bearish",
+      "expectedRelevant": true,
+      "note": "unambiguous bearish stance on TSLA"
+    },
+    {
+      "itemId": "4762cdf7-d08c-43e8-876f-6ea39dc3865f",
+      "expectedStance": "bearish",
+      "expectedRelevant": true,
+      "note": "unambiguous bearish stance on TSLA"
+    },
+    {
+      "itemId": "d77738a0-d8a9-4433-a043-3d20ca58546e",
+      "expectedStance": "bearish",
+      "expectedRelevant": true,
+      "note": "unambiguous bearish stance on TSLA"
+    },
+    {
+      "itemId": "d5eda83d-6873-4d2f-bd10-1e8852981793",
+      "expectedStance": null,
+      "expectedRelevant": true,
+      "note": "genuine but non-directional comment"
+    }
+  ],
+  "expectedOutcome": "stance_scored",
+  "acceptableClaims": [
+    "Reddit-observed stance for TSLA over the window is predominantly bearish (n=5)."
+  ],
+  "requiredAbstentions": [],
+  "storedMetrics": [
+    {
+      "metricId": "sentiment.reddit.shrunkScore",
+      "display": "-0.58"
+    }
+  ],
+  "referenceAnswer": "Reddit-observed sample of comments from the subreddits polled: over the 2026-08-01 to 2026-08-08 window, the sampled stance for TSLA runs bearish (shrunk score -0.58, n=5). The recurring themes are delivery misses and rising Chinese EV competition. What to monitor next: the next delivery print relative to guidance.",
+  "labelledBy": "F12 lane-build starter corpus (hand-authored fixture for harness machinery, 04-BUILD-LOOP.md scoping note) — NOT the D-35 ≥30-pack production corpus",
+  "labelledAt": "2026-09-04T00:00:00.000Z",
+  "frozen": true
+}

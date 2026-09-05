@@ -2,13 +2,20 @@
 import { z } from 'zod';
 import { decimalString, jsonValue, timestamp, uuid } from './primitives';
 
-/** F-10 adds `degraded` and `verification_failed`; F-20 adds `retracted`. */
+/**
+ * F-10 adds `degraded` and `verification_failed`; F-20 adds `retracted`; D-42/0014 adds
+ * `abstained` (insufficient evidence — a normal outcome, not `failed`, and not `complete` since
+ * no prose was produced). `gathering`/`analyzing`/`synthesizing`/`verifying` — the sub-stages
+ * `02-ARCHITECTURE-CONTRACTS.md` §4.5 also names — are represented in `research_event`, not as
+ * `status` values: see `migrations/0014_research_run_abstained.sql` for why.
+ */
 export const researchRunStatus = z.enum([
   'queued',
   'running',
   'complete',
   'degraded',
   'verification_failed',
+  'abstained',
   'retracted',
   'failed',
   'cancelled',

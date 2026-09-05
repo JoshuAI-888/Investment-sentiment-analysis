@@ -1,0 +1,313 @@
+{
+  "id": "ticker-collision-01",
+  "bucket": "ticker_collision",
+  "pack": {
+    "id": "09c22fc6-ea97-44a7-9181-d0156ba15620",
+    "securityId": "f6399736-905e-4274-8b2b-c0c56fa0f923",
+    "retrievalQuery": "security_id = f6399736-905e-4274-8b2b-c0c56fa0f923, axes = [reddit]",
+    "retrievalWindow": {
+      "from": "2026-08-01T00:00:00.000Z",
+      "to": "2026-08-08T00:00:00.000Z"
+    },
+    "items": [
+      {
+        "item": {
+          "id": "6a027476-b527-4896-bd4d-ceb2dab28fc8",
+          "securityId": "f6399736-905e-4274-8b2b-c0c56fa0f923",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "press F to pay respects",
+          "snippet": "lol F in the chat",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.05",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "9bb3ece358da45648e6029c0d25cce8400000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": false,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": null,
+        "flags": [
+          "ticker_collision"
+        ],
+        "excludedReason": "matched cashtag $F without a corroborating company-name reference"
+      },
+      {
+        "item": {
+          "id": "2574b16d-b76d-4f53-a13d-e1b1b7419911",
+          "securityId": "f6399736-905e-4274-8b2b-c0c56fa0f923",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "that's a F in my book",
+          "snippet": "Giving this class an F, total waste of time.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": null,
+          "stanceScore": null,
+          "relevanceScore": "0.04",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "2e43263c9b2c4ca0b93bfabc3cc651a400000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": false,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": null,
+        "flags": [
+          "ticker_collision"
+        ],
+        "excludedReason": "matched cashtag $F without a corroborating company-name reference"
+      },
+      {
+        "item": {
+          "id": "326bbf01-a2bc-444f-9931-4943a273e888",
+          "securityId": "f6399736-905e-4274-8b2b-c0c56fa0f923",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Ford earnings call notes",
+          "snippet": "Ford guidance held steady this quarter, nothing dramatic.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "neutral",
+          "stanceScore": "0.08",
+          "relevanceScore": "0.75",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "d897894d7cda48988e4133b4ad9c9d4a00000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "36470eb0-8bbf-4234-a161-af4f4791574d",
+          "securityId": "f6399736-905e-4274-8b2b-c0c56fa0f923",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Ford dealer margins",
+          "snippet": "Dealer feedback on Ford has been cautiously positive this month.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.55",
+          "relevanceScore": "0.79",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "6cf18e6120c441f9ab93ae2dc182395600000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "6487e0a6-14ab-4e19-be4d-efbf8555982a",
+          "securityId": "f6399736-905e-4274-8b2b-c0c56fa0f923",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Ford product cycle",
+          "snippet": "Ford's new lineup is getting decent reviews so far.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.58",
+          "relevanceScore": "0.81",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "c8aa95b45915436ba6911d641662f2b500000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "b2f1a864-c391-4921-b66e-f6d94fcc0fa9",
+          "securityId": "f6399736-905e-4274-8b2b-c0c56fa0f923",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Ford union talks",
+          "snippet": "Labor negotiations at Ford appear to be moving without major disruption.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "neutral",
+          "stanceScore": "0.06",
+          "relevanceScore": "0.72",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "9bc6522a0e7f40b999a0f143b85e5d5600000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      },
+      {
+        "item": {
+          "id": "3b4755a5-23a2-4ad7-a7b2-c05863f1637b",
+          "securityId": "f6399736-905e-4274-8b2b-c0c56fa0f923",
+          "evidenceType": "social_result",
+          "provider": "reddit",
+          "title": "Ford analyst thread",
+          "snippet": "A few analysts nudged Ford price targets up slightly this week.",
+          "sourceUrl": null,
+          "publisher": null,
+          "authorRef": null,
+          "stanceLabel": "bullish",
+          "stanceScore": "0.52",
+          "relevanceScore": "0.77",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "availableAt": "2026-08-01T00:00:00.000Z",
+          "ingestedAt": "2026-08-01T00:00:00.000Z",
+          "lastCheckedAt": null,
+          "availability": "available",
+          "licenseClass": "standard",
+          "coverageClass": "sampled",
+          "rawHash": "e83a5a9aa35f47b6a155985d7b57e4b100000000000000000000000000000000",
+          "metadata": {}
+        },
+        "axis": "reddit",
+        "relevant": true,
+        "relevanceMethodVersion": "relevance.filter@1",
+        "stanceConfidence": "0.5",
+        "flags": [],
+        "excludedReason": null
+      }
+    ],
+    "frames": [
+      {
+        "axis": "reddit",
+        "frameStatement": "observed sample of comments from the subreddits polled — not a sample of retail investors.",
+        "window": {
+          "from": "2026-08-01T00:00:00.000Z",
+          "to": "2026-08-08T00:00:00.000Z"
+        },
+        "retrievedCount": 9,
+        "usedCount": 5,
+        "subredditsPolled": [
+          "stocks"
+        ],
+        "treeComplete": true,
+        "truncated": false
+      }
+    ],
+    "createdAt": "2026-08-08T00:00:00.000Z"
+  },
+  "labels": [
+    {
+      "itemId": "6a027476-b527-4896-bd4d-ceb2dab28fc8",
+      "expectedStance": null,
+      "expectedRelevant": false,
+      "note": "cashtag collision with the common word \"F\""
+    },
+    {
+      "itemId": "2574b16d-b76d-4f53-a13d-e1b1b7419911",
+      "expectedStance": null,
+      "expectedRelevant": false,
+      "note": "cashtag collision with the common word \"F\""
+    },
+    {
+      "itemId": "326bbf01-a2bc-444f-9931-4943a273e888",
+      "expectedStance": "neutral",
+      "expectedRelevant": true,
+      "note": "genuinely about Ford"
+    },
+    {
+      "itemId": "36470eb0-8bbf-4234-a161-af4f4791574d",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuinely about Ford"
+    },
+    {
+      "itemId": "6487e0a6-14ab-4e19-be4d-efbf8555982a",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuinely about Ford"
+    },
+    {
+      "itemId": "b2f1a864-c391-4921-b66e-f6d94fcc0fa9",
+      "expectedStance": "neutral",
+      "expectedRelevant": true,
+      "note": "genuinely about Ford"
+    },
+    {
+      "itemId": "3b4755a5-23a2-4ad7-a7b2-c05863f1637b",
+      "expectedStance": "bullish",
+      "expectedRelevant": true,
+      "note": "genuinely about Ford"
+    }
+  ],
+  "expectedOutcome": "stance_scored",
+  "acceptableClaims": [
+    "After the collision guard excludes non-company mentions of \"F\", the remaining Reddit-observed sample for Ford leans mildly bullish (n=5)."
+  ],
+  "requiredAbstentions": [],
+  "storedMetrics": [
+    {
+      "metricId": "sentiment.reddit.shrunkScore",
+      "display": "0.31"
+    }
+  ],
+  "referenceAnswer": "Reddit-observed sample of comments from the subreddits polled: two mentions of \"$F\" were excluded as unrelated word collisions rather than references to Ford. Among the five items retained as genuinely about Ford, the sampled stance leans mildly bullish (shrunk score 0.31, n=5).",
+  "labelledBy": "F12 lane-build starter corpus (hand-authored fixture for harness machinery, 04-BUILD-LOOP.md scoping note) — NOT the D-35 ≥30-pack production corpus",
+  "labelledAt": "2026-09-04T00:00:00.000Z",
+  "frozen": true
+}

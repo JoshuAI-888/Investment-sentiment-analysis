@@ -1,0 +1,8 @@
+{
+  "id": "se-02",
+  "packId": "clear-02",
+  "faultClass": "swapped_ticker",
+  "baseAnswer": "Reddit-observed sample of comments from the subreddits polled: over the 2026-08-01 to 2026-08-08 window, the sampled stance for TSLA runs bearish (shrunk score -0.58, n=5). The recurring themes are delivery misses and rising Chinese EV competition. What to monitor next: the next delivery print relative to guidance.",
+  "answer": "Reddit-observed sample of comments from the subreddits polled: over the 2026-08-01 to 2026-08-08 window, the sampled stance for RIVN runs bearish (shrunk score -0.58, n=5). The recurring themes are delivery misses and rising Chinese EV competition. What to monitor next: the next delivery print relative to guidance.",
+  "faultDescription": "Every mention of TSLA is swapped for RIVN, a ticker outside this run's subject set."
+}
