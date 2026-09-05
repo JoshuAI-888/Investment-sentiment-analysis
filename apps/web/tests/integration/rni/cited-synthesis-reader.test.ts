@@ -144,8 +144,17 @@ async function seed(pool: pg.Pool, options: {
       await db.query(
         `insert into rni_synthesis_model_invocation (id, batch_id, stage, model_id, model_revision,
           prompt_version, ordered_claim_ids, input_hash, prepared_snapshot, prepared_at)
-         values ($1, $2, $3, 'gpt-5.6-sol', 'sol-fixture', $4, $5, $6, '{}', $7)`,
-        [modelIds[i], batchId, stage, `rni-${stage}-v2`, json([claimIds[0]]), hash, cutoff],
+         values ($1, $2, $3, 'gpt-5.6-sol', 'sol-fixture', $4, $5, $6, $7, $8)`,
+        [
+          modelIds[i],
+          batchId,
+          stage,
+          `rni-${stage}-v2`,
+          json([claimIds[0]]),
+          stage === 'verification' ? hash : null,
+          json(stage === 'verification' ? { modelInput: {} } : {}),
+          cutoff,
+        ],
       );
     }
   }, pool);
@@ -421,6 +430,15 @@ describe.skipIf(databaseUrl() === undefined)('I07 batch-scoped cited-synthesis e
     await withTransaction(async (db) => {
       for (const [index, id] of fixture.modelIds.entries()) {
         const skipped = noEligibleClaims || index === 1;
+        if (index === 1) {
+          await db.query(
+            `update rni_synthesis_model_invocation
+                set input_hash = $2,
+                    prepared_snapshot = prepared_snapshot || '{"modelInput":{}}'::jsonb
+              where id = $1`,
+            [id, canonicalHash({})],
+          );
+        }
         await db.query(
           `update rni_synthesis_model_invocation set status = $2, output_hash = $3,
             completed_at = $4, terminal_metadata = $5 where id = $1`,

@@ -539,7 +539,7 @@ create table rni_synthesis_model_invocation (
   model_revision        text        not null,
   prompt_version        text        not null,
   ordered_claim_ids     jsonb       not null,
-  input_hash            text        not null,
+  input_hash            text        null,
   prepared_snapshot     jsonb       not null,
   output_hash           text        null,
   terminal_metadata     jsonb       null,
@@ -556,7 +556,7 @@ create table rni_synthesis_model_invocation (
   constraint rni_synthesis_model_invocation_claims_check
     check (rni_uuid_array_valid(ordered_claim_ids)),
   constraint rni_synthesis_model_invocation_input_hash_check
-    check (input_hash ~ '^[a-f0-9]{64}$'),
+    check (input_hash is null or input_hash ~ '^[a-f0-9]{64}$'),
   constraint rni_synthesis_model_invocation_prepared_snapshot_check
     check (jsonb_typeof(prepared_snapshot) = 'object'),
   constraint rni_synthesis_model_invocation_terminal_check check (coalesce((
@@ -564,6 +564,7 @@ create table rni_synthesis_model_invocation (
       and completed_at is null)
     or (
       status = 'succeeded'
+      and input_hash is not null
       and output_hash is not null
       and output_hash ~ '^[a-f0-9]{64}$'
       and completed_at is not null
@@ -583,6 +584,7 @@ create table rni_synthesis_model_invocation (
     )
     or (
       status = 'failed'
+      and input_hash is not null
       and output_hash is null
       and completed_at is not null
       and completed_at >= prepared_at
@@ -605,6 +607,7 @@ create table rni_synthesis_model_invocation (
     )
     or (
       status = 'skipped'
+      and input_hash is not null
       and output_hash is null
       and completed_at is not null
       and completed_at >= prepared_at
@@ -638,6 +641,18 @@ begin
       using errcode = 'check_violation',
             constraint = 'rni_synthesis_model_invocation_starts_prepared';
   end if;
+  if new.stage = 'verification'
+     and (new.input_hash is null or not (new.prepared_snapshot ? 'modelInput')) then
+    raise exception 'RNI verification invocation requires its exact input before dispatch'
+      using errcode = 'check_violation',
+            constraint = 'rni_synthesis_model_invocation_starts_prepared';
+  end if;
+  if new.stage = 'challenger'
+     and (new.input_hash is not null or new.prepared_snapshot ? 'modelInput') then
+    raise exception 'RNI challenger invocation must begin as an unhydrated durable plan'
+      using errcode = 'check_violation',
+            constraint = 'rni_synthesis_model_invocation_starts_prepared';
+  end if;
   return new;
 end;
 $$;
@@ -648,8 +663,29 @@ create trigger rni_synthesis_model_invocation_starts_prepared
 
 create or replace function rni_synthesis_invocation_transition_valid() returns trigger
 language plpgsql as $$
+declare
+  input_changed boolean;
+  valid_hydration boolean;
 begin
-  if old.status <> 'prepared' or new.status not in ('succeeded', 'failed', 'skipped') then
+  input_changed := old.input_hash is distinct from new.input_hash
+    or old.prepared_snapshot is distinct from new.prepared_snapshot;
+  valid_hydration := old.stage = 'challenger'
+    and old.status = 'prepared'
+    and old.input_hash is null
+    and not (old.prepared_snapshot ? 'modelInput')
+    and new.input_hash is not null
+    and new.input_hash ~ '^[a-f0-9]{64}$'
+    and new.prepared_snapshot ? 'modelInput'
+    and jsonb_typeof(new.prepared_snapshot -> 'modelInput') = 'object'
+    and old.prepared_snapshot = new.prepared_snapshot - 'modelInput';
+
+  if input_changed and not valid_hydration then
+    raise exception 'RNI challenger input permits one fill-only hydration'
+      using errcode = 'restrict_violation';
+  end if;
+  if old.status <> 'prepared'
+     or new.status not in ('prepared', 'succeeded', 'failed', 'skipped')
+     or (new.status = 'prepared' and not valid_hydration) then
     raise exception 'RNI synthesis model invocation permits one prepared-to-terminal transition'
       using errcode = 'restrict_violation';
   end if;
@@ -664,7 +700,7 @@ create trigger rni_synthesis_model_invocation_transition
 create trigger rni_synthesis_model_invocation_content_immutable
   before update or delete on rni_synthesis_model_invocation
   for each row execute function reject_content_mutation(
-    'status', 'output_hash', 'terminal_metadata', 'completed_at'
+    'status', 'input_hash', 'prepared_snapshot', 'output_hash', 'terminal_metadata', 'completed_at'
   );
 
 create table rni_synthesis_citation_role (

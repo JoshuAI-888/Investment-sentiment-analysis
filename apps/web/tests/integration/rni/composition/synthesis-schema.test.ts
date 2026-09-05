@@ -315,16 +315,33 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
 
     for (const [invocationId, stage, inputHash] of [
       [ids.verifier, 'verification', H('3')],
-      [ids.challenger, 'challenger', H('4')],
+      [ids.challenger, 'challenger', null],
     ] as const) {
       await pool.query(
         `insert into rni_synthesis_model_invocation
            (id, batch_id, stage, model_id, model_revision, prompt_version,
             ordered_claim_ids, input_hash, prepared_snapshot, prepared_at)
-         values ($1, $2, $3, 'gpt-5.6-sol', '2026-09-01', $4, $5, $6, '{}',
+         values ($1, $2, $3, 'gpt-5.6-sol', '2026-09-01', $4, $5, $6, $7,
                  '2026-09-05T01:01:00Z')`,
-        [invocationId, ids.batch, stage, `rni-${stage}-v2`, J([ids.targetClaim]), inputHash],
+        [
+          invocationId,
+          ids.batch,
+          stage,
+          `rni-${stage}-v2`,
+          J([ids.targetClaim]),
+          inputHash,
+          J(stage === 'verification' ? { modelInput: {} } : {}),
+        ],
       );
+      if (stage === 'challenger') {
+        await pool.query(
+          `update rni_synthesis_model_invocation
+              set input_hash = $2,
+                  prepared_snapshot = prepared_snapshot || '{"modelInput":{}}'::jsonb
+            where id = $1`,
+          [invocationId, H('4')],
+        );
+      }
       const status = stage === 'verification' ? verifierStatus : challengerStatus;
       await pool.query(
         `update rni_synthesis_model_invocation
@@ -706,10 +723,23 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
            (id, batch_id, stage, model_id, model_revision, prompt_version,
             ordered_claim_ids, input_hash, prepared_snapshot, prepared_at)
          values ($1, $2, $3, 'gpt-5.6-sol', '2026-09-01', 'prompt-v1',
-                 '[]', $4, '{}', '2026-09-05T01:01:00Z')`,
-        [invocationId, ids.usageBatch, stage, stage === 'verification' ? H('b') : H('c')],
+                 '[]', $4, $5, '2026-09-05T01:01:00Z')`,
+        [
+          invocationId,
+          ids.usageBatch,
+          stage,
+          stage === 'verification' ? H('b') : null,
+          J(stage === 'verification' ? { modelInput: {} } : {}),
+        ],
       );
     }
+    await pool.query(
+      `update rni_synthesis_model_invocation
+          set input_hash = $2,
+              prepared_snapshot = prepared_snapshot || '{"modelInput":{}}'::jsonb
+        where id = $1`,
+      [ids.usageChallenger, H('c')],
+    );
     await expect(
       pool.query(
         `update rni_synthesis_model_invocation
@@ -765,7 +795,7 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
          (id, batch_id, stage, model_id, model_revision, prompt_version,
           ordered_claim_ids, input_hash, prepared_snapshot, prepared_at)
        values ($1, $2, 'verification', 'gpt-5.6-sol', '2026-09-01', 'prompt-v1',
-               '[]', $3, '{}', '2026-09-05T01:01:00Z')`,
+               '[]', $3, '{"modelInput":{}}', '2026-09-05T01:01:00Z')`,
       [ids.usageVerifier, ids.usageBatch, H('b')],
     );
     await expect(pool.query(
@@ -773,6 +803,92 @@ describe.skipIf(url === undefined)('D-RNI-19 — durable cited-synthesis schema'
          terminal_metadata = $4, completed_at = '2026-09-05T01:02:00Z' where id = $1`,
       [ids.usageVerifier, status, outputHash, J(metadata)],
     )).rejects.toThrow(/terminal_check/);
+  });
+
+  it('hydrates one challenger input exactly once before terminal publication', async () => {
+    await seedBase();
+    await pool.query(
+      `insert into rni_synthesis_batch
+         (id, run_id, security_id, assessment_cutoff_at, policy_version,
+          rights_policy_version, ordered_citation_ids, reddit_platform_citation_ids,
+          x_platform_citation_ids, created_at)
+       values ($1, $2, $3, $4, $5, $6, '[]', '[]', '[]', '2026-09-05T01:01:00Z')`,
+      [ids.usageBatch, ids.run, ids.nvda, cutoff, policy, rights],
+    );
+    await expect(
+      pool.query(
+        `insert into rni_synthesis_model_invocation
+           (id, batch_id, stage, model_id, model_revision, prompt_version,
+            ordered_claim_ids, input_hash, prepared_snapshot, prepared_at)
+         values ($1, $2, 'verification', 'gpt-5.6-sol', '2026-09-01', 'prompt-v1',
+                 '[]', null, '{}', '2026-09-05T01:01:00Z')`,
+        [ids.usageVerifier, ids.usageBatch],
+      ),
+    ).rejects.toThrow(/exact input before dispatch/);
+    await expect(
+      pool.query(
+        `insert into rni_synthesis_model_invocation
+           (id, batch_id, stage, model_id, model_revision, prompt_version,
+            ordered_claim_ids, input_hash, prepared_snapshot, prepared_at)
+         values ($1, $2, 'challenger', 'gpt-5.6-sol', '2026-09-01', 'prompt-v1',
+                 '[]', $3, '{"modelInput":{}}', '2026-09-05T01:01:00Z')`,
+        [ids.usageChallenger, ids.usageBatch, H('c')],
+      ),
+    ).rejects.toThrow(/unhydrated durable plan/);
+    await pool.query(
+      `insert into rni_synthesis_model_invocation
+         (id, batch_id, stage, model_id, model_revision, prompt_version,
+          ordered_claim_ids, input_hash, prepared_snapshot, prepared_at)
+       values ($1, $2, 'challenger', 'gpt-5.6-sol', '2026-09-01', 'prompt-v1',
+               '[]', null, '{"summaryId":"summary-1"}', '2026-09-05T01:01:00Z')`,
+      [ids.usageChallenger, ids.usageBatch],
+    );
+    await expect(
+      pool.query(
+        `update rni_synthesis_model_invocation
+            set status = 'skipped', completed_at = '2026-09-05T01:02:00Z',
+                terminal_metadata = '{"outcome":"skipped","reason":"no_eligible_claims"}'
+          where id = $1`,
+        [ids.usageChallenger],
+      ),
+    ).rejects.toThrow(/terminal_check/);
+    await pool.query(
+      `update rni_synthesis_model_invocation
+          set input_hash = $2,
+              prepared_snapshot = prepared_snapshot || '{"modelInput":{}}'::jsonb
+        where id = $1`,
+      [ids.usageChallenger, H('c')],
+    );
+    await expect(
+      pool.query(
+        `update rni_synthesis_model_invocation
+            set input_hash = $2,
+                prepared_snapshot = prepared_snapshot || '{"modelInput":{"changed":true}}'::jsonb
+          where id = $1`,
+        [ids.usageChallenger, H('d')],
+      ),
+    ).rejects.toThrow(/fill-only hydration/);
+    await expect(
+      pool.query(
+        `update rni_synthesis_model_invocation
+            set prepared_snapshot = prepared_snapshot || '{"summaryId":"changed"}'::jsonb
+          where id = $1`,
+        [ids.usageChallenger],
+      ),
+    ).rejects.toThrow(/fill-only hydration/);
+    await pool.query(
+      `update rni_synthesis_model_invocation
+          set status = 'skipped', completed_at = '2026-09-05T01:02:00Z',
+              terminal_metadata = '{"outcome":"skipped","reason":"no_eligible_claims"}'
+        where id = $1`,
+      [ids.usageChallenger],
+    );
+    await expect(
+      pool.query(
+        `update rni_synthesis_model_invocation set input_hash = $2 where id = $1`,
+        [ids.usageChallenger, H('e')],
+      ),
+    ).rejects.toThrow();
   });
 
   it('rejects a cross-security citation role', async () => {

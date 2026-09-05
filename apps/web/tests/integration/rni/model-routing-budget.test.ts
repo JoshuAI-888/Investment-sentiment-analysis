@@ -636,7 +636,7 @@ describe.skipIf(url === undefined)('I10B — persisted RNI routing and atomic AI
          id, batch_id, stage, model_id, model_revision, prompt_version,
          ordered_claim_ids, input_hash, prepared_snapshot, prepared_at
        ) values ($1, $2, 'verification', 'gpt-5.6-sol', 'sol-2026-07-09',
-                 'rni_verification-v1', '[]', $3, '{}', now())`,
+                 'rni_verification-v1', '[]', $3, '{"modelInput":{}}', now())`,
       [invocationId, batchId, HASH_A],
     );
 
